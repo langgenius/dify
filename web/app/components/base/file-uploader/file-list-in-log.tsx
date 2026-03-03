@@ -39,7 +39,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
     <div className={cn('px-3 py-2', expanded && 'py-3', !noBorder && 'border-t border-divider-subtle', noPadding && '!p-0')}>
       <div className="flex justify-between gap-1">
         {expanded && (
-          <div className="system-xs-semibold-uppercase grow cursor-pointer py-1 text-text-secondary" onClick={() => setExpanded(!expanded)}>{t('runDetail.fileListLabel', { ns: 'appLog' })}</div>
+          <div className="grow cursor-pointer py-1 text-text-secondary system-xs-semibold-uppercase" onClick={() => setExpanded(!expanded)}>{t('runDetail.fileListLabel', { ns: 'appLog' })}</div>
         )}
         {!expanded && (
           <div className="flex gap-1">
@@ -78,15 +78,15 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
           </div>
         )}
         <div className="flex cursor-pointer items-center gap-1" onClick={() => setExpanded(!expanded)}>
-          {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
+          {!expanded && <div className="text-text-tertiary system-xs-medium-uppercase">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
           <RiArrowRightSLine className={cn('h-4 w-4 text-text-tertiary', expanded && 'rotate-90')} />
         </div>
       </div>
       {expanded && (
         <div className="flex flex-col gap-3">
           {fileList.map(item => (
-            <div key={item.varName} className="system-xs-regular flex flex-col gap-1">
-              <div className="py-1 text-text-tertiary ">{item.varName}</div>
+            <div key={item.varName} className="flex flex-col gap-1 system-xs-regular">
+              <div className="py-1 text-text-tertiary">{item.varName}</div>
               {item.list.map(file => (
                 <FileItem
                   key={file.id}

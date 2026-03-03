@@ -130,7 +130,7 @@ const Tooltip: FC<TooltipProps> = ({
         {!!popupContent && (
           <div
             className={cn(
-              !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
+              !noDecoration && 'relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
               popupClassName,
             )}
             onMouseEnter={() => {

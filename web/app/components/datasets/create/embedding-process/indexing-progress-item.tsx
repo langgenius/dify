@@ -103,7 +103,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
           notionIcon={notionIcon}
         />
         <div className="flex w-0 grow items-center gap-1" title={name}>
-          <div className="system-xs-medium truncate text-text-secondary">
+          <div className="truncate text-text-secondary system-xs-medium">
             {name}
           </div>
           {enableBilling && <PriorityLabel className="ml-0" />}

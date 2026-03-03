@@ -134,7 +134,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   </div>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="system-xs-regular mt-1 px-0 py-[2px] text-text-warning">
+                  <div className="mt-1 px-0 py-[2px] text-text-warning system-xs-regular">
                     {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
                   </div>
                 )}
@@ -192,7 +192,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="system-sm-medium text-text-tertiary">
+              <label className="text-text-tertiary system-sm-medium">
                 {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
               <InputNumber
@@ -210,7 +210,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               />
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-tertiary">
+              <label className="mb-2 block text-text-tertiary system-sm-medium">
                 {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
               </label>
               <ParagraphInput

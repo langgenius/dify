@@ -239,7 +239,7 @@ const Flowchart = (props: FlowchartProps) => {
             .split('\n')
             .map((line) => {
               // Gantt charts have specific syntax needs.
-              const taskMatch = line.match(/^\s*([^:]+?)\s*:\s*(.*)/)
+              const taskMatch = /^\s*([^:]+?)\s*:\s*(.*)/.exec(line)
               if (!taskMatch)
                 return line // Not a task line, return as is.
 
@@ -484,15 +484,15 @@ const Flowchart = (props: FlowchartProps) => {
       'text-gray-300': currentTheme === Theme.dark,
     }),
     themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-sm transition-all duration-300', {
-      'bg-white/80 hover:bg-white hover:shadow-lg text-gray-700 border border-gray-200': currentTheme === Theme.light,
-      'bg-slate-800/80 hover:bg-slate-700 hover:shadow-lg text-yellow-300 border border-slate-600': currentTheme === Theme.dark,
+      'border border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:shadow-lg': currentTheme === Theme.light,
+      'border border-slate-600 bg-slate-800/80 text-yellow-300 hover:bg-slate-700 hover:shadow-lg': currentTheme === Theme.dark,
     }),
   }
 
   // Style classes for look options
   const getLookButtonClass = (lookType: 'classic' | 'handDrawn') => {
     return cn(
-      'system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
+      'mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
       look === lookType && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
       currentTheme === Theme.dark && 'border-slate-600 bg-slate-800 text-slate-300',
       look === lookType && currentTheme === Theme.dark && 'border-blue-500 bg-slate-700 text-white',

@@ -57,8 +57,8 @@ const NewFeaturePanel = ({
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">{t('common.features', { ns: 'workflow' })}</div>
-            <div className="body-xs-regular text-text-tertiary">{t('common.featuresDescription', { ns: 'workflow' })}</div>
+            <div className="text-text-primary system-xl-semibold">{t('common.features', { ns: 'workflow' })}</div>
+            <div className="text-text-tertiary body-xs-regular">{t('common.featuresDescription', { ns: 'workflow' })}</div>
           </div>
           <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
         </div>
@@ -71,7 +71,7 @@ const NewFeaturePanel = ({
                 <div className="mr-0.5 shrink-0 p-0.5">
                   <RiInformation2Fill className="h-5 w-5 text-text-accent" />
                 </div>
-                <div className="system-xs-medium p-1 text-text-primary">
+                <div className="p-1 text-text-primary system-xs-medium">
                   <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
                 </div>
               </div>

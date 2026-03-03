@@ -52,14 +52,14 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         asChild
       >
 
-        <div className={cn('system-xs-medium flex items-center text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
+        <div className={cn('flex items-center text-text-tertiary system-xs-medium', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
           <div>
             {t('generate.version', { ns: 'appDebug' })}
             {' '}
             {value + 1}
             {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
           </div>
-          {moreThanOneVersion && <RiArrowDownSLine className="size-3 " />}
+          {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
@@ -71,7 +71,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
             'w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
           )}
         >
-          <div className={cn('system-xs-medium-uppercase flex h-[22px] items-center px-3 pl-3 text-text-tertiary')}>
+          <div className={cn('flex h-[22px] items-center px-3 pl-3 text-text-tertiary system-xs-medium-uppercase')}>
             {t('generate.versions', { ns: 'appDebug' })}
           </div>
           {
@@ -79,7 +79,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
               <div
                 key={option.value}
                 className={cn(
-                  'system-sm-medium flex h-7 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover',
+                  'flex h-7 cursor-pointer items-center rounded-lg px-2 text-text-secondary system-sm-medium hover:bg-state-base-hover',
                 )}
                 title={option.label}
                 onClick={() => {

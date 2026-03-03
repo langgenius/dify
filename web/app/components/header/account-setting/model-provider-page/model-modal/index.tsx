@@ -197,7 +197,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }
 
     return (
-      <div className="title-2xl-semi-bold text-text-primary">
+      <div className="text-text-primary title-2xl-semi-bold">
         {label}
       </div>
     )
@@ -206,7 +206,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <div className="system-xs-regular mt-1 text-text-tertiary">
+        <div className="mt-1 text-text-tertiary system-xs-regular">
           {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
         </div>
       )
@@ -223,7 +223,7 @@ const ModelModal: FC<ModelModalProps> = ({
             className="mr-2 h-4 w-4 shrink-0"
             provider={provider}
           />
-          <div className="system-md-regular mr-1 text-text-secondary">{renderI18nObject(provider.label)}</div>
+          <div className="mr-1 text-text-secondary system-md-regular">{renderI18nObject(provider.label)}</div>
         </div>
       )
     }
@@ -235,7 +235,7 @@ const ModelModal: FC<ModelModalProps> = ({
             provider={provider}
             modelName={model.model}
           />
-          <div className="system-md-regular mr-1 text-text-secondary">{model.model}</div>
+          <div className="mr-1 text-text-secondary system-md-regular">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -335,7 +335,7 @@ const ModelModal: FC<ModelModalProps> = ({
               }
               {
                 showCredentialLabel && (
-                  <div className="system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary">
+                  <div className="mb-3 mt-6 flex items-center text-text-tertiary system-xs-medium-uppercase">
                     {t('modelProvider.auth.modelCredential', { ns: 'common' })}
                     <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
                   </div>
@@ -375,7 +375,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         href={provider.help?.url[language] || provider.help?.url.en_US}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="system-xs-regular mt-2 inline-block  align-middle text-text-accent"
+                        className="mt-2 inline-block align-middle text-text-accent system-xs-regular"
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
                         {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}

@@ -49,12 +49,12 @@ const FormContent = ({
     <>
       {showBackButton && (
         <div className="flex items-center p-4 pb-1">
-          <div className="system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent" onClick={handleBack}>
+          <div className="flex cursor-pointer items-center text-text-accent system-sm-semibold-uppercase" onClick={handleBack}>
             <RiArrowLeftLine className="mr-1 h-4 w-4" />
             {t('nodes.humanInput.singleRun.back', { ns: 'workflow' })}
           </div>
-          <div className="system-xs-regular mx-1 text-divider-deep">/</div>
-          <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>
+          <div className="mx-1 text-divider-deep system-xs-regular">/</div>
+          <div className="text-text-secondary system-sm-semibold-uppercase">{nodeName}</div>
         </div>
       )}
       <div className="px-4 py-3">

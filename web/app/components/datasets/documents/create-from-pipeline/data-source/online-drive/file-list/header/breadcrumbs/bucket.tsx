@@ -41,12 +41,12 @@ const Bucket = ({
           <BucketsGray />
         </button>
       </Tooltip>
-      <span className="system-xs-regular text-divider-deep">/</span>
+      <span className="text-divider-deep system-xs-regular">/</span>
       <button
         type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
+          isActive ? 'text-text-secondary system-sm-medium' : 'text-text-tertiary system-sm-regular',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}
@@ -55,7 +55,7 @@ const Bucket = ({
       >
         {bucketName}
       </button>
-      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
+      {showSeparator && <span className="shrink-0 text-divider-deep system-xs-regular">/</span>}
     </>
   )
 }

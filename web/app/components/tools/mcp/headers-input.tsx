@@ -51,7 +51,7 @@ const HeadersInput = ({
   if (headersItems.length === 0) {
     return (
       <div className="space-y-2">
-        <div className="body-xs-regular text-text-tertiary">
+        <div className="text-text-tertiary body-xs-regular">
           {t('mcp.modal.noHeaders', { ns: 'tools' })}
         </div>
         {!readonly && (
@@ -72,12 +72,12 @@ const HeadersInput = ({
   return (
     <div className="space-y-2">
       {isMasked && (
-        <div className="body-xs-regular text-text-tertiary">
+        <div className="text-text-tertiary body-xs-regular">
           {t('mcp.modal.maskedHeadersTip', { ns: 'tools' })}
         </div>
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
-        <div className="system-xs-medium-uppercase bg-background-secondary flex h-7 items-center leading-7 text-text-tertiary">
+        <div className="bg-background-secondary flex h-7 items-center leading-7 text-text-tertiary system-xs-medium-uppercase">
           <div className="h-full w-1/2 border-r border-divider-regular pl-3">{t('mcp.modal.headerKey', { ns: 'tools' })}</div>
           <div className="h-full w-1/2 pl-3 pr-1">{t('mcp.modal.headerValue', { ns: 'tools' })}</div>
         </div>

@@ -31,7 +31,7 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
-        <p className="system-md-regular text-text-secondary">{(isFailed && errMsg) ? errMsg : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}</p>
+        <p className="text-text-secondary system-md-regular">{(isFailed && errMsg) ? errMsg : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}</p>
         {payload && (
           <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
             <Card

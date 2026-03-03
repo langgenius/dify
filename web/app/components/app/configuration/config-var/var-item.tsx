@@ -46,15 +46,15 @@ const VarItem: FC<ItemProps> = ({
       )}
       <div className="flex w-0 grow items-center">
         <div className="truncate" title={`${name} · ${label}`}>
-          <span className="system-sm-medium text-text-secondary">{name}</span>
-          <span className="system-xs-regular px-1 text-text-quaternary">·</span>
-          <span className="system-xs-medium text-text-tertiary">{label}</span>
+          <span className="text-text-secondary system-sm-medium">{name}</span>
+          <span className="px-1 text-text-quaternary system-xs-regular">·</span>
+          <span className="text-text-tertiary system-xs-medium">{label}</span>
         </div>
       </div>
       <div className="shrink-0">
         <div className={cn('flex items-center', !readonly && 'group-hover:hidden')}>
           {required && <Badge text="required" />}
-          <span className="system-xs-regular pl-2 pr-1 text-text-tertiary">{type}</span>
+          <span className="pl-2 pr-1 text-text-tertiary system-xs-regular">{type}</span>
           <IconTypeIcon type={type as IInputTypeIconProps['type']} className="text-text-tertiary" />
         </div>
         <div className={cn('hidden items-center justify-end rounded-lg', !readonly && 'group-hover:flex')}>
@@ -66,7 +66,7 @@ const VarItem: FC<ItemProps> = ({
           </div>
           <div
             data-testid="var-item-delete-btn"
-            className="flex h-6 w-6 cursor-pointer items-center  justify-center text-text-tertiary hover:text-text-destructive"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center text-text-tertiary hover:text-text-destructive"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}

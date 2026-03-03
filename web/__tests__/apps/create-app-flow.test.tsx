@@ -237,7 +237,6 @@ describe('Create App Flow', () => {
     mockShowTagManagementModal = false
   })
 
-  // -- NewAppCard rendering --
   describe('NewAppCard Rendering', () => {
     it('should render the "Create App" card with all options', () => {
       renderList()

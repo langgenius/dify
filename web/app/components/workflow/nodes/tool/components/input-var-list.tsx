@@ -183,9 +183,9 @@ const InputVarList: FC<Props> = ({
           return (
             <div key={variable} className="space-y-1">
               <div className="flex items-center space-x-2 leading-[18px]">
-                <span className="code-sm-semibold text-text-secondary">{label[language] || label.en_US}</span>
-                <span className="system-xs-regular text-text-tertiary">{paramType(type)}</span>
-                {required && <span className="system-xs-regular text-util-colors-orange-dark-orange-dark-600">Required</span>}
+                <span className="text-text-secondary code-sm-semibold">{label[language] || label.en_US}</span>
+                <span className="text-text-tertiary system-xs-regular">{paramType(type)}</span>
+                {required && <span className="text-util-colors-orange-dark-orange-dark-600 system-xs-regular">Required</span>}
               </div>
               {isString && (
                 <Input
@@ -248,7 +248,7 @@ const InputVarList: FC<Props> = ({
                   scope={scope}
                 />
               )}
-              {tooltip && <div className="body-xs-regular text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className="text-text-tertiary body-xs-regular">{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })

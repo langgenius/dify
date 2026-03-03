@@ -24,7 +24,7 @@ const CheckboxWithLabel = ({
   return (
     <label className={cn('flex items-center space-x-2', className)}>
       <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} />
-      <div className={cn('system-sm-medium text-text-secondary', labelClassName)}>{label}</div>
+      <div className={cn('text-text-secondary system-sm-medium', labelClassName)}>{label}</div>
       {tooltip && (
         <Tooltip
           popupContent={

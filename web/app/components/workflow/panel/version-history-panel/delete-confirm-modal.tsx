@@ -22,11 +22,11 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
 
   return (
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
-      <div className="flex flex-col gap-y-2 p-6 pb-4 ">
-        <div className="title-2xl-semi-bold text-text-primary">
+      <div className="flex flex-col gap-y-2 p-6 pb-4">
+        <div className="text-text-primary title-2xl-semi-bold">
           {`${t('operation.delete', { ns: 'common' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
         </div>
-        <p className="system-md-regular text-text-secondary">
+        <p className="text-text-secondary system-md-regular">
           {t('versionHistory.deletionTip', { ns: 'workflow' })}
         </p>
       </div>

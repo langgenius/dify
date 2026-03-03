@@ -64,7 +64,7 @@ const EndpointList = ({ detail }: Props) => {
 
   return (
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
-      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+      <div className="mb-1 flex h-6 items-center justify-between text-text-secondary system-sm-semibold-uppercase">
         <div className="flex items-center gap-0.5">
           {t('detailPanel.endpoints', { ns: 'plugin' })}
           <Tooltip
@@ -75,13 +75,13 @@ const EndpointList = ({ detail }: Props) => {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
                   <RiApps2AddLine className="h-4 w-4 text-text-tertiary" />
                 </div>
-                <div className="system-xs-regular text-text-tertiary">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
+                <div className="text-text-tertiary system-xs-regular">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
                 <a
                   href={docLink('/develop-plugin/getting-started/getting-started-dify-plugin')}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="system-xs-regular inline-flex cursor-pointer items-center gap-1 text-text-accent">
+                  <div className="inline-flex cursor-pointer items-center gap-1 text-text-accent system-xs-regular">
                     <RiBookOpenLine className="h-3 w-3" />
                     {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                   </div>
@@ -95,7 +95,7 @@ const EndpointList = ({ detail }: Props) => {
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (
-        <div className="system-xs-regular mb-1 flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
+        <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary system-xs-regular">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
       )}
       <div className="flex flex-col gap-2">
         {data.endpoints.map((item, index) => (

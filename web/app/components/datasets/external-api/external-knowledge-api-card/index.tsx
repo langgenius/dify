@@ -115,7 +115,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             <ApiConnectionMod className="h-4 w-4" />
             <div className="system-sm-medium">{api.name}</div>
           </div>
-          <div className="system-xs-regular self-stretch text-text-tertiary">{api.settings.endpoint}</div>
+          <div className="self-stretch text-text-tertiary system-xs-regular">{api.settings.endpoint}</div>
         </div>
         <div className="flex items-start gap-1">
           <ActionButton onClick={handleEditClick}>

@@ -48,7 +48,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
         )}
         className="h-6 w-6"
       />
-      <div className="system-md-semibold text-text-primary">
+      <div className="text-text-primary system-md-semibold">
         {renderI18nObject(provider.label, language)}
       </div>
     </div>

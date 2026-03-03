@@ -61,7 +61,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       <Divider type="vertical" className="mx-1 h-3 bg-divider-regular" />
       <button
         type="button"
-        className="system-xs-semibold text-text-accent"
+        className="text-text-accent system-xs-semibold"
         onClick={() => {
           clearTimeout(refreshTimer.current)
           viewNewlyAddedChunk()
@@ -158,13 +158,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}
       >
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">
+          <div className="text-text-primary system-xl-semibold">
             {t('segment.addChunk', { ns: 'datasetDocuments' })}
           </div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag label={t('segment.newChunk', { ns: 'datasetDocuments' })!} />
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
+            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">

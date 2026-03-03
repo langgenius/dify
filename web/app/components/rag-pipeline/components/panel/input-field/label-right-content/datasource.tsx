@@ -22,7 +22,7 @@ const Datasource = ({
           toolIcon={toolIcon}
         />
       </div>
-      <span className="system-sm-medium text-text-secondary">{nodeData.title}</span>
+      <span className="text-text-secondary system-sm-medium">{nodeData.title}</span>
     </div>
   )
 }

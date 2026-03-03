@@ -117,11 +117,11 @@ const Group = ({
                 toolIcon={toolIcon || ''}
                 size="xs"
               />
-              <div className="system-xs-medium-uppercase truncate text-text-tertiary">{nodeData.title}</div>
+              <div className="truncate text-text-tertiary system-xs-medium-uppercase">{nodeData.title}</div>
             </>
           )}
           {!nodeData && (
-            <div className="system-xs-medium-uppercase truncate text-text-tertiary">
+            <div className="truncate text-text-tertiary system-xs-medium-uppercase">
               {isEnv && t('debug.variableInspect.envNode', { ns: 'workflow' })}
               {isChatVar && t('debug.variableInspect.chatNode', { ns: 'workflow' })}
               {isSystem && t('debug.variableInspect.systemNode', { ns: 'workflow' })}
@@ -160,8 +160,8 @@ const Group = ({
                 isExceptionVariable={['error_type', 'error_message'].includes(varItem.name)}
                 className="size-4"
               />
-              <div className="system-sm-medium grow truncate text-text-secondary">{varItem.name}</div>
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{varItem.value_type}</div>
+              <div className="grow truncate text-text-secondary system-sm-medium">{varItem.name}</div>
+              <div className="shrink-0 text-text-tertiary system-xs-regular">{varItem.value_type}</div>
             </div>
           ))}
         </div>

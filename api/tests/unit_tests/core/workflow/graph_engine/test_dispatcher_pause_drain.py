@@ -1,11 +1,10 @@
 import queue
-import threading
 from datetime import datetime
 
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
-from core.workflow.graph_events import NodeRunSucceededEvent
-from core.workflow.node_events import NodeRunResult
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
+from dify_graph.graph_events import NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
 
 
 class StubExecutionCoordinator:
@@ -65,7 +64,6 @@ def test_dispatcher_drains_events_when_paused() -> None:
         event_handler=handler,
         execution_coordinator=coordinator,
         event_emitter=None,
-        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()

@@ -236,7 +236,7 @@ const SimpleSelect: FC<ISelectProps> = ({
               }}
               className={cn(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}
             >
-              <span className={cn('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
+              <span className={cn('block truncate text-left text-components-input-text-filled system-sm-regular', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoading
                   ? <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />

@@ -413,7 +413,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   return (
     <div className="relative">
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
-        <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
+        <div className="text-text-secondary system-xs-semibold-uppercase">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>

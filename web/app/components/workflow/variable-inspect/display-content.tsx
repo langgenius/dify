@@ -55,12 +55,12 @@ const DisplayContent = (props: DisplayContentProps) => {
     <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active', className)}>
       <div className="flex shrink-0 items-center justify-end p-1">
         {previewType === PreviewType.Markdown && (
-          <div className="system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary">
+          <div className="flex grow items-center px-2 py-0.5 text-text-secondary system-xs-semibold-uppercase">
             {previewType.toUpperCase()}
           </div>
         )}
         {previewType === PreviewType.Chunks && (
-          <div className="system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary">
+          <div className="flex grow items-center px-2 py-0.5 text-text-secondary system-xs-semibold-uppercase">
             {varType.toUpperCase()}
             {schemaType ? `(${schemaType})` : ''}
           </div>

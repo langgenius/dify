@@ -20,7 +20,7 @@ const Tab = ({ isActive, label, value, workflowRunningData, onClick }: TabProps)
     <button
       type="button"
       className={cn(
-        'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+        'cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
         isActive && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
         !workflowRunningData && '!cursor-not-allowed opacity-30',
       )}

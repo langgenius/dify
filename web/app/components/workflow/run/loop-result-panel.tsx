@@ -40,9 +40,9 @@ const LoopResultPanel: FC<Props> = ({
 
   const main = (
     <>
-      <div className={cn(!noWrap && 'shrink-0 ', 'px-4 pt-3')}>
+      <div className={cn(!noWrap && 'shrink-0', 'px-4 pt-3')}>
         <div className="flex h-8 shrink-0 items-center justify-between">
-          <div className="system-xl-semibold truncate text-text-primary">
+          <div className="truncate text-text-primary system-xl-semibold">
             {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
           <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
@@ -70,7 +70,7 @@ const LoopResultPanel: FC<Props> = ({
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
                   <Loop className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                <span className="grow text-text-primary system-sm-semibold-uppercase">
                   {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}

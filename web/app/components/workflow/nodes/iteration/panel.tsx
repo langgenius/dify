@@ -57,7 +57,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.input`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.output`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker
@@ -92,7 +92,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       </div>
       <div className="px-4 pb-2">
         <Field title={t(`${i18nPrefix}.parallelMode`, { ns: 'workflow' })} tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.parallelPanelDesc`, { ns: 'workflow' })}</div>} inline>
-          <Switch defaultValue={inputs.is_parallel} onChange={changeParallel} />
+          <Switch value={inputs.is_parallel} onChange={changeParallel} />
         </Field>
       </div>
       {
@@ -106,7 +106,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                   onChange={changeParallelNums}
                   max={MAX_PARALLEL_LIMIT}
                   min={MIN_ITERATION_PARALLEL_NUM}
-                  className=" mt-4 flex-1 shrink-0"
+                  className="mt-4 flex-1 shrink-0"
                 />
               </div>
 
@@ -130,7 +130,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.flattenOutputDesc`, { ns: 'workflow' })}</div>}
           inline
         >
-          <Switch defaultValue={inputs.flatten_output} onChange={changeFlattenOutput} />
+          <Switch value={inputs.flatten_output} onChange={changeFlattenOutput} />
         </Field>
       </div>
     </div>

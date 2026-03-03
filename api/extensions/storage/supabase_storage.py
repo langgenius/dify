@@ -51,7 +51,7 @@ class SupabaseStorage(BaseStorage):
             return True
         return False
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.storage.from_(self.bucket_name).remove([filename])
 
     def bucket_exists(self):

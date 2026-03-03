@@ -17,10 +17,17 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import (
+    ToolParameter,
+)
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
     PromptMessage,
@@ -30,16 +37,9 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.model_runtime.entities.model_entities import ModelFeature
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import (
-    ToolParameter,
-)
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from factories import file_factory
 from models.enums import CreatorUserRole
@@ -112,7 +112,7 @@ class BaseAgentRunner(AppRunner):
 
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []

@@ -8,7 +8,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -20,7 +20,7 @@ from core.workflow.nodes.human_input.entities import (
     UserAction,
     WebAppDeliveryMethod,
 )
-from core.workflow.repositories.human_input_form_repository import FormCreateParams
+from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import (
     EmailExternalRecipientPayload,

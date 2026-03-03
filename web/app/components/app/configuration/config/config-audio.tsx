@@ -56,7 +56,7 @@ const ConfigAudio: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 text-text-secondary system-sm-semibold">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
@@ -69,7 +69,7 @@ const ConfigAudio: FC = () => {
         <div className="flex shrink-0 items-center">
           <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
           <Switch
-            defaultValue={isAudioEnabled}
+            value={isAudioEnabled}
             onChange={handleChange}
             size="md"
           />

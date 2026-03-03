@@ -56,10 +56,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
         <div className="pb-4">
           {/* Header */}
           <div className="mb-6">
-            <h3 className="title-2xl-semi-bold mb-2 text-text-primary">
+            <h3 className="mb-2 text-text-primary title-2xl-semi-bold">
               {t('onboarding.title', { ns: 'workflow' })}
             </h3>
-            <div className="body-xs-regular leading-4 text-text-tertiary">
+            <div className="leading-4 text-text-tertiary body-xs-regular">
               {t('onboarding.description', { ns: 'workflow' })}
             </div>
           </div>
@@ -74,7 +74,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
       {/* ESC tip below modal */}
       {isShow && (
-        <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary">
+        <div className="pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary body-xs-regular">
           <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>
           <ShortcutsName keys={[t('onboarding.escTip.key', { ns: 'workflow' })]} textColor="secondary" />
           <span>{t('onboarding.escTip.toDismiss', { ns: 'workflow' })}</span>

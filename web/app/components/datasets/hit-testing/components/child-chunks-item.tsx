@@ -20,7 +20,7 @@ const ChildChunks: FC<Props> = ({
       className={!isShowAll ? 'line-clamp-2 break-all' : ''}
     >
       <div className="relative top-[-2px] inline-flex items-center">
-        <div className="system-2xs-semibold-uppercase flex h-[20.5px] items-center  bg-state-accent-solid px-1 text-text-primary-on-surface">
+        <div className="flex h-[20.5px] items-center bg-state-accent-solid px-1 text-text-primary-on-surface system-2xs-semibold-uppercase">
           C-
           {position}
         </div>

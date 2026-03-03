@@ -83,7 +83,7 @@ const RAGToolRecommendations = ({
         className="flex w-full items-center rounded-md px-3 pb-0.5 pt-1 text-left text-text-tertiary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
+        <span className="text-text-tertiary system-xs-medium">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
         <ArrowDownRoundFill className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
       {!isCollapsed && (
@@ -95,7 +95,7 @@ const RAGToolRecommendations = ({
             </div>
           )}
           {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
-            <p className="system-xs-regular px-3 py-1 text-text-tertiary">
+            <p className="px-3 py-1 text-text-tertiary system-xs-regular">
               <Trans
                 i18nKey="ragToolSuggestions.noRecommendationPlugins"
                 ns="pipeline"
@@ -127,7 +127,7 @@ const RAGToolRecommendations = ({
                 <div className="px-1">
                   <RiMoreLine className="size-4 text-text-tertiary" />
                 </div>
-                <div className="system-xs-regular text-text-tertiary">
+                <div className="text-text-tertiary system-xs-regular">
                   {t('operation.more', { ns: 'common' })}
                 </div>
               </div>

@@ -180,7 +180,7 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={`${app.name} (${app.id})`} className="system-sm-medium grow text-components-input-text-filled">
+                <div title={`${app.name} (${app.id})`} className="grow text-components-input-text-filled system-sm-medium">
                   <span className="mr-1">{app.name}</span>
                   <span className="text-text-tertiary">
                     (
@@ -188,7 +188,7 @@ const AppPicker: FC<Props> = ({
                     )
                   </span>
                 </div>
-                <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary">{getAppType(app)}</div>
+                <div className="shrink-0 text-text-tertiary system-2xs-medium-uppercase">{getAppType(app)}</div>
               </div>
             ))}
             <div ref={observerTarget} className="h-4 w-full">

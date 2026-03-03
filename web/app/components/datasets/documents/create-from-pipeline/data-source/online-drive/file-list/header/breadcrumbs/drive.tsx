@@ -19,15 +19,15 @@ const Drive = ({
         type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          breadcrumbs.length > 0 && 'system-sm-regular text-text-tertiary hover:bg-state-base-hover',
-          breadcrumbs.length === 0 && 'system-sm-medium text-text-secondary',
+          breadcrumbs.length > 0 && 'text-text-tertiary system-sm-regular hover:bg-state-base-hover',
+          breadcrumbs.length === 0 && 'text-text-secondary system-sm-medium',
         )}
         onClick={handleBackToRoot}
         disabled={breadcrumbs.length === 0}
       >
         {t('onlineDrive.breadcrumbs.allFiles', { ns: 'datasetPipeline' })}
       </button>
-      {breadcrumbs.length > 0 && <span className="system-xs-regular text-divider-deep">/</span>}
+      {breadcrumbs.length > 0 && <span className="text-divider-deep system-xs-regular">/</span>}
     </>
   )
 }

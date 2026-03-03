@@ -23,7 +23,7 @@ const Textarea = ({
     )}
     >
       <textarea
-        className="system-md-regular h-full w-full resize-none border-none bg-transparent text-text-secondary caret-[#295EFF] placeholder:text-components-input-text-placeholder focus-visible:outline-none"
+        className="h-full w-full resize-none border-none bg-transparent text-text-secondary caret-[#295EFF] system-md-regular placeholder:text-components-input-text-placeholder focus-visible:outline-none"
         value={text}
         onChange={handleTextChange}
         placeholder={t('input.placeholder', { ns: 'datasetHitTesting' }) as string}
@@ -40,7 +40,7 @@ const Textarea = ({
                 popupContent={t('input.countWarning', { ns: 'datasetHitTesting' })}
               >
                 <div
-                  className={cn('system-2xs-medium-uppercase bg-util-colors-red-red-100 py-1 pr-2 text-util-colors-red-red-600')}
+                  className={cn('bg-util-colors-red-red-100 py-1 pr-2 text-util-colors-red-red-600 system-2xs-medium-uppercase')}
                 >
                   {`${text.length}/200`}
                 </div>
@@ -49,7 +49,7 @@ const Textarea = ({
           : (
               <div
                 className={cn(
-                  'system-2xs-medium-uppercase bg-background-section-burn py-1 pr-2 text-text-tertiary',
+                  'bg-background-section-burn py-1 pr-2 text-text-tertiary system-2xs-medium-uppercase',
                 )}
               >
                 {`${text.length}/200`}

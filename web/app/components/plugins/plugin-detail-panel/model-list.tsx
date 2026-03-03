@@ -20,7 +20,7 @@ const ModelList = ({
 
   return (
     <div className="px-4 py-2">
-      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary">{t('detailPanel.modelNum', { ns: 'plugin', num: res.data.length })}</div>
+      <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold-uppercase">{t('detailPanel.modelNum', { ns: 'plugin', num: res.data.length })}</div>
       <div className="flex flex-col">
         {res.data.map(model => (
           <div key={model.model} className="flex h-6 items-center py-1">
@@ -30,7 +30,7 @@ const ModelList = ({
               modelName={model.model}
             />
             <ModelName
-              className="system-md-regular grow text-text-secondary"
+              className="grow text-text-secondary system-md-regular"
               modelItem={model}
               showModelType
               showMode

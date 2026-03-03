@@ -37,13 +37,13 @@ const DSLExportConfirmModal = ({
       onClose={noop}
       className={cn('w-[480px] max-w-[480px]')}
     >
-      <div className="title-2xl-semi-bold relative pb-6 text-text-primary">{t('env.export.title', { ns: 'workflow' })}</div>
+      <div className="relative pb-6 text-text-primary title-2xl-semi-bold">{t('env.export.title', { ns: 'workflow' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="relative">
-        <table className="radius-md w-full border-separate border-spacing-0 border border-divider-regular shadow-xs">
-          <thead className="system-xs-medium-uppercase text-text-tertiary">
+        <table className="w-full border-separate border-spacing-0 border border-divider-regular shadow-xs radius-md">
+          <thead className="text-text-tertiary system-xs-medium-uppercase">
             <tr>
               <td width={220} className="h-7 border-b border-r border-divider-regular pl-3">NAME</td>
               <td className="h-7 border-b border-divider-regular pl-3">VALUE</td>
@@ -52,7 +52,7 @@ const DSLExportConfirmModal = ({
           <tbody>
             {envList.map((env, index) => (
               <tr key={env.name}>
-                <td className={cn('system-xs-medium h-7 border-r pl-3', index + 1 !== envList.length && 'border-b')}>
+                <td className={cn('h-7 border-r pl-3 system-xs-medium', index + 1 !== envList.length && 'border-b')}>
                   <div className="flex w-[200px] items-center gap-1">
                     <Env className="h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
                     <div className="truncate text-text-primary">{env.name}</div>
@@ -61,7 +61,7 @@ const DSLExportConfirmModal = ({
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
-                  <div className="system-xs-regular truncate text-text-secondary">{env.value}</div>
+                  <div className="truncate text-text-secondary system-xs-regular">{env.value}</div>
                 </td>
               </tr>
             ))}
@@ -74,7 +74,7 @@ const DSLExportConfirmModal = ({
           checked={exportSecrets}
           onCheck={() => setExportSecrets(!exportSecrets)}
         />
-        <div className="system-sm-medium cursor-pointer text-text-primary" onClick={() => setExportSecrets(!exportSecrets)}>{t('env.export.checkbox', { ns: 'workflow' })}</div>
+        <div className="cursor-pointer text-text-primary system-sm-medium" onClick={() => setExportSecrets(!exportSecrets)}>{t('env.export.checkbox', { ns: 'workflow' })}</div>
       </div>
       <div className="flex flex-row-reverse pt-6">
         <Button className="ml-2" variant="primary" onClick={submit}>{exportSecrets ? t('env.export.export', { ns: 'workflow' }) : t('env.export.ignore', { ns: 'workflow' })}</Button>

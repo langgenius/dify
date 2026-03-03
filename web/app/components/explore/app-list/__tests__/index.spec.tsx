@@ -1,12 +1,12 @@
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { CurrentTryAppParams } from '@/context/explore-context'
 import type { App } from '@/models/explore'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import ExploreContext from '@/context/explore-context'
+import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { fetchAppDetail } from '@/service/explore'
+import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 import AppList from '../index'
 
@@ -27,6 +27,14 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -111,24 +119,22 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const renderWithContext = (hasEditPermission = false, onSuccess?: () => void, searchParams?: Record<string, string>) => {
+const mockMemberRole = (hasEditPermission: boolean) => {
+  ;(useAppContext as Mock).mockReturnValue({
+    userProfile: { id: 'user-1' },
+  })
+  ;(useMembers as Mock).mockReturnValue({
+    data: {
+      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
+    },
+  })
+}
+
+const renderAppList = (hasEditPermission = false, onSuccess?: () => void, searchParams?: Record<string, string>) => {
+  mockMemberRole(hasEditPermission)
   return render(
     <NuqsTestingAdapter searchParams={searchParams}>
-      <ExploreContext.Provider
-        value={{
-          controlUpdateInstalledApps: 0,
-          setControlUpdateInstalledApps: vi.fn(),
-          hasEditPermission,
-          installedApps: [],
-          setInstalledApps: vi.fn(),
-          isFetchingInstalledApps: false,
-          setIsFetchingInstalledApps: vi.fn(),
-          isShowTryAppPanel: false,
-          setShowTryAppPanel: vi.fn(),
-        }}
-      >
-        <AppList onSuccess={onSuccess} />
-      </ExploreContext.Provider>
+      <AppList onSuccess={onSuccess} />
     </NuqsTestingAdapter>,
   )
 }
@@ -151,7 +157,7 @@ describe('AppList', () => {
       mockExploreData = undefined
       mockIsLoading = true
 
-      renderWithContext()
+      renderAppList()
 
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
@@ -162,7 +168,7 @@ describe('AppList', () => {
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
       }
 
-      renderWithContext()
+      renderAppList()
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
@@ -176,7 +182,7 @@ describe('AppList', () => {
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
       }
 
-      renderWithContext(false, undefined, { category: 'Writing' })
+      renderAppList(false, undefined, { category: 'Writing' })
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -189,7 +195,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
       }
-      renderWithContext()
+      renderAppList()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
@@ -217,7 +223,7 @@ describe('AppList', () => {
         options.onSuccess?.()
       })
 
-      renderWithContext(true, onSuccess)
+      renderAppList(true, onSuccess)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -241,7 +247,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
       }
-      renderWithContext()
+      renderAppList()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
@@ -263,7 +269,7 @@ describe('AppList', () => {
       mockIsError = true
       mockExploreData = undefined
 
-      const { container } = renderWithContext()
+      const { container } = renderAppList()
 
       expect(container.innerHTML).toBe('')
     })
@@ -271,7 +277,7 @@ describe('AppList', () => {
     it('should render nothing when data is undefined', () => {
       mockExploreData = undefined
 
-      const { container } = renderWithContext()
+      const { container } = renderAppList()
 
       expect(container.innerHTML).toBe('')
     })
@@ -281,7 +287,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
       }
-      renderWithContext()
+      renderAppList()
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
@@ -304,7 +310,7 @@ describe('AppList', () => {
       };
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
 
-      renderWithContext(true)
+      renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
       expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
 
@@ -325,7 +331,7 @@ describe('AppList', () => {
         options.onSuccess?.()
       })
 
-      renderWithContext(true)
+      renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -345,7 +351,7 @@ describe('AppList', () => {
         options.onPending?.()
       })
 
-      renderWithContext(true)
+      renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
@@ -363,69 +369,15 @@ describe('AppList', () => {
   describe('TryApp Panel', () => {
     it('should open create modal from try app panel', async () => {
       vi.useRealTimers()
-      const mockSetShowTryAppPanel = vi.fn()
-      const app = createApp()
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [app],
-      }
-
-      render(
-        <NuqsTestingAdapter>
-          <ExploreContext.Provider
-            value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
-              hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
-              isShowTryAppPanel: true,
-              setShowTryAppPanel: mockSetShowTryAppPanel,
-              currentApp: { appId: 'app-1', app },
-            }}
-          >
-            <AppList />
-          </ExploreContext.Provider>
-        </NuqsTestingAdapter>,
-      )
-
-      const createBtn = screen.getByTestId('try-app-create')
-      fireEvent.click(createBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should open create modal with null currApp when appParams has no app', async () => {
-      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
 
-      render(
-        <NuqsTestingAdapter>
-          <ExploreContext.Provider
-            value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
-              hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
-              isShowTryAppPanel: true,
-              setShowTryAppPanel: vi.fn(),
-              currentApp: { appId: 'app-1' } as CurrentTryAppParams,
-            }}
-          >
-            <AppList />
-          </ExploreContext.Provider>
-        </NuqsTestingAdapter>,
-      )
+      renderAppList(true)
+
+      fireEvent.click(screen.getByText('explore.appCard.try'))
+      expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('try-app-create'))
 
@@ -434,33 +386,19 @@ describe('AppList', () => {
       })
     })
 
-    it('should render try app panel with empty appId when currentApp is undefined', () => {
+    it('should close try app panel when close is clicked', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
 
-      render(
-        <NuqsTestingAdapter>
-          <ExploreContext.Provider
-            value={{
-              controlUpdateInstalledApps: 0,
-              setControlUpdateInstalledApps: vi.fn(),
-              hasEditPermission: true,
-              installedApps: [],
-              setInstalledApps: vi.fn(),
-              isFetchingInstalledApps: false,
-              setIsFetchingInstalledApps: vi.fn(),
-              isShowTryAppPanel: true,
-              setShowTryAppPanel: vi.fn(),
-            }}
-          >
-            <AppList />
-          </ExploreContext.Provider>
-        </NuqsTestingAdapter>,
-      )
+      renderAppList(true)
 
+      fireEvent.click(screen.getByText('explore.appCard.try'))
       expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('try-app-close'))
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
     })
   })
 
@@ -477,7 +415,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderWithContext()
+      renderAppList()
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
     })

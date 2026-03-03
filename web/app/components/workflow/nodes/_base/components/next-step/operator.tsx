@@ -98,7 +98,7 @@ const Operator = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">
-        <div className="system-md-regular min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
+        <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg system-md-regular">
           <div className="p-1">
             <ChangeItem
               data={data}

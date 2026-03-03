@@ -132,7 +132,7 @@ const FeaturedTools = ({
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
+        <span className="text-text-primary system-xs-medium">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
         <ArrowDownRoundFill className={`ml-0.5 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
 
@@ -145,7 +145,7 @@ const FeaturedTools = ({
           )}
 
           {showEmptyState && (
-            <p className="system-xs-regular py-2 text-text-tertiary">
+            <p className="py-2 text-text-tertiary system-xs-regular">
               <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'tool' })} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
               </Link>
@@ -275,13 +275,13 @@ function FeaturedToolUninstalledItem({
           <div className="flex h-full min-w-0 items-center">
             <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
             <div className="ml-2 min-w-0">
-              <div className="system-sm-medium truncate text-text-secondary">{label}</div>
+              <div className="truncate text-text-secondary system-sm-medium">{label}</div>
             </div>
           </div>
           <div className="ml-auto flex h-full items-center gap-1 pl-1">
-            <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+            <span className={`text-text-tertiary system-xs-regular ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
             <div
-              className={`system-xs-medium flex h-full items-center gap-1 text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? 'flex' : 'hidden group-hover:flex'}`}
+              className={`flex h-full items-center gap-1 text-components-button-secondary-accent-text system-xs-medium [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
               onMouseEnter={() => setIsActionHovered(true)}
               onMouseLeave={() => {
                 if (!actionOpen)

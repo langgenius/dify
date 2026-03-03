@@ -48,7 +48,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   return (
     <div>
       <div className="mb-4">
-        <div className="system-xl-semibold mb-2 text-text-primary">{t('appMenus.overview', { ns: 'common' })}</div>
+        <div className="mb-2 text-text-primary system-xl-semibold">{t('appMenus.overview', { ns: 'common' })}</div>
         <div className="flex items-center justify-between">
           {IS_CLOUD_EDITION
             ? (

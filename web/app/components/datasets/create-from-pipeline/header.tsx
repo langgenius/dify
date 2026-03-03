@@ -8,7 +8,7 @@ const Header = () => {
   const { t } = useTranslation()
 
   return (
-    <div className="system-md-semibold relative flex px-16 pb-2 pt-5 text-text-primary">
+    <div className="relative flex px-16 pb-2 pt-5 text-text-primary system-md-semibold">
       <span>{t('creation.backToKnowledge', { ns: 'datasetPipeline' })}</span>
       <Link
         className="absolute bottom-0 left-5"
@@ -19,7 +19,7 @@ const Header = () => {
           variant="secondary-accent"
           className="size-9 rounded-full p-0"
         >
-          <RiArrowLeftLine className="size-5 " />
+          <RiArrowLeftLine className="size-5" />
         </Button>
       </Link>
     </div>

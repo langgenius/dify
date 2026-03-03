@@ -87,12 +87,12 @@ const ConversationVariableModal = ({
       <div className="flex h-full w-full">
         {/* LEFT */}
         <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
-          <div className="system-xl-semibold shrink-0 pb-3 pl-5 pr-4 pt-5 text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
+          <div className="shrink-0 pb-3 pl-5 pr-4 pt-5 text-text-primary system-xl-semibold">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
           <div className="grow overflow-y-auto px-3 py-2">
             {varList.map(chatVar => (
-              <div key={chatVar.id} className={cn('radius-md group mb-0.5 flex cursor-pointer items-center p-2 hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
+              <div key={chatVar.id} className={cn('group mb-0.5 flex cursor-pointer items-center p-2 radius-md hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
                 <BubbleX className={cn('mr-1 h-4 w-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} />
-                <div title={chatVar.name} className={cn('system-sm-medium truncate text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')}>{chatVar.name}</div>
+                <div title={chatVar.name} className={cn('truncate text-text-tertiary system-sm-medium group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')}>{chatVar.name}</div>
               </div>
             ))}
           </div>
@@ -101,13 +101,13 @@ const ConversationVariableModal = ({
         <div className="flex h-full w-0 grow flex-col bg-components-panel-bg">
           <div className="shrink-0 p-4 pb-2">
             <div className="flex items-center gap-1 py-1">
-              <div className="system-xl-semibold text-text-primary">{currentVar.name}</div>
-              <div className="system-xs-medium text-text-tertiary">{capitalize(currentVar.value_type)}</div>
+              <div className="text-text-primary system-xl-semibold">{currentVar.name}</div>
+              <div className="text-text-tertiary system-xs-medium">{capitalize(currentVar.value_type)}</div>
             </div>
           </div>
           <div className="flex h-0 grow flex-col p-4 pt-2">
             <div className="mb-2 flex shrink-0 items-center gap-2">
-              <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('chatVariable.storedContent', { ns: 'workflow' }).toLocaleUpperCase()}</div>
+              <div className="shrink-0 text-text-tertiary system-xs-medium-uppercase">{t('chatVariable.storedContent', { ns: 'workflow' }).toLocaleUpperCase()}</div>
               <div
                 className="h-px grow"
                 style={{
@@ -116,7 +116,7 @@ const ConversationVariableModal = ({
               >
               </div>
               {!!latestValueTimestampMap[currentVar.id] && (
-                <div className="system-xs-regular shrink-0 text-text-tertiary">
+                <div className="shrink-0 text-text-tertiary system-xs-regular">
                   {t('chatVariable.updatedAt', { ns: 'workflow' })}
                   {formatTime(latestValueTimestampMap[currentVar.id], t('dateTimeFormat', { ns: 'appLog' }) as string)}
                 </div>
@@ -126,7 +126,7 @@ const ConversationVariableModal = ({
               {currentVar.value_type !== ChatVarType.Number && currentVar.value_type !== ChatVarType.String && (
                 <div className="flex h-full flex-col rounded-lg bg-components-input-bg-normal px-2 pb-2">
                   <div className="flex h-7 shrink-0 items-center justify-between pl-3 pr-2 pt-1">
-                    <div className="system-xs-semibold text-text-secondary">JSON</div>
+                    <div className="text-text-secondary system-xs-semibold">JSON</div>
                     <div className="flex items-center p-1">
                       {!isCopied
                         ? (
@@ -150,7 +150,7 @@ const ConversationVariableModal = ({
                 </div>
               )}
               {(currentVar.value_type === ChatVarType.Number || currentVar.value_type === ChatVarType.String) && (
-                <div className="system-md-regular h-full overflow-y-auto overflow-x-hidden rounded-lg bg-components-input-bg-normal px-4 py-3 text-components-input-text-filled">{latestValueMap[currentVar.id] || ''}</div>
+                <div className="h-full overflow-y-auto overflow-x-hidden rounded-lg bg-components-input-bg-normal px-4 py-3 text-components-input-text-filled system-md-regular">{latestValueMap[currentVar.id] || ''}</div>
               )}
             </div>
           </div>

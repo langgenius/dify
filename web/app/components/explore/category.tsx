@@ -29,7 +29,7 @@ const Category: FC<ICategoryProps> = ({
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
   const itemClassName = (isSelected: boolean) => cn(
-    'system-sm-medium flex h-7 cursor-pointer items-center rounded-lg border border-transparent  px-3 text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
+    'flex h-7 cursor-pointer items-center rounded-lg border border-transparent px-3 text-text-tertiary system-sm-medium hover:bg-components-main-nav-nav-button-bg-active',
     isSelected && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
   )
 
