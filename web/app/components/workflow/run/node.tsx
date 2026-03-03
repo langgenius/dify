@@ -183,7 +183,7 @@ const NodePanel: FC<Props> = ({
           )}
           {isSkipped && !hideInfo && (
             <div className={cn('ml-2 flex shrink-0 items-center gap-1 text-text-tertiary system-xs-medium', canShowRerunEntry && 'group-hover:hidden')}>
-              <span>{t('debug.rerun.operation.skip')}</span>
+              <span>{t('debug.rerun.operation.skip', { ns: 'workflow' })}</span>
             </div>
           )}
           {nodeInfo.status === 'succeeded' && !isSkipped && (

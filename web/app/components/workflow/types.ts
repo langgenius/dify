@@ -445,6 +445,16 @@ export type HistoryWorkflowData = {
   status: string
   conversation_id?: string
   finished_at?: number
+  rerun_from_workflow_run_id?: string
+  rerun_from_node_id?: string
+  rerun_from_node_title?: string
+  rerun_chain_root_workflow_run_id?: string
+  rerun_kind?: string
+  rerun_source_workflow_run?: {
+    id: string
+    status?: string
+    finished_at?: number
+  } | null
 }
 
 export enum ChangeType {

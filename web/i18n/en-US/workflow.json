@@ -252,6 +252,7 @@
   "debug.rerun.errors.unsupportedAppMode": "Rerun is only supported in workflow mode.",
   "debug.rerun.errors.unsupportedScope": "This node is inside loop/iteration and cannot be rerun.",
   "debug.rerun.operation.skip": "Skipped",
+  "debug.rerun.sourceLine": "Re-run from {{source}} - Node {{node}}",
   "debug.rerun.submit": "Re-run",
   "debug.settingsTab": "Settings",
   "debug.variableInspect.chatNode": "Conversation",
