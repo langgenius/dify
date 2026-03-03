@@ -460,6 +460,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
             )
 
         # Assert
+        db.session.refresh(result)
         created_pipeline = db.session.get(Pipeline, result.pipeline_id)
         assert result.name == generated_name
         assert created_pipeline is not None
