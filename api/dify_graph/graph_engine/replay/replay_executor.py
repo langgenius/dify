@@ -5,6 +5,7 @@ from collections.abc import Generator, Mapping
 from typing import Any
 
 from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.file.normalizer import rebuild_runtime_file_value
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunStartedEvent, NodeRunSucceededEvent
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -80,10 +81,14 @@ class DefaultReplayExecutionExecutor(ReplayExecutionExecutor):
             if self._override_context.has_selector(node_id=node.id, variable_name=variable_name):
                 override_segment = self._variable_pool.get([node.id, variable_name])
                 if override_segment is not None:
-                    merged_outputs[variable_name] = copy.deepcopy(override_segment.value)
+                    merged_outputs[variable_name] = rebuild_runtime_file_value(copy.deepcopy(override_segment.value))
                     continue
             if variable_name in baseline_outputs:
-                merged_outputs[variable_name] = copy.deepcopy(baseline_outputs[variable_name])
+                # Backward compatibility: baseline snapshots are JSON encoded, so
+                # file values may degrade into plain mappings.
+                merged_outputs[variable_name] = rebuild_runtime_file_value(
+                    copy.deepcopy(baseline_outputs[variable_name])
+                )
 
         if node.node_type == NodeType.START:
             self._rewrite_start_sys_outputs(outputs=merged_outputs)

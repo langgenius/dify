@@ -15,7 +15,6 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
   RiRefreshLine,
-  RiSkipForwardLine,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -184,8 +183,7 @@ const NodePanel: FC<Props> = ({
           )}
           {isSkipped && !hideInfo && (
             <div className={cn('ml-2 flex shrink-0 items-center gap-1 text-text-tertiary system-xs-medium', canShowRerunEntry && 'group-hover:hidden')}>
-              <span>{t('operation.skip', { ns: 'common' }).toUpperCase()}</span>
-              <RiSkipForwardLine className="h-3.5 w-3.5 shrink-0" />
+              <span>{t('debug.rerun.operation.skip')}</span>
             </div>
           )}
           {nodeInfo.status === 'succeeded' && !isSkipped && (

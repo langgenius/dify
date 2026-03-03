@@ -8,6 +8,7 @@ from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
 
 from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState
+from dify_graph.file.normalizer import rebuild_runtime_file_value
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
     GraphNodeEventBase,
@@ -334,7 +335,10 @@ class EventHandler:
             event: The node succeeded event containing outputs
         """
         for variable_name, variable_value in outputs.items():
-            self._graph_runtime_state.variable_pool.add((node_id, variable_name), variable_value)
+            # Defense-in-depth: replay or legacy payloads can carry JSON-encoded
+            # file mappings. Rebuild them before writing to keep file segment types.
+            rebuilt_value = rebuild_runtime_file_value(variable_value)
+            self._graph_runtime_state.variable_pool.add((node_id, variable_name), rebuilt_value)
 
     def _update_response_outputs(self, outputs: Mapping[str, object]) -> None:
         """Update response outputs for response nodes."""
