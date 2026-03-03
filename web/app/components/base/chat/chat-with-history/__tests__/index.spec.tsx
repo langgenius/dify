@@ -37,10 +37,7 @@ vi.mock('next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-const { mockBuildTheme } = vi.hoisted(() => ({
-  mockBuildTheme: vi.fn(),
-}))
-
+const mockBuildTheme = vi.fn()
 vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: vi.fn(() => ({
     buildTheme: mockBuildTheme,

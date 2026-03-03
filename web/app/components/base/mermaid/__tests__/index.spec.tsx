@@ -12,17 +12,7 @@ vi.mock('mermaid', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/image-uploader/image-preview', () => {
-  return {
-    default: ({ onCancel }: { onCancel: () => void }) => (
-      <button onClick={onCancel} data-testid="image-preview-cancel-mock">
-        Cancel
-      </button>
-    ),
-  }
-})
-
-vi.mock('./utils', async (importOriginal) => {
+vi.mock('../utils', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,

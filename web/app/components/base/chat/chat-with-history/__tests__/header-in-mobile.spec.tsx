@@ -31,7 +31,7 @@ vi.mock('next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('../embedded-chatbot/theme/theme-context', () => ({
+vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: vi.fn(() => ({
     buildTheme: vi.fn(),
   })),

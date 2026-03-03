@@ -86,9 +86,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
 }))
 
-const { mockIsDify } = vi.hoisted(() => ({
-  mockIsDify: vi.fn(() => false),
-}))
+const mockIsDify = vi.fn(() => false)
 vi.mock('../utils', () => ({
   isDify: () => mockIsDify(),
 }))

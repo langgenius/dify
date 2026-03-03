@@ -1,5 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import Input, { inputVariants } from '../index'
+
+// Mock the i18n hook with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.search': 'Search',
+  'placeholder.input': 'Please input',
+}))
 
 describe('Input component', () => {
   describe('Variants', () => {
@@ -35,7 +43,7 @@ describe('Input component', () => {
 
   it('shows left icon when showLeftIcon is true', () => {
     render(<Input showLeftIcon />)
-    const searchIcon = screen.getByTestId('search-icon')
+    const searchIcon = document.querySelector('.i-ri-search-line')
     expect(searchIcon).toBeInTheDocument()
     const input = screen.getByPlaceholderText(/search/i)
     expect(input).toHaveClass('pl-[26px]')
@@ -43,7 +51,7 @@ describe('Input component', () => {
 
   it('shows clear icon when showClearIcon is true and has value', () => {
     render(<Input showClearIcon value="test" />)
-    const clearIcon = screen.getByTestId('input-clear')
+    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
     expect(clearIcon).toBeInTheDocument()
     const input = screen.getByDisplayValue('test')
     expect(input).toHaveClass('pr-[26px]')
@@ -51,7 +59,7 @@ describe('Input component', () => {
 
   it('does not show clear icon when disabled, even with value', () => {
     render(<Input showClearIcon value="test" disabled />)
-    const clearIcon = screen.queryByTestId('input-clear')
+    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
     expect(clearIcon).not.toBeInTheDocument()
   })
 
@@ -59,13 +67,13 @@ describe('Input component', () => {
     const onClear = vi.fn()
     render(<Input showClearIcon value="test" onClear={onClear} />)
     const clearIconContainer = screen.getByTestId('input-clear')
-    fireEvent.click(clearIconContainer)
+    fireEvent.click(clearIconContainer!)
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 
   it('shows warning icon when destructive is true', () => {
     render(<Input destructive />)
-    const warningIcon = screen.getByTestId('input-destructive-icon')
+    const warningIcon = document.querySelector('.i-ri-error-warning-line')
     expect(warningIcon).toBeInTheDocument()
     const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass('border-components-input-border-destructive')
@@ -96,7 +104,7 @@ describe('Input component', () => {
 
   it('applies large size variant correctly', () => {
     render(<Input size="large" />)
-    const input = screen.getByPlaceholderText(/input/i)
+    const input = screen.getByPlaceholderText('Please input')
     expect(input.className).toContain(inputVariants({ size: 'large' }))
   })
 

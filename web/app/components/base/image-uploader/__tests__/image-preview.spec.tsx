@@ -2,6 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImagePreview from '../image-preview'
 
+type _HotkeyHandler = () => void
+
 const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   downloadUrl: vi.fn(),

@@ -180,10 +180,8 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    // Get all buttons and find the save button (it's typically the last button in the edit mode)
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons[buttons.length - 1] // The save button is usually the last one
-    await user.click(saveBtn)
+    const resendBtn = screen.getByRole('button', { name: /operation.save/i })
+    await user.click(resendBtn)
 
     await waitFor(() => {
       expect(onRegenerate).toHaveBeenCalledWith(item, { message: 'Edited question', files: [] })
@@ -212,6 +210,91 @@ describe('Question component', () => {
       const md = container.querySelector('.markdown-body')
       expect(md).toBeInTheDocument()
     })
+  })
+
+  it('should confirm editing when Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    await user.clear(textbox)
+    await user.type(textbox, 'Edited with Enter')
+
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    await waitFor(() => {
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'Edited with Enter', files: [] })
+    })
+  })
+
+  it('should insert a new line when Shift+Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    await user.clear(textbox)
+    await user.type(textbox, 'Line 1')
+    await user.type(textbox, '{Shift>}{Enter}{/Shift}')
+
+    expect(textbox).toHaveValue('Line 1\n')
+    expect(onRegenerate).not.toHaveBeenCalled()
+  })
+
+  it('should not confirm editing when Enter is pressed during IME composition', () => {
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+
+    renderWithProvider(makeItem(), onRegenerate)
+
+    fireEvent.click(screen.getByTestId('edit-btn'))
+    const textbox = screen.getByRole('textbox')
+
+    fireEvent.compositionStart(textbox)
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    expect(onRegenerate).not.toHaveBeenCalled()
+    expect(textbox).toHaveValue('This is the question content')
+  })
+
+  it('should keep text unchanged and suppress Enter if a new composition starts before previous composition-end timer finishes', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const onRegenerate = vi.fn() as unknown as OnRegenerate
+      renderWithProvider(makeItem(), onRegenerate)
+
+      fireEvent.click(screen.getByTestId('edit-btn'))
+      const textbox = screen.getByRole('textbox')
+      fireEvent.change(textbox, { target: { value: 'IME guard text' } })
+
+      fireEvent.compositionStart(textbox)
+      fireEvent.compositionEnd(textbox)
+      fireEvent.compositionStart(textbox)
+
+      vi.advanceTimersByTime(50)
+
+      const blockedEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      textbox.dispatchEvent(blockedEnterEvent)
+      expect(onRegenerate).not.toHaveBeenCalled()
+      expect(blockedEnterEvent.defaultPrevented).toBe(true)
+      expect(textbox).toHaveValue('IME guard text')
+
+      fireEvent.compositionEnd(textbox)
+      vi.advanceTimersByTime(50)
+
+      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'IME guard text', files: [] })
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should switch siblings when prev/next buttons are clicked', async () => {

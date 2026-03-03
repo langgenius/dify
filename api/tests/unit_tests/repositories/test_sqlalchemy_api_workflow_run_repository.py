@@ -6,9 +6,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReasonType
-from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, UserAction
-from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
+from dify_graph.entities.pause_reason import HumanInputRequired, PauseReasonType
+from dify_graph.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from dify_graph.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from models.workflow import WorkflowPauseReason

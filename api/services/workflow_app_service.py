@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from core.workflow.enums import WorkflowExecutionStatus
+from dify_graph.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog

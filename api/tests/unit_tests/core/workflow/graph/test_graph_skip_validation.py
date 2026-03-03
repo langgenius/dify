@@ -5,13 +5,13 @@ from typing import Any
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph.validation import GraphValidationError
-from core.workflow.nodes import NodeType
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.graph import Graph
+from dify_graph.graph.validation import GraphValidationError
+from dify_graph.nodes import NodeType
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.enums import UserFrom
 
 

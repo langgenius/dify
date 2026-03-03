@@ -49,9 +49,7 @@ vi.mock('../theme/theme-context', () => ({
   })),
 }))
 
-const { mockIsDify } = vi.hoisted(() => ({
-  mockIsDify: vi.fn(() => false),
-}))
+const mockIsDify = vi.fn(() => false)
 vi.mock('../utils', () => ({
   isDify: () => mockIsDify(),
 }))

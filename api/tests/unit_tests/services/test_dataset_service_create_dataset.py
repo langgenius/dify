@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account
 from models.dataset import Dataset, Pipeline
 from services.dataset_service import DatasetService
