@@ -247,8 +247,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
             db.session.refresh(document)
             self._assert_document_disabled(document, user.id, FIXED_TIME)
 
+        expected_get_calls = [call(f"document_{doc_id}_indexing") for doc_id in document_ids]
         expected_setex_calls = [call(f"document_{doc_id}_indexing", 600, 1) for doc_id in document_ids]
         expected_remove_calls = [call(doc_id) for doc_id in document_ids]
+        patched_dependencies["redis_client"].get.assert_has_calls(expected_get_calls)
         patched_dependencies["redis_client"].setex.assert_has_calls(expected_setex_calls)
         patched_dependencies["remove_task"].delay.assert_has_calls(expected_remove_calls)
 
@@ -321,6 +323,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         # Assert
         db.session.refresh(document)
         self._assert_document_archived(document, user.id, FIXED_TIME)
+        patched_dependencies["redis_client"].get.assert_called_once_with(f"document_{document.id}_indexing")
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
         patched_dependencies["remove_task"].delay.assert_called_once_with(document.id)
 
@@ -395,6 +398,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         db.session.refresh(document)
         self._assert_document_unarchived(document)
         assert document.updated_at == FIXED_TIME
+        patched_dependencies["redis_client"].get.assert_called_once_with(f"document_{document.id}_indexing")
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
         patched_dependencies["add_task"].delay.assert_called_once_with(document.id)
 
