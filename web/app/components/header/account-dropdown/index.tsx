@@ -24,33 +24,10 @@ import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Indicator from '../indicator'
 import Compliance from './compliance'
+import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
 
-const menuItemClassName = '!mx-0 !h-8 !rounded-lg !px-3 data-[highlighted]:!bg-state-base-hover'
 const menuStaticRowClassName = 'flex h-8 w-full items-center rounded-lg px-3 text-text-secondary system-md-regular'
-const menuLabelClassName = 'grow px-1 text-text-secondary system-md-regular'
-const menuLeadingIconClassName = 'size-4 shrink-0 text-text-tertiary'
-const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
-
-type AccountMenuItemContentProps = {
-  iconClassName: string
-  label: ReactNode
-  trailing?: ReactNode
-}
-
-function AccountMenuItemContent({
-  iconClassName,
-  label,
-  trailing,
-}: AccountMenuItemContentProps) {
-  return (
-    <>
-      <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />
-      <div className={menuLabelClassName}>{label}</div>
-      {trailing}
-    </>
-  )
-}
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -67,10 +44,10 @@ function AccountMenuRouteItem({
 }: AccountMenuRouteItemProps) {
   return (
     <DropdownMenuItem
-      className={cn(menuItemClassName, 'justify-between')}
+      className="justify-between"
       render={<Link href={href} />}
     >
-      <AccountMenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuItem>
   )
 }
@@ -90,10 +67,10 @@ function AccountMenuExternalItem({
 }: AccountMenuExternalItemProps) {
   return (
     <DropdownMenuItem
-      className={cn(menuItemClassName, 'justify-between')}
+      className="justify-between"
       render={<a href={href} rel="noopener noreferrer" target="_blank" />}
     >
-      <AccountMenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuItem>
   )
 }
@@ -113,16 +90,12 @@ function AccountMenuActionItem({
 }: AccountMenuActionItemProps) {
   return (
     <DropdownMenuItem
-      className={cn(menuItemClassName, 'justify-between')}
+      className="justify-between"
       onClick={onClick}
     >
-      <AccountMenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuItem>
   )
-}
-
-function ExternalLinkIndicator() {
-  return <span aria-hidden className={cn('i-ri-arrow-right-up-line', menuTrailingIconClassName)} />
 }
 
 type AccountMenuSectionProps = {
@@ -257,7 +230,7 @@ export default function AppSelector() {
           )}
           <AccountMenuSection>
             <div className={cn(menuStaticRowClassName, 'hover:bg-transparent')}>
-              <AccountMenuItemContent
+              <MenuItemContent
                 iconClassName="i-ri-t-shirt-2-line"
                 label={t('theme.theme', { ns: 'common' })}
                 trailing={<ThemeSwitcher />}

@@ -11,12 +11,26 @@ export const DropdownMenuPortal = Menu.Portal
 export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
-export const DropdownMenuGroupLabel = Menu.GroupLabel
 export const DropdownMenuRadioGroup = Menu.RadioGroup
 export const DropdownMenuRadioItem = Menu.RadioItem
 export const DropdownMenuRadioItemIndicator = Menu.RadioItemIndicator
 export const DropdownMenuCheckboxItem = Menu.CheckboxItem
 export const DropdownMenuCheckboxItemIndicator = Menu.CheckboxItemIndicator
+
+export function DropdownMenuGroupLabel({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Menu.GroupLabel>) {
+  return (
+    <Menu.GroupLabel
+      className={cn(
+        'px-3 py-1 text-text-tertiary system-2xs-medium-uppercase',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 type DropdownMenuContentProps = {
   children: React.ReactNode
@@ -69,7 +83,7 @@ function renderDropdownMenuPopup({
       >
         <Menu.Popup
           className={cn(
-            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-1 text-sm text-text-secondary shadow-lg',
+            'max-h-[var(--available-height)] overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-1 text-sm text-text-secondary shadow-lg',
             'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
@@ -111,18 +125,23 @@ type DropdownMenuSubTriggerProps = React.ComponentPropsWithoutRef<typeof Menu.Su
 export function DropdownMenuSubTrigger({
   className,
   destructive,
+  children,
   ...props
 }: DropdownMenuSubTriggerProps) {
   return (
     <Menu.SubmenuTrigger
       className={cn(
         'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none',
-        'data-[highlighted]:bg-components-panel-on-panel-item-bg-hover',
+        'data-[highlighted]:bg-state-base-hover',
+        'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
         destructive && 'text-text-destructive',
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+      <span aria-hidden className="i-ri-arrow-right-s-line ml-auto size-[14px] shrink-0 text-text-tertiary" />
+    </Menu.SubmenuTrigger>
   )
 }
 
@@ -172,7 +191,8 @@ export function DropdownMenuItem({
     <Menu.Item
       className={cn(
         'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none',
-        'data-[highlighted]:bg-components-panel-on-panel-item-bg-hover',
+        'data-[highlighted]:bg-state-base-hover',
+        'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
         destructive && 'text-text-destructive',
         className,
       )}

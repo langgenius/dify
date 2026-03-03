@@ -18,38 +18,13 @@ import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import Spinner from '../../base/spinner'
 import Toast from '../../base/toast'
-
-const submenuTriggerClassName = '!mx-0 !h-8 !rounded-lg !px-3 data-[highlighted]:!bg-state-base-hover'
-const submenuItemClassName = '!mx-0 !h-10 !rounded-lg !py-1 !pl-1 !pr-2 data-[highlighted]:!bg-state-base-hover'
-const menuLabelClassName = 'grow px-1 text-text-secondary system-md-regular'
-const menuLeadingIconClassName = 'size-4 shrink-0 text-text-tertiary'
-const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
+import { MenuItemContent } from './menu-item-content'
 
 enum DocName {
   SOC2_Type_I = 'SOC2_Type_I',
   SOC2_Type_II = 'SOC2_Type_II',
   ISO_27001 = 'ISO_27001',
   GDPR = 'GDPR',
-}
-
-type ComplianceMenuItemContentProps = {
-  iconClassName: string
-  label: ReactNode
-  trailing?: ReactNode
-}
-
-function ComplianceMenuItemContent({
-  iconClassName,
-  label,
-  trailing,
-}: ComplianceMenuItemContentProps) {
-  return (
-    <>
-      <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />
-      <div className={menuLabelClassName}>{label}</div>
-      {trailing}
-    </>
-  )
 }
 
 type ComplianceDocActionVisualProps = {
@@ -176,7 +151,7 @@ function ComplianceDocRowItem({
 
   return (
     <DropdownMenuItem
-      className={cn(submenuItemClassName, 'justify-between')}
+      className="h-10 justify-between py-1 pl-1 pr-2"
       closeOnClick={!isCurrentPlanCanDownload}
       onClick={handleSelect}
     >
@@ -199,15 +174,14 @@ export default function Compliance() {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger className={cn(submenuTriggerClassName, 'justify-between')}>
-        <ComplianceMenuItemContent
+      <DropdownMenuSubTrigger>
+        <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
           label={t('userProfile.compliance', { ns: 'common' })}
-          trailing={<span aria-hidden className={cn('i-ri-arrow-right-s-line', menuTrailingIconClassName)} />}
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        popupClassName="w-[337px] max-h-[70vh] overflow-y-auto divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+        popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
       >
         <DropdownMenuGroup className="p-1">
           <ComplianceDocRowItem
