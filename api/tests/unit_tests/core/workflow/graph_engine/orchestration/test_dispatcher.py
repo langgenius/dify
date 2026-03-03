@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 import queue
-import threading
 from unittest import mock
 
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.event_management.event_handlers import EventHandler
-from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
-from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
-from core.workflow.graph_events import (
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph_engine.event_management.event_handlers import EventHandler
+from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
+from dify_graph.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
+from dify_graph.graph_events import (
     GraphNodeEventBase,
     NodeRunPauseRequestedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
+from dify_graph.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 
 
@@ -37,7 +36,6 @@ def test_dispatcher_should_consume_remains_events_after_pause():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=execution_coordinator,
-        stop_event=threading.Event(),
     )
     dispatcher._dispatcher_loop()
     assert event_queue.empty()
@@ -98,7 +96,6 @@ def _run_dispatcher_for_event(event) -> int:
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
-        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()
@@ -184,7 +181,6 @@ def test_dispatcher_drain_event_queue():
         event_queue=event_queue,
         event_handler=event_handler,
         execution_coordinator=coordinator,
-        stop_event=threading.Event(),
     )
 
     dispatcher._dispatcher_loop()

@@ -273,9 +273,10 @@ class TestWebAppAuthService:
         # Arrange: Create banned account
         fake = Faker()
         password = fake.password(length=12)
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
-            email=fake.email(),
+            email=unique_email,
             name=fake.name(),
             interface_language="en-US",
             status=AccountStatus.BANNED,
@@ -426,8 +427,7 @@ class TestWebAppAuthService:
         - Correct return value (None)
         """
         # Arrange: Use non-existent email
-        fake = Faker()
-        non_existent_email = fake.email()
+        non_existent_email = f"nonexistent_{uuid.uuid4().hex}@example.com"
 
         # Act: Execute user retrieval
         result = WebAppAuthService.get_user_through_email(non_existent_email)

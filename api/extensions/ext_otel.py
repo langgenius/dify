@@ -26,7 +26,26 @@ def init_app(app: DifyApp):
         ConsoleSpanExporter,
     )
     from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-    from opentelemetry.semconv.resource import ResourceAttributes
+    from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+        DEPLOYMENT_ENVIRONMENT_NAME,
+    )
+    from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+        HOST_ARCH,
+        HOST_ID,
+        HOST_NAME,
+    )
+    from opentelemetry.semconv._incubating.attributes.os_attributes import (  # type: ignore[import-untyped]
+        OS_DESCRIPTION,
+        OS_TYPE,
+        OS_VERSION,
+    )
+    from opentelemetry.semconv._incubating.attributes.process_attributes import (  # type: ignore[import-untyped]
+        PROCESS_PID,
+    )
+    from opentelemetry.semconv.attributes.service_attributes import (  # type: ignore[import-untyped]
+        SERVICE_NAME,
+        SERVICE_VERSION,
+    )
     from opentelemetry.trace import set_tracer_provider
 
     from extensions.otel.instrumentation import init_instruments
@@ -37,17 +56,17 @@ def init_app(app: DifyApp):
     # Follow Semantic Convertions 1.32.0 to define resource attributes
     resource = Resource(
         attributes={
-            ResourceAttributes.SERVICE_NAME: dify_config.APPLICATION_NAME,
-            ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-            ResourceAttributes.PROCESS_PID: os.getpid(),
-            ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-            ResourceAttributes.HOST_NAME: socket.gethostname(),
-            ResourceAttributes.HOST_ARCH: platform.machine(),
+            SERVICE_NAME: dify_config.APPLICATION_NAME,
+            SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+            PROCESS_PID: os.getpid(),
+            DEPLOYMENT_ENVIRONMENT_NAME: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+            HOST_NAME: socket.gethostname(),
+            HOST_ARCH: platform.machine(),
             "custom.deployment.git_commit": dify_config.COMMIT_SHA,
-            ResourceAttributes.HOST_ID: platform.node(),
-            ResourceAttributes.OS_TYPE: platform.system().lower(),
-            ResourceAttributes.OS_DESCRIPTION: platform.platform(),
-            ResourceAttributes.OS_VERSION: platform.version(),
+            HOST_ID: platform.node(),
+            OS_TYPE: platform.system().lower(),
+            OS_DESCRIPTION: platform.platform(),
+            OS_VERSION: platform.version(),
         }
     )
     sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)

@@ -1,15 +1,15 @@
 import types
 from collections.abc import Mapping
 
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.node import Node
+from dify_graph.enums import NodeType
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.node import Node
 
 # Import concrete nodes we will assert on (numeric version path)
-from core.workflow.nodes.variable_assigner.v1.node import (
+from dify_graph.nodes.variable_assigner.v1.node import (
     VariableAssignerNode as VariableAssignerV1,
 )
-from core.workflow.nodes.variable_assigner.v2.node import (
+from dify_graph.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
 

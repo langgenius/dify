@@ -9,8 +9,8 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -18,7 +18,7 @@ from core.workflow.nodes.human_input.entities import (
     HumanInputNodeData,
     MemberRecipient,
 )
-from core.workflow.runtime import GraphRuntimeState, VariablePool
+from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_storage import storage
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom

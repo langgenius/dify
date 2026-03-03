@@ -2,13 +2,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
 )
-from core.workflow.runtime import VariablePool
+from dify_graph.runtime import VariablePool
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,

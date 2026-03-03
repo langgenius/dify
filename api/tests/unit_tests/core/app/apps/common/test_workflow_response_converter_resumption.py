@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 def _build_converter() -> WorkflowResponseConverter:
