@@ -4580,10 +4580,6 @@ packages:
     resolution: {integrity: sha512-phv3E1Xl4tQOShqSte26C7Fl84EwUdZsyOuSSk9qtAGyyQs2s3jJzComh+Abf4g187lUUAvH+H26omrqia2aGg==}
     engines: {node: '>=10.13.0'}
 
-  enhanced-resolve@5.20.0:
-    resolution: {integrity: sha512-/ce7+jQ1PQ6rVXwe+jKEg5hW5ciicHwIQUagZkp6IufBoY3YDgdTTY1azVs0qoRgVmvsNB+rbjLJxDAeHHtwsQ==}
-    engines: {node: '>=10.13.0'}
-
   entities@4.5.0:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
@@ -6662,14 +6658,6 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  react-server-dom-webpack@19.2.4:
-    resolution: {integrity: sha512-zEhkWv6RhXDctC2N7yEUHg3751nvFg81ydHj8LTTZuukF/IF1gcOKqqAL6Ds+kS5HtDVACYPik0IvzkgYXPhlQ==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: ^19.2.4
-      react-dom: ^19.2.4
-      webpack: ^5.59.0
 
   react-server-dom-webpack@19.2.4:
     resolution: {integrity: sha512-zEhkWv6RhXDctC2N7yEUHg3751nvFg81ydHj8LTTZuukF/IF1gcOKqqAL6Ds+kS5HtDVACYPik0IvzkgYXPhlQ==}
@@ -12232,11 +12220,6 @@ snapshots:
       graceful-fs: 4.2.11
       tapable: 2.3.0
 
-  enhanced-resolve@5.20.0:
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.3.0
-
   entities@4.5.0: {}
 
   entities@6.0.1: {}
@@ -12786,7 +12769,7 @@ snapshots:
     dependencies:
       acorn: 8.16.0
       acorn-jsx: 5.3.2(acorn@8.16.0)
-      eslint-visitor-keys: 5.0.1
+      eslint-visitor-keys: 5.0.0
 
   espree@11.1.1:
     dependencies:
@@ -16127,7 +16110,7 @@ snapshots:
       acorn-import-phases: 1.0.4(acorn@8.16.0)
       browserslist: 4.28.1
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.20.0
+      enhanced-resolve: 5.19.0
       es-module-lexer: 2.0.0
       eslint-scope: 5.1.1
       events: 3.3.0
