@@ -41,7 +41,7 @@ This document tracks the migration away from legacy overlay APIs.
 - After each migration batch, run:
 
 ```sh
-pnpm -C web exec eslint <changed-files>
+pnpm -C web lint:fix --prune-suppressions <changed-files>
 ```
 
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
