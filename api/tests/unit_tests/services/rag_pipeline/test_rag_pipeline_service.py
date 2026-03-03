@@ -307,7 +307,7 @@ def test_get_default_block_config_returns_config_for_valid_type(mocker, rag_pipe
     )
 
     # Use a simpler approach: test with a known valid node type
-    from core.workflow.enums import NodeType
+    from dify_graph.enums import NodeType
 
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
@@ -671,9 +671,9 @@ def test_run_datasource_node_preview_online_document(mocker, rag_pipeline_servic
 
 
 def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
-    from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-    from core.workflow.graph_events import NodeRunSucceededEvent
-    from core.workflow.node_events.base import NodeRunResult
+    from dify_graph.enums import WorkflowNodeExecutionStatus
+    from dify_graph.graph_events import NodeRunSucceededEvent
+    from dify_graph.node_events.base import NodeRunResult
     
     # 1. Setup mock node and result
     node_instance = mocker.Mock()
@@ -957,7 +957,7 @@ def test_retry_error_document_success(mocker, rag_pipeline_service) -> None:
 
 
 def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
-    from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
+    from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
     from models.dataset import Pipeline
     
     # 1. Setup mocks
@@ -1065,7 +1065,7 @@ def test_get_default_block_configs_success(rag_pipeline_service) -> None:
 
 
 def test_get_default_block_config_success(rag_pipeline_service) -> None:
-    from core.workflow.enums import NodeType
+    from dify_graph.enums import NodeType
     result = rag_pipeline_service.get_default_block_config(NodeType.LLM.value)
     assert result is not None
     assert result["type"] == "llm"

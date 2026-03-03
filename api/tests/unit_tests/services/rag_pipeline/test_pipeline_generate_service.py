@@ -1,8 +1,11 @@
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models.dataset import Pipeline
+from models.model import Account, App, EndUser
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
 
@@ -10,7 +13,7 @@ def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker) -> None:
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 5)
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 3)
 
-    app_model = SimpleNamespace(max_active_requests=10)
+    app_model = cast(App, SimpleNamespace(max_active_requests=10))
 
     result = PipelineGenerateService._get_max_active_requests(app_model)
 
@@ -21,7 +24,7 @@ def test_get_max_active_requests_returns_zero_when_all_unlimited(mocker) -> None
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 0)
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 0)
 
-    app_model = SimpleNamespace(max_active_requests=0)
+    app_model = cast(App, SimpleNamespace(max_active_requests=0))
 
     result = PipelineGenerateService._get_max_active_requests(app_model)
 
@@ -42,7 +45,7 @@ def test_get_workflow(mocker, invoke_from, workflow, expected_error) -> None:
     rag_pipeline_service.get_draft_workflow.return_value = workflow
     rag_pipeline_service.get_published_workflow.return_value = workflow
 
-    pipeline = SimpleNamespace(id="pipeline-1")
+    pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
@@ -53,8 +56,8 @@ def test_get_workflow(mocker, invoke_from, workflow, expected_error) -> None:
 
 
 def test_generate_updates_document_status_and_returns_event_stream(mocker) -> None:
-    pipeline = SimpleNamespace(id="pipeline-1")
-    user = SimpleNamespace(id="user-1")
+    pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
+    user = cast(Account | EndUser, SimpleNamespace(id="user-1"))
     args = {"original_document_id": "doc-1", "query": "hello"}
 
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
@@ -117,8 +120,8 @@ def test_generate_single_iteration_delegates(mocker) -> None:
     generator_instance.single_iteration_generate.return_value = "raw-iter"
     generator_cls.convert_to_event_stream.return_value = "stream-iter"
 
-    pipeline = SimpleNamespace(id="p1")
-    user = SimpleNamespace(id="u1")
+    pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
+    user = cast(Account, SimpleNamespace(id="u1"))
 
     result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"})
 
@@ -137,8 +140,8 @@ def test_generate_single_loop_delegates(mocker) -> None:
     generator_instance.single_loop_generate.return_value = "raw-loop"
     generator_cls.convert_to_event_stream.return_value = "stream-loop"
 
-    pipeline = SimpleNamespace(id="p1")
-    user = SimpleNamespace(id="u1")
+    pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
+    user = cast(Account, SimpleNamespace(id="u1"))
 
     result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"})
 

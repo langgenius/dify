@@ -1,10 +1,12 @@
 from types import SimpleNamespace
-from unittest.mock import Mock
+from typing import cast
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
+from sqlalchemy.orm import Session
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,
     RagPipelineDslService,
@@ -172,7 +174,7 @@ def test_extract_dependencies_from_workflow_graph_handles_empty_graph() -> None:
 def test_extract_dependencies_from_workflow_graph_handles_malformed_node(mocker) -> None:
     service = RagPipelineDslService(session=Mock())
     # Node with TOOL type but invalid data should be caught by exception handler
-    from core.workflow.enums import NodeType
+    from dify_graph.enums import NodeType
 
     graph = {"nodes": [{"data": {"type": NodeType.TOOL}}]}
 
@@ -241,8 +243,9 @@ workflow:
     dataset_mock.id = "d1"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset_mock)
     
-    service = RagPipelineDslService(session=Mock())
-    service._session.query.return_value.filter_by.return_value.all.return_value = []
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    session.query.return_value.filter_by.return_value.all.return_value = []
     account = Mock(current_tenant_id="t1")
 
     result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content=yaml_content)
@@ -388,7 +391,8 @@ def test_extract_dependencies_from_workflow_graph_types(mocker, node_type) -> No
 
 
 def test_create_or_update_pipeline_create_new(mocker) -> None:
-    service = RagPipelineDslService(session=Mock())
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(current_tenant_id="t1", id="u1")
     data = {
         "rag_pipeline": {"name": "New", "description": "desc"},
@@ -407,14 +411,15 @@ def test_create_or_update_pipeline_create_new(mocker) -> None:
     result = service._create_or_update_pipeline(pipeline=None, data=data, account=account, dependencies=[])
 
     assert result == pipeline_instance
-    service._session.add.assert_called()
+    session.add.assert_called()
 
 
 # --- export_rag_pipeline_dsl comprehensive ---
 
 
 def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
-    service = RagPipelineDslService(session=Mock())
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
     pipeline = Mock()
     pipeline.id = "p1"
     pipeline.tenant_id = "t1"
@@ -438,7 +443,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
     workflow.to_dict.return_value = {"graph": {"nodes": []}}
     
     # Mocking single .where() call
-    service._session.query.return_value.where.return_value.first.return_value = workflow
+    session.query.return_value.where.return_value.first.return_value = workflow
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
