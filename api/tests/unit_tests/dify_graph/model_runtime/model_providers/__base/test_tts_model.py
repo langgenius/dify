@@ -2,10 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeError
-from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.model_providers.__base.tts_model import TTSModel
 
 
 class TestTTSModel:

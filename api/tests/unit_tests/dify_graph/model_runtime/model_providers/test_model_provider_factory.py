@@ -8,16 +8,16 @@ import pytest
 from redis import RedisError
 
 import contexts
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import (
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 
 
 def _provider_entity(
@@ -186,7 +186,7 @@ def test_provider_credentials_validate_filters_and_calls_plugin_validation(
     fake_validator = MagicMock()
     fake_validator.validate_and_filter.return_value = {"filtered": True}
     monkeypatch.setattr(
-        "core.model_runtime.model_providers.model_provider_factory.ProviderCredentialSchemaValidator",
+        "dify_graph.model_runtime.model_providers.model_provider_factory.ProviderCredentialSchemaValidator",
         lambda _: fake_validator,
     )
 
@@ -227,7 +227,7 @@ def test_model_credentials_validate_filters_and_calls_plugin_validation(
     fake_validator = MagicMock()
     fake_validator.validate_and_filter.return_value = {"filtered": True}
     monkeypatch.setattr(
-        "core.model_runtime.model_providers.model_provider_factory.ModelCredentialSchemaValidator",
+        "dify_graph.model_runtime.model_providers.model_provider_factory.ModelCredentialSchemaValidator",
         lambda *_: fake_validator,
     )
 
@@ -255,7 +255,7 @@ def test_get_model_schema_cache_hit(factory: ModelProviderFactory, monkeypatch: 
 
     monkeypatch.setattr(factory, "get_plugin_id_and_provider_name_from_provider", lambda *_: ("pid", "prov"))
 
-    with patch("core.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
+    with patch("dify_graph.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
         mock_redis.get.return_value = model_schema.model_dump_json().encode()
         assert (
             factory.get_model_schema(provider="x", model_type=ModelType.LLM, model="m", credentials={"k": "v"})
@@ -268,7 +268,7 @@ def test_get_model_schema_cache_invalid_json_deletes_key(
 ) -> None:
     caplog.set_level(logging.WARNING)
 
-    with patch("core.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
+    with patch("dify_graph.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
         mock_redis.get.return_value = b'{"model":"m"}'
         factory.plugin_model_manager.get_model_schema.return_value = None
         factory.get_plugin_id_and_provider_name_from_provider = lambda *_: ("pid", "prov")  # type: ignore[method-assign]
@@ -282,7 +282,7 @@ def test_get_model_schema_cache_delete_redis_error_is_logged(
 ) -> None:
     caplog.set_level(logging.WARNING)
 
-    with patch("core.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
+    with patch("dify_graph.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
         mock_redis.get.return_value = b'{"model":"m"}'
         mock_redis.delete.side_effect = RedisError("nope")
         factory.plugin_model_manager.get_model_schema.return_value = None
@@ -298,7 +298,7 @@ def test_get_model_schema_redis_get_error_falls_back_to_plugin(
     factory.get_plugin_id_and_provider_name_from_provider = lambda *_: ("pid", "prov")  # type: ignore[method-assign]
     factory.plugin_model_manager.get_model_schema.return_value = None
 
-    with patch("core.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
+    with patch("dify_graph.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
         mock_redis.get.side_effect = RedisError("down")
         assert factory.get_model_schema(provider="x", model_type=ModelType.LLM, model="m", credentials=None) is None
         assert any("Failed to read plugin model schema cache" in r.message for r in caplog.records)
@@ -320,7 +320,7 @@ def test_get_model_schema_cache_miss_sets_cache_and_handles_setex_error(
     )
     factory.plugin_model_manager.get_model_schema.return_value = model_schema
 
-    with patch("core.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
+    with patch("dify_graph.model_runtime.model_providers.model_provider_factory.redis_client") as mock_redis:
         mock_redis.get.return_value = None
         mock_redis.setex.side_effect = RedisError("nope")
         assert (
@@ -349,7 +349,7 @@ def test_get_model_type_instance_dispatches_by_type(
 
     sentinel = object()
     monkeypatch.setattr(
-        f"core.model_runtime.model_providers.model_provider_factory.{expected_class}",
+        f"dify_graph.model_runtime.model_providers.model_provider_factory.{expected_class}",
         MagicMock(model_validate=lambda _: sentinel),
     )
 

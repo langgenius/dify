@@ -3,11 +3,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.entities.embedding_type import EmbeddingInputType
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
-from core.model_runtime.errors.invoke import InvokeError
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from dify_graph.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 
 
 class TestTextEmbeddingModel:

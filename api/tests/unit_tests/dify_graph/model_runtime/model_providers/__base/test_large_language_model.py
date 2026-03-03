@@ -9,25 +9,25 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import core.model_runtime.model_providers.__base.large_language_model as llm_module
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import (
+import dify_graph.model_runtime.model_providers.__base.large_language_model as llm_module
+
+# Access large_language_model members via llm_module to avoid partial import issues in CI
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.callbacks.base_callback import Callback
+from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMUsage,
 )
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType, PriceInfo
-from core.model_runtime.model_providers.__base.large_language_model import _build_llm_result_from_chunks
-
-# Access large_language_model members via llm_module to avoid partial import issues in CI
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.model_entities import ModelType, PriceInfo
+from dify_graph.model_runtime.model_providers.__base.large_language_model import _build_llm_result_from_chunks
 
 
 def _usage(prompt_tokens: int = 1, completion_tokens: int = 2) -> LLMUsage:
@@ -331,7 +331,7 @@ def test_normalize_non_stream_plugin_result_builds_from_chunks() -> None:
 def test_invoke_non_stream_normalizes_and_sets_prompt_messages(llm: _TestLLM, monkeypatch: pytest.MonkeyPatch) -> None:
     plugin_result = LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage())
     monkeypatch.setattr(
-        "core.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
         lambda **_: plugin_result,
     )
     cb = SpyCallback()
@@ -355,7 +355,7 @@ def test_invoke_stream_wraps_generator_and_triggers_callbacks(llm: _TestLLM, mon
         ]
     )
     monkeypatch.setattr(
-        "core.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
         lambda **_: plugin_chunks,
     )
 
@@ -382,7 +382,9 @@ def test_invoke_triggers_error_callbacks_and_raises_transformed(llm: _TestLLM, m
     def boom(**_: Any) -> Any:
         raise ValueError("plugin down")
 
-    monkeypatch.setattr("core.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin", boom)
+    monkeypatch.setattr(
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin", boom
+    )
     cb = SpyCallback()
     with pytest.raises(RuntimeError, match="transformed: plugin down"):
         llm.invoke(
@@ -410,7 +412,7 @@ def test_invoke_appends_logging_callback_in_debug(llm: _TestLLM, monkeypatch: py
     monkeypatch.setattr(llm_module, "LoggingCallback", FakeLoggingCallback)
     monkeypatch.setattr(llm_module.dify_config, "DEBUG", True)
     monkeypatch.setattr(
-        "core.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
         lambda **_: LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage()),
     )
 

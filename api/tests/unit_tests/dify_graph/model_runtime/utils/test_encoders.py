@@ -17,7 +17,7 @@ from pydantic.types import SecretBytes, SecretStr
 from pydantic_core import Url
 from pydantic_extra_types.color import Color
 
-from core.model_runtime.utils.encoders import (
+from dify_graph.model_runtime.utils.encoders import (
     _model_dump,
     decimal_encoder,
     generate_encoders_by_class_tuples,

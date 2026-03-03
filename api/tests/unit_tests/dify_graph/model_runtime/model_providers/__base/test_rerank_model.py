@@ -4,10 +4,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
-from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+from dify_graph.model_runtime.model_providers.__base.rerank_model import RerankModel
 
 
 @pytest.fixture

@@ -1,8 +1,13 @@
 import pytest
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormOption, FormShowOnObject, FormType
-from core.model_runtime.schema_validators.common_validator import CommonValidator
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.provider_entities import (
+    CredentialFormSchema,
+    FormOption,
+    FormShowOnObject,
+    FormType,
+)
+from dify_graph.model_runtime.schema_validators.common_validator import CommonValidator
 
 
 class TestCommonValidator:

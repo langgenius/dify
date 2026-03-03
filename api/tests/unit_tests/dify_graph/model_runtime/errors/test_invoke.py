@@ -1,4 +1,4 @@
-from core.model_runtime.errors.invoke import (
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,

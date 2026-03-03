@@ -1,8 +1,10 @@
 import pytest
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderCredentialSchema
-from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderCredentialSchema
+from dify_graph.model_runtime.schema_validators.provider_credential_schema_validator import (
+    ProviderCredentialSchemaValidator,
+)
 
 
 class TestProviderCredentialSchemaValidator:

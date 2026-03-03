@@ -18,14 +18,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.callbacks.logging_callback import LoggingCallback
-from core.model_runtime.entities.llm_entities import (
+from dify_graph.model_runtime.callbacks.logging_callback import LoggingCallback
+from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMUsage,
 )
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
@@ -545,7 +545,7 @@ class TestOnInvokeError:
     def test_prints_error_header(self, cb: LoggingCallback, llm_instance: MagicMock):
         """The [on_llm_invoke_error] banner must be printed."""
         with patch.object(cb, "print_text") as mock_print:
-            with patch("core.model_runtime.callbacks.logging_callback.logger") as mock_logger:
+            with patch("dify_graph.model_runtime.callbacks.logging_callback.logger") as mock_logger:
                 self._invoke_error(cb, llm_instance, RuntimeError("boom"))
         calls_text = " ".join(str(c) for c in mock_print.call_args_list)
         assert "[on_llm_invoke_error]" in calls_text
@@ -554,7 +554,7 @@ class TestOnInvokeError:
         """logger.exception must be called with the exception."""
         ex = ValueError("something went wrong")
         with patch.object(cb, "print_text"):
-            with patch("core.model_runtime.callbacks.logging_callback.logger") as mock_logger:
+            with patch("dify_graph.model_runtime.callbacks.logging_callback.logger") as mock_logger:
                 self._invoke_error(cb, llm_instance, ex)
         mock_logger.exception.assert_called_once_with(ex)
 
@@ -563,7 +563,7 @@ class TestOnInvokeError:
         for exc_cls in (TypeError, IOError, KeyError, Exception):
             ex = exc_cls("error")
             with patch.object(cb, "print_text"):
-                with patch("core.model_runtime.callbacks.logging_callback.logger") as mock_logger:
+                with patch("dify_graph.model_runtime.callbacks.logging_callback.logger") as mock_logger:
                     self._invoke_error(cb, llm_instance, ex)
             mock_logger.exception.assert_called_once_with(ex)
 
@@ -571,7 +571,7 @@ class TestOnInvokeError:
         """All optional parameters should be accepted without error."""
         ex = RuntimeError("fail")
         with patch.object(cb, "print_text"):
-            with patch("core.model_runtime.callbacks.logging_callback.logger"):
+            with patch("dify_graph.model_runtime.callbacks.logging_callback.logger"):
                 cb.on_invoke_error(
                     llm_instance=llm_instance,
                     ex=ex,

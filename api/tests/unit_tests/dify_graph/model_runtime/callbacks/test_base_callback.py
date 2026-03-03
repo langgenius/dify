@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.model_runtime.callbacks.base_callback import (
+from dify_graph.model_runtime.callbacks.base_callback import (
     _TEXT_COLOR_MAPPING,
     Callback,
 )
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 
 # ---------------------------------------------------------------------------
 # Concrete implementation of the abstract Callback for testing

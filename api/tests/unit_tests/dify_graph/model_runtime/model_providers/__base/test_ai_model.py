@@ -4,8 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from redis import RedisError
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import (
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import (
     AIModelEntity,
     DefaultParameterName,
     FetchFrom,
@@ -16,7 +17,7 @@ from core.model_runtime.entities.model_entities import (
     PriceConfig,
     PriceType,
 )
-from core.model_runtime.errors.invoke import (
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
@@ -24,8 +25,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
 class TestAIModel:
@@ -145,7 +145,7 @@ class TestAIModel:
             parameter_rules=[],
         )
 
-        with patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis:
+        with patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis:
             mock_redis.get.return_value = mock_schema.model_dump_json().encode()
 
             schema = ai_model.get_model_schema(model_name, credentials)
@@ -167,7 +167,7 @@ class TestAIModel:
         )
 
         with (
-            patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
+            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
             patch("core.plugin.impl.model.PluginModelClient") as mock_client,
         ):
             mock_redis.get.return_value = None
@@ -184,7 +184,7 @@ class TestAIModel:
         model_name = "test_model"
 
         with (
-            patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
+            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
             patch("core.plugin.impl.model.PluginModelClient") as mock_client,
         ):
             mock_redis.get.side_effect = RedisError("Connection refused")
@@ -200,7 +200,7 @@ class TestAIModel:
         model_name = "test_model"
 
         with (
-            patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
+            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
             patch("core.plugin.impl.model.PluginModelClient") as mock_client,
         ):
             mock_redis.get.return_value = b"invalid json"
@@ -217,7 +217,7 @@ class TestAIModel:
         model_name = "test_model"
 
         with (
-            patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
+            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
             patch("core.plugin.impl.model.PluginModelClient") as mock_client,
         ):
             mock_redis.get.return_value = b'{"invalid": "schema"}'
@@ -242,7 +242,7 @@ class TestAIModel:
         )
 
         with (
-            patch("core.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
+            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
             patch("core.plugin.impl.model.PluginModelClient") as mock_client,
         ):
             mock_redis.get.return_value = None

@@ -1,8 +1,8 @@
 import pytest
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     CredentialFormSchema,
     FieldModelSchema,
     FormOption,
@@ -10,7 +10,7 @@ from core.model_runtime.entities.provider_entities import (
     FormType,
     ModelCredentialSchema,
 )
-from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
+from dify_graph.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 
 
 def test_validate_and_filter_with_none_schema():

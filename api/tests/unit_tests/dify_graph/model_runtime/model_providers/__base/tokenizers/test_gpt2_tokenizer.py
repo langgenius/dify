@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-import core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer as gpt2_tokenizer_module
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
+import dify_graph.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer as gpt2_tokenizer_module
+from dify_graph.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class TestGPT2Tokenizer:
@@ -36,7 +36,9 @@ class TestGPT2Tokenizer:
                 mock_transformer_tokenizer = MagicMock()
                 mock_from_pretrained.return_value = mock_transformer_tokenizer
 
-                with patch("core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer.logger") as mock_logger:
+                with patch(
+                    "dify_graph.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer.logger"
+                ) as mock_logger:
                     encoder = GPT2Tokenizer.get_encoder()
 
                     assert encoder == mock_transformer_tokenizer
@@ -87,7 +89,7 @@ class TestGPT2Tokenizer:
         mock_encoding = MagicMock()
         with patch("tiktoken.get_encoding", return_value=mock_encoding):
             # We patch the lock in the module
-            with patch("core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer._lock") as mock_lock:
+            with patch("dify_graph.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer._lock") as mock_lock:
                 encoder = GPT2Tokenizer.get_encoder()
                 assert encoder == mock_encoding
                 mock_lock.__enter__.assert_called_once()
