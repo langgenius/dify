@@ -62,9 +62,10 @@ class DocumentBatchUpdateIntegrationDataFactory:
         completed_at: datetime.datetime | None = None,
         position: int = 1,
         created_by: str | None = None,
+        commit: bool = True,
         **kwargs,
     ) -> Document:
-        """Create and persist a document bound to the given dataset."""
+        """Create a document bound to the given dataset and persist it."""
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -89,7 +90,8 @@ class DocumentBatchUpdateIntegrationDataFactory:
             setattr(document, key, value)
 
         db.session.add(document)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return document
 
     @staticmethod
@@ -100,7 +102,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
         archived: bool = False,
         indexing_status: str = "completed",
     ) -> list[Document]:
-        """Create and persist multiple documents for one dataset."""
+        """Create and persist multiple documents for one dataset in a single transaction."""
         documents: list[Document] = []
         for index, doc_id in enumerate(document_ids, start=1):
             document = DocumentBatchUpdateIntegrationDataFactory.create_document(
@@ -111,8 +113,10 @@ class DocumentBatchUpdateIntegrationDataFactory:
                 archived=archived,
                 indexing_status=indexing_status,
                 position=index,
+                commit=False,
             )
             documents.append(document)
+        db.session.commit()
         return documents
 
     @staticmethod
