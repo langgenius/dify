@@ -1,10 +1,12 @@
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
 
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.helper.moderation import check_moderation
-from core.model_runtime.errors.invoke import InvokeBadRequestError
+from dify_graph.model_runtime.errors.invoke import InvokeBadRequestError
 from models.provider import ProviderType
 
 
@@ -23,7 +25,11 @@ def test_check_moderation_returns_false_when_feature_not_enabled(mocker: MockerF
         SimpleNamespace(moderation_config=None, provider_map={}),
     )
 
-    assert check_moderation("tenant-1", _build_model_config(), "hello") is False
+    assert check_moderation(
+        "tenant-1",
+        cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+        "hello",
+    ) is False
 
 
 def test_check_moderation_returns_false_when_hosting_credentials_missing(mocker: MockerFixture) -> None:
@@ -36,7 +42,11 @@ def test_check_moderation_returns_false_when_hosting_credentials_missing(mocker:
         ),
     )
 
-    assert check_moderation("tenant-1", _build_model_config(), "hello") is False
+    assert check_moderation(
+        "tenant-1",
+        cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+        "hello",
+    ) is False
 
 
 def test_check_moderation_returns_true_when_model_accepts_text(mocker: MockerFixture) -> None:
@@ -55,7 +65,11 @@ def test_check_moderation_returns_true_when_model_accepts_text(mocker: MockerFix
     factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: moderation_model)
     mocker.patch("core.helper.moderation.ModelProviderFactory", return_value=factory)
 
-    assert check_moderation("tenant-1", _build_model_config(), "abc") is True
+    assert check_moderation(
+        "tenant-1",
+        cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+        "abc",
+    ) is True
 
 
 def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: MockerFixture) -> None:
@@ -77,4 +91,8 @@ def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: Mo
     mocker.patch("core.helper.moderation.ModelProviderFactory", return_value=factory)
 
     with pytest.raises(InvokeBadRequestError):
-        check_moderation("tenant-1", _build_model_config(), "abc")
+        check_moderation(
+            "tenant-1",
+            cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+            "abc",
+        )
