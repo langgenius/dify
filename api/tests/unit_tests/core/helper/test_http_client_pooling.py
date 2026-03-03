@@ -39,4 +39,3 @@ def test_close_all_closes_pooled_clients_and_allows_recreate() -> None:
 
     first_client.close.assert_called_once()
     assert factory.get_or_create("x", lambda: replacement_client) is replacement_client
-

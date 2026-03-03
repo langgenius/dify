@@ -27,4 +27,3 @@ def test_get_default_config_contains_expected_shape() -> None:
         {"variable": "arg2", "value_selector": []},
     ]
     assert config["config"]["outputs"] == {"result": {"type": "string", "children": None}}
-

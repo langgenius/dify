@@ -42,7 +42,7 @@ def test_serialize_inputs_encodes_payload() -> None:
 
 
 def test_transform_response_parses_json_result_and_converts_scientific_notation() -> None:
-    response = "<<RESULT>>{\"value\": \"1e+3\", \"nested\": {\"x\": \"2E-2\"}, \"arr\": [\"3e+1\"]}<<RESULT>>"
+    response = '<<RESULT>>{"value": "1e+3", "nested": {"x": "2E-2"}, "arr": ["3e+1"]}<<RESULT>>'
 
     result: Mapping[str, Any] = _DummyTransformer.transform_response(response)
 
@@ -63,7 +63,7 @@ def test_transform_response_raises_for_non_string_keys(monkeypatch: pytest.Monke
     monkeypatch.setattr("json.loads", lambda _: {1: "x"})
 
     with pytest.raises(ValueError, match="Result keys must be strings"):
-        _DummyTransformer.transform_response("<<RESULT>>{\"ignored\": true}<<RESULT>>")
+        _DummyTransformer.transform_response('<<RESULT>>{"ignored": true}<<RESULT>>')
 
 
 def test_transform_response_raises_for_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,7 +73,7 @@ def test_transform_response_raises_for_unexpected_errors(monkeypatch: pytest.Mon
     monkeypatch.setattr("json.loads", _raise_unexpected)
 
     with pytest.raises(ValueError, match="Unexpected error during response transformation"):
-        _DummyTransformer.transform_response("<<RESULT>>{\"a\":1}<<RESULT>>")
+        _DummyTransformer.transform_response('<<RESULT>>{"a":1}<<RESULT>>')
 
 
 def test_transform_response_raises_for_missing_result_tag() -> None:
