@@ -369,7 +369,7 @@ class TestDatasetServiceCreateDataset:
         # Act / Assert
         with patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api:
             mock_get_api.return_value = None
-            with pytest.raises(ValueError, match="External API template not found."):
+            with pytest.raises(ValueError, match=r"External API template not found\.?"):
                 DatasetService.create_empty_dataset(
                     tenant_id=tenant.id,
                     name="External Missing API Dataset",
