@@ -21,6 +21,8 @@ import Operation from './operation'
 const Header = () => {
   const {
     appData,
+    siteDescription,
+    showSiteDescription,
     currentConversationId,
     currentConversationItem,
     inputsForms,
@@ -70,11 +72,9 @@ const Header = () => {
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
 
-  const showDescription = !currentConversationId && appData?.site?.description
-
   return (
     <>
-      <div className={cn('shrink-0 p-3', showDescription && 'flex flex-col gap-1')}>
+      <div className={cn('shrink-0 p-3', showSiteDescription && 'flex flex-col gap-1')}>
         <div className="flex h-14 items-center justify-between">
           <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'user-select-none opacity-0')}>
             <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size="l" onClick={() => handleSidebarCollapse(false)}>
@@ -142,9 +142,9 @@ const Header = () => {
             )}
           </div>
         </div>
-        {showDescription && (
+        {showSiteDescription && (
           <div className="system-xs-regular max-h-[2.5rem] overflow-y-auto break-words text-text-tertiary">
-            {appData?.site?.description}
+            {siteDescription}
           </div>
         )}
       </div>
