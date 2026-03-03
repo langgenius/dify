@@ -168,6 +168,27 @@ export default antfu(
             '**/portal-to-follow-elem/index',
           ],
           message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/tooltip',
+            '**/base/tooltip/index',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/modal',
+            '**/base/modal/index',
+            '**/base/modal/modal',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/select',
+            '**/base/select/index',
+            '**/base/select/custom',
+            '**/base/select/pure',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
         }],
       }],
     },
