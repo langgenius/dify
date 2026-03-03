@@ -13,11 +13,11 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useAppContext } from '@/context/app-context'
-import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
 import AppInfo from './app-info'
+import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
 type Props = {
@@ -99,7 +99,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                     <div className="flex w-full">
                       <div className="truncate text-text-secondary system-md-semibold">{appDetail.name}</div>
                     </div>
-                    <div className="text-text-tertiary system-2xs-medium-uppercase">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
+                    <div className="text-text-tertiary system-2xs-medium-uppercase">{getAppModeLabel(appDetail.mode, t)}</div>
                   </div>
                 </div>
               </div>

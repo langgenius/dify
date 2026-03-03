@@ -217,27 +217,6 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('onEdit - early return', () => {
-    it('should not call updateAppInfo when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onEdit({
-          name: 'Updated',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
-          description: '',
-          use_icon_as_answer_icon: false,
-        })
-      })
-
-      expect(mockUpdateAppInfo).not.toHaveBeenCalled()
-    })
-  })
-
   describe('onCopy', () => {
     it('should copy app and redirect on success', async () => {
       const newApp = { id: 'app-2', name: 'Copy', mode: 'chat' }

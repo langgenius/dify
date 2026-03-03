@@ -160,11 +160,10 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       setAppDetail()
       replace('/apps')
     }
-    // eslint-disable-next-line ts/no-explicit-any
-    catch (e: any) {
+    catch (e: unknown) {
       notify({
         type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
+        message: `${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
       })
     }
     closeModal()

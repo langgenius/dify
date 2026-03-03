@@ -14,12 +14,14 @@ type AppInfoTriggerProps = {
 
 const AppInfoTrigger = ({ appDetail, expand, onClick }: AppInfoTriggerProps) => {
   const { t } = useTranslation()
+  const modeLabel = getAppModeLabel(appDetail.mode, t)
 
   return (
     <button
       type="button"
       onClick={onClick}
       className="block w-full"
+      aria-label={!expand ? `${appDetail.name} - ${modeLabel}` : undefined}
     >
       <div className="flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover">
         <div className="flex items-center gap-1">
