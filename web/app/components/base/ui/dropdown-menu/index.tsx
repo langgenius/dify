@@ -12,10 +12,75 @@ export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
 export const DropdownMenuRadioGroup = Menu.RadioGroup
-export const DropdownMenuRadioItem = Menu.RadioItem
-export const DropdownMenuRadioItemIndicator = Menu.RadioItemIndicator
-export const DropdownMenuCheckboxItem = Menu.CheckboxItem
-export const DropdownMenuCheckboxItemIndicator = Menu.CheckboxItemIndicator
+
+const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none'
+const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50'
+
+export function DropdownMenuRadioItem({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
+  return (
+    <Menu.RadioItem
+      className={cn(
+        menuRowBaseClassName,
+        menuRowStateClassName,
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export function DropdownMenuRadioItemIndicator({
+  className,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<typeof Menu.RadioItemIndicator>, 'children'>) {
+  return (
+    <Menu.RadioItemIndicator
+      className={cn(
+        'ml-auto flex shrink-0 items-center text-text-accent',
+        className,
+      )}
+      {...props}
+    >
+      <span aria-hidden className="i-ri-check-line h-4 w-4" />
+    </Menu.RadioItemIndicator>
+  )
+}
+
+export function DropdownMenuCheckboxItem({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>) {
+  return (
+    <Menu.CheckboxItem
+      className={cn(
+        menuRowBaseClassName,
+        menuRowStateClassName,
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export function DropdownMenuCheckboxItemIndicator({
+  className,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<typeof Menu.CheckboxItemIndicator>, 'children'>) {
+  return (
+    <Menu.CheckboxItemIndicator
+      className={cn(
+        'ml-auto flex shrink-0 items-center text-text-accent',
+        className,
+      )}
+      {...props}
+    >
+      <span aria-hidden className="i-ri-check-line h-4 w-4" />
+    </Menu.CheckboxItemIndicator>
+  )
+}
 
 export function DropdownMenuGroupLabel({
   className,
@@ -131,9 +196,8 @@ export function DropdownMenuSubTrigger({
   return (
     <Menu.SubmenuTrigger
       className={cn(
-        'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none',
-        'data-[highlighted]:bg-state-base-hover',
-        'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
+        menuRowBaseClassName,
+        menuRowStateClassName,
         destructive && 'text-text-destructive',
         className,
       )}
@@ -190,9 +254,8 @@ export function DropdownMenuItem({
   return (
     <Menu.Item
       className={cn(
-        'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none',
-        'data-[highlighted]:bg-state-base-hover',
-        'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
+        menuRowBaseClassName,
+        menuRowStateClassName,
         destructive && 'text-text-destructive',
         className,
       )}
