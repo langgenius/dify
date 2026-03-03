@@ -60,10 +60,16 @@ const Chatbot = () => {
           isMobile={isMobile}
           allowResetChat={allowResetChat}
           title={site?.title || ''}
+          description={site?.description}
           customerIcon={isDify() ? difyIcon : ''}
           theme={themeBuilder?.theme}
           onCreateNewChat={handleNewConversation}
         />
+        {!isMobile && site?.description && (
+          <div className="system-xs-regular shrink-0 break-words px-3 pb-2 text-text-tertiary">
+            {site.description}
+          </div>
+        )}
         <div className={cn('flex grow flex-col overflow-y-auto', isMobile && 'm-[0.5px] !h-[calc(100vh_-_3rem)] rounded-2xl bg-chatbot-bg')}>
           {appChatListDataLoading && (
             <Loading type="app" />

@@ -59,45 +59,54 @@ const HeaderInMobile = () => {
   const [showSidebar, setShowSidebar] = useState(false)
   const [showChatSettings, setShowChatSettings] = useState(false)
 
+  const showDescription = !currentConversationId && appData?.site?.description
+
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
-        <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
-          <div className="i-ri-menu-line h-[18px] w-[18px]" />
-        </ActionButton>
-        <div className="flex grow items-center justify-center">
-          {!currentConversationId && (
-            <>
-              <AppIcon
-                className="mr-2"
-                size="tiny"
-                icon={appData?.site.icon}
-                iconType={appData?.site.icon_type}
-                imageUrl={appData?.site.icon_url}
-                background={appData?.site.icon_background}
+      <div className={cn('shrink-0 bg-mask-top2bottom-gray-50-to-transparent px-2', showDescription ? 'py-2' : 'py-3')}>
+        <div className="flex items-center gap-1">
+          <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
+            <div className="i-ri-menu-line h-[18px] w-[18px]" />
+          </ActionButton>
+          <div className="flex grow items-center justify-center">
+            {!currentConversationId && (
+              <>
+                <AppIcon
+                  className="mr-2"
+                  size="tiny"
+                  icon={appData?.site.icon}
+                  iconType={appData?.site.icon_type}
+                  imageUrl={appData?.site.icon_url}
+                  background={appData?.site.icon_background}
+                />
+                <div className="truncate text-text-secondary system-md-semibold">
+                  {appData?.site.title}
+                </div>
+              </>
+            )}
+            {currentConversationId && (
+              <Operation
+                title={currentConversationItem?.name || ''}
+                isPinned={!!isPin}
+                togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
+                isShowDelete
+                isShowRenameConversation
+                onRenameConversation={() => handleOperate('rename')}
+                onDelete={() => handleOperate('delete')}
               />
-              <div className="truncate text-text-secondary system-md-semibold">
-                {appData?.site.title}
-              </div>
-            </>
-          )}
-          {currentConversationId && (
-            <Operation
-              title={currentConversationItem?.name || ''}
-              isPinned={!!isPin}
-              togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
-              isShowDelete
-              isShowRenameConversation
-              onRenameConversation={() => handleOperate('rename')}
-              onDelete={() => handleOperate('delete')}
-            />
-          )}
+            )}
+          </div>
+          <MobileOperationDropdown
+            handleResetChat={handleNewConversation}
+            handleViewChatSettings={() => setShowChatSettings(true)}
+            hideViewChatSettings={inputsForms.length < 1}
+          />
         </div>
-        <MobileOperationDropdown
-          handleResetChat={handleNewConversation}
-          handleViewChatSettings={() => setShowChatSettings(true)}
-          hideViewChatSettings={inputsForms.length < 1}
-        />
+        {showDescription && (
+          <div className="system-xs-regular mt-1 line-clamp-2 break-words px-1 text-center text-text-tertiary">
+            {appData?.site?.description}
+          </div>
+        )}
       </div>
       {showSidebar && (
         <div

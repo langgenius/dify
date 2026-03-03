@@ -22,6 +22,7 @@ export type IHeaderProps = {
   allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
+  description?: string
   theme?: Theme
   onCreateNewChat?: () => void
 }
@@ -30,6 +31,7 @@ const Header: FC<IHeaderProps> = ({
   allowResetChat,
   customerIcon,
   title,
+  description,
   theme,
   onCreateNewChat,
 }) => {
@@ -141,47 +143,57 @@ const Header: FC<IHeaderProps> = ({
 
   return (
     <div
-      className={cn('flex h-14 shrink-0 items-center justify-between rounded-t-2xl px-3')}
+      className={cn('shrink-0 rounded-t-2xl px-3', description ? 'pb-2' : '')}
       style={CssTransform(theme?.headerBorderBottomStyle ?? '')}
     >
-      <div className="flex grow items-center space-x-3">
-        {customerIcon}
-        <div
-          className="system-md-semibold truncate"
-          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
-        >
-          {title}
+      <div className="flex h-14 items-center justify-between">
+        <div className="flex grow items-center space-x-3">
+          {customerIcon}
+          <div
+            className="system-md-semibold truncate"
+            style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
+          >
+            {title}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1">
-        {
-          showToggleExpandButton && (
+        <div className="flex items-center gap-1">
+          {
+            showToggleExpandButton && (
+              <Tooltip
+                popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+              >
+                <ActionButton size="l" onClick={handleToggleExpand}>
+                  {
+                    expanded
+                      ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                      : <RiExpandDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                  }
+                </ActionButton>
+              </Tooltip>
+            )
+          }
+          {currentConversationId && allowResetChat && (
             <Tooltip
-              popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+              popupContent={t('chat.resetChat', { ns: 'share' })}
             >
-              <ActionButton size="l" onClick={handleToggleExpand}>
-                {
-                  expanded
-                    ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                    : <RiExpandDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                }
+              <ActionButton size="l" onClick={onCreateNewChat}>
+                <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
               </ActionButton>
             </Tooltip>
-          )
-        }
-        {currentConversationId && allowResetChat && (
-          <Tooltip
-            popupContent={t('chat.resetChat', { ns: 'share' })}
-          >
-            <ActionButton size="l" onClick={onCreateNewChat}>
-              <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-            </ActionButton>
-          </Tooltip>
-        )}
-        {currentConversationId && inputsForms.length > 0 && !allInputsHidden && (
-          <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
-        )}
+          )}
+          {currentConversationId && inputsForms.length > 0 && !allInputsHidden && (
+            <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
+          )}
+        </div>
       </div>
+      {description && (
+        <div
+          className="system-xs-regular line-clamp-2 break-words text-text-tertiary"
+          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
+        >
+          {description}
+        </div>
+      )}
     </div>
   )
 }
