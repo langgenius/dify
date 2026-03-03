@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast, final
 
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from typing_extensions import override
@@ -37,11 +36,13 @@ from dify_graph.nodes.document_extractor import DocumentExtractorNode, Unstructu
 from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.nodes.llm.entities import ModelConfig
+from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
@@ -54,6 +55,9 @@ from models.model import Conversation
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
     from dify_graph.runtime import GraphRuntimeState
+
+
+LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(
@@ -214,8 +218,9 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.LLM:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            llm_node_data = LLMNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(llm_node_data)
+            memory = self._build_memory_for_llm_node(node_data=llm_node_data, model_instance=model_instance)
             return LLMNode(
                 id=node_id,
                 config=typed_node_config,
@@ -255,8 +260,12 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            question_classifier_node_data = QuestionClassifierNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(question_classifier_node_data)
+            memory = self._build_memory_for_llm_node(
+                node_data=question_classifier_node_data,
+                model_instance=model_instance,
+            )
             return QuestionClassifierNode(
                 id=node_id,
                 config=typed_node_config,
@@ -269,8 +278,12 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            parameter_extractor_node_data = ParameterExtractorNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(parameter_extractor_node_data)
+            memory = self._build_memory_for_llm_node(
+                node_data=parameter_extractor_node_data,
+                model_instance=model_instance,
+            )
             return ParameterExtractorNode(
                 id=node_id,
                 config=typed_node_config,
@@ -289,9 +302,8 @@ class DifyNodeFactory(NodeFactory):
             graph_runtime_state=self.graph_runtime_state,
         )
 
-    def _build_model_instance_for_llm_node(self, node_data: Mapping[str, Any] | BaseModel) -> ModelInstance:
-        raw_model_data = node_data["model"] if isinstance(node_data, Mapping) else node_data.model_dump().get("model")
-        node_data_model = ModelConfig.model_validate(raw_model_data, from_attributes=True)
+    def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
+        node_data_model = node_data.model
         if not node_data_model.mode:
             raise LLMModeRequiredError("LLM mode is required.")
 
@@ -327,16 +339,12 @@ class DifyNodeFactory(NodeFactory):
     def _build_memory_for_llm_node(
         self,
         *,
-        node_data: Mapping[str, Any] | BaseModel,
+        node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
     ) -> PromptMessageMemory | None:
-        raw_memory_config = (
-            node_data.get("memory") if isinstance(node_data, Mapping) else node_data.model_dump().get("memory")
-        )
-        if raw_memory_config is None:
+        if node_data.memory is None:
             return None
 
-        node_memory = MemoryConfig.model_validate(raw_memory_config, from_attributes=True)
         conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID]
         )
@@ -346,6 +354,6 @@ class DifyNodeFactory(NodeFactory):
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self.graph_init_params.app_id,
-            node_data_memory=node_memory,
+            node_data_memory=node_data.memory,
             model_instance=model_instance,
         )
