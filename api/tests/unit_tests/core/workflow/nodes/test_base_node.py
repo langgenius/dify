@@ -4,6 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom as LegacyInvokeFrom
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.enums import InvokeFrom, NodeType, UserFrom
 from dify_graph.nodes.base.entities import BaseNodeData
 from dify_graph.nodes.base.node import Node
@@ -44,13 +45,26 @@ def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams,
     return init_params, runtime_state
 
 
+def _build_node_config() -> NodeConfigDict:
+    return NodeConfigDictAdapter.validate_python(
+        {
+            "id": "node-1",
+            "data": {
+                "type": NodeType.ANSWER.value,
+                "title": "Sample",
+                "foo": "bar",
+            },
+        }
+    )
+
+
 def test_node_hydrates_data_during_initialization():
     graph_config: dict[str, object] = {}
     init_params, runtime_state = _build_context(graph_config)
 
     node = _SampleNode(
         id="node-1",
-        config={"id": "node-1", "data": {"title": "Sample", "foo": "bar"}},
+        config=_build_node_config(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )
@@ -80,7 +94,7 @@ def test_node_normalizes_legacy_invoke_from_enum():
 
     node = _SampleNode(
         id="node-1",
-        config={"id": "node-1", "data": {"title": "Sample", "foo": "bar"}},
+        config=_build_node_config(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )
@@ -103,3 +117,17 @@ def test_missing_generic_argument_raises_type_error():
 
             def _run(self):
                 raise NotImplementedError
+
+
+def test_base_node_data_keeps_dict_style_access_compatibility():
+    node_data = _SampleNodeData.model_validate(
+        {
+            "type": NodeType.ANSWER.value,
+            "title": "Sample",
+            "foo": "bar",
+        }
+    )
+
+    assert node_data["foo"] == "bar"
+    assert node_data.get("foo") == "bar"
+    assert node_data.get("missing", "fallback") == "fallback"
