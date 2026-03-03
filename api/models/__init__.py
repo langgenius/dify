@@ -26,6 +26,13 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -158,6 +165,11 @@ __all__ = [
     "Document",
     "DocumentSegment",
     "Embedding",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "EndUser",
     "ExecutionExtraContent",
     "ExporleBanner",

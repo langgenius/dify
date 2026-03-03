@@ -1,13 +1,34 @@
 import io
+import json
 import logging
-from typing import Union
+from typing import Any, Union
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from sqlalchemy.orm import Session
 
+from configs import dify_config
+from core.evaluation.entities.evaluation_entity import (
+    EvaluationCategory,
+    EvaluationItemInput,
+    EvaluationRunData,
+)
+from core.evaluation.evaluation_manager import EvaluationManager
+from models.evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunStatus,
+)
 from models.model import App, AppMode
 from models.snippet import CustomizedSnippet
+from services.errors.evaluation import (
+    EvaluationDatasetInvalidError,
+    EvaluationFrameworkNotConfiguredError,
+    EvaluationMaxConcurrentRunsError,
+    EvaluationNotFoundError,
+)
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
@@ -176,3 +197,264 @@ class EvaluationService:
         output.seek(0)
 
         return output.getvalue()
+
+    # ---- Evaluation Configuration CRUD ----
+
+    @classmethod
+    def get_evaluation_config(
+        cls,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+    ) -> EvaluationConfiguration | None:
+        return (
+            session.query(EvaluationConfiguration)
+            .filter_by(tenant_id=tenant_id, target_type=target_type, target_id=target_id)
+            .first()
+        )
+
+    @classmethod
+    def save_evaluation_config(
+        cls,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+        account_id: str,
+        data: dict[str, Any],
+    ) -> EvaluationConfiguration:
+        config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
+        if config is None:
+            config = EvaluationConfiguration(
+                tenant_id=tenant_id,
+                target_type=target_type,
+                target_id=target_id,
+                created_by=account_id,
+                updated_by=account_id,
+            )
+            session.add(config)
+
+        config.evaluation_model_provider = data.get("evaluation_model_provider")
+        config.evaluation_model = data.get("evaluation_model")
+        config.metrics_config = json.dumps(data.get("metrics_config", {}))
+        config.judgement_conditions = json.dumps(data.get("judgement_conditions", {}))
+        config.updated_by = account_id
+        session.commit()
+        session.refresh(config)
+        return config
+
+    # ---- Evaluation Run Management ----
+
+    @classmethod
+    def start_evaluation_run(
+        cls,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+        account_id: str,
+        dataset_file_content: bytes,
+        evaluation_category: EvaluationCategory,
+    ) -> EvaluationRun:
+        """Validate dataset, create run record, dispatch Celery task."""
+        # Check framework is configured
+        evaluation_instance = EvaluationManager.get_evaluation_instance()
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
+
+        # Check evaluation config exists
+        config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
+        if config is None:
+            raise EvaluationNotFoundError("Evaluation configuration not found. Please configure evaluation first.")
+
+        # Check concurrent run limit
+        active_runs = (
+            session.query(EvaluationRun)
+            .filter_by(tenant_id=tenant_id)
+            .filter(EvaluationRun.status.in_([EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING]))
+            .count()
+        )
+        max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
+        if active_runs >= max_concurrent:
+            raise EvaluationMaxConcurrentRunsError(
+                f"Maximum concurrent runs ({max_concurrent}) reached."
+            )
+
+        # Parse dataset
+        items = cls._parse_dataset(dataset_file_content)
+        max_rows = dify_config.EVALUATION_MAX_DATASET_ROWS
+        if len(items) > max_rows:
+            raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
+
+        # Create evaluation run
+        evaluation_run = EvaluationRun(
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            evaluation_config_id=config.id,
+            status=EvaluationRunStatus.PENDING,
+            total_items=len(items),
+            created_by=account_id,
+        )
+        session.add(evaluation_run)
+        session.commit()
+        session.refresh(evaluation_run)
+
+        # Build Celery task data
+        run_data = EvaluationRunData(
+            evaluation_run_id=evaluation_run.id,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            evaluation_category=evaluation_category,
+            evaluation_model_provider=config.evaluation_model_provider or "",
+            evaluation_model=config.evaluation_model or "",
+            metrics_config=config.metrics_config_dict,
+            items=items,
+        )
+
+        # Dispatch Celery task
+        from tasks.evaluation_task import run_evaluation
+
+        task = run_evaluation.delay(run_data.model_dump())
+        evaluation_run.celery_task_id = task.id
+        session.commit()
+
+        return evaluation_run
+
+    @classmethod
+    def get_evaluation_runs(
+        cls,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[EvaluationRun], int]:
+        """Query evaluation run history with pagination."""
+        query = (
+            session.query(EvaluationRun)
+            .filter_by(tenant_id=tenant_id, target_type=target_type, target_id=target_id)
+            .order_by(EvaluationRun.created_at.desc())
+        )
+        total = query.count()
+        runs = query.offset((page - 1) * page_size).limit(page_size).all()
+        return runs, total
+
+    @classmethod
+    def get_evaluation_run_detail(
+        cls,
+        session: Session,
+        tenant_id: str,
+        run_id: str,
+    ) -> EvaluationRun:
+        run = (
+            session.query(EvaluationRun)
+            .filter_by(id=run_id, tenant_id=tenant_id)
+            .first()
+        )
+        if not run:
+            raise EvaluationNotFoundError("Evaluation run not found.")
+        return run
+
+    @classmethod
+    def get_evaluation_run_items(
+        cls,
+        session: Session,
+        run_id: str,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[EvaluationRunItem], int]:
+        """Query evaluation run items with pagination."""
+        query = (
+            session.query(EvaluationRunItem)
+            .filter_by(evaluation_run_id=run_id)
+            .order_by(EvaluationRunItem.item_index.asc())
+        )
+        total = query.count()
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
+        return items, total
+
+    @classmethod
+    def cancel_evaluation_run(
+        cls,
+        session: Session,
+        tenant_id: str,
+        run_id: str,
+    ) -> EvaluationRun:
+        run = cls.get_evaluation_run_detail(session, tenant_id, run_id)
+        if run.status not in (EvaluationRunStatus.PENDING, EvaluationRunStatus.RUNNING):
+            raise ValueError(f"Cannot cancel evaluation run in status: {run.status}")
+
+        run.status = EvaluationRunStatus.CANCELLED
+
+        # Revoke Celery task if running
+        if run.celery_task_id:
+            try:
+                from celery import current_app as celery_app
+
+                celery_app.control.revoke(run.celery_task_id, terminate=True)
+            except Exception:
+                logger.exception("Failed to revoke Celery task %s", run.celery_task_id)
+
+        session.commit()
+        return run
+
+    @classmethod
+    def get_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
+        return EvaluationManager.get_supported_metrics(category)
+
+    # ---- Dataset Parsing ----
+
+    @classmethod
+    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationItemInput]:
+        """Parse evaluation dataset from XLSX bytes."""
+        wb = load_workbook(io.BytesIO(xlsx_content), read_only=True)
+        ws = wb.active
+        if ws is None:
+            raise EvaluationDatasetInvalidError("XLSX file has no active worksheet.")
+
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 2:
+            raise EvaluationDatasetInvalidError("Dataset must have at least a header row and one data row.")
+
+        headers = [str(h).strip() if h is not None else "" for h in rows[0]]
+        if not headers or headers[0].lower() != "index":
+            raise EvaluationDatasetInvalidError("First column header must be 'index'.")
+
+        input_headers = headers[1:]  # Skip 'index'
+        items = []
+        for row_idx, row in enumerate(rows[1:], start=1):
+            values = list(row)
+            if all(v is None or str(v).strip() == "" for v in values):
+                continue  # Skip empty rows
+
+            index_val = values[0] if values else row_idx
+            try:
+                index = int(index_val)
+            except (TypeError, ValueError):
+                index = row_idx
+
+            inputs: dict[str, Any] = {}
+            for col_idx, header in enumerate(input_headers):
+                val = values[col_idx + 1] if col_idx + 1 < len(values) else None
+                inputs[header] = str(val) if val is not None else ""
+
+            # Check for expected_output column
+            expected_output = inputs.pop("expected_output", None)
+            context_str = inputs.pop("context", None)
+            context = context_str.split(";") if context_str else None
+
+            items.append(
+                EvaluationItemInput(
+                    index=index,
+                    inputs=inputs,
+                    expected_output=expected_output,
+                    context=context,
+                )
+            )
+
+        wb.close()
+        return items

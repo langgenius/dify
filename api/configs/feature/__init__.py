@@ -1366,6 +1366,32 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EvaluationConfig(BaseSettings):
+    """
+    Configuration for evaluation runtime
+    """
+
+    EVALUATION_FRAMEWORK: str = Field(
+        description="Evaluation framework to use (ragas/deepeval/none)",
+        default="none",
+    )
+
+    EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
+        description="Maximum number of concurrent evaluation runs per tenant",
+        default=3,
+    )
+
+    EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
+        description="Maximum number of rows allowed in an evaluation dataset",
+        default=1000,
+    )
+
+    EVALUATION_TASK_TIMEOUT: PositiveInt = Field(
+        description="Timeout in seconds for a single evaluation task",
+        default=3600,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1378,6 +1404,7 @@ class FeatureConfig(
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
+    EvaluationConfig,
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,

@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, Union
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, Union
 from urllib.parse import quote
 
 from flask import Response, request
@@ -9,7 +11,7 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -18,6 +20,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
+from core.evaluation.entities.evaluation_entity import EvaluationCategory
 from core.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.helper import TimestampField
@@ -25,7 +28,16 @@ from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import UploadFile
 from models.snippet import CustomizedSnippet
+from services.errors.evaluation import (
+    EvaluationDatasetInvalidError,
+    EvaluationFrameworkNotConfiguredError,
+    EvaluationMaxConcurrentRunsError,
+    EvaluationNotFoundError,
+)
 from services.evaluation_service import EvaluationService
+
+if TYPE_CHECKING:
+    from models.evaluation import EvaluationRun, EvaluationRunItem
 
 logger = logging.getLogger(__name__)
 
@@ -208,25 +220,70 @@ class EvaluationDetailApi(Resource):
     @get_evaluation_target
     def get(self, target: Union[App, CustomizedSnippet], target_type: str):
         """
-        Get evaluation details for the target.
+        Get evaluation configuration for the target.
 
         Returns evaluation configuration including model settings,
-        customized matrix, and judgement conditions.
+        metrics config, and judgement conditions.
         """
-        # TODO: Implement actual evaluation detail retrieval
-        # This is a placeholder implementation
+        _, current_tenant_id = current_account_with_tenant()
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            config = EvaluationService.get_evaluation_config(
+                session, current_tenant_id, target_type, str(target.id)
+            )
+
+        if config is None:
+            return {
+                "evaluation_model": None,
+                "evaluation_model_provider": None,
+                "metrics_config": None,
+                "judgement_conditions": None,
+            }
+
         return {
-            "evaluation_model": None,
-            "evaluation_model_provider": None,
-            "customized_matrix": None,
-            "judgement_conditions": None,
+            "evaluation_model": config.evaluation_model,
+            "evaluation_model_provider": config.evaluation_model_provider,
+            "metrics_config": config.metrics_config_dict,
+            "judgement_conditions": config.judgement_conditions_dict,
+        }
+
+    @console_ns.doc("save_evaluation_detail")
+    @console_ns.response(200, "Evaluation configuration saved successfully")
+    @console_ns.response(404, "Target not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    @edit_permission_required
+    def put(self, target: Union[App, CustomizedSnippet], target_type: str):
+        """
+        Save evaluation configuration for the target.
+        """
+        current_account, current_tenant_id = current_account_with_tenant()
+        data = request.get_json(force=True)
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            config = EvaluationService.save_evaluation_config(
+                session=session,
+                tenant_id=current_tenant_id,
+                target_type=target_type,
+                target_id=str(target.id),
+                account_id=str(current_account.id),
+                data=data,
+            )
+
+        return {
+            "evaluation_model": config.evaluation_model,
+            "evaluation_model_provider": config.evaluation_model_provider,
+            "metrics_config": config.metrics_config_dict,
+            "judgement_conditions": config.judgement_conditions_dict,
         }
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/logs")
 class EvaluationLogsApi(Resource):
     @console_ns.doc("get_evaluation_logs")
-    @console_ns.response(200, "Evaluation logs retrieved successfully", evaluation_log_list_model)
+    @console_ns.response(200, "Evaluation logs retrieved successfully")
     @console_ns.response(404, "Target not found")
     @setup_required
     @login_required
@@ -234,16 +291,190 @@ class EvaluationLogsApi(Resource):
     @get_evaluation_target
     def get(self, target: Union[App, CustomizedSnippet], target_type: str):
         """
-        Get offline evaluation logs for the target.
+        Get evaluation run history for the target.
 
-        Returns a list of evaluation runs with test files,
-        result files, and version information.
+        Returns a paginated list of evaluation runs.
         """
-        # TODO: Implement actual evaluation logs retrieval
-        # This is a placeholder implementation
+        _, current_tenant_id = current_account_with_tenant()
+        page = request.args.get("page", 1, type=int)
+        page_size = request.args.get("page_size", 20, type=int)
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            runs, total = EvaluationService.get_evaluation_runs(
+                session=session,
+                tenant_id=current_tenant_id,
+                target_type=target_type,
+                target_id=str(target.id),
+                page=page,
+                page_size=page_size,
+            )
+
         return {
-            "data": [],
+            "data": [_serialize_evaluation_run(run) for run in runs],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
         }
+
+
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
+class EvaluationRunApi(Resource):
+    @console_ns.doc("start_evaluation_run")
+    @console_ns.response(200, "Evaluation run started")
+    @console_ns.response(400, "Invalid request")
+    @console_ns.response(404, "Target not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    @edit_permission_required
+    def post(self, target: Union[App, CustomizedSnippet], target_type: str):
+        """
+        Start an evaluation run.
+
+        Expects multipart form data with:
+        - file: XLSX dataset file
+        - evaluation_category: one of llm, retrieval, agent, workflow
+        """
+        current_account, current_tenant_id = current_account_with_tenant()
+
+        # Validate file upload
+        if "file" not in request.files:
+            raise BadRequest("Dataset file is required.")
+        file = request.files["file"]
+        if not file.filename or not file.filename.endswith(".xlsx"):
+            raise BadRequest("Dataset file must be an XLSX file.")
+
+        dataset_content = file.read()
+        if not dataset_content:
+            raise BadRequest("Dataset file is empty.")
+
+        # Validate evaluation category
+        category_str = request.form.get("evaluation_category", "llm")
+        try:
+            evaluation_category = EvaluationCategory(category_str)
+        except ValueError:
+            raise BadRequest(
+                f"Invalid evaluation_category: {category_str}. "
+                f"Must be one of: {', '.join(e.value for e in EvaluationCategory)}"
+            )
+
+        try:
+            with Session(db.engine, expire_on_commit=False) as session:
+                evaluation_run = EvaluationService.start_evaluation_run(
+                    session=session,
+                    tenant_id=current_tenant_id,
+                    target_type=target_type,
+                    target_id=str(target.id),
+                    account_id=str(current_account.id),
+                    dataset_file_content=dataset_content,
+                    evaluation_category=evaluation_category,
+                )
+                return _serialize_evaluation_run(evaluation_run), 200
+        except EvaluationFrameworkNotConfiguredError as e:
+            return {"message": str(e.description)}, 400
+        except EvaluationNotFoundError as e:
+            return {"message": str(e.description)}, 404
+        except EvaluationMaxConcurrentRunsError as e:
+            return {"message": str(e.description)}, 429
+        except EvaluationDatasetInvalidError as e:
+            return {"message": str(e.description)}, 400
+
+
+@console_ns.route(
+    "/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>"
+)
+class EvaluationRunDetailApi(Resource):
+    @console_ns.doc("get_evaluation_run_detail")
+    @console_ns.response(200, "Evaluation run detail retrieved")
+    @console_ns.response(404, "Run not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    def get(self, target: Union[App, CustomizedSnippet], target_type: str, run_id: str):
+        """
+        Get evaluation run detail including items.
+        """
+        _, current_tenant_id = current_account_with_tenant()
+        run_id = str(run_id)
+        page = request.args.get("page", 1, type=int)
+        page_size = request.args.get("page_size", 50, type=int)
+
+        try:
+            with Session(db.engine, expire_on_commit=False) as session:
+                run = EvaluationService.get_evaluation_run_detail(
+                    session=session,
+                    tenant_id=current_tenant_id,
+                    run_id=run_id,
+                )
+                items, total_items = EvaluationService.get_evaluation_run_items(
+                    session=session,
+                    run_id=run_id,
+                    page=page,
+                    page_size=page_size,
+                )
+
+                return {
+                    "run": _serialize_evaluation_run(run),
+                    "items": {
+                        "data": [_serialize_evaluation_run_item(item) for item in items],
+                        "total": total_items,
+                        "page": page,
+                        "page_size": page_size,
+                    },
+                }
+        except EvaluationNotFoundError as e:
+            return {"message": str(e.description)}, 404
+
+
+@console_ns.route(
+    "/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/cancel"
+)
+class EvaluationRunCancelApi(Resource):
+    @console_ns.doc("cancel_evaluation_run")
+    @console_ns.response(200, "Evaluation run cancelled")
+    @console_ns.response(404, "Run not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    @edit_permission_required
+    def post(self, target: Union[App, CustomizedSnippet], target_type: str, run_id: str):
+        """Cancel a running evaluation."""
+        _, current_tenant_id = current_account_with_tenant()
+        run_id = str(run_id)
+
+        try:
+            with Session(db.engine, expire_on_commit=False) as session:
+                run = EvaluationService.cancel_evaluation_run(
+                    session=session,
+                    tenant_id=current_tenant_id,
+                    run_id=run_id,
+                )
+                return _serialize_evaluation_run(run)
+        except EvaluationNotFoundError as e:
+            return {"message": str(e.description)}, 404
+        except ValueError as e:
+            return {"message": str(e)}, 400
+
+
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/metrics")
+class EvaluationMetricsApi(Resource):
+    @console_ns.doc("get_evaluation_metrics")
+    @console_ns.response(200, "Available metrics retrieved")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    def get(self, target: Union[App, CustomizedSnippet], target_type: str):
+        """
+        Get available evaluation metrics for the current framework.
+        """
+        result = {}
+        for category in EvaluationCategory:
+            result[category.value] = EvaluationService.get_supported_metrics(category)
+        return {"metrics": result}
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/files/<uuid:file_id>")
@@ -309,8 +540,6 @@ class EvaluationVersionApi(Resource):
         if not version:
             return {"message": "version parameter is required"}, 400
 
-        # TODO: Implement actual version detail retrieval
-        # For now, return the current graph if available
         graph = {}
         if target_type == "snippets" and isinstance(target, CustomizedSnippet):
             graph = target.graph_dict
@@ -318,3 +547,43 @@ class EvaluationVersionApi(Resource):
         return {
             "graph": graph,
         }
+
+
+# ---- Serialization Helpers ----
+
+
+def _serialize_evaluation_run(run: EvaluationRun) -> dict[str, object]:
+    return {
+        "id": run.id,
+        "tenant_id": run.tenant_id,
+        "target_type": run.target_type,
+        "target_id": run.target_id,
+        "evaluation_config_id": run.evaluation_config_id,
+        "status": run.status,
+        "dataset_file_id": run.dataset_file_id,
+        "result_file_id": run.result_file_id,
+        "total_items": run.total_items,
+        "completed_items": run.completed_items,
+        "failed_items": run.failed_items,
+        "progress": run.progress,
+        "metrics_summary": run.metrics_summary_dict,
+        "error": run.error,
+        "created_by": run.created_by,
+        "started_at": int(run.started_at.timestamp()) if run.started_at else None,
+        "completed_at": int(run.completed_at.timestamp()) if run.completed_at else None,
+        "created_at": int(run.created_at.timestamp()) if run.created_at else None,
+    }
+
+
+def _serialize_evaluation_run_item(item: EvaluationRunItem) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "item_index": item.item_index,
+        "inputs": item.inputs_dict,
+        "expected_output": item.expected_output,
+        "actual_output": item.actual_output,
+        "metrics": item.metrics_list,
+        "metadata": item.metadata_dict,
+        "error": item.error,
+        "overall_score": item.overall_score,
+    }
