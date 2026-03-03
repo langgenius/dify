@@ -74,6 +74,7 @@ export type TemplateCollection = {
 export type Template = {
   id: string
   index_id: string
+  version?: string
   template_name: string
   icon: string
   icon_background?: string
