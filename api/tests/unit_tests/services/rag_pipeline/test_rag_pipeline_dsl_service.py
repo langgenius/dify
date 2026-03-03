@@ -196,6 +196,7 @@ def test_export_rag_pipeline_dsl_raises_when_dataset_missing() -> None:
     with pytest.raises(ValueError, match="Missing dataset"):
         service.export_rag_pipeline_dsl(pipeline=pipeline)
 
+
 # --- import_rag_pipeline ---
 
 
@@ -204,7 +205,9 @@ def test_import_rag_pipeline_url_fetch_error(mocker) -> None:
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
 
-    result = service.import_rag_pipeline(account=account, import_mode="yaml-url", yaml_url="https://example.com/dsl.yml")
+    result = service.import_rag_pipeline(
+        account=account, import_mode="yaml-url", yaml_url="https://example.com/dsl.yml"
+    )
 
     assert result.status == ImportStatus.FAILED
     assert "fetch failed" in result.error
@@ -228,7 +231,7 @@ workflow:
     pipeline.id = "p1"
     pipeline.is_published = False
     mocker.patch.object(RagPipelineDslService, "_create_or_update_pipeline", return_value=pipeline)
-    
+
     config_mock = Mock()
     config_mock.indexing_technique = "high_quality"
     config_mock.embedding_model = "m"
@@ -238,11 +241,11 @@ workflow:
         "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate",
         return_value=config_mock,
     )
-    
+
     dataset_mock = Mock()
     dataset_mock.id = "d1"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset_mock)
-    
+
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     session.query.return_value.filter_by.return_value.all.return_value = []
@@ -290,15 +293,15 @@ workflow:
         return_value=pending.model_dump_json(),
     )
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.delete")
-    
+
     pipeline = Mock()
     pipeline.id = "p1"
     pipeline.name = "Test Pipeline"
     pipeline.description = "desc"
     pipeline.retrieve_dataset.return_value = None
-    
+
     mocker.patch.object(RagPipelineDslService, "_create_or_update_pipeline", return_value=pipeline)
-    
+
     config_mock = Mock()
     config_mock.indexing_technique = "high_quality"
     config_mock.embedding_model = "m"
@@ -310,7 +313,7 @@ workflow:
         "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate",
         return_value=config_mock,
     )
-    
+
     dataset_mock = Mock()
     dataset_mock.id = "d1"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset_mock)
@@ -319,7 +322,7 @@ workflow:
     service = RagPipelineDslService(session=Mock())
     # Mocking self._session.scalar for the pipeline lookup
     service._session.scalar.return_value = pipeline
-    
+
     account = Mock()
     account.id = "u1"
     account.current_tenant_id = "t1"
@@ -425,7 +428,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
     pipeline.tenant_id = "t1"
     pipeline.name = "P"
     pipeline.description = "d"
-    
+
     dataset = Mock()
     dataset.id = "d1"
     dataset.name = "D"
@@ -441,7 +444,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
     workflow.conversation_variables = []
     workflow.rag_pipeline_variables = []
     workflow.to_dict.return_value = {"graph": {"nodes": []}}
-    
+
     # Mocking single .where() call
     session.query.return_value.where.return_value.first.return_value = workflow
     mocker.patch(
@@ -458,6 +461,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
 
 
 # --- _extract_dependencies_from_workflow_graph more types ---
+
 
 def test_extract_dependencies_from_workflow_graph_datasource(mocker) -> None:
     mocker.patch(
