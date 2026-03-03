@@ -367,21 +367,19 @@ class TestDatasetServiceCreateDataset:
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
-        with (
-            patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api,
-            pytest.raises(ValueError, match="External API template not found."),
-        ):
+        with patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api:
             mock_get_api.return_value = None
-            DatasetService.create_empty_dataset(
-                tenant_id=tenant.id,
-                name="External Missing API Dataset",
-                description=None,
-                indexing_technique=None,
-                account=account,
-                provider="external",
-                external_knowledge_api_id=external_knowledge_api_id,
-                external_knowledge_id="knowledge-123",
-            )
+            with pytest.raises(ValueError, match="External API template not found."):
+                DatasetService.create_empty_dataset(
+                    tenant_id=tenant.id,
+                    name="External Missing API Dataset",
+                    description=None,
+                    indexing_technique=None,
+                    account=account,
+                    provider="external",
+                    external_knowledge_api_id=external_knowledge_api_id,
+                    external_knowledge_id="knowledge-123",
+                )
 
     def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers):
         """Raise error when external knowledge id is missing for external dataset creation."""
@@ -390,21 +388,19 @@ class TestDatasetServiceCreateDataset:
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
-        with (
-            patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api,
-            pytest.raises(ValueError, match="external_knowledge_id is required"),
-        ):
+        with patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api:
             mock_get_api.return_value = Mock(id=external_knowledge_api_id)
-            DatasetService.create_empty_dataset(
-                tenant_id=tenant.id,
-                name="External Missing Knowledge Dataset",
-                description=None,
-                indexing_technique=None,
-                account=account,
-                provider="external",
-                external_knowledge_api_id=external_knowledge_api_id,
-                external_knowledge_id=None,
-            )
+            with pytest.raises(ValueError, match="external_knowledge_id is required"):
+                DatasetService.create_empty_dataset(
+                    tenant_id=tenant.id,
+                    name="External Missing Knowledge Dataset",
+                    description=None,
+                    indexing_technique=None,
+                    account=account,
+                    provider="external",
+                    external_knowledge_api_id=external_knowledge_api_id,
+                    external_knowledge_id=None,
+                )
 
 
 class TestDatasetServiceCreateRagPipelineDataset:
