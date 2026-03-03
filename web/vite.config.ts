@@ -115,6 +115,10 @@ export default defineConfig(({ mode }) => {
         }
       : {}),
 
+    ssr: {
+      noExternal: ['emoji-mart'],
+    },
+
     // Vitest config
     test: {
       environment: 'jsdom',
