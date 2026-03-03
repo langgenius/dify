@@ -199,10 +199,7 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    // Get all buttons and find the cancel button (it appears before the save button in edit mode)
-    const buttons = screen.getAllByRole('button')
-    // The cancel button is the second-to-last button in the edit mode action bar
-    const cancelBtn = buttons[buttons.length - 2]
+    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
     await user.click(cancelBtn)
 
     await waitFor(() => {
@@ -439,9 +436,7 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    // Timer is running again, let's click cancel to hit lines 79-80
-    const buttons = screen.getAllByRole('button')
-    const cancelBtn = buttons[buttons.length - 2]
+    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
     await user.click(cancelBtn)
 
     // Test unmount clearing timer
@@ -465,8 +460,7 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer
 
-    const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons[buttons.length - 1]
+    const saveBtn = screen.getByTestId('save-edit-btn')
     await user.click(saveBtn) // handleResend clears timer
 
     expect(onRegenerate).toHaveBeenCalled()

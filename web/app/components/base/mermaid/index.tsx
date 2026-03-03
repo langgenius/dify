@@ -20,7 +20,7 @@ import {
 // Global flags and cache for mermaid
 let isMermaidInitialized = false
 const diagramCache = new Map<string, string>()
-let mermaidAPI: any = null
+let mermaidAPI: typeof mermaid.mermaidAPI | null = null
 
 if (typeof window !== 'undefined')
   mermaidAPI = mermaid.mermaidAPI
@@ -436,7 +436,9 @@ const Flowchart = (props: FlowchartProps) => {
   }, [])
 
   const handlePreviewClick = async () => {
-    const base64 = await svgToBase64(svgString!)
+    if (!svgString)
+      return
+    const base64 = await svgToBase64(svgString)
     setImagePreviewUrl(base64)
   }
 
