@@ -277,19 +277,6 @@
       "count": 1
     }
   },
-  "app/components/app-sidebar/__tests__/sidebar-animation-issues.spec.tsx": {
-    "no-console": {
-      "count": 26
-    }
-  },
-  "app/components/app-sidebar/__tests__/text-squeeze-fix-verification.spec.tsx": {
-    "no-console": {
-      "count": 51
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app-sidebar/app-info/app-operations.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4

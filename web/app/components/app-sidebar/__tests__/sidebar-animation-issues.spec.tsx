@@ -143,12 +143,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
       expect(toggleSection).toHaveClass('px-4') // Same consistent padding
       expect(toggleSection).not.toHaveClass('px-5')
       expect(toggleSection).not.toHaveClass('px-6')
-
-      // THE FIX: px-4 in both states prevents position movement
-      console.log('✅ Issue #1 FIXED: Toggle button now has consistent padding')
-      console.log('   - Before: px-4 (collapsed) vs px-6 (expanded) - 8px difference')
-      console.log('   - After:  px-4 (both states) - 0px difference')
-      console.log('   - Result: No button position movement during transition')
     })
 
     it('should verify sidebar width animation is working correctly', () => {
@@ -164,8 +158,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
       // Expanded state
       rerender(<MockSidebarToggleButton expand={true} onToggle={handleToggle} />)
       expect(container).toHaveClass('w-[216px]')
-
-      console.log('✅ Sidebar width transition is properly configured')
     })
   })
 
@@ -188,13 +180,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
       expect(link).toHaveClass('px-3') // 12px padding (+2px)
       expect(icon).toHaveClass('mr-2') // 8px margin (+8px)
       expect(screen.getByTestId('nav-text-Orchestrate')).toBeInTheDocument()
-
-      // THE BUG: Multiple simultaneous changes create squeeze effect
-      console.log('🐛 Issue #2 Reproduced: Text squeeze effect from multiple layout changes')
-      console.log('   - Link padding: px-2.5 → px-3 (+2px)')
-      console.log('   - Icon margin: mr-0 → mr-2 (+8px)')
-      console.log('   - Text appears: none → visible (abrupt)')
-      console.log('   - Result: Text appears with squeeze effect due to layout shifts')
     })
 
     it('should document the abrupt text rendering issue', () => {
@@ -207,10 +192,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       // Text suddenly appears - no transition
       expect(screen.getByTestId('nav-text-API Access')).toBeInTheDocument()
-
-      console.log('🐛 Issue #2 Detail: Conditional rendering {mode === "expand" && name}')
-      console.log('   - Problem: Text appears/disappears abruptly without transition')
-      console.log('   - Should use: opacity or width transition for smooth appearance')
     })
   })
 
@@ -234,13 +215,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
       expect(iconContainer).toHaveClass('gap-1')
       expect(iconContainer).not.toHaveClass('justify-between')
       expect(appIcon).toHaveAttribute('data-size', 'small')
-
-      // THE BUG: Layout mode switch causes icon to "bounce"
-      console.log('🐛 Issue #3 Reproduced: Icon bounce from layout mode switching')
-      console.log('   - Layout change: justify-between → flex-col gap-1')
-      console.log('   - Icon size: large (40px) → small (24px)')
-      console.log('   - Transition: transition-all causes excessive animation')
-      console.log('   - Result: Icon appears to bounce to right then back during collapse')
     })
 
     it('should identify the problematic transition-all property', () => {
@@ -251,10 +225,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       // The problematic broad transition
       expect(computedStyle.transition).toContain('all')
-
-      console.log('🐛 Issue #3 Detail: transition-all affects ALL CSS properties')
-      console.log('   - Problem: Animates layout properties that should not transition')
-      console.log('   - Solution: Use specific transition properties instead of "all"')
     })
   })
 
@@ -276,7 +246,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       // Initial state verification
       expect(expanded).toBe(false)
-      console.log('🔄 Starting interactive test - all issues will be reproduced')
 
       // Simulate toggle click
       fireEvent.click(toggleButton)
@@ -287,11 +256,6 @@ describe('Sidebar Animation Issues Reproduction', () => {
           <MockAppInfo expand={expanded} />
         </div>,
       )
-
-      console.log('✨ All three issues successfully reproduced in interactive test:')
-      console.log('   1. Toggle button position movement (padding inconsistency)')
-      console.log('   2. Navigation text squeeze effect (multiple layout changes)')
-      console.log('   3. App icon bounce animation (layout mode switching)')
     })
   })
 })
