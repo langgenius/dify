@@ -13,23 +13,23 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
 from core.model_manager import ModelInstance
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_events import (
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
-from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
+from dify_graph.nodes.llm.node import LLMNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.enums import UserFrom
 
 from .test_table_runner import TableTestRunner
