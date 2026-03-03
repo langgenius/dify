@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.enums import UserFrom
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
@@ -20,7 +21,6 @@ from dify_graph.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, G
 from dify_graph.nodes.start.start_node import StartNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.variables import IntegerVariable, StringVariable
-from models.enums import UserFrom
 
 
 def test_abort_command():

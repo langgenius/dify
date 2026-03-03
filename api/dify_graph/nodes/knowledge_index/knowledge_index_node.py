@@ -2,9 +2,8 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
+from dify_graph.enums import InvokeFrom, NodeExecutionType, NodeType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.template import Template

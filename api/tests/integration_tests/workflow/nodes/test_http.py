@@ -10,13 +10,12 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph import Graph
 from dify_graph.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
