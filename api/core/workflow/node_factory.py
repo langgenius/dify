@@ -330,8 +330,8 @@ class DifyNodeFactory(NodeFactory):
         node_data: Mapping[str, Any] | BaseModel,
         model_instance: ModelInstance,
     ) -> PromptMessageMemory | None:
-        raw_memory_config = node_data.get("memory") if isinstance(node_data, Mapping) else node_data.model_dump().get(
-            "memory"
+        raw_memory_config = (
+            node_data.get("memory") if isinstance(node_data, Mapping) else node_data.model_dump().get("memory")
         )
         if raw_memory_config is None:
             return None
