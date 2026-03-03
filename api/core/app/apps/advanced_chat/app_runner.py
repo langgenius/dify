@@ -25,16 +25,16 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
-from core.workflow.enums import WorkflowType
-from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import VariableLoader
-from core.workflow.variables.variables import Variable
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.enums import WorkflowType
+from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import VariableLoader
+from dify_graph.variables.variables import Variable
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span

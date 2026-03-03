@@ -55,6 +55,8 @@ const LocaleLayout = async ({
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        <ReactScanLoader />
       </head>
       <body
         className="h-full select-auto"
@@ -62,7 +64,6 @@ const LocaleLayout = async ({
       >
         <div className="isolate h-full">
           <PWAProvider>
-            <ReactScanLoader />
             <JotaiProvider>
               <ThemeProvider
                 attribute="data-theme"

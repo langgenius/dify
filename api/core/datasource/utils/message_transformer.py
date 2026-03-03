@@ -4,7 +4,7 @@ from mimetypes import guess_extension, guess_type
 
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileTransferMethod, FileType
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
