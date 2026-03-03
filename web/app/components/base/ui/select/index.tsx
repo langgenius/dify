@@ -12,11 +12,22 @@ export const SelectGroup = BaseSelect.Group
 export const SelectGroupLabel = BaseSelect.GroupLabel
 export const SelectSeparator = BaseSelect.Separator
 
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
+  clearable?: boolean
+  onClear?: () => void
+  loading?: boolean
+}
+
 export function SelectTrigger({
   className,
   children,
+  clearable = false,
+  onClear,
+  loading = false,
   ...props
-}: React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger>) {
+}: SelectTriggerProps) {
+  const showClear = clearable && !loading
+
   return (
     <BaseSelect.Trigger
       className={cn(
@@ -27,9 +38,34 @@ export function SelectTrigger({
       {...props}
     >
       <span className="grow truncate">{children}</span>
-      <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
-        <span className="i-ri-arrow-down-s-line h-4 w-4" />
-      </BaseSelect.Icon>
+      {loading
+        ? (
+            <span className="ml-1 shrink-0 text-text-quaternary">
+              <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin" />
+            </span>
+          )
+        : showClear
+          ? (
+              <span
+                role="button"
+                tabIndex={-1}
+                className="ml-1 shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClear?.()
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                }}
+              >
+                <span className="i-ri-close-circle-fill h-3.5 w-3.5" />
+              </span>
+            )
+          : (
+              <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
+                <span className="i-ri-arrow-down-s-line h-4 w-4" />
+              </BaseSelect.Icon>
+            )}
     </BaseSelect.Trigger>
   )
 }
@@ -77,6 +113,7 @@ export function SelectContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
+        alignItemWithTrigger={false}
         className={cn('z-50 outline-none', className)}
         {...positionerProps}
       >
