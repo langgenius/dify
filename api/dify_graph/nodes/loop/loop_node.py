@@ -428,8 +428,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
             user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            user_from=self.user_from,
+            invoke_from=self.invoke_from,
             call_depth=self.workflow_call_depth,
         )
 

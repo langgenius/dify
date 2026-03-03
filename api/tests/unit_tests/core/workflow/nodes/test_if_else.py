@@ -7,7 +7,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.graph import Graph
 from dify_graph.nodes.if_else.entities import IfElseNodeData
@@ -17,7 +17,6 @@ from dify_graph.system_variable import SystemVariable
 from dify_graph.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from dify_graph.variables import ArrayFileSegment
 from extensions.ext_database import db
-from models.enums import UserFrom
 
 
 def test_execute_if_else_result_true():

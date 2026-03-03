@@ -6,7 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import SystemVariableKey, UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
@@ -15,7 +15,6 @@ from dify_graph.repositories.summary_index_service_protocol import SummaryIndexS
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import StringSegment
-from models.enums import UserFrom
 
 
 @pytest.fixture

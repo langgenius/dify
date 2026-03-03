@@ -5,13 +5,12 @@ from unittest.mock import MagicMock
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.nodes.answer.answer_node import AnswerNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
-from models.enums import UserFrom
 
 
 def test_execute_answer():
