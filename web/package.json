@@ -311,6 +311,6 @@
     ]
   },
   "lint-staged": {
-    "*": "eslint --fix --pass-on-unpruned-suppressions"
+    "*": "eslint --fix"
   }
 }

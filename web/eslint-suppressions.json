@@ -2765,9 +2765,6 @@
     "style/multiline-ternary": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2868,11 +2865,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/base/tooltip/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
