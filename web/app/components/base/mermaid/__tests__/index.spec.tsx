@@ -282,17 +282,22 @@ describe('Mermaid Flowchart Component', () => {
         throw new Error('Config fail')
       })
 
-      render(<Flowchart PrimitiveCode="graph TD\n  G-->H" />)
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
-      })
-      consoleSpy.mockRestore()
-
-      if (originalMock) {
-        vi.mocked(mermaid.initialize).mockImplementation(originalMock)
+      try {
+        await act(async () => {
+          render(<Flowchart PrimitiveCode="graph TD\n  G-->H" />)
+        })
+        await waitFor(() => {
+          expect(consoleSpy).toHaveBeenCalledWith('Config error:', expect.any(Error))
+        })
       }
-      else {
-        vi.mocked(mermaid.initialize).mockImplementation(() => { })
+      finally {
+        consoleSpy.mockRestore()
+        if (originalMock) {
+          vi.mocked(mermaid.initialize).mockImplementation(originalMock)
+        }
+        else {
+          vi.mocked(mermaid.initialize).mockImplementation(() => { })
+        }
       }
     })
 

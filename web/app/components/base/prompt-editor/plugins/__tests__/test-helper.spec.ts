@@ -5,6 +5,7 @@ import {
   $createTextNode,
   $getRoot,
   $getSelection,
+  $isRangeSelection,
   ParagraphNode,
   TextNode,
 } from 'lexical'
@@ -32,7 +33,7 @@ describe('test-helpers', () => {
 
       const editor = await waitForEditorReady(getEditor)
       expect(editor).toBeDefined()
-      expect(editor._config.namespace).toBe('TestNamespace')
+      expect(editor).toBe(getEditor())
     })
 
     it('should throw if wait times out without editor', async () => {
@@ -51,7 +52,7 @@ describe('test-helpers', () => {
       ).rejects.toThrow('Editor is not available')
     })
 
-    it('should trigger onError if an error occurs during initialization', async () => {
+    it('should surface errors through configured onError callback', async () => {
       const { getEditor } = renderLexicalEditor({
         namespace: 'TestNamespace',
         nodes: [ParagraphNode, TextNode],
@@ -60,7 +61,9 @@ describe('test-helpers', () => {
       const editor = await waitForEditorReady(getEditor)
 
       expect(() => {
-        (editor as LexicalEditor & { _onError: (error: Error) => void })._onError(new Error('test error'))
+        editor.update(() => {
+          throw new Error('test error')
+        }, { discrete: true })
       }).toThrow('test error')
     })
   })
@@ -73,12 +76,12 @@ describe('test-helpers', () => {
       selectRootEnd(editor)
 
       await waitFor(() => {
-        let selectionType = ''
+        let isRangeSelection = false
         editor.getEditorState().read(() => {
           const selection = $getSelection()
-          selectionType = selection ? selection.constructor.name : ''
+          isRangeSelection = $isRangeSelection(selection)
         })
-        expect(selectionType).toBe('RangeSelection')
+        expect(isRangeSelection).toBe(true)
       })
     })
   })
@@ -186,11 +189,11 @@ describe('test-helpers', () => {
     it('should expose createLexicalTestEditor with onError throw', () => {
       const editor = createLexicalTestEditor('custom-namespace', [ParagraphNode, TextNode])
       expect(editor).toBeDefined()
-      expect(editor._config.namespace).toBe('custom-namespace')
 
       expect(() => {
-        // eslint-disable-next-line ts/no-explicit-any
-        (editor as any)._onError(new Error('test error'))
+        editor.update(() => {
+          throw new Error('test error')
+        }, { discrete: true })
       }).toThrow('test error')
     })
   })

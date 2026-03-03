@@ -81,72 +81,59 @@ describe('AmplitudeProvider', () => {
       )
 
       const originalWindowLocation = window.location
-
-      Object.defineProperty(window, 'location', {
-        value: { pathname: '/datasets' },
-        writable: true,
-      })
-
-      const event: amplitude.Types.Event = {
-        event_type: '[Amplitude] Page Viewed',
-        event_properties: {},
+      try {
+        Object.defineProperty(window, 'location', {
+          value: { pathname: '/datasets' },
+          writable: true,
+        })
+        const event: amplitude.Types.Event = {
+          event_type: '[Amplitude] Page Viewed',
+          event_properties: {},
+        }
+        const result = await execute(event)
+        expect(getPageTitle(result)).toBe('Knowledge')
+        window.location.pathname = '/'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Home')
+        window.location.pathname = '/apps'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Studio')
+        window.location.pathname = '/explore'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Explore')
+        window.location.pathname = '/tools'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Tools')
+        window.location.pathname = '/account'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Account')
+        window.location.pathname = '/signin'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Sign In')
+        window.location.pathname = '/signup'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Sign Up')
+        window.location.pathname = '/unknown'
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Unknown')
+        const otherEvent = {
+          event_type: 'Button Clicked',
+          event_properties: {},
+        } as amplitude.Types.Event
+        const otherResult = await execute(otherEvent)
+        expect(getPageTitle(otherResult)).toBeUndefined()
+        const noPropsEvent = {
+          event_type: '[Amplitude] Page Viewed',
+        } as amplitude.Types.Event
+        const noPropsResult = await execute(noPropsEvent)
+        expect(noPropsResult?.event_properties).toBeUndefined()
       }
-
-      const result = await execute(event)
-      expect(getPageTitle(result)).toBe('Knowledge')
-
-      window.location.pathname = '/'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Home')
-
-      window.location.pathname = '/apps'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Studio')
-
-      window.location.pathname = '/explore'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Explore')
-
-      window.location.pathname = '/tools'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Tools')
-
-      window.location.pathname = '/account'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Account')
-
-      window.location.pathname = '/signin'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Sign In')
-
-      window.location.pathname = '/signup'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Sign Up')
-
-      window.location.pathname = '/unknown'
-      await execute(event)
-      expect(getPageTitle(event)).toBe('Unknown')
-
-      const otherEvent = {
-        event_type: 'Button Clicked',
-        event_properties: {},
-      } as amplitude.Types.Event
-      const otherResult = await execute(otherEvent)
-      expect(getPageTitle(otherResult)).toBeUndefined()
-
-      const noPropsEvent = {
-        event_type: '[Amplitude] Page Viewed',
-      } as amplitude.Types.Event
-      const noPropsResult = await execute(noPropsEvent)
-      expect(noPropsResult?.event_properties).toBeUndefined()
-
-      // Test when window is undefined (simulated by deleting it or just mocking)
-      // Since it's a browser env in vitest, window is always defined, but we can test the fallback if window is missing
-
-      Object.defineProperty(window, 'location', {
-        value: originalWindowLocation,
-        writable: true,
-      })
+      finally {
+        Object.defineProperty(window, 'location', {
+          value: originalWindowLocation,
+          writable: true,
+        })
+      }
     })
   })
 })

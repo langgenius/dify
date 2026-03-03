@@ -94,7 +94,9 @@ class MockAudio {
 
   emit(event: AudioEventName) {
     const listeners = this.listeners[event] || []
-    listeners.forEach(listener => listener())
+    listeners.forEach((listener) => {
+      listener()
+    })
   }
 }
 

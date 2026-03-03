@@ -118,7 +118,7 @@ describe('Input component', () => {
   describe('Number Input Formatting', () => {
     it('removes leading zeros on change when current value is zero', () => {
       let changedValue = ''
-      const onChange = vi.fn((e) => {
+      const onChange = vi.fn((e: React.ChangeEvent<HTMLInputElement>) => {
         changedValue = e.target.value
       })
       render(<Input type="number" value={0} onChange={onChange} />)
@@ -132,7 +132,7 @@ describe('Input component', () => {
 
     it('keeps typed value on change when current value is not zero', () => {
       let changedValue = ''
-      const onChange = vi.fn((e) => {
+      const onChange = vi.fn((e: React.ChangeEvent<HTMLInputElement>) => {
         changedValue = e.target.value
       })
       render(<Input type="number" value={1} onChange={onChange} />)

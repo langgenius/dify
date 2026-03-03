@@ -268,12 +268,12 @@ describe('build chat item tree and get thread messages', () => {
     expect(tree6).toMatchSnapshot()
   })
 
-  it ('should get thread messages from tree6, using the last message as target', () => {
+  it('should get thread messages from tree6, using the last message as target', () => {
     const threadMessages6_1 = getThreadMessages(tree6)
     expect(threadMessages6_1).toMatchSnapshot()
   })
 
-  it ('should get thread messages from tree6, using specified message as target', () => {
+  it('should get thread messages from tree6, using specified message as target', () => {
     const threadMessages6_2 = getThreadMessages(tree6, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
     expect(threadMessages6_2).toMatchSnapshot()
   })
@@ -292,6 +292,9 @@ describe('build chat item tree and get thread messages', () => {
 })
 
 describe('chat utils - url params and answer helpers', () => {
+  const setSearch = (search: string) => {
+    window.history.replaceState({}, '', `${window.location.pathname}${search}`)
+  }
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('DecompressionStream', MockDecompressionStream)
@@ -304,11 +307,7 @@ describe('chat utils - url params and answer helpers', () => {
       body = { pipeThrough: mockPipeThrough }
       arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8))
     })
-
-    // eslint-disable-next-line ts/no-explicit-any
-    delete (window as any).location
-    // eslint-disable-next-line ts/no-explicit-any
-    window.location = { search: '' } as any
+    setSearch('')
   })
 
   afterEach(() => {
@@ -317,43 +316,43 @@ describe('chat utils - url params and answer helpers', () => {
 
   describe('URL Parameter Extractors', () => {
     it('getRawInputsFromUrlParams extracts inputs except sys. and user.', async () => {
-      window.location.search = '?custom=123&sys.param=456&user.param=789&encoded=a%20b'
+      setSearch('?custom=123&sys.param=456&user.param=789&encoded=a%20b')
       const res = await getRawInputsFromUrlParams()
       expect(res).toEqual({ custom: '123', encoded: 'a b' })
     })
 
     it('getRawUserVariablesFromUrlParams extracts only user. prefixed params', async () => {
-      window.location.search = '?custom=123&sys.param=456&user.param=789&user.encoded=a%20b'
+      setSearch('?custom=123&sys.param=456&user.param=789&user.encoded=a%20b')
       const res = await getRawUserVariablesFromUrlParams()
       expect(res).toEqual({ param: '789', encoded: 'a b' })
     })
 
     it('getProcessedInputsFromUrlParams decompresses base64 inputs', async () => {
-      window.location.search = '?custom=123&sys.param=456&user.param=789'
+      setSearch('?custom=123&sys.param=456&user.param=789')
       const res = await getProcessedInputsFromUrlParams()
       expect(res).toEqual({ custom: 'decompressed_text' })
     })
 
     it('getProcessedSystemVariablesFromUrlParams decompresses sys. prefixed params', async () => {
-      window.location.search = '?custom=123&sys.param=456&user.param=789'
+      setSearch('?custom=123&sys.param=456&user.param=789')
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
     })
 
     it('getProcessedSystemVariablesFromUrlParams parses redirect_url without query string', async () => {
-      window.location.search = `?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=456`
+      setSearch(`?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=456`)
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
     })
 
     it('getProcessedSystemVariablesFromUrlParams parses redirect_url', async () => {
-      window.location.search = `?redirect_url=${encodeURIComponent('http://example.com?sys.redirected=abc')}&sys.param=456`
+      setSearch(`?redirect_url=${encodeURIComponent('http://example.com?sys.redirected=abc')}&sys.param=456`)
       const res = await getProcessedSystemVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text', redirected: 'decompressed_text' })
     })
 
     it('getProcessedUserVariablesFromUrlParams decompresses user. prefixed params', async () => {
-      window.location.search = '?custom=123&sys.param=456&user.param=789'
+      setSearch('?custom=123&sys.param=456&user.param=789')
       const res = await getProcessedUserVariablesFromUrlParams()
       expect(res).toEqual({ param: 'decompressed_text' })
     })
@@ -362,7 +361,7 @@ describe('chat utils - url params and answer helpers', () => {
       vi.stubGlobal('atob', () => {
         throw new Error('invalid')
       })
-      window.location.search = '?custom=invalid_base64'
+      setSearch('?custom=invalid_base64')
       const res = await getProcessedInputsFromUrlParams()
       expect(res).toEqual({ custom: undefined })
     })

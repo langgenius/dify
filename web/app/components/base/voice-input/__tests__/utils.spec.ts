@@ -38,7 +38,9 @@ function createMockRecorder(opts: {
   const toDataView = (samples: number[]) => {
     const buf = new ArrayBuffer(samples.length * 2)
     const view = new DataView(buf)
-    samples.forEach((v, i) => view.setInt16(i * 2, v, true))
+    samples.forEach((v, i) => {
+      view.setInt16(i * 2, v, true)
+    })
     return view
   }
 
