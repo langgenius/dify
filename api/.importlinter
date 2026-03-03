@@ -134,7 +134,6 @@ ignore_imports =
     dify_graph.nodes.agent.agent_node -> models.model
     dify_graph.nodes.llm.file_saver -> core.helper.ssrf_proxy
     dify_graph.nodes.llm.node -> core.helper.code_executor
-    dify_graph.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     dify_graph.nodes.llm.node -> core.model_manager

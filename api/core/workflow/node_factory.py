@@ -119,7 +119,7 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._template_renderer = CodeExecutorJinja2TemplateRenderer()
+        self._template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
         self._http_request_tool_file_manager_factory = ToolFileManager
