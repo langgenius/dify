@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities import (
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessageRole,
