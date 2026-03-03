@@ -39,8 +39,8 @@ from extensions.ext_storage import storage
 from models.account import Tenant
 from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -94,13 +94,13 @@ def _lookup_llm_credential_info(
     """
     Lookup LLM credential ID and name for the given provider and model.
     Returns (credential_id, credential_name).
-    
+
     Handles async timing issues gracefully - if credential is deleted between lookups,
     returns the ID but empty name rather than failing.
     """
     if not tenant_id or not provider:
         return None, ""
-    
+
     try:
         with Session(db.engine) as session:
             # Try to find provider-level or model-level configuration
@@ -111,15 +111,15 @@ def _lookup_llm_credential_info(
                     Provider.provider_type == ProviderType.CUSTOM,
                 )
             )
-            
+
             if not provider_record:
                 return None, ""
-            
+
             # Check if there's a model-specific config
             credential_id = None
             credential_name = ""
             is_model_level = False
-            
+
             if model and provider_record.credential_id:
                 # Try model-level first
                 model_record = session.scalar(
@@ -130,16 +130,16 @@ def _lookup_llm_credential_info(
                         ProviderModel.model_type == model_type,
                     )
                 )
-                
+
                 if model_record and model_record.credential_id:
                     credential_id = model_record.credential_id
                     is_model_level = True
-            
+
             if not credential_id and provider_record.credential_id:
                 # Fall back to provider-level credential
                 credential_id = provider_record.credential_id
                 is_model_level = False
-            
+
             # Lookup credential_name if we have credential_id
             if credential_id:
                 try:
@@ -153,11 +153,9 @@ def _lookup_llm_credential_info(
                     else:
                         # Query ProviderCredential
                         cred_name = session.scalar(
-                            select(ProviderCredential.credential_name).where(
-                                ProviderCredential.id == credential_id
-                            )
+                            select(ProviderCredential.credential_name).where(ProviderCredential.id == credential_id)
                         )
-                    
+
                     if cred_name:
                         credential_name = str(cred_name)
                 except Exception as e:
@@ -170,7 +168,7 @@ def _lookup_llm_credential_info(
                         model,
                         str(e),
                     )
-            
+
             return credential_id, credential_name
     except Exception as e:
         # Database query failed or other unexpected error
@@ -788,7 +786,12 @@ class TraceTask:
                 )
                 message_id = session.scalar(message_data_stmt)
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         metadata: dict[str, Any] = {
             "workflow_id": workflow_id,
@@ -867,7 +870,12 @@ class TraceTask:
             if tid:
                 tenant_id = str(tid)
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         metadata = {
             "conversation_id": message_data.conversation_id,
@@ -904,7 +912,9 @@ class TraceTask:
             outputs=message_data.answer,
             file_list=file_list,
             start_time=created_at,
-            end_time=message_data.updated_at if message_data.updated_at and message_data.updated_at > created_at else created_at + timedelta(seconds=message_data.provider_response_latency),
+            end_time=message_data.updated_at
+            if message_data.updated_at and message_data.updated_at > created_at
+            else created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
@@ -1019,7 +1029,12 @@ class TraceTask:
             if tid:
                 tenant_id = str(tid)
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
 
         doc_list = [doc.model_dump() for doc in documents] if documents else []
         dataset_ids: set[str] = set()
@@ -1269,24 +1284,32 @@ class TraceTask:
         if not node_data:
             return {}
 
-        app_name, workspace_name = _lookup_app_and_workspace_names(node_data.get("app_id"), node_data.get("tenant_id"))
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(
+                node_data.get("app_id"), node_data.get("tenant_id")
+            )
+        else:
+            app_name, workspace_name = "", ""
 
         # Try tool credential lookup first
         credential_id = node_data.get("credential_id")
-        credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
-        
-        # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
-        if not credential_id:
-            llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
-                tenant_id=node_data.get("tenant_id"),
-                provider=node_data.get("model_provider"),
-                model=node_data.get("model_name"),
-                model_type="llm",
-            )
-            if llm_cred_id:
-                credential_id = llm_cred_id
-                credential_name = llm_cred_name
-
+        if is_enterprise_telemetry_enabled():
+            credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
+            # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
+            if not credential_id:
+                llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
+                    tenant_id=node_data.get("tenant_id"),
+                    provider=node_data.get("model_provider"),
+                    model=node_data.get("model_name"),
+                    model_type="llm",
+                )
+                if llm_cred_id:
+                    credential_id = llm_cred_id
+                    credential_name = llm_cred_name
+        else:
+            credential_name = ""
         metadata: dict[str, Any] = {
             "tenant_id": node_data.get("tenant_id"),
             "app_id": node_data.get("app_id"),

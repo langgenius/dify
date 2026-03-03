@@ -9,6 +9,7 @@ class RuleGeneratePayload(BaseModel):
     instruction: str = Field(..., description="Rule generation instruction")
     model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
     no_variable: bool = Field(default=False, description="Whether to exclude variables")
+    app_id: str | None = Field(default=None, description="App ID for prompt generation tracing")
 
 
 class RuleCodeGeneratePayload(RuleGeneratePayload):
@@ -18,3 +19,4 @@ class RuleCodeGeneratePayload(RuleGeneratePayload):
 class RuleStructuredOutputPayload(BaseModel):
     instruction: str = Field(..., description="Structured output generation instruction")
     model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    app_id: str | None = Field(default=None, description="App ID for prompt generation tracing")
