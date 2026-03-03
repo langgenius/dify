@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from tasks import human_input_timeout_tasks as task_module
 
 

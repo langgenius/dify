@@ -5,17 +5,17 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.graph import Graph
-from core.workflow.nodes.if_else.entities import IfElseNodeData
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
-from core.workflow.variables import ArrayFileSegment
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.graph import Graph
+from dify_graph.nodes.if_else.entities import IfElseNodeData
+from dify_graph.nodes.if_else.if_else_node import IfElseNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.utils.condition.entities import Condition, SubCondition, SubVariableCondition
+from dify_graph.variables import ArrayFileSegment
 from extensions.ext_database import db
 from models.enums import UserFrom
 

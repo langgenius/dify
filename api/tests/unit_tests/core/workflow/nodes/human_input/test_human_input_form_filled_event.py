@@ -2,17 +2,17 @@ import datetime
 from types import SimpleNamespace
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.enums import NodeType
-from core.workflow.graph_events import (
+from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.enums import NodeType
+from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 

@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 
 
 class CreatorUserRole(StrEnum):
