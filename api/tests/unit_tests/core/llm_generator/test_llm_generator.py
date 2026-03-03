@@ -6,8 +6,8 @@ import pytest
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
 
 class TestLLMGenerator:
