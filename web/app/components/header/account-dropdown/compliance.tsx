@@ -177,7 +177,7 @@ function ComplianceDocRowItem({
   return (
     <DropdownMenuItem
       className={cn(submenuItemClassName, 'justify-between')}
-      closeOnClick={false}
+      closeOnClick={!isCurrentPlanCanDownload}
       onClick={handleSelect}
     >
       {icon}
