@@ -25,11 +25,8 @@ from core.ops.tencent_trace.entities.semconv import (
 )
 from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.rag.models.document import Document
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TestTencentSpanBuilder:

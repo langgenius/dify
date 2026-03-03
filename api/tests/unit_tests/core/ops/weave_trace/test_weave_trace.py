@@ -22,7 +22,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -19,7 +19,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.opik_trace.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 from models.enums import MessageStatus
 

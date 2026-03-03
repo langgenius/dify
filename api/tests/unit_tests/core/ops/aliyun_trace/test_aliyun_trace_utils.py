@@ -24,8 +24,8 @@ from core.ops.aliyun_trace.utils import (
     serialize_json_data,
 )
 from core.rag.models.document import Document
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from models import EndUser
 
 

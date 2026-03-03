@@ -14,8 +14,8 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.tencent_trace.tencent_trace import TencentDataTrace
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.nodes import NodeType
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import NodeType
 from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)

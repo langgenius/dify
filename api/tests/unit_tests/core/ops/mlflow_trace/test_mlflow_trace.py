@@ -21,7 +21,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

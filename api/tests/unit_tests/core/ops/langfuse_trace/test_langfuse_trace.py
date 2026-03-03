@@ -26,7 +26,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from models import EndUser
 from models.enums import MessageStatus
 

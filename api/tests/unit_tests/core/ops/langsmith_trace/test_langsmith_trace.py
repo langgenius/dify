@@ -22,7 +22,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 
