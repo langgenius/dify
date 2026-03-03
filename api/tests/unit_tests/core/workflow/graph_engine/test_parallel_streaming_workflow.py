@@ -16,7 +16,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_manager import ModelInstance
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeType, UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
@@ -30,7 +30,6 @@ from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 
 from .test_table_runner import TableTestRunner
 
