@@ -8,32 +8,32 @@ API_DIR = str(Path(__file__).resolve().parents[5])
 if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
 
-import core.workflow.nodes.human_input.entities  # noqa: F401
+import dify_graph.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
-from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from core.workflow.graph_events import (
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine
+from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.node_events import NodeRunResult, PauseRequestedEvent
+from dify_graph.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 if "core.ops.ops_trace_manager" not in sys.modules:
     ops_stub = ModuleType("core.ops.ops_trace_manager")

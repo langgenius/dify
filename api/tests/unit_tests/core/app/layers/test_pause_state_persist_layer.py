@@ -13,17 +13,17 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.graph_engine.entities.commands import GraphEngineCommand
-from core.workflow.graph_engine.layers.base import GraphEngineLayerNotInitializedError
-from core.workflow.graph_events.graph import (
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.graph_engine.entities.commands import GraphEngineCommand
+from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from dify_graph.graph_events.graph import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
-from core.workflow.variables.segments import Segment
+from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from dify_graph.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 
