@@ -134,8 +134,8 @@ def factory():
 class TestRecommendedAppServiceGetApps:
     """Test get_recommended_apps_and_categories operations."""
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_success_with_apps(self, mock_config, mock_factory_class, factory):
         """Test successful retrieval of recommended apps when apps are returned."""
         # Arrange
@@ -161,8 +161,8 @@ class TestRecommendedAppServiceGetApps:
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
         mock_retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_fallback_to_builtin_when_empty(self, mock_config, mock_factory_class, factory):
         """Test fallback to builtin when no recommended apps are returned."""
         # Arrange
@@ -199,8 +199,8 @@ class TestRecommendedAppServiceGetApps:
         # Verify fallback was called with en-US (hardcoded)
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_fallback_when_none_recommended_apps(self, mock_config, mock_factory_class, factory):
         """Test fallback when recommended_apps key is None."""
         # Arrange
@@ -232,8 +232,8 @@ class TestRecommendedAppServiceGetApps:
         assert result == builtin_response
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once()
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_with_different_languages(self, mock_config, mock_factory_class, factory):
         """Test retrieval with different language codes."""
         # Arrange
@@ -262,8 +262,8 @@ class TestRecommendedAppServiceGetApps:
             assert result["recommended_apps"][0]["id"] == f"app-{language}"
             mock_instance.get_recommended_apps_and_categories.assert_called_with(language)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_uses_correct_factory_mode(self, mock_config, mock_factory_class, factory):
         """Test that correct factory is selected based on mode."""
         # Arrange
@@ -292,8 +292,8 @@ class TestRecommendedAppServiceGetApps:
 class TestRecommendedAppServiceGetDetail:
     """Test get_recommend_app_detail operations."""
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_success(self, mock_config, mock_factory_class, factory):
         """Test successful retrieval of app detail."""
         # Arrange
@@ -324,8 +324,8 @@ class TestRecommendedAppServiceGetDetail:
         assert result["name"] == "Productivity App"
         mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_with_different_modes(self, mock_config, mock_factory_class, factory):
         """Test app detail retrieval with different factory modes."""
         # Arrange
@@ -352,8 +352,8 @@ class TestRecommendedAppServiceGetDetail:
             assert result["name"] == f"App from {mode}"
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_returns_none_when_not_found(self, mock_config, mock_factory_class, factory):
         """Test that None is returned when app is not found."""
         # Arrange
@@ -375,8 +375,8 @@ class TestRecommendedAppServiceGetDetail:
         assert result is None
         mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_returns_empty_dict(self, mock_config, mock_factory_class, factory):
         """Test handling of empty dict response."""
         # Arrange
@@ -397,8 +397,8 @@ class TestRecommendedAppServiceGetDetail:
         # Assert
         assert result == {}
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_with_complex_model_config(self, mock_config, mock_factory_class, factory):
         """Test app detail with complex model configuration."""
         # Arrange

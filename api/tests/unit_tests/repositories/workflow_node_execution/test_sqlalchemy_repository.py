@@ -12,17 +12,17 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import (
+from dify_graph.entities import (
     WorkflowNodeExecution,
 )
-from core.workflow.enums import (
+from dify_graph.enums import (
     NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 

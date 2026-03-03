@@ -764,7 +764,7 @@ class TestWorkflowService:
         # Act - Mock current_user context and pass session
         from unittest.mock import patch
 
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("flask_login.utils._get_user", return_value=account, autospec=True):
             result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
@@ -1391,10 +1391,21 @@ class TestWorkflowService:
 
         workflow_service = WorkflowService()
 
+        from unittest.mock import patch
+
+        from core.model_manager import ModelInstance
+        from core.workflow.node_factory import DifyNodeFactory
+
         # Act
-        result = workflow_service.run_free_workflow_node(
-            node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
-        )
+        with patch.object(
+            DifyNodeFactory,
+            "_build_model_instance_for_llm_node",
+            return_value=MagicMock(spec=ModelInstance),
+            autospec=True,
+        ):
+            result = workflow_service.run_free_workflow_node(
+                node_data=node_data, tenant_id=tenant_id, user_id=user_id, node_id=node_id, user_inputs=user_inputs
+            )
 
         # Assert
         assert result is not None
@@ -1461,10 +1472,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-            from core.workflow.graph_events import NodeRunSucceededEvent
-            from core.workflow.node_events import NodeRunResult
-            from core.workflow.nodes.base.node import Node
+            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.graph_events import NodeRunSucceededEvent
+            from dify_graph.node_events import NodeRunResult
+            from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1506,12 +1517,12 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from core.workflow.enums import NodeType
+        from dify_graph.enums import NodeType
 
         assert result.node_type == NodeType.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from core.workflow.enums import WorkflowNodeExecutionStatus
+        from dify_graph.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1536,10 +1547,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-            from core.workflow.graph_events import NodeRunFailedEvent
-            from core.workflow.node_events import NodeRunResult
-            from core.workflow.nodes.base.node import Node
+            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.graph_events import NodeRunFailedEvent
+            from dify_graph.node_events import NodeRunResult
+            from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1581,7 +1592,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from core.workflow.enums import WorkflowNodeExecutionStatus
+        from dify_graph.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1605,10 +1616,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
-            from core.workflow.graph_events import NodeRunFailedEvent
-            from core.workflow.node_events import NodeRunResult
-            from core.workflow.nodes.base.node import Node
+            from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.graph_events import NodeRunFailedEvent
+            from dify_graph.node_events import NodeRunResult
+            from dify_graph.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
@@ -1651,7 +1662,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from core.workflow.enums import WorkflowNodeExecutionStatus
+        from dify_graph.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

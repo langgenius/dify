@@ -5,12 +5,8 @@ import { ConfigurationMethodEnum } from '../declarations'
 import ProviderAddedCard from './index'
 
 let mockIsCurrentWorkspaceManager = true
-type SubscriptionPayload = { type?: string, payload?: string } | unknown
-let subscriptionHandler: ((value: SubscriptionPayload) => void) | undefined
-const mockEventEmitter: { useSubscription: unknown, emit: unknown } = {
-  useSubscription: vi.fn((handler: (value: SubscriptionPayload) => void) => {
-    subscriptionHandler = handler
-  }),
+const mockEventEmitter = {
+  useSubscription: vi.fn(),
   emit: vi.fn(),
 }
 
@@ -30,6 +26,7 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
+// Mock internal components to simplify testing of the index file
 vi.mock('./credential-panel', () => ({
   default: () => <div data-testid="credential-panel" />,
 }))
@@ -67,31 +64,65 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    subscriptionHandler = undefined
   })
 
   it('should render provider added card component', () => {
-    const { container } = render(<ProviderAddedCard provider={mockProvider} />)
-    expect(container.firstChild).toBeInTheDocument()
+    render(<ProviderAddedCard provider={mockProvider} />)
+    expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
+    expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
   })
 
-  it('should open and refresh model list from user actions', async () => {
+  it('should open, refresh and collapse model list', async () => {
     vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [{ model: 'gpt-4' }] } as unknown as { data: ModelItem[] })
     render(<ProviderAddedCard provider={mockProvider} />)
 
-    const showModelsBtn = screen.getAllByText('common.modelProvider.showModels')[1]
+    const showModelsBtn = screen.getByTestId('show-models-button')
     fireEvent.click(showModelsBtn)
 
-    await screen.findByTestId('model-list')
     expect(fetchModelProviderModelList).toHaveBeenCalledWith(`/workspaces/current/model-providers/${mockProvider.provider}/models`)
+    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'refresh list' }))
+    // Test line 71-72: Opening when already fetched
+    const collapseBtn = screen.getByRole('button', { name: 'collapse list' })
+    fireEvent.click(collapseBtn)
+    await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
+
+    // Explicitly re-find and click to re-open
+    fireEvent.click(screen.getByTestId('show-models-button'))
+    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
+    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1) // Should not fetch again
+
+    // Refresh list from ModelList
+    const refreshBtn = screen.getByRole('button', { name: 'refresh list' })
+    fireEvent.click(refreshBtn)
     await waitFor(() => {
       expect(fetchModelProviderModelList).toHaveBeenCalledTimes(2)
     })
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'collapse list' }))
-    expect(screen.getAllByText(/common\.modelProvider\.showModelsNum:\{"num":1\}/).length).toBeGreaterThan(0)
+  it('should handle concurrent getModelList calls (loading state coverage)', async () => {
+    let resolveOuter: (value: unknown) => void = () => { }
+    const promise = new Promise((resolve) => {
+      resolveOuter = resolve
+    })
+    vi.mocked(fetchModelProviderModelList).mockReturnValue(promise as unknown as ReturnType<typeof fetchModelProviderModelList>)
+
+    render(<ProviderAddedCard provider={mockProvider} />)
+    const showModelsBtn = screen.getByTestId('show-models-button')
+
+    // First call sets loading to true
+    fireEvent.click(showModelsBtn)
+    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+
+    // Second call should return early because loading is true
+    fireEvent.click(showModelsBtn)
+    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveOuter({ data: [] })
+    })
+    // After resolution, loading is false and collapsed is false, so model-list appears
+    expect(await screen.findByTestId('model-list')).toBeInTheDocument()
   })
 
   it('should render configure tip when provider is not in quota list and not configured', () => {
@@ -103,13 +134,18 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should refresh model list on matching event subscription', async () => {
-    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [{ model: 'gpt-4' }] } as unknown as { data: ModelItem[] })
-    render(<ProviderAddedCard provider={mockProvider} notConfigured />)
+  it('should refresh model list on event subscription', async () => {
+    let capturedHandler: (v: { type: string, payload: string } | null) => void = () => { }
+    mockEventEmitter.useSubscription.mockImplementation((handler: (v: unknown) => void) => {
+      capturedHandler = handler as (v: { type: string, payload: string } | null) => void
+    })
+    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [] } as unknown as { data: ModelItem[] })
 
-    expect(subscriptionHandler).toBeTruthy()
-    await act(async () => {
-      subscriptionHandler?.({
+    render(<ProviderAddedCard provider={mockProvider} />)
+
+    expect(capturedHandler).toBeDefined()
+    act(() => {
+      capturedHandler({
         type: 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST',
         payload: mockProvider.provider,
       })
@@ -118,9 +154,16 @@ describe('ProviderAddedCard', () => {
     await waitFor(() => {
       expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
     })
+
+    // Should ignore non-matching events
+    act(() => {
+      capturedHandler({ type: 'OTHER', payload: '' })
+      capturedHandler(null)
+    })
+    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
   })
 
-  it('should render custom model actions only for workspace managers', () => {
+  it('should render custom model actions for workspace managers', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],

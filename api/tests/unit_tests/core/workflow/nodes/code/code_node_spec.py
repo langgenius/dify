@@ -1,14 +1,13 @@
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeLanguage
-from core.variables.types import SegmentType
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.code.exc import (
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
+from dify_graph.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-from core.workflow.nodes.code.limits import CodeNodeLimits
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.variables.types import SegmentType
 
 CodeNode._limits = CodeNodeLimits(
     max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -438,7 +437,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
-        node.init_node_data(data)
+        node._node_data = node._hydrate_node_data(data)
 
         assert node._node_data.title == "Test Node"
         assert node._node_data.code_language == CodeLanguage.PYTHON3
@@ -454,7 +453,7 @@ class TestCodeNodeInitialization:
             "outputs": {"x": {"type": "number"}},
         }
 
-        node.init_node_data(data)
+        node._node_data = node._hydrate_node_data(data)
 
         assert node._node_data.code_language == CodeLanguage.JAVASCRIPT
 

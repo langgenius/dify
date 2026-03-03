@@ -7,8 +7,8 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
