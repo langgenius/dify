@@ -18,7 +18,7 @@ export const DialogDescription = BaseDialog.Description
 export const DialogClose = BaseDialog.Close
 export const DialogPortal = BaseDialog.Portal
 
-type DialogCloseButtonProps = React.ComponentPropsWithoutRef<typeof BaseDialog.Close>
+type DialogCloseButtonProps = Omit<React.ComponentPropsWithoutRef<typeof BaseDialog.Close>, 'children'>
 
 export function DialogCloseButton({
   className,
