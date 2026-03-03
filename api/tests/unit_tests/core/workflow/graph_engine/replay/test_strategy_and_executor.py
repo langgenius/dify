@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 import copy
+import queue
+from datetime import datetime
+from types import SimpleNamespace
 
 from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionMetadataKey
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
+from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
 from dify_graph.graph_engine.replay import (
     BaselineNodeSnapshot,
     DefaultNodeExecutionStrategyResolver,
     DefaultReplayExecutionExecutor,
+    ExecutionStrategyDecision,
     RerunOverrideContext,
 )
+from dify_graph.graph_engine.worker import Worker
 from dify_graph.graph_events import NodeRunStartedEvent, NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
 
@@ -93,6 +100,17 @@ def test_strategy_resolver_downgrades_branch_without_edge_source_handle() -> Non
 
     assert decision.mode == "real"
     assert decision.reason == "missing_edge_source_handle"
+
+
+def test_strategy_resolver_tracks_override_selectors() -> None:
+    resolver = DefaultNodeExecutionStrategyResolver(
+        real_node_ids=set(),
+        baseline_snapshots_by_node_id={},
+        override_context=RerunOverrideContext(override_root_selectors_by_node_id={"node-a": ["out"]}),
+    )
+
+    assert resolver.has_override_selector(node_id="node-a", variable_name="out")
+    assert not resolver.has_override_selector(node_id="node-a", variable_name="missing")
 
 
 def test_replay_executor_uses_override_value_over_baseline() -> None:
@@ -200,3 +218,40 @@ def test_replay_executor_emits_replay_metadata() -> None:
     assert result.metadata[WorkflowNodeExecutionMetadataKey.SOURCE_NODE_EXECUTION_ID] == "exec-source"
     assert result.metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] == "true"
     assert result.edge_source_handle == "true"
+
+
+def test_worker_applies_override_value_for_real_node_outputs() -> None:
+    variable_pool = _build_variable_pool()
+    variable_pool.add(["node-a", "out"], "override-value")
+    resolver = DefaultNodeExecutionStrategyResolver(
+        real_node_ids={"node-a"},
+        baseline_snapshots_by_node_id={},
+        override_context=RerunOverrideContext(override_root_selectors_by_node_id={"node-a": ["out"]}),
+    )
+    graph = SimpleNamespace(
+        nodes={
+            "node-a": SimpleNamespace(graph_runtime_state=SimpleNamespace(variable_pool=variable_pool)),
+        }
+    )
+    worker = Worker(
+        ready_queue=InMemoryReadyQueue(),
+        event_queue=queue.Queue(),
+        graph=graph,
+        layers=[],
+        node_execution_strategy_resolver=resolver,
+    )
+    event = NodeRunSucceededEvent(
+        id="node-a-exec",
+        node_id="node-a",
+        node_type=NodeType.LLM,
+        start_at=datetime.now(),
+        node_run_result=NodeRunResult(
+            outputs={"out": "real-value", "keep": "keep-value"},
+        ),
+    )
+
+    worker._inject_execution_metadata(event=event, decision=ExecutionStrategyDecision.real())
+
+    assert event.node_run_result.outputs["out"] == "override-value"
+    assert event.node_run_result.outputs["keep"] == "keep-value"
+    assert event.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] == "real"
