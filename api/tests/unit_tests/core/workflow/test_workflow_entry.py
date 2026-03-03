@@ -4,18 +4,18 @@ import pytest
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.workflow.constants import (
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.file.enums import FileType
-from core.workflow.file.models import File, FileTransferMethod
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables.variables import StringVariable
-from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.file.enums import FileType
+from dify_graph.file.models import File, FileTransferMethod
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.variables import StringVariable
 
 
 @pytest.fixture(autouse=True)

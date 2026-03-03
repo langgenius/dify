@@ -55,11 +55,11 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from models import Account
 from models.enums import CreatorUserRole
