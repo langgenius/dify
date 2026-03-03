@@ -9,7 +9,7 @@ from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 
 
-class TestDatasetServiceCreateDatasetNonSQL:
+class TestDatasetServiceCreateRagPipelineDatasetNonSQL:
     """Unit coverage for non-SQL validation in create_empty_rag_pipeline_dataset."""
 
     @pytest.fixture
