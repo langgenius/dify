@@ -5,10 +5,10 @@ This module provides a MockNodeFactory that automatically detects and mocks node
 requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request).
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
 
@@ -75,26 +75,27 @@ class MockNodeFactory(DifyNodeFactory):
             NodeType.CODE: MockCodeNode,
         }
 
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a node instance, using mock implementations for third-party service nodes.
 
         :param node_config: Node configuration dictionary
         :return: Node instance (real or mocked)
         """
-        node_data = node_config["data"]
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        node_data = typed_node_config["data"]
         node_type = node_data.type
 
         # Check if this node type should be mocked
         if node_type in self._mock_node_types:
-            node_id = node_config["id"]
+            node_id = typed_node_config["id"]
 
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]
             if node_type == NodeType.CODE:
                 mock_instance = mock_class(
                     id=node_id,
-                    config=node_config,
+                    config=typed_node_config,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -104,7 +105,7 @@ class MockNodeFactory(DifyNodeFactory):
             elif node_type == NodeType.HTTP_REQUEST:
                 mock_instance = mock_class(
                     id=node_id,
-                    config=node_config,
+                    config=typed_node_config,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -116,7 +117,7 @@ class MockNodeFactory(DifyNodeFactory):
             elif node_type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER, NodeType.PARAMETER_EXTRACTOR}:
                 mock_instance = mock_class(
                     id=node_id,
-                    config=node_config,
+                    config=typed_node_config,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -126,7 +127,7 @@ class MockNodeFactory(DifyNodeFactory):
             else:
                 mock_instance = mock_class(
                     id=node_id,
-                    config=node_config,
+                    config=typed_node_config,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -135,7 +136,7 @@ class MockNodeFactory(DifyNodeFactory):
             return mock_instance
 
         # For non-mocked node types, use parent implementation
-        return super().create_node(node_config)
+        return super().create_node(typed_node_config)
 
     def should_mock_node(self, node_type: NodeType) -> bool:
         """
