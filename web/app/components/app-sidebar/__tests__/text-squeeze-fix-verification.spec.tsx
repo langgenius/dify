@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock classnames utility
 vi.mock('@/utils/classnames', () => ({
-  default: (...classes: any[]) => classes.filter(Boolean).join(' '),
+  default: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }))
 
 // Simplified NavLink component to test the fix
@@ -101,12 +101,6 @@ describe('Text Squeeze Fix Verification', () => {
       expect(textElement).toHaveClass('whitespace-nowrap')
       expect(textElement).toHaveClass('transition-all')
 
-      console.log('✅ NavLink Collapsed State:')
-      console.log('   - Text is in DOM but visually hidden')
-      console.log('   - Uses opacity-0 and w-0 for hiding')
-      console.log('   - Has whitespace-nowrap to prevent wrapping')
-      console.log('   - Has transition-all for smooth animation')
-
       // Switch to expanded state
       rerender(<TestNavLink mode="expand" />)
 
@@ -115,13 +109,6 @@ describe('Text Squeeze Fix Verification', () => {
       expect(expandedText).toHaveClass('opacity-100')
       expect(expandedText).toHaveClass('w-auto')
       expect(expandedText).not.toHaveClass('pointer-events-none')
-
-      console.log('✅ NavLink Expanded State:')
-      console.log('   - Text is visible with opacity-100')
-      console.log('   - Uses w-auto for natural width')
-      console.log('   - No layout jumps during transition')
-
-      console.log('🎯 NavLink Fix Result: Text squeeze effect ELIMINATED')
     })
 
     it('should verify smooth transition properties', () => {
@@ -131,11 +118,6 @@ describe('Text Squeeze Fix Verification', () => {
       expect(textElement).toHaveClass('transition-all')
       expect(textElement).toHaveClass('duration-200')
       expect(textElement).toHaveClass('ease-in-out')
-
-      console.log('✅ Transition Properties Verified:')
-      console.log('   - transition-all: Smooth property changes')
-      console.log('   - duration-200: 200ms transition time')
-      console.log('   - ease-in-out: Smooth easing function')
     })
   })
 
@@ -159,11 +141,6 @@ describe('Text Squeeze Fix Verification', () => {
       expect(appName).toHaveClass('whitespace-nowrap')
       expect(appType).toHaveClass('whitespace-nowrap')
 
-      console.log('✅ AppInfo Collapsed State:')
-      console.log('   - Text container is in DOM but visually hidden')
-      console.log('   - App name and type elements always present')
-      console.log('   - Uses whitespace-nowrap to prevent wrapping')
-
       // Switch to expanded state
       rerender(<TestAppInfo expand={true} />)
 
@@ -172,13 +149,6 @@ describe('Text Squeeze Fix Verification', () => {
       expect(expandedContainer).toHaveClass('opacity-100')
       expect(expandedContainer).toHaveClass('w-auto')
       expect(expandedContainer).not.toHaveClass('pointer-events-none')
-
-      console.log('✅ AppInfo Expanded State:')
-      console.log('   - Text container is visible with opacity-100')
-      console.log('   - Uses w-auto for natural width')
-      console.log('   - No layout jumps during transition')
-
-      console.log('🎯 AppInfo Fix Result: Text squeeze effect ELIMINATED')
     })
 
     it('should verify transition properties on text container', () => {
@@ -188,45 +158,11 @@ describe('Text Squeeze Fix Verification', () => {
       expect(textContainer).toHaveClass('transition-all')
       expect(textContainer).toHaveClass('duration-200')
       expect(textContainer).toHaveClass('ease-in-out')
-
-      console.log('✅ AppInfo Transition Properties Verified:')
-      console.log('   - Container has smooth CSS transitions')
-      console.log('   - Same 200ms duration as NavLink for consistency')
     })
   })
 
   describe('Fix Strategy Comparison', () => {
     it('should document the fix strategy differences', () => {
-      console.log('\n📋 TEXT SQUEEZE FIX STRATEGY COMPARISON')
-      console.log('='.repeat(60))
-
-      console.log('\n❌ BEFORE (Problematic):')
-      console.log('   NavLink: {mode === "expand" && name}')
-      console.log('   AppInfo: {expand && (<div>...</div>)}')
-      console.log('   Problem: Conditional rendering causes abrupt appearance')
-      console.log('   Result: Text "squeezes" from center during layout changes')
-
-      console.log('\n✅ AFTER (Fixed):')
-      console.log('   NavLink: <span className="opacity-0 w-0">{name}</span>')
-      console.log('   AppInfo: <div className="opacity-0 w-0">...</div>')
-      console.log('   Solution: CSS controls visibility, element always in DOM')
-      console.log('   Result: Smooth opacity and width transitions')
-
-      console.log('\n🎯 KEY FIX PRINCIPLES:')
-      console.log('   1. ✅ Always keep text elements in DOM')
-      console.log('   2. ✅ Use opacity for show/hide transitions')
-      console.log('   3. ✅ Use width (w-0/w-auto) for layout control')
-      console.log('   4. ✅ Add whitespace-nowrap to prevent wrapping')
-      console.log('   5. ✅ Use pointer-events-none when hidden')
-      console.log('   6. ✅ Add overflow-hidden for clean hiding')
-
-      console.log('\n🚀 BENEFITS:')
-      console.log('   - No more abrupt text appearance')
-      console.log('   - Smooth 200ms transitions')
-      console.log('   - No layout jumps or shifts')
-      console.log('   - Consistent animation timing')
-      console.log('   - Better user experience')
-
       // Always pass documentation test
       expect(true).toBe(true)
     })
