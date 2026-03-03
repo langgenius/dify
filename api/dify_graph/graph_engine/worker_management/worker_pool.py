@@ -12,6 +12,7 @@ from typing import final
 
 from dify_graph.context import IExecutionContext
 from dify_graph.graph import Graph
+from dify_graph.graph_engine.replay import NodeExecutionStrategyResolver, ReplayExecutionExecutor
 from dify_graph.graph_events import GraphNodeEventBase
 
 from ..config import GraphEngineConfig
@@ -39,6 +40,8 @@ class WorkerPool:
         layers: list[GraphEngineLayer],
         config: GraphEngineConfig,
         execution_context: IExecutionContext | None = None,
+        node_execution_strategy_resolver: NodeExecutionStrategyResolver | None = None,
+        replay_execution_executor: ReplayExecutionExecutor | None = None,
     ) -> None:
         """
         Initialize the simple worker pool.
@@ -57,6 +60,8 @@ class WorkerPool:
         self._execution_context = execution_context
         self._layers = layers
         self._config = config
+        self._node_execution_strategy_resolver = node_execution_strategy_resolver
+        self._replay_execution_executor = replay_execution_executor
 
         # Worker management
         self._workers: list[Worker] = []
@@ -133,6 +138,8 @@ class WorkerPool:
             layers=self._layers,
             worker_id=worker_id,
             execution_context=self._execution_context,
+            node_execution_strategy_resolver=self._node_execution_strategy_resolver,
+            replay_execution_executor=self._replay_execution_executor,
         )
 
         worker.start()

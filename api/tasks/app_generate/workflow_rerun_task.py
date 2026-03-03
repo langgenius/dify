@@ -20,6 +20,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.graph_engine.replay import ReplayExecutionStrategyConfig
 from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -46,6 +47,7 @@ class WorkflowRunRerunTaskPayload(BaseModel):
     user_inputs: dict[str, Any]
     execution_graph_config: dict[str, Any]
     rerun_metadata: WorkflowRunRerunMetadata
+    rerun_strategy_config: ReplayExecutionStrategyConfig | None = None
     graph_runtime_state_snapshot: str
 
 
@@ -282,8 +284,9 @@ def workflow_run_rerun_task(payload: str) -> None:
                 execution_graph_config=params.execution_graph_config,
                 graph_runtime_state=graph_runtime_state,
                 rerun_metadata=params.rerun_metadata,
-                root_node_id=params.target_node_id,
+                root_node_id=None,
                 streaming=True,
+                rerun_strategy_config=params.rerun_strategy_config,
                 pause_state_config=pause_state_config,
             )
 

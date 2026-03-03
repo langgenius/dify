@@ -26,14 +26,17 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata, WorkflowRunRerunScope
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowType
+from dify_graph.file import FileTransferMethod
 from dify_graph.file.models import File
+from dify_graph.graph_engine.replay import BaselineNodeSnapshot, ReplayExecutionStrategyConfig, RerunOverrideContext
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import SecretVariable, VariableBase
 from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from factories import file_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, EndUser, WorkflowNodeExecutionTriggeredFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
@@ -95,6 +98,7 @@ class _WorkflowRunRerunPlan:
     execution_graph_config: dict[str, Any]
     scope: WorkflowRunRerunScope
     normalized_overrides: list[dict[str, Any]]
+    rerun_strategy_config: ReplayExecutionStrategyConfig
     graph_runtime_state: GraphRuntimeState
     rerun_metadata: WorkflowRunRerunMetadata
 
@@ -262,9 +266,7 @@ class WorkflowRunRerunService:
             self._raise_error("rerun_execution_failed", 500, "Invalid workflow graph data in source run.")
 
         nodes_by_id = {
-            str(node["id"]): node
-            for node in nodes
-            if isinstance(node, Mapping) and isinstance(node.get("id"), str)
+            str(node["id"]): node for node in nodes if isinstance(node, Mapping) and isinstance(node.get("id"), str)
         }
         target_node = nodes_by_id.get(target_node_id)
         if target_node is None:
@@ -303,23 +305,24 @@ class WorkflowRunRerunService:
             all_nodes=nodes,
         )
 
-        filtered_nodes = [node for node in nodes if isinstance(node, Mapping) and node.get("id") in rerun_node_id_set]
         rerun_node_ids = [
             node_id
-            for node in filtered_nodes
-            if isinstance((node_id := node.get("id")), str)
+            for node in nodes
+            if isinstance(node, Mapping)
+            and isinstance((node_id := node.get("id")), str)
+            and node_id in rerun_node_id_set
         ]
-        filtered_edges = [
-            edge
-            for edge in edges
-            if isinstance(edge, Mapping)
-            and edge.get("source") in rerun_node_id_set
-            and edge.get("target") in rerun_node_id_set
-        ]
-
         execution_graph_config: dict[str, Any] = {
-            "nodes": filtered_nodes,
-            "edges": filtered_edges,
+            "nodes": list(nodes),
+            "edges": list(edges),
+        }
+
+        baseline_snapshots_by_node_id = self._collect_baseline_snapshots(
+            app_model=app_model,
+            source_run=source_run,
+        )
+        baseline_snapshots_by_node_id = {
+            node_id: snapshot for node_id, snapshot in baseline_snapshots_by_node_id.items() if node_id in nodes_by_id
         }
 
         workflow = self._load_workflow(
@@ -334,12 +337,16 @@ class WorkflowRunRerunService:
             workflow=workflow,
             source_run=source_run,
             workflow_run_id=workflow_run_id,
+            baseline_snapshots_by_node_id=baseline_snapshots_by_node_id,
             rerun_node_ids=rerun_node_ids,
             overrides=overrides,
             allowed_node_ids=overrideable_node_ids,
         )
 
         override_payload = [override.model_dump(mode="json") for override in overrides]
+        override_context = self._build_rerun_override_context(
+            normalized_overrides=override_payload,
+        )
         scope = WorkflowRunRerunScope(
             target_node_id=target_node_id,
             ancestor_node_ids=ancestors,
@@ -358,6 +365,11 @@ class WorkflowRunRerunService:
             rerun_chain_root_workflow_run_id=rerun_chain_root_workflow_run_id,
             rerun_kind="manual-node-rerun",
         )
+        rerun_strategy_config = ReplayExecutionStrategyConfig(
+            real_node_ids=rerun_node_ids,
+            baseline_snapshots_by_node_id=baseline_snapshots_by_node_id,
+            override_context=override_context,
+        )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         return _WorkflowRunRerunPlan(
@@ -371,6 +383,7 @@ class WorkflowRunRerunService:
             execution_graph_config=execution_graph_config,
             scope=scope,
             normalized_overrides=override_payload,
+            rerun_strategy_config=rerun_strategy_config,
             graph_runtime_state=graph_runtime_state,
             rerun_metadata=rerun_metadata,
         )
@@ -454,6 +467,196 @@ class WorkflowRunRerunService:
             self._raise_error("rerun_execution_failed", 500, "Invalid workflow graph data in source run.")
         return source_graph
 
+    def _collect_baseline_snapshots(
+        self,
+        *,
+        app_model: App,
+        source_run: WorkflowRun,
+    ) -> dict[str, BaselineNodeSnapshot]:
+        """
+        Collect nearest baseline snapshots by traversing source run and rerun ancestors.
+
+        Precedence is nearest-first: source_run snapshots win over any ancestor snapshots.
+        """
+        latest_snapshot_by_node_id: dict[str, BaselineNodeSnapshot] = {}
+        visited_run_ids: set[str] = set()
+        current_run: WorkflowRun | None = source_run
+
+        while current_run is not None:
+            current_run_id = cast("str | None", getattr(current_run, "id", None))
+            if not current_run_id:
+                break
+
+            if current_run_id in visited_run_ids:
+                logger.warning(
+                    "Detected rerun baseline cycle, stopping traversal. tenant_id=%s app_id=%s run_id=%s",
+                    app_model.tenant_id,
+                    app_model.id,
+                    current_run_id,
+                )
+                break
+            visited_run_ids.add(current_run_id)
+
+            try:
+                node_executions = self._node_execution_repo.get_executions_by_workflow_run(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    workflow_run_id=current_run_id,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to load baseline node executions, fallback to partial baseline. "
+                    "tenant_id=%s app_id=%s run_id=%s",
+                    app_model.tenant_id,
+                    app_model.id,
+                    current_run_id,
+                )
+                break
+
+            sorted_node_executions = sorted(node_executions, key=self._node_execution_replay_sort_key, reverse=True)
+            with self._session_factory() as session:
+                for node_execution in sorted_node_executions:
+                    node_id = getattr(node_execution, "node_id", None)
+                    if not isinstance(node_id, str) or node_id in latest_snapshot_by_node_id:
+                        continue
+
+                    snapshot = self._build_baseline_snapshot(
+                        node_execution=node_execution,
+                        source_workflow_run_id=current_run_id,
+                        session=session,
+                    )
+                    if snapshot is None:
+                        continue
+                    latest_snapshot_by_node_id[node_id] = snapshot
+
+            parent_run_id = cast("str | None", getattr(current_run, "rerun_from_workflow_run_id", None))
+            if not parent_run_id:
+                break
+            if parent_run_id in visited_run_ids:
+                logger.warning(
+                    "Detected rerun baseline cycle at parent, stopping traversal. tenant_id=%s app_id=%s run_id=%s",
+                    app_model.tenant_id,
+                    app_model.id,
+                    parent_run_id,
+                )
+                break
+
+            parent_run = self._workflow_run_repo.get_workflow_run_by_id(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                run_id=parent_run_id,
+            )
+            if parent_run is None:
+                logger.warning(
+                    "Missing rerun parent run while collecting baseline snapshots. tenant_id=%s app_id=%s run_id=%s",
+                    app_model.tenant_id,
+                    app_model.id,
+                    parent_run_id,
+                )
+                break
+            current_run = parent_run
+
+        return latest_snapshot_by_node_id
+
+    def _build_baseline_snapshot(
+        self,
+        *,
+        node_execution: Any,
+        source_workflow_run_id: str,
+        session: Any,
+    ) -> BaselineNodeSnapshot | None:
+        node_id = getattr(node_execution, "node_id", None)
+        if not isinstance(node_id, str) or not node_id:
+            return None
+
+        source_node_execution_id = getattr(node_execution, "node_execution_id", None) or getattr(
+            node_execution, "id", None
+        )
+        if not isinstance(source_node_execution_id, str) or not source_node_execution_id:
+            return None
+
+        try:
+            inputs = node_execution.load_full_inputs(session=session, storage=storage)
+        except Exception:
+            logger.exception(
+                "Failed to load baseline inputs for node execution. workflow_run_id=%s node_id=%s execution_id=%s",
+                source_workflow_run_id,
+                node_id,
+                source_node_execution_id,
+            )
+            inputs = None
+
+        try:
+            process_data = node_execution.load_full_process_data(session=session, storage=storage)
+        except Exception:
+            logger.exception(
+                "Failed to load baseline process_data for node execution. "
+                "workflow_run_id=%s node_id=%s execution_id=%s",
+                source_workflow_run_id,
+                node_id,
+                source_node_execution_id,
+            )
+            process_data = None
+
+        try:
+            outputs = node_execution.load_full_outputs(session=session, storage=storage)
+        except Exception:
+            logger.exception(
+                "Failed to load baseline outputs for node execution. workflow_run_id=%s node_id=%s execution_id=%s",
+                source_workflow_run_id,
+                node_id,
+                source_node_execution_id,
+            )
+            outputs = None
+
+        execution_metadata_raw = getattr(node_execution, "execution_metadata_dict", {})
+        execution_metadata: Mapping[str, Any] = {}
+        if isinstance(execution_metadata_raw, Mapping):
+            execution_metadata = {
+                str(key): value for key, value in execution_metadata_raw.items() if isinstance(key, str)
+            }
+
+        edge_source_handle_raw = getattr(node_execution, "edge_source_handle", None)
+        if not isinstance(edge_source_handle_raw, str) or not edge_source_handle_raw:
+            edge_source_handle_raw = execution_metadata.get(WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE.value)
+        edge_source_handle = (
+            edge_source_handle_raw if isinstance(edge_source_handle_raw, str) and edge_source_handle_raw else None
+        )
+
+        return BaselineNodeSnapshot(
+            node_id=node_id,
+            source_workflow_run_id=source_workflow_run_id,
+            source_node_execution_id=source_node_execution_id,
+            inputs=inputs if isinstance(inputs, Mapping) else None,
+            process_data=process_data if isinstance(process_data, Mapping) else None,
+            outputs=outputs if isinstance(outputs, Mapping) else None,
+            execution_metadata=execution_metadata,
+            edge_source_handle=edge_source_handle,
+        )
+
+    def _build_rerun_override_context(
+        self,
+        *,
+        normalized_overrides: Sequence[dict[str, Any]],
+    ) -> RerunOverrideContext:
+        selectors_by_node_id: dict[str, set[str]] = defaultdict(set)
+        for override in normalized_overrides:
+            selector = override.get("selector")
+            if not isinstance(selector, Sequence) or len(selector) < 2:
+                continue
+            node_id = selector[0]
+            variable_name = selector[1]
+            if not isinstance(node_id, str) or not isinstance(variable_name, str):
+                continue
+
+            selectors_by_node_id[node_id].add(variable_name)
+
+        return RerunOverrideContext(
+            override_root_selectors_by_node_id={
+                node_id: sorted(variable_names) for node_id, variable_names in selectors_by_node_id.items()
+            }
+        )
+
     def _execute_streaming_with_plan(
         self,
         *,
@@ -474,6 +677,7 @@ class WorkflowRunRerunService:
             user_inputs=plan.user_inputs,
             execution_graph_config=plan.execution_graph_config,
             rerun_metadata=plan.rerun_metadata,
+            rerun_strategy_config=plan.rerun_strategy_config,
             graph_runtime_state_snapshot=plan.graph_runtime_state.dumps(),
         )
         payload_json = payload.model_dump_json()
@@ -593,8 +797,9 @@ class WorkflowRunRerunService:
             execution_graph_config=plan.execution_graph_config,
             graph_runtime_state=graph_runtime_state,
             rerun_metadata=plan.rerun_metadata,
-            root_node_id=plan.target_node_id,
+            root_node_id=None,
             streaming=streaming,
+            rerun_strategy_config=plan.rerun_strategy_config,
             pause_state_config=pause_state_config,
         )
 
@@ -618,6 +823,7 @@ class WorkflowRunRerunService:
         workflow: Workflow,
         source_run: WorkflowRun,
         workflow_run_id: str,
+        baseline_snapshots_by_node_id: Mapping[str, BaselineNodeSnapshot],
         rerun_node_ids: Sequence[str],
         overrides: Sequence[WorkflowRunRerunOverride],
         allowed_node_ids: Sequence[str],
@@ -654,19 +860,14 @@ class WorkflowRunRerunService:
             conversation_variables=[],
         )
 
-        node_executions = self._node_execution_repo.get_executions_by_workflow_run(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            workflow_run_id=source_run.id,
-        )
-        with self._session_factory() as session:
-            for node_execution in sorted(node_executions, key=self._node_execution_replay_sort_key):
-                outputs = node_execution.load_full_outputs(session=session, storage=storage)
-                if not outputs:
-                    continue
-                for variable_name, value in outputs.items():
-                    rebuilt_value = WorkflowDraftVariable.rebuild_file_types(value)
-                    variable_pool.add([node_execution.node_id, str(variable_name)], rebuilt_value)
+        for node_id in sorted(baseline_snapshots_by_node_id.keys()):
+            snapshot = baseline_snapshots_by_node_id[node_id]
+            outputs = snapshot.outputs
+            if not isinstance(outputs, Mapping):
+                continue
+            for variable_name, value in outputs.items():
+                rebuilt_value = WorkflowDraftVariable.rebuild_file_types(value)
+                variable_pool.add([node_id, str(variable_name)], rebuilt_value)
 
         for node_id in rerun_node_ids:
             variable_pool.remove([node_id])
@@ -675,6 +876,7 @@ class WorkflowRunRerunService:
             variable_pool=variable_pool,
             overrides=overrides,
             allowed_node_ids=allowed_node_ids,
+            tenant_id=app_model.tenant_id,
         )
         return user_inputs, variable_pool
 
@@ -684,6 +886,7 @@ class WorkflowRunRerunService:
         variable_pool: VariablePool,
         overrides: Sequence[WorkflowRunRerunOverride],
         allowed_node_ids: Sequence[str],
+        tenant_id: str,
     ) -> None:
         allowed_node_id_set = set(allowed_node_ids)
         for override in overrides:
@@ -693,7 +896,12 @@ class WorkflowRunRerunService:
             if selector[0] not in allowed_node_id_set:
                 self._raise_error("override_out_of_scope", 422, "Override selector is out of rerun scope.")
 
-            override_value = WorkflowDraftVariable.rebuild_file_types(override.value)
+            override_value = self._normalize_override_value(
+                selector=selector,
+                value=override.value,
+                variable_pool=variable_pool,
+                tenant_id=tenant_id,
+            )
             if len(selector) == 2:
                 variable_pool.add(selector, override_value)
                 continue
@@ -721,6 +929,163 @@ class WorkflowRunRerunService:
                 self._raise_error("override_selector_invalid", 422, "Override selector path does not exist.")
             current[leaf] = override_value
             variable_pool.add(root_selector, root_value)
+
+    def _normalize_override_value(
+        self,
+        *,
+        selector: Sequence[str],
+        value: Any,
+        variable_pool: VariablePool,
+        tenant_id: str,
+    ) -> Any:
+        normalized_value = WorkflowDraftVariable.rebuild_file_types(value)
+
+        root_selector = list(selector[:2])
+        root_segment = variable_pool.get(root_selector)
+        root_segment_type = root_segment.value_type if root_segment is not None else None
+        expects_file_type = root_segment_type in {SegmentType.FILE, SegmentType.ARRAY_FILE}
+        is_file_like_override = self._is_file_like_override_value(normalized_value)
+
+        # Backward compatibility: rerun editor payloads may use legacy upload-style file mappings
+        # (for example `related_id` without method-specific id fields). Normalize and rebuild through
+        # file_factory so downstream nodes always receive canonical File objects with valid storage refs.
+        maybe_file_value = self._try_rebuild_file_override_value(value=normalized_value, tenant_id=tenant_id)
+        if maybe_file_value is not None:
+            return maybe_file_value
+
+        if is_file_like_override:
+            self._raise_error("override_type_mismatch", 422, "Override selector path type mismatch.")
+        if expects_file_type and self._looks_like_file_override_payload(normalized_value):
+            self._raise_error("override_type_mismatch", 422, "Override selector path type mismatch.")
+        return normalized_value
+
+    def _try_rebuild_file_override_value(self, *, value: Any, tenant_id: str) -> Any:
+        normalized_mapping = self._normalize_file_mapping_for_factory(value)
+        if normalized_mapping is not None:
+            try:
+                return file_factory.build_from_mapping(mapping=normalized_mapping, tenant_id=tenant_id)
+            except Exception:
+                return None
+
+        if isinstance(value, list):
+            if not value:
+                return None
+            normalized_mappings: list[Mapping[str, Any]] = []
+            for item in value:
+                mapping = self._normalize_file_mapping_for_factory(item)
+                if mapping is None:
+                    return None
+                normalized_mappings.append(mapping)
+            try:
+                return file_factory.build_from_mappings(mappings=normalized_mappings, tenant_id=tenant_id)
+            except Exception:
+                return None
+
+        return None
+
+    @staticmethod
+    def _looks_like_file_override_payload(value: Any) -> bool:
+        if not isinstance(value, Mapping):
+            return False
+
+        transfer_method = value.get("transfer_method")
+        file_type = value.get("type")
+        if not isinstance(transfer_method, str) or not transfer_method:
+            return False
+        if not isinstance(file_type, str) or not file_type:
+            return False
+
+        has_file_ref = any(
+            isinstance(value.get(key), str) and value.get(key)
+            for key in ("upload_file_id", "related_id", "remote_url", "url")
+        )
+        return has_file_ref
+
+    @classmethod
+    def _normalize_file_mapping_for_factory(cls, value: Any) -> dict[str, Any] | None:
+        if isinstance(value, File):
+            return cls._file_to_factory_mapping(value)
+        if not isinstance(value, Mapping):
+            return None
+        if not cls._looks_like_file_override_payload(value):
+            return None
+
+        normalized = {str(key): item for key, item in value.items() if isinstance(key, str)}
+        transfer_method_raw = normalized.get("transfer_method")
+        try:
+            transfer_method = FileTransferMethod.value_of(transfer_method_raw)
+        except Exception:
+            return None
+
+        related_id = normalized.get("related_id")
+        if transfer_method == FileTransferMethod.LOCAL_FILE:
+            if not normalized.get("upload_file_id") and isinstance(related_id, str) and related_id:
+                normalized["upload_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.TOOL_FILE:
+            if not normalized.get("tool_file_id") and isinstance(related_id, str) and related_id:
+                normalized["tool_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.DATASOURCE_FILE:
+            if not normalized.get("datasource_file_id") and isinstance(related_id, str) and related_id:
+                normalized["datasource_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.REMOTE_URL:
+            if not normalized.get("url") and isinstance(normalized.get("remote_url"), str):
+                normalized["url"] = normalized["remote_url"]
+            if (
+                not normalized.get("url")
+                and not normalized.get("upload_file_id")
+                and isinstance(related_id, str)
+                and related_id
+            ):
+                normalized["upload_file_id"] = related_id
+
+        return normalized
+
+    @staticmethod
+    def _file_to_factory_mapping(file: File) -> dict[str, Any] | None:
+        mapping: dict[str, Any] = {
+            "id": file.id,
+            "type": file.type.value,
+            "transfer_method": file.transfer_method.value,
+        }
+
+        transfer_method = file.transfer_method
+        related_id = file.related_id
+        if transfer_method == FileTransferMethod.LOCAL_FILE:
+            if not related_id:
+                return None
+            mapping["upload_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.TOOL_FILE:
+            if not related_id:
+                return None
+            mapping["tool_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.DATASOURCE_FILE:
+            if not related_id:
+                return None
+            mapping["datasource_file_id"] = related_id
+        elif transfer_method == FileTransferMethod.REMOTE_URL:
+            if related_id:
+                mapping["upload_file_id"] = related_id
+            elif file.remote_url:
+                mapping["url"] = file.remote_url
+            else:
+                return None
+        else:
+            return None
+
+        return mapping
+
+    @classmethod
+    def _is_file_like_override_value(cls, value: Any) -> bool:
+        if isinstance(value, File):
+            return True
+        if isinstance(value, Mapping):
+            return cls._looks_like_file_override_payload(value)
+        if isinstance(value, list) and value:
+            return all(
+                isinstance(item, File) or (isinstance(item, Mapping) and cls._looks_like_file_override_payload(item))
+                for item in value
+            )
+        return False
 
     def _collect_node_output_candidates(
         self,
