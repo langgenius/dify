@@ -146,7 +146,34 @@ class BaseNodeData(ABC, BaseModel):
         return {}
 
     def __getitem__(self, key: str) -> Any:
-        return self.model_dump()[key]
+        """
+        Dict-style access without calling model_dump() on every lookup.
+        Prefer using model fields and Pydantic's extra storage.
+        """
+        # First, check declared model fields
+        if key in self.model_fields:
+            return getattr(self, key)
+
+        # Then, check any extra fields allowed by ConfigDict(extra="allow")
+        extras = getattr(self, "__pydantic_extra__", None)
+        if extras is None:
+            extras = getattr(self, "model_extra", None)
+        if extras is not None and key in extras:
+            return extras[key]
+
+        raise KeyError(key)
 
     def get(self, key: str, default: Any = None) -> Any:
-        return self.model_dump().get(key, default)
+        """
+        Dict-style .get() without calling model_dump() on every lookup.
+        """
+        if key in self.model_fields:
+            return getattr(self, key)
+
+        extras = getattr(self, "__pydantic_extra__", None)
+        if extras is None:
+            extras = getattr(self, "model_extra", None)
+        if extras is not None and key in extras:
+            return extras.get(key, default)
+
+        return default
