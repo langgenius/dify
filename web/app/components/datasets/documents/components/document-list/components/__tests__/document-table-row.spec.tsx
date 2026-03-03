@@ -7,11 +7,13 @@ import { DataSourceType } from '@/models/datasets'
 import DocumentTableRow from '../document-table-row'
 
 const mockPush = vi.fn()
+let mockSearchParams = ''
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => new URLSearchParams(mockSearchParams),
 }))
 
 const createTestQueryClient = () => new QueryClient({
@@ -95,6 +97,7 @@ describe('DocumentTableRow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParams = ''
   })
 
   describe('Rendering', () => {
@@ -185,6 +188,15 @@ describe('DocumentTableRow', () => {
       fireEvent.click(row)
 
       expect(mockPush).toHaveBeenCalledWith('/datasets/custom-dataset/documents/custom-doc')
+    })
+
+    it('should preserve search params when navigating to detail', () => {
+      mockSearchParams = 'page=2&status=error'
+      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
+
+      fireEvent.click(screen.getByRole('row'))
+
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1?page=2&status=error')
     })
   })
 

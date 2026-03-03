@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme-context'
-import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -91,11 +90,13 @@ const Header: FC<IHeaderProps> = ({
           {/* powered by */}
           <div className="shrink-0">
             {!appData?.custom_config?.remove_webapp_brand && (
-              <div className={cn(
-                'flex shrink-0 items-center gap-1.5 px-2',
-              )}
+              <div
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 px-2',
+                )}
+                data-testid="webapp-brand"
               >
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+                <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                     ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -114,11 +115,11 @@ const Header: FC<IHeaderProps> = ({
               <Tooltip
                 popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
               >
-                <ActionButton size="l" onClick={handleToggleExpand}>
+                <ActionButton size="l" onClick={handleToggleExpand} data-testid="expand-button">
                   {
                     expanded
-                      ? <RiCollapseDiagonal2Line className="h-[18px] w-[18px]" />
-                      : <RiExpandDiagonal2Line className="h-[18px] w-[18px]" />
+                      ? <div className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" />
+                      : <div className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" />
                   }
                 </ActionButton>
               </Tooltip>
@@ -128,8 +129,8 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip
               popupContent={t('chat.resetChat', { ns: 'share' })}
             >
-              <ActionButton size="l" onClick={onCreateNewChat}>
-                <RiResetLeftLine className="h-[18px] w-[18px]" />
+              <ActionButton size="l" onClick={onCreateNewChat} data-testid="reset-chat-button">
+                <div className="i-ri-reset-left-line h-[18px] w-[18px]" />
               </ActionButton>
             </Tooltip>
           )}

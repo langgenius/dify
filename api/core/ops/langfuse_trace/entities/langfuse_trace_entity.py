@@ -129,11 +129,11 @@ class LangfuseSpan(BaseModel):
         default=None,
         description="The id of the user that triggered the execution. Used to provide user-level analytics.",
     )
-    start_time: datetime | str | None = Field(
+    start_time: datetime | None = Field(
         default_factory=datetime.now,
         description="The time at which the span started, defaults to the current time.",
     )
-    end_time: datetime | str | None = Field(
+    end_time: datetime | None = Field(
         default=None,
         description="The time at which the span ended. Automatically set by span.end().",
     )
@@ -146,7 +146,7 @@ class LangfuseSpan(BaseModel):
         description="Additional metadata of the span. Can be any JSON object. Metadata is merged when being updated "
         "via the API.",
     )
-    level: str | None = Field(
+    level: LevelEnum | None = Field(
         default=None,
         description="The level of the span. Can be DEBUG, DEFAULT, WARNING or ERROR. Used for sorting/filtering of "
         "traces with elevated error levels and for highlighting in the UI.",
@@ -222,16 +222,16 @@ class LangfuseGeneration(BaseModel):
         default=None,
         description="Identifier of the generation. Useful for sorting/filtering in the UI.",
     )
-    start_time: datetime | str | None = Field(
+    start_time: datetime | None = Field(
         default_factory=datetime.now,
         description="The time at which the generation started, defaults to the current time.",
     )
-    completion_start_time: datetime | str | None = Field(
+    completion_start_time: datetime | None = Field(
         default=None,
         description="The time at which the completion started (streaming). Set it to get latency analytics broken "
         "down into time until completion started and completion duration.",
     )
-    end_time: datetime | str | None = Field(
+    end_time: datetime | None = Field(
         default=None,
         description="The time at which the generation ended. Automatically set by generation.end().",
     )
