@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.nodes.list_operator.entities import (
     ExtractConfig,
@@ -17,7 +17,6 @@ from dify_graph.nodes.list_operator.entities import (
 from dify_graph.nodes.list_operator.exc import InvalidKeyError
 from dify_graph.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
 from dify_graph.variables import ArrayFileSegment
-from models.enums import UserFrom
 
 
 @pytest.fixture

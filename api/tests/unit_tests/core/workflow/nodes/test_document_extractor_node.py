@@ -7,7 +7,7 @@ from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeType, UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
@@ -20,7 +20,6 @@ from dify_graph.nodes.document_extractor.node import (
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment
 from dify_graph.variables.variables import StringVariable
-from models.enums import UserFrom
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import NodeType
+from dify_graph.enums import NodeType, UserFrom
 from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
@@ -14,7 +14,6 @@ from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
 
 
 class _FakeFormRepository:

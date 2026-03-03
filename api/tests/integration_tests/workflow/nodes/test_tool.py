@@ -6,13 +6,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.node_events import StreamCompletedEvent
 from dify_graph.nodes.tool.tool_node import ToolNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 
 
 def init_tool_node(config: dict):

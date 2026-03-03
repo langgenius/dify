@@ -201,8 +201,8 @@ def test_mock_factory_node_type_detection():
     """Test that MockNodeFactory correctly identifies nodes to mock."""
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
 
     from .test_mock_factory import MockNodeFactory
 
@@ -311,9 +311,9 @@ def test_register_custom_mock_node():
     """Test registering a custom mock implementation for a node type."""
     from core.app.entities.app_invoke_entities import InvokeFrom
     from dify_graph.entities import GraphInitParams
+    from dify_graph.enums import UserFrom
     from dify_graph.nodes.template_transform import TemplateTransformNode
     from dify_graph.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
 
     from .test_mock_factory import MockNodeFactory
 

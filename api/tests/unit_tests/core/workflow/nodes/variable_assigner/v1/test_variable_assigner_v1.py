@@ -5,6 +5,7 @@ from uuid import uuid4
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.entities import GraphInitParams
+from dify_graph.enums import UserFrom
 from dify_graph.graph import Graph
 from dify_graph.graph_events.node import NodeRunSucceededEvent
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
@@ -13,7 +14,6 @@ from dify_graph.nodes.variable_assigner.v1.node_data import WriteMode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayStringVariable, StringVariable
-from models.enums import UserFrom
 
 DEFAULT_NODE_ID = "node_id"
 

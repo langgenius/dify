@@ -8,14 +8,13 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeType
+from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeType, UserFrom
 from dify_graph.graph import Graph
 from dify_graph.graph.validation import GraphValidationError
 from dify_graph.nodes.base.entities import BaseNodeData
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 
 
 class _TestNodeData(BaseNodeData):
