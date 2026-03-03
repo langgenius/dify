@@ -55,40 +55,43 @@ const LocaleLayout = async ({
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        <ReactScanLoader />
       </head>
       <body
-        className="color-scheme h-full select-auto"
+        className="h-full select-auto"
         {...datasetMap}
       >
-        <PWAProvider>
-          <ReactScanLoader />
-          <JotaiProvider>
-            <ThemeProvider
-              attribute="data-theme"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-              enableColorScheme={false}
-            >
-              <NuqsAdapter>
-                <BrowserInitializer>
-                  <SentryInitializer>
-                    <TanstackQueryInitializer>
-                      <I18nServerProvider>
-                        <ToastProvider>
-                          <GlobalPublicStoreProvider>
-                            {children}
-                          </GlobalPublicStoreProvider>
-                        </ToastProvider>
-                      </I18nServerProvider>
-                    </TanstackQueryInitializer>
-                  </SentryInitializer>
-                </BrowserInitializer>
-              </NuqsAdapter>
-            </ThemeProvider>
-          </JotaiProvider>
-          <RoutePrefixHandle />
-        </PWAProvider>
+        <div className="isolate h-full">
+          <PWAProvider>
+            <JotaiProvider>
+              <ThemeProvider
+                attribute="data-theme"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+                enableColorScheme={false}
+              >
+                <NuqsAdapter>
+                  <BrowserInitializer>
+                    <SentryInitializer>
+                      <TanstackQueryInitializer>
+                        <I18nServerProvider>
+                          <ToastProvider>
+                            <GlobalPublicStoreProvider>
+                              {children}
+                            </GlobalPublicStoreProvider>
+                          </ToastProvider>
+                        </I18nServerProvider>
+                      </TanstackQueryInitializer>
+                    </SentryInitializer>
+                  </BrowserInitializer>
+                </NuqsAdapter>
+              </ThemeProvider>
+            </JotaiProvider>
+            <RoutePrefixHandle />
+          </PWAProvider>
+        </div>
       </body>
     </html>
   )

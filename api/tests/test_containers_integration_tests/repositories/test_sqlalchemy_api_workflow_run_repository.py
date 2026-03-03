@@ -11,9 +11,9 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.entities import WorkflowExecution
-from core.workflow.entities.pause_reason import PauseReasonType
-from core.workflow.enums import WorkflowExecutionStatus
+from dify_graph.entities import WorkflowExecution
+from dify_graph.entities.pause_reason import PauseReasonType
+from dify_graph.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
