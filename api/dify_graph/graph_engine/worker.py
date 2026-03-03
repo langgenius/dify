@@ -236,6 +236,8 @@ class Worker(threading.Thread):
             metadata[WorkflowNodeExecutionMetadataKey.SOURCE_NODE_EXECUTION_ID] = (
                 decision.snapshot.source_node_execution_id
             )
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
             replay_edge_source_handle = decision.snapshot.resolved_edge_source_handle()
             if replay_edge_source_handle:
                 metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = replay_edge_source_handle

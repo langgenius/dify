@@ -216,6 +216,8 @@ def test_replay_executor_emits_replay_metadata() -> None:
     assert result.metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] == "replay"
     assert result.metadata[WorkflowNodeExecutionMetadataKey.SOURCE_WORKFLOW_RUN_ID] == "run-source"
     assert result.metadata[WorkflowNodeExecutionMetadataKey.SOURCE_NODE_EXECUTION_ID] == "exec-source"
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 0
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == 0
     assert result.metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] == "true"
     assert result.edge_source_handle == "true"
 
@@ -255,3 +257,43 @@ def test_worker_applies_override_value_for_real_node_outputs() -> None:
     assert event.node_run_result.outputs["out"] == "override-value"
     assert event.node_run_result.outputs["keep"] == "keep-value"
     assert event.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] == "real"
+
+
+def test_worker_resets_usage_metadata_for_replay_node() -> None:
+    variable_pool = _build_variable_pool()
+    resolver = DefaultNodeExecutionStrategyResolver(
+        real_node_ids=set(),
+        baseline_snapshots_by_node_id={},
+        override_context=RerunOverrideContext(),
+    )
+    graph = SimpleNamespace(
+        nodes={
+            "node-a": SimpleNamespace(graph_runtime_state=SimpleNamespace(variable_pool=variable_pool)),
+        }
+    )
+    worker = Worker(
+        ready_queue=InMemoryReadyQueue(),
+        event_queue=queue.Queue(),
+        graph=graph,
+        layers=[],
+        node_execution_strategy_resolver=resolver,
+    )
+    replay_snapshot = _build_snapshot(node_id="node-a")
+    event = NodeRunSucceededEvent(
+        id="node-a-exec",
+        node_id="node-a",
+        node_type=NodeType.LLM,
+        start_at=datetime.now(),
+        node_run_result=NodeRunResult(
+            metadata={
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 123,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 4.5,
+            }
+        ),
+    )
+
+    worker._inject_execution_metadata(event=event, decision=ExecutionStrategyDecision.replay(snapshot=replay_snapshot))
+
+    assert event.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] == "replay"
+    assert event.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 0
+    assert event.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == 0

@@ -58,6 +58,7 @@ class DefaultReplayExecutionExecutor(ReplayExecutionExecutor):
         metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] = "replay"
         metadata[WorkflowNodeExecutionMetadataKey.SOURCE_WORKFLOW_RUN_ID] = snapshot.source_workflow_run_id
         metadata[WorkflowNodeExecutionMetadataKey.SOURCE_NODE_EXECUTION_ID] = snapshot.source_node_execution_id
+        self._reset_replay_usage_metadata(metadata)
         if edge_source_handle:
             metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = edge_source_handle
 
@@ -103,3 +104,9 @@ class DefaultReplayExecutionExecutor(ReplayExecutionExecutor):
         if not isinstance(mapping, Mapping):
             return {}
         return {str(key): copy.deepcopy(value) for key, value in mapping.items()}
+
+    @staticmethod
+    def _reset_replay_usage_metadata(metadata: dict[WorkflowNodeExecutionMetadataKey, Any]) -> None:
+        # Replay nodes are treated as skipped executions in tracing, so usage metrics must be zeroed.
+        metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+        metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
