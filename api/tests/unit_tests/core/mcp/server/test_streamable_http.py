@@ -18,7 +18,7 @@ from core.mcp.server.streamable_http import (
     prepare_tool_arguments,
     process_mapping_response,
 )
-from core.workflow.variables.input_entities import VariableEntity, VariableEntityType
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
 
 
