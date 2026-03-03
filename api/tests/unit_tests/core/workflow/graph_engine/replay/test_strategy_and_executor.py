@@ -21,6 +21,7 @@ from dify_graph.graph_events import NodeRunStartedEvent, NodeRunSucceededEvent
 from dify_graph.node_events import NodeRunResult
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import ArrayFileSegment, FileSegment
 
 
 class _StubNode:
@@ -76,6 +77,20 @@ def _build_variable_pool() -> VariablePool:
         environment_variables=[],
         conversation_variables=[],
     )
+
+
+def _build_file_mapping(*, remote_url: str, filename: str) -> dict[str, object]:
+    return {
+        "dify_model_identity": "__dify__file__",
+        "tenant_id": "tenant-1",
+        "type": "image",
+        "transfer_method": "remote_url",
+        "remote_url": remote_url,
+        "filename": filename,
+        "extension": ".png",
+        "mime_type": "image/png",
+        "size": 1,
+    }
 
 
 def test_strategy_resolver_prefers_real_set() -> None:
@@ -157,6 +172,53 @@ def test_replay_executor_uses_file_value_from_variable_pool_for_override() -> No
 
     assert isinstance(result.outputs["input_file"], File)
     assert result.outputs["input_file"].remote_url == "https://example.com/new.png"
+
+
+def test_replay_executor_rebuilds_file_value_from_baseline_snapshot() -> None:
+    variable_pool = _build_variable_pool()
+    executor = DefaultReplayExecutionExecutor(variable_pool=variable_pool, override_context=RerunOverrideContext())
+    node = _StubNode(node_id="start", node_type=NodeType.START, execution_type=NodeExecutionType.ROOT)
+    snapshot = _build_snapshot(
+        node_id="start",
+        outputs={"input_file": _build_file_mapping(remote_url="https://example.com/baseline.png", filename="a.png")},
+    )
+
+    events = list(executor.execute(node=node, snapshot=snapshot))
+    result = events[1].node_run_result
+
+    assert isinstance(result.outputs["input_file"], File)
+    assert result.outputs["input_file"].remote_url == "https://example.com/baseline.png"
+
+    variable_pool.add(["start", "input_file"], result.outputs["input_file"])
+    segment = variable_pool.get(["start", "input_file"])
+    assert isinstance(segment, FileSegment)
+
+
+def test_replay_executor_rebuilds_file_list_from_baseline_snapshot() -> None:
+    variable_pool = _build_variable_pool()
+    executor = DefaultReplayExecutionExecutor(variable_pool=variable_pool, override_context=RerunOverrideContext())
+    node = _StubNode(node_id="start", node_type=NodeType.START, execution_type=NodeExecutionType.ROOT)
+    snapshot = _build_snapshot(
+        node_id="start",
+        outputs={
+            "input_files": [
+                _build_file_mapping(remote_url="https://example.com/1.png", filename="1.png"),
+                _build_file_mapping(remote_url="https://example.com/2.png", filename="2.png"),
+            ]
+        },
+    )
+
+    events = list(executor.execute(node=node, snapshot=snapshot))
+    result = events[1].node_run_result
+
+    files = result.outputs["input_files"]
+    assert isinstance(files, list)
+    assert all(isinstance(item, File) for item in files)
+    assert [item.remote_url for item in files] == ["https://example.com/1.png", "https://example.com/2.png"]
+
+    variable_pool.add(["start", "input_files"], files)
+    segment = variable_pool.get(["start", "input_files"])
+    assert isinstance(segment, ArrayFileSegment)
 
 
 def test_override_context_accepts_legacy_values_by_node_id_payload() -> None:
