@@ -19,7 +19,6 @@ class ConcreteBatchProxy(BatchDocumentIndexingProxy):
     QUEUE_NAME: ClassVar[str] = "test_queue"
     NORMAL_TASK_FUNC: ClassVar[Any] = MagicMock(name="NORMAL_TASK_FUNC")
     PRIORITY_TASK_FUNC: ClassVar[Any] = MagicMock(name="PRIORITY_TASK_FUNC")
-    _features_mock: Optional[MagicMock]
 
 
 # ---------------------------------------------------------------------------
@@ -295,10 +294,8 @@ class TestDispatchRouting:
         proxy = make_proxy()
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
 
-        with patch.object(
-            type(proxy), "features", new_callable=lambda: property(lambda self: self._features_mock)
-        ):
-            proxy._features_mock = self._mock_features(enabled=True, plan=CloudPlan.SANDBOX)
+        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
+            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_default_tenant_queue") as mock_method:
@@ -312,10 +309,8 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch.object(
-            type(proxy), "features", new_callable=lambda: property(lambda self: self._features_mock)
-        ):
-            proxy._features_mock = self._mock_features(enabled=True, plan=CloudPlan.PROFESSIONAL)
+        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
+            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.PROFESSIONAL)
 
             # Act
             with patch.object(proxy, "_send_to_priority_tenant_queue") as mock_method:
@@ -329,10 +324,8 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch.object(
-            type(proxy), "features", new_callable=lambda: property(lambda self: self._features_mock)
-        ):
-            proxy._features_mock = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
+        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
+            mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_priority_direct_queue") as mock_method:

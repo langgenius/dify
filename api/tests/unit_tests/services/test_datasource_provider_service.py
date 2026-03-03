@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session
 
 from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
+from models.account import Account
+from models.model import EndUser
 from models.oauth import DatasourceProvider
 from models.provider_ids import DatasourceProviderID
-from services.datasource_provider_service import DatasourceProviderService
+from services.datasource_provider_service import DatasourceProviderService, get_current_user
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -124,9 +126,6 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_return_proxy_when_current_object_is_account(self):
-        from models.account import Account
-        from services.datasource_provider_service import get_current_user
-
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             user_obj = MagicMock()
             user_obj.__class__ = Account
@@ -134,9 +133,6 @@ class TestDatasourceProviderService:
             assert get_current_user() is proxy
 
     def test_should_return_proxy_when_current_object_is_enduser(self):
-        from models.model import EndUser
-        from services.datasource_provider_service import get_current_user
-
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             user_obj = MagicMock()
             user_obj.__class__ = EndUser
@@ -145,17 +141,12 @@ class TestDatasourceProviderService:
 
     def test_should_return_proxy_when_get_current_object_raises_attribute_error(self):
         """AttributeError from LocalProxy falls back to the proxy itself."""
-        from models.account import Account
-        from services.datasource_provider_service import get_current_user
-
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             proxy._get_current_object.side_effect = AttributeError("no attr")
             proxy.__class__ = Account  # make the proxy itself satisfy isinstance
             assert get_current_user() is proxy
 
     def test_should_raise_type_error_when_user_is_not_account_or_enduser(self):
-        from services.datasource_provider_service import get_current_user
-
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
             proxy._get_current_object.return_value = "plain_string"
             with pytest.raises(TypeError, match="current_user must be Account or EndUser"):
