@@ -390,13 +390,13 @@ describe('App List Browsing Flow', () => {
     })
   })
 
-  // -- Dataset operator redirect --
-  describe('Dataset Operator Redirect', () => {
-    it('should redirect dataset operators to /datasets', () => {
+  // -- Dataset operator behavior --
+  describe('Dataset Operator Behavior', () => {
+    it('should not redirect at list component level for dataset operators', () => {
       mockIsCurrentWorkspaceDatasetOperator = true
       renderList()
 
-      expect(mockRouterReplace).toHaveBeenCalledWith('/datasets')
+      expect(mockRouterReplace).not.toHaveBeenCalled()
     })
   })
 

@@ -4,7 +4,6 @@ import time
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import IntegerVariable, StringVariable
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph import Graph
@@ -20,6 +19,7 @@ from core.workflow.graph_engine.entities.commands import (
 from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
 from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.variables import IntegerVariable, StringVariable
 from models.enums import UserFrom
 
 

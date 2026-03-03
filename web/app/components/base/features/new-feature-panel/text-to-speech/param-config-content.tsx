@@ -2,8 +2,6 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Item } from '@/app/components/base/select'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
-import { RiCloseLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
@@ -29,7 +27,7 @@ const VoiceParamConfig = ({
 }: VoiceParamConfigProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
@@ -67,11 +65,25 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+        <div className="text-text-primary system-xl-semibold">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div
+          className="cursor-pointer p-1"
+          role="button"
+          tabIndex={0}
+          aria-label={t('appDebug:voice.voiceSettings.close')}
+          onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClose()
+            }
+          }}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+        <div className="mb-1 flex items-center py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.language', { ns: 'appDebug' })}
           <Tooltip
             popupContent={(
@@ -103,10 +115,7 @@ const VoiceParamConfig = ({
                   : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronDownIcon
-                  className="h-4 w-4 text-text-tertiary"
-                  aria-hidden="true"
-                />
+                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
               </span>
             </ListboxButton>
             <Transition
@@ -137,7 +146,7 @@ const VoiceParamConfig = ({
                           <span
                             className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                           >
-                            <CheckIcon className="h-4 w-4" aria-hidden="true" />
+                            <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
                           </span>
                         )}
                       </>
@@ -150,7 +159,7 @@ const VoiceParamConfig = ({
         </Listbox>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
@@ -173,10 +182,7 @@ const VoiceParamConfig = ({
                   {voiceItem?.name ?? localVoicePlaceholder}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronDownIcon
-                    className="h-4 w-4 text-text-tertiary"
-                    aria-hidden="true"
-                  />
+                  <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
                 </span>
               </ListboxButton>
               <Transition
@@ -203,7 +209,7 @@ const VoiceParamConfig = ({
                             <span
                               className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                             >
-                              <CheckIcon className="h-4 w-4" aria-hidden="true" />
+                              <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>
@@ -215,7 +221,7 @@ const VoiceParamConfig = ({
             </div>
           </Listbox>
           {languageItem?.example && (
-            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1">
+            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1" data-testid="audition-button">
               <AudioBtn
                 value={languageItem?.example}
                 isAudition
@@ -227,12 +233,12 @@ const VoiceParamConfig = ({
         </div>
       </div>
       <div>
-        <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
           {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
         </div>
         <Switch
           className="shrink-0"
-          defaultValue={text2speech?.autoPlay === TtsAutoPlay.enabled}
+          value={text2speech?.autoPlay === TtsAutoPlay.enabled}
           onChange={(value: boolean) => {
             handleChange({
               autoPlay: value ? TtsAutoPlay.enabled : TtsAutoPlay.disabled,

@@ -21,7 +21,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.evaluation.entities.evaluation_entity import EvaluationCategory
-from core.file import helpers as file_helpers
+from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required

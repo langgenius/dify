@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -125,7 +126,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
         data_source_info = document.data_source_info_dict
         data_source_info["last_edited_time"] = last_edited_time
-        document.data_source_info = data_source_info
+        document.data_source_info = json.dumps(data_source_info)
 
         document.indexing_status = "parsing"
         document.processing_started_at = naive_utc_now()

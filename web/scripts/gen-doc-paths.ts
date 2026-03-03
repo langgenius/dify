@@ -377,7 +377,7 @@ async function main(): Promise<void> {
 
   for (const openapiPath of openApiPaths) {
     // Determine language from path
-    const langMatch = openapiPath.match(/^(en|zh|ja)\//)
+    const langMatch = /^(en|zh|ja)\//.exec(openapiPath)
     if (!langMatch)
       continue
 
