@@ -464,15 +464,10 @@ class WorkflowRunArchiver:
         table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
 
         execution_extra_contents = repo.get_execution_extra_contents_by_run_id(session, run.id)
-        form_ids = set()
-        for content in execution_extra_contents:
-            form_id = getattr(content, "form_id", None)
-            if form_id:
-                form_ids.add(form_id)
         human_input_forms = list(repo.get_human_input_forms_by_run_id(session, run.id))
-        form_ids.update(form.id for form in human_input_forms)
-        human_input_deliveries = repo.get_human_input_deliveries_by_form_ids(session, list(form_ids))
-        human_input_recipients = repo.get_human_input_recipients_by_form_ids(session, list(form_ids))
+        form_ids = [form.id for form in human_input_forms]
+        human_input_deliveries = repo.get_human_input_deliveries_by_form_ids(session, form_ids)
+        human_input_recipients = repo.get_human_input_recipients_by_form_ids(session, form_ids)
         table_data["human_input_forms"] = [self._row_to_dict(row) for row in human_input_forms]
         table_data["human_input_form_deliveries"] = [self._row_to_dict(row) for row in human_input_deliveries]
         table_data["human_input_form_recipients"] = [self._row_to_dict(row) for row in human_input_recipients]
