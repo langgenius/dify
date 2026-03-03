@@ -70,54 +70,6 @@ _DEFAULT_CODE_BY_LANGUAGE: Mapping[CodeLanguage, str] = {
 }
 
 
-class WorkflowCodeExecutor(Protocol):  # noqa: F811
-    def execute(
-        self,
-        *,
-        language: CodeLanguage,
-        code: str,
-        inputs: Mapping[str, Any],
-    ) -> Mapping[str, Any]: ...
-
-    def is_execution_error(self, error: Exception) -> bool: ...
-
-
-def _build_default_config(*, language: CodeLanguage, code: str) -> Mapping[str, object]:
-    return {
-        "type": "code",
-        "config": {
-            "variables": [
-                {"variable": "arg1", "value_selector": []},
-                {"variable": "arg2", "value_selector": []},
-            ],
-            "code_language": language,
-            "code": code,
-            "outputs": {"result": {"type": "string", "children": None}},
-        },
-    }
-
-
-_DEFAULT_CODE_BY_LANGUAGE: Mapping[CodeLanguage, str] = {
-    CodeLanguage.PYTHON3: dedent(
-        """
-        def main(arg1: str, arg2: str):
-            return {
-                "result": arg1 + arg2,
-            }
-        """
-    ),
-    CodeLanguage.JAVASCRIPT: dedent(
-        """
-        function main({arg1, arg2}) {
-            return {
-                result: arg1 + arg2
-            }
-        }
-        """
-    ),
-}
-
-
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
     _limits: CodeNodeLimits
