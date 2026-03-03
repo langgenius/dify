@@ -3,7 +3,12 @@ from collections import defaultdict
 
 import pytest
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -26,6 +31,8 @@ from dify_graph.variables.variables import (
     FloatVariable,
     IntegerVariable,
     ObjectVariable,
+    RAGPipelineVariable,
+    RAGPipelineVariableInput,
     StringVariable,
     Variable,
 )
@@ -434,3 +441,40 @@ def test_get_attr():
     res = vp.get(["node", "name", "output"])
     assert res is not None
     assert res.value == "hello"
+
+
+def test_model_validate_json_does_not_overwrite_existing_env_conversation_and_rag_values():
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(workflow_id=str(uuid.uuid4())),
+        environment_variables=[StringVariable(name="env_key", value="env_origin")],
+        conversation_variables=[StringVariable(name="conv_key", value="conv_origin")],
+        rag_pipeline_variables=[
+            RAGPipelineVariableInput(
+                variable=RAGPipelineVariable(
+                    belong_to_node_id="node_1",
+                    type="text-input",
+                    label="rag value",
+                    variable="rag_key",
+                ),
+                value="rag_origin",
+            )
+        ],
+    )
+
+    variable_pool.add([ENVIRONMENT_VARIABLE_NODE_ID, "env_key"], "env_override")
+    variable_pool.add([CONVERSATION_VARIABLE_NODE_ID, "conv_key"], "conv_override")
+    variable_pool.add([RAG_PIPELINE_VARIABLE_NODE_ID, "rag_key"], "rag_override")
+
+    loaded = VariablePool.model_validate_json(variable_pool.model_dump_json())
+
+    env_segment = loaded.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_key"])
+    assert env_segment is not None
+    assert env_segment.value == "env_override"
+
+    conversation_segment = loaded.get([CONVERSATION_VARIABLE_NODE_ID, "conv_key"])
+    assert conversation_segment is not None
+    assert conversation_segment.value == "conv_override"
+
+    rag_segment = loaded.get([RAG_PIPELINE_VARIABLE_NODE_ID, "rag_key"])
+    assert rag_segment is not None
+    assert rag_segment.value == "rag_override"
