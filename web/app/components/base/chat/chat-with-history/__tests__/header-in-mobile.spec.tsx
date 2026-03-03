@@ -2,8 +2,6 @@ import type { ChatConfig } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
@@ -33,7 +31,7 @@ vi.mock('next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
+vi.mock('../embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: vi.fn(() => ({
     buildTheme: vi.fn(),
   })),

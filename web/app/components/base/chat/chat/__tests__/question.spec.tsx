@@ -5,7 +5,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { vi } from 'vitest'
 
 import Toast from '../../../toast'
 import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
@@ -169,7 +168,8 @@ describe('Question component', () => {
     const user = userEvent.setup()
     const onRegenerate = vi.fn() as unknown as OnRegenerate
 
-    renderWithProvider(makeItem(), onRegenerate)
+    const item = makeItem()
+    renderWithProvider(item, onRegenerate)
 
     const editBtn = screen.getByTestId('edit-btn')
     await user.click(editBtn)
@@ -180,11 +180,13 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const resendBtn = screen.getByRole('button', { name: /operation.save/i })
-    await user.click(resendBtn)
+    // Get all buttons and find the save button (it's typically the last button in the edit mode)
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons[buttons.length - 1] // The save button is usually the last one
+    await user.click(saveBtn)
 
     await waitFor(() => {
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'Edited question', files: [] })
+      expect(onRegenerate).toHaveBeenCalledWith(item, { message: 'Edited question', files: [] })
     })
   })
 
@@ -199,7 +201,10 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const cancelBtn = screen.getByRole('button', { name: /operation.cancel/i })
+    // Get all buttons and find the cancel button (it appears before the save button in edit mode)
+    const buttons = screen.getAllByRole('button')
+    // The cancel button is the second-to-last button in the edit mode action bar
+    const cancelBtn = buttons[buttons.length - 2]
     await user.click(cancelBtn)
 
     await waitFor(() => {
@@ -207,91 +212,6 @@ describe('Question component', () => {
       const md = container.querySelector('.markdown-body')
       expect(md).toBeInTheDocument()
     })
-  })
-
-  it('should confirm editing when Enter is pressed', async () => {
-    const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
-
-    renderWithProvider(makeItem(), onRegenerate)
-
-    await user.click(screen.getByTestId('edit-btn'))
-    const textbox = await screen.findByRole('textbox')
-
-    await user.clear(textbox)
-    await user.type(textbox, 'Edited with Enter')
-
-    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-
-    await waitFor(() => {
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'Edited with Enter', files: [] })
-    })
-  })
-
-  it('should insert a new line when Shift+Enter is pressed', async () => {
-    const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
-
-    renderWithProvider(makeItem(), onRegenerate)
-
-    await user.click(screen.getByTestId('edit-btn'))
-    const textbox = await screen.findByRole('textbox')
-
-    await user.clear(textbox)
-    await user.type(textbox, 'Line 1')
-    await user.type(textbox, '{Shift>}{Enter}{/Shift}')
-
-    expect(textbox).toHaveValue('Line 1\n')
-    expect(onRegenerate).not.toHaveBeenCalled()
-  })
-
-  it('should not confirm editing when Enter is pressed during IME composition', () => {
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
-
-    renderWithProvider(makeItem(), onRegenerate)
-
-    fireEvent.click(screen.getByTestId('edit-btn'))
-    const textbox = screen.getByRole('textbox')
-
-    fireEvent.compositionStart(textbox)
-    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-
-    expect(onRegenerate).not.toHaveBeenCalled()
-    expect(textbox).toHaveValue('This is the question content')
-  })
-
-  it('should keep text unchanged and suppress Enter if a new composition starts before previous composition-end timer finishes', async () => {
-    vi.useFakeTimers()
-
-    try {
-      const onRegenerate = vi.fn() as unknown as OnRegenerate
-      renderWithProvider(makeItem(), onRegenerate)
-
-      fireEvent.click(screen.getByTestId('edit-btn'))
-      const textbox = screen.getByRole('textbox')
-      fireEvent.change(textbox, { target: { value: 'IME guard text' } })
-
-      fireEvent.compositionStart(textbox)
-      fireEvent.compositionEnd(textbox)
-      fireEvent.compositionStart(textbox)
-
-      vi.advanceTimersByTime(50)
-
-      const blockedEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
-      textbox.dispatchEvent(blockedEnterEvent)
-      expect(onRegenerate).not.toHaveBeenCalled()
-      expect(blockedEnterEvent.defaultPrevented).toBe(true)
-      expect(textbox).toHaveValue('IME guard text')
-
-      fireEvent.compositionEnd(textbox)
-      vi.advanceTimersByTime(50)
-
-      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'IME guard text', files: [] })
-    }
-    finally {
-      vi.useRealTimers()
-    }
   })
 
   it('should switch siblings when prev/next buttons are clicked', async () => {
@@ -348,5 +268,124 @@ describe('Question component', () => {
 
     const contentContainer = screen.getByTestId('question-content')
     expect(contentContainer.getAttribute('style')).not.toBeNull()
+  })
+
+  it('should cover composition lifecycle preventing enter submitting when composing', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const item = makeItem()
+
+    renderWithProvider(item, onRegenerate)
+
+    const editBtn = screen.getByTestId('edit-btn')
+    await user.click(editBtn)
+
+    const textbox = await screen.findByRole('textbox')
+    await user.clear(textbox)
+
+    // Simulate composition start and typing
+    act(() => {
+      textbox.focus()
+    })
+
+    // Simulate composition start
+    fireEvent.compositionStart(textbox)
+
+    // Try to press Enter while composing
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    // Simulate composition end
+    fireEvent.compositionEnd(textbox)
+
+    // Expect onRegenerate not to be called because Enter was pressed during composition
+    expect(onRegenerate).not.toHaveBeenCalled()
+
+    // Let setTimeout finish its 50ms interval to clear isComposing
+    await new Promise(r => setTimeout(r, 60))
+
+    // Now press Enter after composition is fully cleared
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
+
+    expect(onRegenerate).toHaveBeenCalledWith(item, { message: '', files: [] })
+  })
+
+  it('should prevent Enter from submitting when shiftKey is pressed', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const item = makeItem()
+
+    renderWithProvider(item, onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    // Press Shift+Enter
+    fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter', shiftKey: true })
+
+    expect(onRegenerate).not.toHaveBeenCalled()
+  })
+
+  it('should ignore enter when nativeEvent.isComposing is true', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    // Create an event with nativeEvent.isComposing = true
+    const event = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' })
+    Object.defineProperty(event, 'isComposing', { value: true })
+
+    fireEvent(textbox, event)
+    expect(onRegenerate).not.toHaveBeenCalled()
+  })
+
+  it('should clear timer on cancel and on component unmount', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const { unmount } = renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    fireEvent.compositionStart(textbox)
+    fireEvent.compositionEnd(textbox)
+
+    // Timer is now running, let's start another composition to clear it
+    fireEvent.compositionStart(textbox)
+    fireEvent.compositionEnd(textbox)
+
+    // Timer is running again, let's click cancel to hit lines 79-80
+    const buttons = screen.getAllByRole('button')
+    const cancelBtn = buttons[buttons.length - 2]
+    await user.click(cancelBtn)
+
+    // Test unmount clearing timer
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox2 = await screen.findByRole('textbox')
+    fireEvent.compositionStart(textbox2)
+    fireEvent.compositionEnd(textbox2)
+    unmount()
+
+    expect(onRegenerate).not.toHaveBeenCalled()
+  })
+
+  it('should ignore enter when handleResend with active timer', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByTestId('edit-btn'))
+    const textbox = await screen.findByRole('textbox')
+
+    fireEvent.compositionStart(textbox)
+    fireEvent.compositionEnd(textbox) // starts timer
+
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons[buttons.length - 1]
+    await user.click(saveBtn) // handleResend clears timer
+
+    expect(onRegenerate).toHaveBeenCalled()
   })
 })

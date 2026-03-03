@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { waitFor } from '@testing-library/react'
 import { AppSourceType } from '@/service/share'
-import AudioPlayer from './audio'
+import AudioPlayer from '../audio'
 
 const mockToastNotify = vi.hoisted(() => vi.fn())
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())

@@ -82,7 +82,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <span className={cn('i-ri-search-line absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <span className={cn('i-ri-search-line absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} data-testid="search-icon" />}
       <input
         ref={ref}
         style={styleCss}
@@ -118,7 +118,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         </div>
       )}
       {destructive && (
-        <span className="i-ri-error-warning-line absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="i-ri-error-warning-line absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" data-testid="input-destructive-icon" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>

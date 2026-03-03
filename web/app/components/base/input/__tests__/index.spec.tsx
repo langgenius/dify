@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import Input, { inputVariants } from './index'
+import Input, { inputVariants } from '../index'
 
 describe('Input component', () => {
   describe('Variants', () => {
@@ -28,7 +27,7 @@ describe('Input component', () => {
 
   it('renders correctly with default props', () => {
     render(<Input />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toBeInTheDocument()
     expect(input).not.toBeDisabled()
     expect(input).not.toHaveClass('cursor-not-allowed')
@@ -36,15 +35,15 @@ describe('Input component', () => {
 
   it('shows left icon when showLeftIcon is true', () => {
     render(<Input showLeftIcon />)
-    const searchIcon = document.querySelector('.i-ri-search-line')
+    const searchIcon = screen.getByTestId('search-icon')
     expect(searchIcon).toBeInTheDocument()
-    const input = screen.getByPlaceholderText('Search')
+    const input = screen.getByPlaceholderText(/search/i)
     expect(input).toHaveClass('pl-[26px]')
   })
 
   it('shows clear icon when showClearIcon is true and has value', () => {
     render(<Input showClearIcon value="test" />)
-    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
+    const clearIcon = screen.getByTestId('input-clear')
     expect(clearIcon).toBeInTheDocument()
     const input = screen.getByDisplayValue('test')
     expect(input).toHaveClass('pr-[26px]')
@@ -52,7 +51,7 @@ describe('Input component', () => {
 
   it('does not show clear icon when disabled, even with value', () => {
     render(<Input showClearIcon value="test" disabled />)
-    const clearIcon = document.querySelector('.i-ri-close-circle-fill')
+    const clearIcon = screen.queryByTestId('input-clear')
     expect(clearIcon).not.toBeInTheDocument()
   })
 
@@ -60,21 +59,21 @@ describe('Input component', () => {
     const onClear = vi.fn()
     render(<Input showClearIcon value="test" onClear={onClear} />)
     const clearIconContainer = screen.getByTestId('input-clear')
-    fireEvent.click(clearIconContainer!)
+    fireEvent.click(clearIconContainer)
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 
   it('shows warning icon when destructive is true', () => {
     render(<Input destructive />)
-    const warningIcon = document.querySelector('.i-ri-error-warning-line')
+    const warningIcon = screen.getByTestId('input-destructive-icon')
     expect(warningIcon).toBeInTheDocument()
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass('border-components-input-border-destructive')
   })
 
   it('applies disabled styles when disabled', () => {
     render(<Input disabled />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toBeDisabled()
     expect(input).toHaveClass('cursor-not-allowed')
     expect(input).toHaveClass('bg-components-input-bg-disabled')
@@ -90,14 +89,14 @@ describe('Input component', () => {
     const customClass = 'test-class'
     const customStyle = { color: 'red' }
     render(<Input className={customClass} styleCss={customStyle} />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass(customClass)
     expect(input).toHaveStyle({ color: 'rgb(255, 0, 0)' })
   })
 
   it('applies large size variant correctly', () => {
     render(<Input size="large" />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input.className).toContain(inputVariants({ size: 'large' }))
   })
 
@@ -110,24 +109,30 @@ describe('Input component', () => {
 
   describe('Number Input Formatting', () => {
     it('removes leading zeros on change when current value is zero', () => {
-      const onChange = vi.fn()
+      let changedValue = ''
+      const onChange = vi.fn((e) => {
+        changedValue = e.target.value
+      })
       render(<Input type="number" value={0} onChange={onChange} />)
 
       const input = screen.getByRole('spinbutton') as HTMLInputElement
       fireEvent.change(input, { target: { value: '00042' } })
 
       expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange.mock.calls[0][0].target.value).toBe('42')
+      expect(changedValue).toBe('42')
     })
 
     it('keeps typed value on change when current value is not zero', () => {
-      const onChange = vi.fn()
+      let changedValue = ''
+      const onChange = vi.fn((e) => {
+        changedValue = e.target.value
+      })
       render(<Input type="number" value={1} onChange={onChange} />)
 
       const input = screen.getByRole('spinbutton') as HTMLInputElement
       fireEvent.change(input, { target: { value: '00042' } })
       expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange.mock.calls[0][0].target.value).toBe('00042')
+      expect(changedValue).toBe('00042')
     })
 
     it('normalizes value and triggers change on blur when leading zeros exist', () => {

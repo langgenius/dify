@@ -12,7 +12,17 @@ vi.mock('mermaid', () => ({
   },
 }))
 
-vi.mock('../utils', async (importOriginal) => {
+vi.mock('@/app/components/base/image-uploader/image-preview', () => {
+  return {
+    default: ({ onCancel }: { onCancel: () => void }) => (
+      <button onClick={onCancel} data-testid="image-preview-cancel-mock">
+        Cancel
+      </button>
+    ),
+  }
+})
+
+vi.mock('./utils', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
@@ -27,6 +37,7 @@ describe('Mermaid Flowchart Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(mermaid.initialize).mockImplementation(() => { })
+    vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg id="mermaid-chart">test-svg</svg>', diagramType: 'flowchart' })
   })
 
   describe('Rendering', () => {
@@ -144,7 +155,7 @@ describe('Mermaid Flowchart Component', () => {
         fireEvent.click(chartDiv!)
       })
       await waitFor(() => {
-        expect(document.body.querySelector('.image-preview-container')).toBeInTheDocument()
+        expect(screen.getByTestId('image-preview-cancel-mock')).toBeInTheDocument()
       }, { timeout: 3000 })
     })
   })
@@ -164,7 +175,6 @@ describe('Mermaid Flowchart Component', () => {
       const errorMsg = 'Syntax error'
       vi.mocked(mermaid.render).mockRejectedValue(new Error(errorMsg))
 
-      // Use unique code to avoid hitting the module-level diagramCache from previous tests
       const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
       const { container } = render(<Flowchart PrimitiveCode={uniqueCode} />)
 
@@ -172,27 +182,32 @@ describe('Mermaid Flowchart Component', () => {
         const errorSpan = container.querySelector('.text-red-500 span.ml-2')
         expect(errorSpan).toBeInTheDocument()
         expect(errorSpan?.textContent).toContain('Rendering failed')
-      }, { timeout: 5000 })
+      })
+
       consoleSpy.mockRestore()
-      // Restore default mock to prevent leaking into subsequent tests
-      vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg id="mermaid-chart">test-svg</svg>', diagramType: 'flowchart' })
-    }, 10000)
+    })
 
     it('should use cached diagram if available', async () => {
       const { rerender } = render(<Flowchart PrimitiveCode={mockCode} />)
 
-      await waitFor(() => screen.getByText('test-svg'), { timeout: 3000 })
+      // Wait for initial render to complete
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render)).toHaveBeenCalled()
+      }, { timeout: 3000 })
+      const initialCallCount = vi.mocked(mermaid.render).mock.calls.length
 
-      vi.mocked(mermaid.render).mockClear()
-
+      // Rerender with same code
       await act(async () => {
         rerender(<Flowchart PrimitiveCode={mockCode} />)
       })
 
+      // Wait a bit for any potential re-renders
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 500))
       })
-      expect(mermaid.render).not.toHaveBeenCalled()
+
+      // Call count should not increase (cache was used)
+      expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialCallCount)
     })
 
     it('should handle invalid mermaid code completion', async () => {
@@ -204,6 +219,91 @@ describe('Mermaid Flowchart Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Diagram code is not complete or invalid.')).toBeInTheDocument()
       }, { timeout: 3000 })
+    })
+
+    it('should use cache without rendering again when PrimitiveCode changes back to previous', async () => {
+      const { rerender } = render(<Flowchart PrimitiveCode="graph TD\n  A-->B" />)
+
+      // Wait for initial render
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render)).toHaveBeenCalled()
+      }, { timeout: 3000 })
+      const firstRenderCallCount = vi.mocked(mermaid.render).mock.calls.length
+
+      // Change to different code
+      await act(async () => {
+        rerender(<Flowchart PrimitiveCode="graph TD\n  C-->D" />)
+      })
+
+      // Wait for second render
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBeGreaterThan(firstRenderCallCount)
+      }, { timeout: 3000 })
+      const afterSecondRenderCallCount = vi.mocked(mermaid.render).mock.calls.length
+
+      // Change back to first code - should use cache
+      await act(async () => {
+        rerender(<Flowchart PrimitiveCode="graph TD\n  A-->B" />)
+      })
+
+      // Wait a bit for any potential re-renders
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      })
+
+      // Call count should not increase (cache was used)
+      expect(vi.mocked(mermaid.render).mock.calls.length).toBe(afterSecondRenderCallCount)
+    })
+
+    it('should close image preview when cancel is clicked', async () => {
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={mockCode} />)
+      })
+
+      // Wait for SVG to be rendered
+      await waitFor(() => {
+        const svgElement = screen.queryByText('test-svg')
+        expect(svgElement).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const mermaidDiv = screen.getByText('test-svg').closest('.mermaid')
+      await act(async () => {
+        fireEvent.click(mermaidDiv!)
+      })
+
+      // Wait for image preview to appear
+      const cancelBtn = await screen.findByTestId('image-preview-cancel-mock')
+      expect(cancelBtn).toBeInTheDocument()
+
+      await act(async () => {
+        fireEvent.click(cancelBtn)
+      })
+
+      // Wait for preview to close
+      await waitFor(() => {
+        expect(screen.queryByTestId('image-preview-cancel-mock')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should handle configuration failure during configureMermaid', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const originalMock = vi.mocked(mermaid.initialize).getMockImplementation()
+      vi.mocked(mermaid.initialize).mockImplementation(() => {
+        throw new Error('Config fail')
+      })
+
+      render(<Flowchart PrimitiveCode="graph TD\n  G-->H" />)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      })
+      consoleSpy.mockRestore()
+
+      if (originalMock) {
+        vi.mocked(mermaid.initialize).mockImplementation(originalMock)
+      }
+      else {
+        vi.mocked(mermaid.initialize).mockImplementation(() => { })
+      }
     })
 
     it('should handle unmount cleanup', async () => {

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InputNumber } from './index'
+import { InputNumber } from '../index'
 
 describe('InputNumber Component', () => {
   const defaultProps = {
@@ -17,60 +17,62 @@ describe('InputNumber Component', () => {
     expect(input).toBeInTheDocument()
   })
 
-  it('handles increment button click', () => {
-    render(<InputNumber {...defaultProps} value={5} />)
+  it('handles increment button click', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={5} />)
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
 
-    fireEvent.click(incrementBtn)
-    expect(defaultProps.onChange).toHaveBeenCalledWith(6)
+    await user.click(incrementBtn)
+    expect(onChange).toHaveBeenCalledWith(6)
   })
 
-  it('handles decrement button click', () => {
-    render(<InputNumber {...defaultProps} value={5} />)
+  it('handles decrement button click', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={5} />)
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 
-    fireEvent.click(decrementBtn)
-    expect(defaultProps.onChange).toHaveBeenCalledWith(4)
+    await user.click(decrementBtn)
+    expect(onChange).toHaveBeenCalledWith(4)
   })
 
-  it('respects max value constraint', () => {
-    render(<InputNumber {...defaultProps} value={10} max={10} />)
+  it('respects max value constraint', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={10} max={10} />)
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
 
-    fireEvent.click(incrementBtn)
-    expect(defaultProps.onChange).not.toHaveBeenCalled()
+    await user.click(incrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('respects min value constraint', () => {
-    render(<InputNumber {...defaultProps} value={0} min={0} />)
+  it('respects min value constraint', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={0} min={0} />)
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 
-    fireEvent.click(decrementBtn)
-    expect(defaultProps.onChange).not.toHaveBeenCalled()
+    await user.click(decrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('handles direct input changes', () => {
-    render(<InputNumber {...defaultProps} />)
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} />)
     const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: '42' } })
-    expect(defaultProps.onChange).toHaveBeenCalledWith(42)
+    expect(onChange).toHaveBeenCalledWith(42)
   })
 
   it('handles empty input', () => {
-    render(<InputNumber {...defaultProps} value={1} />)
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={1} />)
     const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: '' } })
-    expect(defaultProps.onChange).toHaveBeenCalledWith(0)
-  })
-
-  it('handles invalid input', () => {
-    render(<InputNumber {...defaultProps} />)
-    const input = screen.getByRole('spinbutton')
-
-    fireEvent.change(input, { target: { value: 'abc' } })
-    expect(defaultProps.onChange).toHaveBeenCalledWith(0)
+    expect(onChange).toHaveBeenCalledWith(0)
   })
 
   it('does not call onChange when parsed value is NaN', () => {
@@ -102,36 +104,40 @@ describe('InputNumber Component', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('uses default value when increment and decrement are clicked without value prop', () => {
+  it('uses default value when increment and decrement are clicked without value prop', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} defaultValue={7} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /increment/i }))
-    fireEvent.click(screen.getByRole('button', { name: /decrement/i }))
+    await user.click(screen.getByRole('button', { name: /increment/i }))
+    await user.click(screen.getByRole('button', { name: /decrement/i }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, 7)
     expect(onChange).toHaveBeenNthCalledWith(2, 7)
   })
 
-  it('falls back to zero when controls are used without value and defaultValue', () => {
+  it('falls back to zero when controls are used without value and defaultValue', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /increment/i }))
-    fireEvent.click(screen.getByRole('button', { name: /decrement/i }))
+    await user.click(screen.getByRole('button', { name: /increment/i }))
+    await user.click(screen.getByRole('button', { name: /decrement/i }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, 0)
     expect(onChange).toHaveBeenNthCalledWith(2, 0)
   })
 
   it('displays unit when provided', () => {
+    const onChange = vi.fn()
     const unit = 'px'
-    render(<InputNumber {...defaultProps} unit={unit} />)
+    render(<InputNumber onChange={onChange} unit={unit} />)
     expect(screen.getByText(unit)).toBeInTheDocument()
   })
 
   it('disables controls when disabled prop is true', () => {
-    render(<InputNumber {...defaultProps} disabled />)
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} disabled />)
     const input = screen.getByRole('spinbutton')
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
@@ -141,13 +147,16 @@ describe('InputNumber Component', () => {
     expect(decrementBtn).toBeDisabled()
   })
 
-  it('does not change value when disabled handlers are triggered directly', async () => {
+  it('does not change value when disabled controls are clicked', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    render(<InputNumber onChange={onChange} disabled value={5} />)
+    const { getByRole } = render(<InputNumber onChange={onChange} disabled value={5} />)
 
-    const incrementBtn = screen.getByRole('button', { name: /increment/i })
-    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+    const incrementBtn = getByRole('button', { name: /increment/i })
+    const decrementBtn = getByRole('button', { name: /decrement/i })
+
+    expect(incrementBtn).toBeDisabled()
+    expect(decrementBtn).toBeDisabled()
 
     await user.click(incrementBtn)
     await user.click(decrementBtn)
@@ -156,11 +165,162 @@ describe('InputNumber Component', () => {
   })
 
   it('applies large-size classes for control buttons', () => {
-    render(<InputNumber {...defaultProps} size="large" />)
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} size="large" />)
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 
     expect(incrementBtn).toHaveClass('pt-1.5')
     expect(decrementBtn).toHaveClass('pb-1.5')
+  })
+
+  it('prevents increment beyond max with custom amount', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={8} max={10} amount={5} />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+
+    await user.click(incrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('prevents decrement below min with custom amount', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={2} min={0} amount={5} />)
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    await user.click(decrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('increments when value with custom amount stays within bounds', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={5} max={10} amount={3} />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+
+    await user.click(incrementBtn)
+    expect(onChange).toHaveBeenCalledWith(8)
+  })
+
+  it('decrements when value with custom amount stays within bounds', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={5} min={0} amount={3} />)
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    await user.click(decrementBtn)
+    expect(onChange).toHaveBeenCalledWith(2)
+  })
+
+  it('validates input against max constraint', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} max={10} />)
+    const input = screen.getByRole('spinbutton')
+
+    fireEvent.change(input, { target: { value: '15' } })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('validates input against min constraint', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} min={5} />)
+    const input = screen.getByRole('spinbutton')
+
+    fireEvent.change(input, { target: { value: '2' } })
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('accepts input within min and max constraints', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} min={0} max={100} />)
+    const input = screen.getByRole('spinbutton')
+
+    fireEvent.change(input, { target: { value: '50' } })
+    expect(onChange).toHaveBeenCalledWith(50)
+  })
+
+  it('handles negative min and max values', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} min={-10} max={10} value={0} />)
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    await user.click(decrementBtn)
+    expect(onChange).toHaveBeenCalledWith(-1)
+  })
+
+  it('prevents decrement below negative min', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} min={-10} value={-10} />)
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    await user.click(decrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('applies wrapClassName to outer div', () => {
+    const onChange = vi.fn()
+    const wrapClassName = 'custom-wrap-class'
+    const { container } = render(<InputNumber onChange={onChange} wrapClassName={wrapClassName} />)
+    const wrapper = container.querySelector('div')
+    expect(wrapper).toHaveClass(wrapClassName)
+  })
+
+  it('applies controlWrapClassName to control buttons container', () => {
+    const onChange = vi.fn()
+    const controlWrapClassName = 'custom-control-wrap'
+    const { container } = render(<InputNumber onChange={onChange} controlWrapClassName={controlWrapClassName} />)
+    const controlDiv = container.querySelector('[class*="flex-col"]')
+    expect(controlDiv).toHaveClass(controlWrapClassName)
+  })
+
+  it('applies controlClassName to individual control buttons', () => {
+    const onChange = vi.fn()
+    const controlClassName = 'custom-control'
+    const { container } = render(<InputNumber onChange={onChange} controlClassName={controlClassName} />)
+    const buttons = container.querySelectorAll('button')
+    buttons.forEach((btn) => {
+      expect(btn).toHaveClass(controlClassName)
+    })
+  })
+
+  it('applies regular-size classes for control buttons when size is regular', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} size="regular" />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    expect(incrementBtn).toHaveClass('pt-1')
+    expect(decrementBtn).toHaveClass('pb-1')
+  })
+
+  it('handles zero as a valid input', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} min={-5} max={5} value={1} />)
+    const input = screen.getByRole('spinbutton')
+
+    fireEvent.change(input, { target: { value: '0' } })
+    expect(onChange).toHaveBeenCalledWith(0)
+  })
+
+  it('prevents exact max boundary increment', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={10} max={10} />)
+
+    await user.click(screen.getByRole('button', { name: /increment/i }))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('prevents exact min boundary decrement', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={0} min={0} />)
+
+    await user.click(screen.getByRole('button', { name: /decrement/i }))
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

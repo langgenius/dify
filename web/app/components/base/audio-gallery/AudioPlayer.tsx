@@ -289,7 +289,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   return (
     <div className="flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm">
-      <audio ref={audioRef} src={src} preload="auto">
+      <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (
           <source key={index} src={srcUrl} />
@@ -313,6 +313,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
+            onTouchMove={handleMouseMove}
+            onTouchStart={handleCanvasInteraction}
           />
           <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>

@@ -2,9 +2,7 @@ import type { RefObject } from 'react'
 import type { ChatConfig } from '../../types'
 import type { InstalledApp } from '@/models/explore'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useChatWithHistory } from '../hooks'
@@ -39,7 +37,10 @@ vi.mock('next/navigation', () => ({
   useParams: vi.fn(() => ({})),
 }))
 
-const mockBuildTheme = vi.fn()
+const { mockBuildTheme } = vi.hoisted(() => ({
+  mockBuildTheme: vi.fn(),
+}))
+
 vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: vi.fn(() => ({
     buildTheme: mockBuildTheme,
@@ -113,81 +114,22 @@ describe('ChatWithHistory', () => {
     vi.mocked(useChatWithHistory).mockReturnValue(defaultHookReturn)
   })
 
-  it('renders desktop view with expanded sidebar and builds theme', () => {
+  it('renders desktop view with expanded sidebar and builds theme', async () => {
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
 
     render(<ChatWithHistory />)
 
-    // Checks if the desktop elements render correctly
-    // Checks if the desktop elements render correctly
-    // Sidebar real component doesn't have data-testid="sidebar", so we check for its presence via class or content.
-    // Sidebar usually has "New Chat" button or similar.
-    // However, looking at the Sidebar mock it was just a div.
-    // Real Sidebar -> web/app/components/base/chat/chat-with-history/sidebar/index.tsx
-    // It likely has some text or distinct element.
-    // ChatWrapper also removed mock.
-    // Header also removed mock.
-
-    // For now, let's verify some key elements that should be present in these components.
-    // Sidebar: "Explore" or "Chats" or verify navigation structure.
-    // Header: Title or similar.
-    // ChatWrapper: "Start a new chat" or similar.
-
-    // Given the complexity of real components and lack of testIds, we might need to rely on:
-    // 1. Adding testIds to real components (preferred but might be out of scope if I can't touch them? Guidelines say "don't mock base components", but adding testIds is fine).
-    // But I can't see those files right now.
-    // 2. Use getByText for known static content.
-
-    // Let's assume some content based on `mockAppData` title 'Test Chat'.
-    // Header should contain 'Test Chat'.
-    // Check for "Test Chat" - might appear multiple times (header, sidebar, document title etc)
+    // header-in-mobile renders 'Test Chat'.
     const titles = screen.getAllByText('Test Chat')
     expect(titles.length).toBeGreaterThan(0)
-
-    // Sidebar should be present.
-    // We can check for a specific element in sidebar, e.g. "New Chat" button if it exists.
-    // Or we can check for the sidebar container class if possible.
-    // Let's look at `index.tsx` logic.
-    // Sidebar is rendered.
-    // Let's try to query by something generic or update to use `container.querySelector`.
-    // But `screen` is better.
-
-    // ChatWrapper is rendered.
-    // It renders "ChatWrapper" text? No, it's the real component now.
-    // Real ChatWrapper renders "Welcome" or chat list.
-    // In `chat-wrapper.spec.tsx`, we saw it renders "Welcome" or "Q1".
-    // Here `defaultHookReturn` returns empty chat list/conversation.
-    // So it might render nothing or empty state?
-    // Let's wait and see what `chat-wrapper.spec.tsx` expectations were.
-    // It expects "Welcome" if `isOpeningStatement` is true.
-    // In `index.spec.tsx` mock hook return:
-    // `currentConversationItem` is undefined.
-    // `conversationList` is [].
-    // `appPrevChatTree` is [].
-    // So ChatWrapper might render empty or loading?
-
-    // This is an integration test now.
-    // We need to ensure the hook return makes sense for the child components.
-
-    // Let's just assert the document title since we know that works?
-    // And check if we can find *something*.
-
-    // For now, I'll comment out the specific testId checks and rely on visual/text checks that are likely to flourish.
-    // header-in-mobile renders 'Test Chat'.
-    // Sidebar?
-
-    // Actually, `ChatWithHistory` renders `Sidebar` in a div with width.
-    // We can check if that div exists?
-
-    // Let's update to checks that are likely to pass or allow us to debug.
-
-    // expect(document.title).toBe('Test Chat')
 
     // Checks if the document title was set correctly
     expect(useDocumentTitle).toHaveBeenCalledWith('Test Chat')
 
     // Checks if the themeBuilder useEffect fired
-    expect(mockBuildTheme).toHaveBeenCalledWith('blue', false)
+    await waitFor(() => {
+      expect(mockBuildTheme).toHaveBeenCalledWith('blue', false)
+    })
   })
 
   it('renders desktop view with collapsed sidebar and tests hover effects', () => {

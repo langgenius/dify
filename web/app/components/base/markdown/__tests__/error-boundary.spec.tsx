@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ErrorBoundary from '../error-boundary'
 import '@testing-library/jest-dom'
 

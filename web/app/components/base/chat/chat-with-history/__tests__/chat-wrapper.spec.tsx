@@ -4,8 +4,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchSuggestedQuestions,

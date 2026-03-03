@@ -1,4 +1,4 @@
-import { AudioPlayerManager } from './audio.player.manager'
+import { AudioPlayerManager } from '../audio.player.manager'
 
 type AudioCallback = ((event: string) => void) | null
 type AudioPlayerCtorArgs = [
@@ -28,17 +28,15 @@ const mockAudioPlayerConstructor = vi.hoisted(() => vi.fn())
 
 const MockAudioPlayer = vi.hoisted(() => {
   return class MockAudioPlayerClass {
+    setCallback = vi.fn()
+    pauseAudio = vi.fn()
+    resetMsgId = vi.fn()
+    cacheBuffers = [new ArrayBuffer(1)]
+    sourceBuffer = { abort: vi.fn() }
+
     constructor(...args: AudioPlayerCtorArgs) {
       mockAudioPlayerConstructor(...args)
-      const instance: MockAudioPlayerInstance = {
-        setCallback: vi.fn(),
-        pauseAudio: vi.fn(),
-        resetMsgId: vi.fn(),
-        cacheBuffers: [new ArrayBuffer(1)],
-        sourceBuffer: { abort: vi.fn() },
-      }
-      mockState.instances.push(instance)
-      Object.assign(this, instance)
+      mockState.instances.push(this as unknown as MockAudioPlayerInstance)
     }
   }
 })
