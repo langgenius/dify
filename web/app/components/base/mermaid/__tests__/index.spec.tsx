@@ -145,7 +145,7 @@ describe('Mermaid Flowchart Component', () => {
         fireEvent.click(chartDiv!)
       })
       await waitFor(() => {
-        expect(screen.getByTestId('image-preview-cancel-mock')).toBeInTheDocument()
+        expect(screen.getByTestId('image-preview-container')).toBeInTheDocument()
       }, { timeout: 3000 })
     })
   })
@@ -262,7 +262,7 @@ describe('Mermaid Flowchart Component', () => {
       })
 
       // Wait for image preview to appear
-      const cancelBtn = await screen.findByTestId('image-preview-cancel-mock')
+      const cancelBtn = await screen.findByTestId('image-preview-close-button')
       expect(cancelBtn).toBeInTheDocument()
 
       await act(async () => {

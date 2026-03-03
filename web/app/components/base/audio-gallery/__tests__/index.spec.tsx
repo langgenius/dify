@@ -1,23 +1,9 @@
 import { render, screen } from '@testing-library/react'
-import * as React from 'react'
-// AudioGallery.spec.tsx
-import { describe, expect, it, vi } from 'vitest'
-
 import AudioGallery from '../index'
-
-// Mock AudioPlayer so we only assert prop forwarding
-const audioPlayerMock = vi.fn()
-
-vi.mock('../AudioPlayer', () => ({
-  default: (props: { srcs: string[] }) => {
-    audioPlayerMock(props)
-    return <div data-testid="audio-player" />
-  },
-}))
 
 describe('AudioGallery', () => {
   beforeEach(() => {
-    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => { })
   })
 
   it('returns null when srcs array is empty', () => {
@@ -34,7 +20,6 @@ describe('AudioGallery', () => {
 
   it('filters out falsy srcs and renders only valid sources in AudioPlayer', () => {
     render(<AudioGallery srcs={['a.mp3', '', 'b.mp3']} />)
-
     const audio = screen.getByTestId('audio-player')
     const sources = audio.querySelectorAll('source')
 
