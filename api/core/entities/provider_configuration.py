@@ -19,15 +19,15 @@ from core.entities.provider_entities import (
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormType,
     ProviderEntity,
 )
-from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.provider import (

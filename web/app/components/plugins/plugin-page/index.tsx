@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
+import type { PluginPageTab } from './context'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -36,6 +37,16 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
+
+const pluginPageTabSet = new Set<string>([
+  PLUGIN_PAGE_TABS_MAP.plugins,
+  PLUGIN_PAGE_TABS_MAP.marketplace,
+  ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
+])
+
+const isPluginPageTab = (value: string): value is PluginPageTab => {
+  return pluginPageTabSet.has(value)
+}
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -154,7 +165,10 @@ const PluginPage = ({
           <div className="flex-1">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
-              onChange={setActiveTab}
+              onChange={(nextTab) => {
+                if (isPluginPageTab(nextTab))
+                  setActiveTab(nextTab)
+              }}
               options={options}
             />
           </div>
