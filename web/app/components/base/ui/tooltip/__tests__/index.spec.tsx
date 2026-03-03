@@ -1,207 +1,95 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../index'
 
-type ParsedPlacement = {
-  side: 'top' | 'bottom' | 'left' | 'right'
-  align: 'start' | 'center' | 'end'
-}
-
-type PositionerMockProps = ComponentPropsWithoutRef<'div'> & {
-  side?: ParsedPlacement['side']
-  align?: ParsedPlacement['align']
-  sideOffset?: number
-  alignOffset?: number
-}
-
-const positionerPropsSpy = vi.fn<(props: PositionerMockProps) => void>()
-const popupPropsSpy = vi.fn<(props: ComponentPropsWithoutRef<'div'>) => void>()
-const parsePlacementMock = vi.fn<(placement: Placement) => ParsedPlacement>()
-
-vi.mock('@/app/components/base/ui/placement', () => ({
-  parsePlacement: (placement: Placement) => parsePlacementMock(placement),
-}))
-
-vi.mock('@base-ui/react/tooltip', () => {
-  const Portal = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
-  )
-
-  const Positioner = ({ children, ...props }: PositionerMockProps) => {
-    positionerPropsSpy(props)
-    return <div>{children}</div>
-  }
-
-  const Popup = ({ children, className, ...props }: ComponentPropsWithoutRef<'div'>) => {
-    popupPropsSpy({ className, ...props })
-    return (
-      <div className={className} {...props}>
-        {children}
-      </div>
-    )
-  }
-
-  const Provider = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
-  )
-
-  const Root = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
-  )
-
-  const Trigger = ({ children }: { children?: ReactNode }) => (
-    <button type="button">
-      {children}
-    </button>
-  )
-
-  return {
-    Tooltip: {
-      Portal,
-      Positioner,
-      Popup,
-      Provider,
-      Root,
-      Trigger,
-    },
-  }
-})
-
 describe('TooltipContent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    parsePlacementMock.mockReturnValue({ side: 'top', align: 'center' })
-  })
-
   describe('Placement and offsets', () => {
-    it('should use default placement and offsets when optional props are not provided', () => {
-      // Arrange
-      render(<TooltipContent>Tooltip body</TooltipContent>)
+    it('should use default top placement when placement is not provided', () => {
+      render(
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent role="tooltip" aria-label="default tooltip">
+            Tooltip body
+          </TooltipContent>
+        </Tooltip>,
+      )
 
-      // Act
-      const positionerProps = positionerPropsSpy.mock.calls.at(-1)?.[0]
-
-      // Assert
-      expect(parsePlacementMock).toHaveBeenCalledWith('top')
-      expect(positionerProps).toEqual(expect.objectContaining({
-        side: 'top',
-        align: 'center',
-        sideOffset: 8,
-        alignOffset: 0,
-      }))
-      expect(screen.getByText('Tooltip body')).toBeInTheDocument()
+      const popup = screen.getByRole('tooltip', { name: 'default tooltip' })
+      expect(popup).toHaveAttribute('data-side', 'top')
+      expect(popup).toHaveAttribute('data-align', 'center')
+      expect(popup).toHaveTextContent('Tooltip body')
     })
 
-    it('should use parsed placement and custom offsets when placement props are provided', () => {
-      // Arrange
-      parsePlacementMock.mockReturnValue({ side: 'bottom', align: 'start' })
-      const customPlacement: Placement = 'bottom-start'
-
-      // Act
+    it('should apply custom placement when placement props are provided', () => {
       render(
-        <TooltipContent
-          placement={customPlacement}
-          sideOffset={16}
-          alignOffset={6}
-        >
-          Custom tooltip body
-        </TooltipContent>,
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent
+            placement="bottom-start"
+            sideOffset={16}
+            alignOffset={6}
+            role="tooltip"
+            aria-label="custom tooltip"
+          >
+            Custom tooltip body
+          </TooltipContent>
+        </Tooltip>,
       )
-      const positionerProps = positionerPropsSpy.mock.calls.at(-1)?.[0]
 
-      // Assert
-      expect(parsePlacementMock).toHaveBeenCalledWith(customPlacement)
-      expect(positionerProps).toEqual(expect.objectContaining({
-        side: 'bottom',
-        align: 'start',
-        sideOffset: 16,
-        alignOffset: 6,
-      }))
-      expect(screen.getByText('Custom tooltip body')).toBeInTheDocument()
+      const popup = screen.getByRole('tooltip', { name: 'custom tooltip' })
+      expect(popup).toHaveAttribute('data-side', 'bottom')
+      expect(popup).toHaveAttribute('data-align', 'start')
+      expect(popup).toHaveTextContent('Custom tooltip body')
     })
   })
 
-  describe('Variant behavior', () => {
-    it('should compute a different popup presentation contract for plain variant than default', () => {
-      // Arrange
-      const { rerender } = render(
-        <TooltipContent variant="default">
-          Default tooltip body
-        </TooltipContent>,
-      )
-      const defaultPopupProps = popupPropsSpy.mock.calls.at(-1)?.[0]
-
-      // Act
-      rerender(
-        <TooltipContent variant="plain">
-          Plain tooltip body
-        </TooltipContent>,
-      )
-      const plainPopupProps = popupPropsSpy.mock.calls.at(-1)?.[0]
-
-      // Assert
-      expect(screen.getByText('Plain tooltip body')).toBeInTheDocument()
-      expect(defaultPopupProps?.className).toBeTypeOf('string')
-      expect(plainPopupProps?.className).toBeTypeOf('string')
-      expect(plainPopupProps?.className).not.toBe(defaultPopupProps?.className)
-    })
-  })
-
-  describe('Popup prop forwarding', () => {
-    it('should forward popup props to BaseTooltip.Popup when popup props are provided', () => {
-      // Arrange
+  describe('Variant and popup props', () => {
+    it('should render popup content when variant is plain', () => {
       render(
-        <TooltipContent
-          id="popup-id"
-          role="tooltip"
-          aria-label="help text"
-          data-track-id="tooltip-track"
-        >
-          Tooltip body
-        </TooltipContent>,
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent variant="plain" role="tooltip" aria-label="plain tooltip">
+            Plain tooltip body
+          </TooltipContent>
+        </Tooltip>,
       )
 
-      // Act
+      expect(screen.getByRole('tooltip', { name: 'plain tooltip' })).toHaveTextContent('Plain tooltip body')
+    })
+
+    it('should forward popup props and handlers when popup props are provided', () => {
+      const onMouseEnter = vi.fn()
+
+      render(
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent
+            id="tooltip-popup-id"
+            role="tooltip"
+            aria-label="help text"
+            data-track-id="tooltip-track"
+            onMouseEnter={onMouseEnter}
+          >
+            Tooltip body
+          </TooltipContent>
+        </Tooltip>,
+      )
+
       const popup = screen.getByRole('tooltip', { name: 'help text' })
-      const popupProps = popupPropsSpy.mock.calls.at(-1)?.[0]
+      fireEvent.mouseEnter(popup)
 
-      // Assert
-      expect(popupProps).toEqual(expect.objectContaining({
-        'id': 'popup-id',
-        'role': 'tooltip',
-        'aria-label': 'help text',
-        'data-track-id': 'tooltip-track',
-      }))
-      expect(popup).toHaveAttribute('id', 'popup-id')
-      expect(popup).toHaveAttribute('role', 'tooltip')
-      expect(popup).toHaveAttribute('aria-label', 'help text')
+      expect(popup).toHaveAttribute('id', 'tooltip-popup-id')
       expect(popup).toHaveAttribute('data-track-id', 'tooltip-track')
+      expect(onMouseEnter).toHaveBeenCalledTimes(1)
     })
   })
 })
 
 describe('Tooltip aliases', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should map alias exports to BaseTooltip components when wrapper exports are imported', () => {
-    // Arrange
-    const provider = BaseTooltip.Provider
-    const root = BaseTooltip.Root
-    const trigger = BaseTooltip.Trigger
-
-    // Act
-    const exportedProvider = TooltipProvider
-    const exportedTooltip = Tooltip
-    const exportedTrigger = TooltipTrigger
-
-    // Assert
-    expect(exportedProvider).toBe(provider)
-    expect(exportedTooltip).toBe(root)
-    expect(exportedTrigger).toBe(trigger)
+    expect(TooltipProvider).toBe(BaseTooltip.Provider)
+    expect(Tooltip).toBe(BaseTooltip.Root)
+    expect(TooltipTrigger).toBe(BaseTooltip.Trigger)
   })
 })

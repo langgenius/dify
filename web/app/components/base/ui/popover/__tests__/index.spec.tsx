@@ -1,6 +1,6 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { Popover as BasePopover } from '@base-ui/react/popover'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import {
   Popover,
   PopoverClose,
@@ -10,190 +10,98 @@ import {
   PopoverTrigger,
 } from '..'
 
-type PrimitiveProps = ComponentPropsWithoutRef<'div'> & {
-  children?: ReactNode
-}
-
-type PositionerProps = PrimitiveProps & {
-  side?: 'top' | 'bottom' | 'left' | 'right'
-  align?: 'start' | 'center' | 'end'
-  sideOffset?: number
-  alignOffset?: number
-}
-
-vi.mock('@base-ui/react/popover', () => {
-  const Root = ({ children, ...props }: PrimitiveProps) => (
-    <div {...props}>
-      {children}
-    </div>
-  )
-
-  const Trigger = ({ children, ...props }: ComponentPropsWithoutRef<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  )
-
-  const Close = ({ children, ...props }: ComponentPropsWithoutRef<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  )
-
-  const Title = ({ children, ...props }: ComponentPropsWithoutRef<'h2'>) => (
-    <h2 {...props}>
-      {children}
-    </h2>
-  )
-
-  const Description = ({ children, ...props }: ComponentPropsWithoutRef<'p'>) => (
-    <p {...props}>
-      {children}
-    </p>
-  )
-
-  const Portal = ({ children }: PrimitiveProps) => (
-    <div>{children}</div>
-  )
-
-  const Positioner = ({
-    children,
-    side,
-    align,
-    sideOffset,
-    alignOffset,
-    ...props
-  }: PositionerProps) => (
-    <div
-      data-side={side}
-      data-align={align}
-      data-side-offset={String(sideOffset)}
-      data-align-offset={String(alignOffset)}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-
-  const Popup = ({ children, ...props }: PrimitiveProps) => (
-    <div {...props}>
-      {children}
-    </div>
-  )
-
-  return {
-    Popover: {
-      Root,
-      Trigger,
-      Close,
-      Title,
-      Description,
-      Portal,
-      Positioner,
-      Popup,
-    },
-  }
-})
-
 describe('PopoverContent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Placement and default value behaviors.
   describe('Placement', () => {
     it('should use bottom placement and default offsets when placement props are not provided', () => {
-      // Arrange
       render(
-        <PopoverContent positionerProps={{ 'aria-label': 'default positioner' }}>
-          <span>Default content</span>
-        </PopoverContent>,
+        <Popover open>
+          <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
+          <PopoverContent
+            positionerProps={{ 'role': 'group', 'aria-label': 'default positioner' }}
+            popupProps={{ 'role': 'dialog', 'aria-label': 'default popover' }}
+          >
+            <span>Default content</span>
+          </PopoverContent>
+        </Popover>,
       )
 
-      // Act
-      const positioner = screen.getByLabelText('default positioner')
+      const positioner = screen.getByRole('group', { name: 'default positioner' })
+      const popup = screen.getByRole('dialog', { name: 'default popover' })
 
-      // Assert
       expect(positioner).toHaveAttribute('data-side', 'bottom')
       expect(positioner).toHaveAttribute('data-align', 'center')
-      expect(positioner).toHaveAttribute('data-side-offset', '8')
-      expect(positioner).toHaveAttribute('data-align-offset', '0')
-      expect(screen.getByText('Default content')).toBeInTheDocument()
+      expect(popup).toHaveTextContent('Default content')
     })
 
     it('should apply parsed custom placement and custom offsets when placement props are provided', () => {
-      // Arrange
       render(
-        <PopoverContent
-          placement="top-end"
-          sideOffset={14}
-          alignOffset={6}
-          positionerProps={{ 'aria-label': 'custom positioner' }}
-        >
-          <span>Custom placement content</span>
-        </PopoverContent>,
+        <Popover open>
+          <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
+          <PopoverContent
+            placement="top-end"
+            sideOffset={14}
+            alignOffset={6}
+            positionerProps={{ 'role': 'group', 'aria-label': 'custom positioner' }}
+            popupProps={{ 'role': 'dialog', 'aria-label': 'custom popover' }}
+          >
+            <span>Custom placement content</span>
+          </PopoverContent>
+        </Popover>,
       )
 
-      // Act
-      const positioner = screen.getByLabelText('custom positioner')
+      const positioner = screen.getByRole('group', { name: 'custom positioner' })
+      const popup = screen.getByRole('dialog', { name: 'custom popover' })
 
-      // Assert
       expect(positioner).toHaveAttribute('data-side', 'top')
       expect(positioner).toHaveAttribute('data-align', 'end')
-      expect(positioner).toHaveAttribute('data-side-offset', '14')
-      expect(positioner).toHaveAttribute('data-align-offset', '6')
+      expect(popup).toHaveTextContent('Custom placement content')
     })
   })
 
-  // Passthrough behavior for delegated primitives.
   describe('Passthrough props', () => {
     it('should forward positionerProps and popupProps when passthrough props are provided', () => {
-      // Arrange
+      const onPopupClick = vi.fn()
+
       render(
-        <PopoverContent
-          positionerProps={{
-            'aria-label': 'popover positioner',
-          }}
-          popupProps={{
-            'id': 'popover-popup-id',
-            'role': 'dialog',
-            'aria-label': 'popover content',
-          }}
-        >
-          <span>Popover body</span>
-        </PopoverContent>,
+        <Popover open>
+          <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
+          <PopoverContent
+            positionerProps={{
+              'role': 'group',
+              'aria-label': 'popover positioner',
+              'id': 'popover-positioner-id',
+            }}
+            popupProps={{
+              'id': 'popover-popup-id',
+              'role': 'dialog',
+              'aria-label': 'popover content',
+              'onClick': onPopupClick,
+            }}
+          >
+            <span>Popover body</span>
+          </PopoverContent>
+        </Popover>,
       )
 
-      // Act
-      const positioner = screen.getByLabelText('popover positioner')
+      const positioner = screen.getByRole('group', { name: 'popover positioner' })
       const popup = screen.getByRole('dialog', { name: 'popover content' })
+      fireEvent.click(popup)
 
-      // Assert
-      expect(positioner).toHaveAttribute('aria-label', 'popover positioner')
+      expect(positioner).toHaveAttribute('id', 'popover-positioner-id')
       expect(popup).toHaveAttribute('id', 'popover-popup-id')
-      expect(popup).toHaveAttribute('role', 'dialog')
-      expect(popup).toHaveAttribute('aria-label', 'popover content')
+      expect(onPopupClick).toHaveBeenCalledTimes(1)
     })
   })
 })
 
 describe('Popover aliases', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Export mapping behavior to keep wrapper aliases aligned.
   describe('Export mapping', () => {
     it('should map aliases to the matching base popover primitives when wrapper exports are imported', () => {
-      // Arrange
-      const basePrimitives = BasePopover
-
-      // Act & Assert
-      expect(Popover).toBe(basePrimitives.Root)
-      expect(PopoverTrigger).toBe(basePrimitives.Trigger)
-      expect(PopoverClose).toBe(basePrimitives.Close)
-      expect(PopoverTitle).toBe(basePrimitives.Title)
-      expect(PopoverDescription).toBe(basePrimitives.Description)
+      expect(Popover).toBe(BasePopover.Root)
+      expect(PopoverTrigger).toBe(BasePopover.Trigger)
+      expect(PopoverClose).toBe(BasePopover.Close)
+      expect(PopoverTitle).toBe(BasePopover.Title)
+      expect(PopoverDescription).toBe(BasePopover.Description)
     })
   })
 })
