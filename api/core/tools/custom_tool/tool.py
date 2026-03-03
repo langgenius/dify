@@ -285,7 +285,10 @@ class ApiTool(Tool):
         self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]
     ) -> httpx.Response:
         """
-        do http request depending on api bundle
+        Do a non-streaming HTTP request depending on api bundle.
+
+        For streaming requests, see do_http_request_streaming().
+        Both methods share _prepare_request_parts() for request assembly.
         """
         params, body, cookies, files, url, headers = self._prepare_request_parts(url, method, headers, parameters)
 
@@ -336,8 +339,16 @@ class ApiTool(Tool):
                 follow_redirects=True,
             ) as response:
                 if response.status_code >= 400:
-                    response.read()
-                    raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
+                    # Read a bounded amount to avoid unbounded memory usage on large error bodies
+                    _MAX_ERROR_BYTES = 1_048_576  # 1 MB
+                    error_body = b""
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        error_body += chunk
+                        if len(error_body) >= _MAX_ERROR_BYTES:
+                            error_body = error_body[:_MAX_ERROR_BYTES]
+                            break
+                    error_text = error_body.decode("utf-8", errors="replace")
+                    raise ToolInvokeError(f"Request failed with status code {response.status_code} and {error_text}")
 
                 content_type = response.headers.get("content-type", "").lower()
 
@@ -375,7 +386,7 @@ class ApiTool(Tool):
         try:
             obj = json.loads(data)
         except (json.JSONDecodeError, ValueError):
-            # Not JSON, return raw data
+            logger.debug("SSE data is not valid JSON, treating as plain text: %s", data[:200])
             return data
 
         if not isinstance(obj, dict):
@@ -422,6 +433,7 @@ class ApiTool(Tool):
                 else:
                     yield self.create_text_message(str(obj))
             except (json.JSONDecodeError, ValueError):
+                logger.debug("NDJSON line is not valid JSON, treating as plain text: %s", line[:200])
                 if line.strip():
                     yield self.create_text_message(line)
 

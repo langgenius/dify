@@ -7,10 +7,11 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
+from core.helper import ssrf_proxy
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage
-from core.tools.errors import ToolInvokeError
+from core.tools.errors import ToolInvokeError, ToolSSRFError
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -59,9 +60,12 @@ class FakeStreamResponse:
         lines: list[str] | None = None,
         chunks: list[str] | None = None,
         text: str = "",
+        extra_headers: dict[str, str] | None = None,
     ):
         self.status_code = status_code
         self.headers = {"content-type": content_type}
+        if extra_headers:
+            self.headers.update(extra_headers)
         self.text = text
         self._lines = lines or []
         self._chunks = chunks or []
@@ -71,6 +75,9 @@ class FakeStreamResponse:
 
     def iter_text(self, chunk_size=4096):
         yield from self._chunks
+
+    def iter_bytes(self, chunk_size=8192):
+        yield self.text.encode("utf-8")
 
     def read(self):
         pass
@@ -275,7 +282,7 @@ class TestStreamingErrorHandling:
         @contextlib.contextmanager
         def _raise_stream_error():
             raise httpx.StreamError("connection reset")
-            yield  # noqa: RET503
+            yield
 
         with patch("core.helper.ssrf_proxy.stream_request", return_value=_raise_stream_error()):
             with pytest.raises(ToolInvokeError, match="Stream request failed"):
@@ -287,10 +294,69 @@ class TestStreamingErrorHandling:
         @contextlib.contextmanager
         def _raise_timeout():
             raise httpx.ReadTimeout("read timed out")
-            yield  # noqa: RET503
+            yield
 
         with patch("core.helper.ssrf_proxy.stream_request", return_value=_raise_timeout()):
             with pytest.raises(ToolInvokeError, match="Stream request failed"):
+                list(tool.do_http_request_streaming("https://example.com", "POST", {}, {}))
+
+
+# ---------------------------------------------------------------------------
+# SSRF Squid proxy detection in streaming
+# ---------------------------------------------------------------------------
+
+
+class _FakeHttpxStreamCM:
+    """Mimics the context manager returned by httpx.Client.stream()."""
+
+    def __init__(self, response):
+        self.response = response
+
+    def __enter__(self):
+        return self.response
+
+    def __exit__(self, *args):
+        return False
+
+
+class TestStreamingSSRFProtection:
+    def _make_mock_response(self, status_code: int, extra_headers: dict[str, str] | None = None):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.headers = {"content-type": "text/html"}
+        if extra_headers:
+            resp.headers.update(extra_headers)
+        return resp
+
+    def test_squid_403_raises_ssrf_error(self):
+        """stream_request should detect Squid proxy 403 and raise ToolSSRFError."""
+        fake_resp = self._make_mock_response(403, {"server": "squid/5.7"})
+        mock_client = MagicMock()
+        mock_client.stream.return_value = _FakeHttpxStreamCM(fake_resp)
+
+        with patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=mock_client):
+            with pytest.raises(ToolSSRFError, match="SSRF protection"):
+                with ssrf_proxy.stream_request("POST", "https://internal.example.com"):
+                    pass
+
+    def test_squid_401_via_header_raises_ssrf_error(self):
+        """stream_request should detect Squid in Via header and raise ToolSSRFError."""
+        fake_resp = self._make_mock_response(401, {"via": "1.1 squid-proxy"})
+        mock_client = MagicMock()
+        mock_client.stream.return_value = _FakeHttpxStreamCM(fake_resp)
+
+        with patch("core.helper.ssrf_proxy._get_ssrf_client", return_value=mock_client):
+            with pytest.raises(ToolSSRFError, match="SSRF protection"):
+                with ssrf_proxy.stream_request("POST", "https://internal.example.com"):
+                    pass
+
+    def test_non_squid_403_passes_through(self):
+        """403 from non-Squid server should NOT raise ToolSSRFError but be handled by caller."""
+        tool = _make_api_tool(streaming=True)
+        resp = FakeStreamResponse(403, "text/plain", text="Forbidden")
+
+        with patch("core.helper.ssrf_proxy.stream_request", return_value=_fake_stream_ctx(resp)):
+            with pytest.raises(ToolInvokeError, match="403"):
                 list(tool.do_http_request_streaming("https://example.com", "POST", {}, {}))
 
 

@@ -5,7 +5,7 @@ Proxy requests to avoid SSRF
 import contextlib
 import logging
 import time
-from collections.abc import Generator
+from collections.abc import Iterator
 from typing import Any, TypeAlias
 
 import httpx
@@ -273,7 +273,7 @@ ssrf_proxy = SSRFProxy()
 
 
 @contextlib.contextmanager
-def stream_request(method: str, url: str, **kwargs: Any) -> Generator[httpx.Response, None, None]:
+def stream_request(method: str, url: str, **kwargs: Any) -> Iterator[httpx.Response]:
     """Streaming HTTP request context manager with SSRF protection.
 
     Unlike make_request(), this does not implement retry logic because retries
@@ -311,4 +311,13 @@ def stream_request(method: str, url: str, **kwargs: Any) -> Generator[httpx.Resp
         kwargs["headers"] = headers
 
     with client.stream(method=method, url=url, **kwargs) as response:
+        # Check for SSRF protection by Squid proxy (same logic as make_request)
+        if response.status_code in (401, 403):
+            server_header = response.headers.get("server", "").lower()
+            via_header = response.headers.get("via", "").lower()
+            if "squid" in server_header or "squid" in via_header:
+                raise ToolSSRFError(
+                    f"Access to '{url}' was blocked by SSRF protection. "
+                    f"The URL may point to a private or local network address. "
+                )
         yield response
