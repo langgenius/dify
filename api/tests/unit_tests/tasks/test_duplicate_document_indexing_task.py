@@ -95,7 +95,7 @@ def mock_document_segments(document_ids):
 @pytest.fixture
 def mock_db_session():
     """Mock database session via session_factory.create_session()."""
-    with patch("tasks.duplicate_document_indexing_task.session_factory") as mock_sf:
+    with patch("tasks.duplicate_document_indexing_task.session_factory", autospec=True) as mock_sf:
         session = MagicMock()
         # Allow tests to observe session.close() via context manager teardown
         session.close = MagicMock()
@@ -118,7 +118,7 @@ def mock_db_session():
 @pytest.fixture
 def mock_indexing_runner():
     """Mock IndexingRunner."""
-    with patch("tasks.duplicate_document_indexing_task.IndexingRunner") as mock_runner_class:
+    with patch("tasks.duplicate_document_indexing_task.IndexingRunner", autospec=True) as mock_runner_class:
         mock_runner = MagicMock(spec=IndexingRunner)
         mock_runner_class.return_value = mock_runner
         yield mock_runner
@@ -127,7 +127,7 @@ def mock_indexing_runner():
 @pytest.fixture
 def mock_feature_service():
     """Mock FeatureService."""
-    with patch("tasks.duplicate_document_indexing_task.FeatureService") as mock_service:
+    with patch("tasks.duplicate_document_indexing_task.FeatureService", autospec=True) as mock_service:
         mock_features = Mock()
         mock_features.billing = Mock()
         mock_features.billing.enabled = False
@@ -141,7 +141,7 @@ def mock_feature_service():
 @pytest.fixture
 def mock_index_processor_factory():
     """Mock IndexProcessorFactory."""
-    with patch("tasks.duplicate_document_indexing_task.IndexProcessorFactory") as mock_factory:
+    with patch("tasks.duplicate_document_indexing_task.IndexProcessorFactory", autospec=True) as mock_factory:
         mock_processor = MagicMock()
         mock_processor.clean = Mock()
         mock_factory.return_value.init_index_processor.return_value = mock_processor
@@ -151,7 +151,7 @@ def mock_index_processor_factory():
 @pytest.fixture
 def mock_tenant_isolated_queue():
     """Mock TenantIsolatedTaskQueue."""
-    with patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue") as mock_queue_class:
+    with patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True) as mock_queue_class:
         mock_queue = MagicMock(spec=TenantIsolatedTaskQueue)
         mock_queue.pull_tasks.return_value = []
         mock_queue.delete_task_key = Mock()
@@ -168,7 +168,7 @@ def mock_tenant_isolated_queue():
 class TestDuplicateDocumentIndexingTask:
     """Tests for the deprecated duplicate_document_indexing_task function."""
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_duplicate_document_indexing_task_calls_core_function(self, mock_core_func, dataset_id, document_ids):
         """Test that duplicate_document_indexing_task calls the core _duplicate_document_indexing_task function."""
         # Act
@@ -177,7 +177,7 @@ class TestDuplicateDocumentIndexingTask:
         # Assert
         mock_core_func.assert_called_once_with(dataset_id, document_ids)
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_duplicate_document_indexing_task_with_empty_document_ids(self, mock_core_func, dataset_id):
         """Test duplicate_document_indexing_task with empty document_ids list."""
         # Arrange
@@ -445,7 +445,7 @@ class TestDuplicateDocumentIndexingTaskCore:
 class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     """Tests for _duplicate_document_indexing_task_with_tenant_queue function."""
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_calls_core_function(
         self,
         mock_core_func,
@@ -464,7 +464,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
         # Assert
         mock_core_func.assert_called_once_with(dataset_id, document_ids)
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_deletes_key_when_no_tasks(
         self,
         mock_core_func,
@@ -484,7 +484,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
         # Assert
         mock_tenant_isolated_queue.delete_task_key.assert_called_once()
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
         self,
         mock_core_func,
@@ -514,7 +514,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
             document_ids=document_ids,
         )
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_handles_core_function_error(
         self,
         mock_core_func,
@@ -544,7 +544,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
 class TestNormalDuplicateDocumentIndexingTask:
     """Tests for normal_duplicate_document_indexing_task function."""
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_normal_task_calls_tenant_queue_wrapper(
         self,
         mock_wrapper_func,
@@ -561,7 +561,7 @@ class TestNormalDuplicateDocumentIndexingTask:
             tenant_id, dataset_id, document_ids, normal_duplicate_document_indexing_task
         )
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_normal_task_with_empty_document_ids(
         self,
         mock_wrapper_func,
@@ -589,7 +589,7 @@ class TestNormalDuplicateDocumentIndexingTask:
 class TestPriorityDuplicateDocumentIndexingTask:
     """Tests for priority_duplicate_document_indexing_task function."""
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_calls_tenant_queue_wrapper(
         self,
         mock_wrapper_func,
@@ -606,7 +606,7 @@ class TestPriorityDuplicateDocumentIndexingTask:
             tenant_id, dataset_id, document_ids, priority_duplicate_document_indexing_task
         )
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_with_single_document(
         self,
         mock_wrapper_func,
@@ -625,7 +625,7 @@ class TestPriorityDuplicateDocumentIndexingTask:
             tenant_id, dataset_id, document_ids, priority_duplicate_document_indexing_task
         )
 
-    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue")
+    @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_with_large_batch(
         self,
         mock_wrapper_func,

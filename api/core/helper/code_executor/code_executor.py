@@ -1,7 +1,6 @@
 import logging
 import sys
 from collections.abc import Mapping
-from enum import StrEnum
 from threading import Lock
 from typing import Any
 
@@ -15,6 +14,7 @@ from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTr
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
 from core.helper.http_client_pooling import get_pooled_http_client
+from dify_graph.nodes.code.entities import CodeLanguage
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,6 @@ class CodeExecutionResponse(BaseModel):
     code: int
     message: str
     data: Data
-
-
-class CodeLanguage(StrEnum):
-    PYTHON3 = "python3"
-    JINJA2 = "jinja2"
-    JAVASCRIPT = "javascript"
 
 
 def _build_code_executor_client() -> httpx.Client:
