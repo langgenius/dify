@@ -22,13 +22,13 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import (
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import (
     NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
