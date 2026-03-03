@@ -2,11 +2,11 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
@@ -68,6 +68,7 @@ def test_save_preserves_existing_created_at_when_record_already_exists():
     existing_created_at = datetime(2026, 1, 1, 12, 0, 0)
     existing_run = WorkflowRun()
     existing_run.id = execution_id
+    existing_run.tenant_id = repository._tenant_id
     existing_run.created_at = existing_created_at
     session.get.return_value = existing_run
 
