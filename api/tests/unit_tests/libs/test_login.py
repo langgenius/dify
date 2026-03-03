@@ -55,7 +55,7 @@ class TestLoginRequired:
         with setup_app.test_request_context():
             # Mock authenticated user
             mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 result = protected_view()
                 assert result == "Protected content"
 
@@ -70,7 +70,7 @@ class TestLoginRequired:
         with setup_app.test_request_context():
             # Mock unauthenticated user
             mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 result = protected_view()
                 assert result == "Unauthorized"
                 setup_app.login_manager.unauthorized.assert_called_once()
@@ -86,8 +86,8 @@ class TestLoginRequired:
         with setup_app.test_request_context():
             # Mock unauthenticated user and LOGIN_DISABLED
             mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
-                with patch("libs.login.dify_config") as mock_config:
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
+                with patch("libs.login.dify_config", autospec=True) as mock_config:
                     mock_config.LOGIN_DISABLED = True
 
                     result = protected_view()
@@ -106,7 +106,7 @@ class TestLoginRequired:
         with setup_app.test_request_context(method="OPTIONS"):
             # Mock unauthenticated user
             mock_user = MockUser("test_user", is_authenticated=False)
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 result = protected_view()
                 assert result == "Protected content"
                 # Ensure unauthorized was not called
@@ -125,7 +125,7 @@ class TestLoginRequired:
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 result = protected_view()
                 assert result == "Synced content"
                 setup_app.ensure_sync.assert_called_once()
@@ -144,7 +144,7 @@ class TestLoginRequired:
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 result = protected_view()
                 assert result == "Protected content"
 
@@ -197,14 +197,14 @@ class TestCurrentUser:
         mock_user = MockUser("test_user", is_authenticated=True)
 
         with app.test_request_context():
-            with patch("libs.login._get_user", return_value=mock_user):
+            with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                 assert current_user.id == "test_user"
                 assert current_user.is_authenticated is True
 
     def test_current_user_proxy_returns_none_when_no_user(self, app: Flask):
         """Test that current_user proxy handles None user."""
         with app.test_request_context():
-            with patch("libs.login._get_user", return_value=None):
+            with patch("libs.login._get_user", return_value=None, autospec=True):
                 # When _get_user returns None, accessing attributes should fail
                 # or current_user should evaluate to falsy
                 try:
@@ -224,7 +224,7 @@ class TestCurrentUser:
         def check_user_in_thread(user_id: str, index: int):
             with app.test_request_context():
                 mock_user = MockUser(user_id)
-                with patch("libs.login._get_user", return_value=mock_user):
+                with patch("libs.login._get_user", return_value=mock_user, autospec=True):
                     results[index] = current_user.id
 
         # Create multiple threads with different users

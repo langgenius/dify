@@ -6,11 +6,11 @@ from datetime import UTC, datetime, timedelta
 
 from core.entities.execution_extra_content import HumanInputContent as HumanInputContentDomain
 from core.entities.execution_extra_content import HumanInputFormSubmissionData
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     FormDefinition,
     UserAction,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import ConsoleRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository

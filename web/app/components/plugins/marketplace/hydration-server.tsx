@@ -1,4 +1,4 @@
-import type { SearchParams } from 'nuqs'
+import type { SearchParams } from 'nuqs/server'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
 import { getQueryClientServer } from '@/context/query-client-server'
@@ -37,6 +37,10 @@ export async function HydrateQueryClient({
   children: React.ReactNode
 }) {
   const dehydratedState = await getDehydratedState(searchParams)
+  // TODO: vinext do not handle hydration boundary well for now.
+  if (!dehydratedState) {
+    return <>{children}</>
+  }
   return (
     <HydrationBoundary state={dehydratedState}>
       {children}
