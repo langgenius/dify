@@ -27,8 +27,6 @@ import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
 
-const menuStaticRowClassName = 'flex h-8 w-full items-center rounded-lg px-3 text-text-secondary system-md-regular'
-
 type AccountMenuRouteItemProps = {
   href: string
   iconClassName: string
@@ -229,13 +227,16 @@ export default function AppSelector() {
             </>
           )}
           <AccountMenuSection>
-            <div className={cn(menuStaticRowClassName, 'hover:bg-transparent')}>
+            <DropdownMenuItem
+              className="cursor-default data-[highlighted]:bg-transparent"
+              onSelect={e => e.preventDefault()}
+            >
               <MenuItemContent
                 iconClassName="i-ri-t-shirt-2-line"
                 label={t('theme.theme', { ns: 'common' })}
                 trailing={<ThemeSwitcher />}
               />
-            </div>
+            </DropdownMenuItem>
           </AccountMenuSection>
           <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
           <AccountMenuSection>

@@ -13,7 +13,7 @@ export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
 export const DropdownMenuRadioGroup = Menu.RadioGroup
 
-const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-3 outline-none'
+const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-2 outline-none'
 const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50'
 
 export function DropdownMenuRadioItem({
