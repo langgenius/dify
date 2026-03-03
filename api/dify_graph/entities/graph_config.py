@@ -4,7 +4,7 @@ import sys
 
 from pydantic import TypeAdapter, with_config
 
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
