@@ -23,7 +23,7 @@
     "and_qq >= 14.9"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22"
   },
   "scripts": {
     "dev": "next dev",
