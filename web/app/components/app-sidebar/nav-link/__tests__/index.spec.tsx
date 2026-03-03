@@ -1,7 +1,7 @@
-import type { NavLinkProps } from './navLink'
+import type { NavLinkProps } from '..'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import NavLink from './navLink'
+import NavLink from '..'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock Next.js Link component
 vi.mock('next/link', () => ({
-  default: function MockLink({ children, href, className, title }: any) {
+  default: function MockLink({ children, href, className, title }: { children: React.ReactNode, href: string, className?: string, title?: string }) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">
         {children}
