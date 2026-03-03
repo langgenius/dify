@@ -28,7 +28,7 @@ from sqlalchemy.orm import make_transient
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File
+from core.workflow.file import File
 from factories import file_factory
 from models import Account
 from models.model import AppMode, EndUser

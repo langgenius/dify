@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.variables.variables import VariableBase
+from core.workflow.variables.variables import VariableBase
 from core.workflow.enums import NodeType
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
