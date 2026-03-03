@@ -24,6 +24,7 @@ def make_id(s: str = "org/plugin/provider") -> DatasourceProviderID:
 # Test class
 # ---------------------------------------------------------------------------
 
+
 class TestDatasourceProviderService:
     """Comprehensive tests for DatasourceProviderService targeting >95% coverage."""
 
@@ -69,13 +70,14 @@ class TestDatasourceProviderService:
 
     @pytest.fixture(autouse=True)
     def patch_externals(self):
-        with patch("httpx.request") as mock_httpx, \
-             patch("services.datasource_provider_service.dify_config") as mock_cfg, \
-             patch("services.datasource_provider_service.encrypter") as mock_enc, \
-             patch("services.datasource_provider_service.redis_client") as mock_redis, \
-             patch("services.datasource_provider_service.generate_incremental_name") as mock_genname, \
-             patch("services.datasource_provider_service.OAuthHandler") as mock_oauth:
-
+        with (
+            patch("httpx.request") as mock_httpx,
+            patch("services.datasource_provider_service.dify_config") as mock_cfg,
+            patch("services.datasource_provider_service.encrypter") as mock_enc,
+            patch("services.datasource_provider_service.redis_client") as mock_redis,
+            patch("services.datasource_provider_service.generate_incremental_name") as mock_genname,
+            patch("services.datasource_provider_service.OAuthHandler") as mock_oauth,
+        ):
             mock_cfg.CONSOLE_API_URL = "http://localhost"
             mock_enc.encrypt_token.return_value = "enc_tok"
             mock_enc.decrypt_token.return_value = "dec_tok"
@@ -94,19 +96,27 @@ class TestDatasourceProviderService:
             resp = MagicMock()
             resp.status_code = 200
             resp.json.return_value = {
-                "code": 0, "message": "ok",
+                "code": 0,
+                "message": "ok",
                 "data": {
-                    "provider": "prov", "plugin_unique_identifier": "pui", "plugin_id": "org/plug",
+                    "provider": "prov",
+                    "plugin_unique_identifier": "pui",
+                    "plugin_id": "org/plug",
                     "is_authorized": False,
                     "declaration": {
                         "identity": {
-                            "author": "a", "name": "n", "description": {"en_US": "d"},
-                            "icon": "i", "label": {"en_US": "l"}
+                            "author": "a",
+                            "name": "n",
+                            "description": {"en_US": "d"},
+                            "icon": "i",
+                            "label": {"en_US": "l"},
                         },
-                        "credentials_schema": [], "oauth_schema": {"credentials_schema": [], "client_schema": []},
-                        "provider_type": "local_file", "datasources": [],
-                    }
-                }
+                        "credentials_schema": [],
+                        "oauth_schema": {"credentials_schema": [], "client_schema": []},
+                        "provider_type": "local_file",
+                        "datasources": [],
+                    },
+                },
             }
             mock_httpx.return_value = resp
 
@@ -243,9 +253,11 @@ class TestDatasourceProviderService:
         p.expires_at = 0  # expired
         p.encrypted_credentials = {"tok": "x"}
         mock_db_session.query().first.return_value = p
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "get_oauth_client", return_value={"oc": "v"}), \
-             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
+        ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
         mock_db_session.commit.assert_called_once()
 
@@ -256,8 +268,10 @@ class TestDatasourceProviderService:
         p.expires_at = -1  # sentinel: never expires
         p.encrypted_credentials = {"k": "v"}
         mock_db_session.query().first.return_value = p
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "plain"}):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "plain"}),
+        ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug")
         assert result == {"k": "plain"}
 
@@ -268,8 +282,10 @@ class TestDatasourceProviderService:
         p.expires_at = -1
         p.encrypted_credentials = {}
         mock_db_session.query().first.return_value = p
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "v"}):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "v"}),
+        ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id")
         assert result == {"k": "v"}
 
@@ -288,9 +304,11 @@ class TestDatasourceProviderService:
         p.expires_at = 0
         p.encrypted_credentials = {"t": "x"}
         mock_db_session.query().all.return_value = [p]
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "get_oauth_client", return_value={"oc": "v"}), \
-             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
+            patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
+        ):
             result = service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug")
         assert len(result) == 1
 
@@ -363,11 +381,13 @@ class TestDatasourceProviderService:
         schema_item.to_basic_provider_config.return_value = MagicMock()
         pm = MagicMock()
         pm.declaration.oauth_schema.client_schema = [schema_item]
-        with patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm), \
-             patch(
-                 "services.datasource_provider_service.create_provider_encrypter",
-                 return_value=(MagicMock(), MagicMock())
-             ):
+        with (
+            patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm),
+            patch(
+                "services.datasource_provider_service.create_provider_encrypter",
+                return_value=(MagicMock(), MagicMock()),
+            ),
+        ):
             result = service.get_oauth_encrypter("t1", make_id())
         assert result is not None
 
@@ -407,16 +427,20 @@ class TestDatasourceProviderService:
 
     def test_should_fallback_to_system_credentials_when_tenant_config_missing(self, service, mock_db_session):
         mock_db_session.query().first.side_effect = [None, MagicMock(system_credentials={"k": "sys"})]
-        with patch.object(service.provider_manager, "fetch_datasource_provider"), \
-             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True):
+        with (
+            patch.object(service.provider_manager, "fetch_datasource_provider"),
+            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True),
+        ):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "sys"}
 
     def test_should_raise_value_error_when_no_oauth_config_available(self, service, mock_db_session):
         """Neither tenant nor system credentials → raises ValueError."""
         mock_db_session.query().first.side_effect = [None, None]
-        with patch.object(service.provider_manager, "fetch_datasource_provider"), \
-             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False):
+        with (
+            patch.object(service.provider_manager, "fetch_datasource_provider"),
+            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
+        ):
             with pytest.raises(ValueError, match="Please configure oauth client params"):
                 service.get_oauth_client("t1", make_id())
 
@@ -435,8 +459,10 @@ class TestDatasourceProviderService:
         """Conflict on name results in auto-incremented name, not an error."""
         mock_db_session.query().count.return_value = 1  # conflict first, then auto-named
         mock_db_session.query().all.return_value = []
-        with patch.object(service, "extract_secret_variables", return_value=[]), \
-             patch.object(service, "generate_next_datasource_provider_name", return_value="new_gen"):
+        with (
+            patch.object(service, "extract_secret_variables", return_value=[]),
+            patch.object(service, "generate_next_datasource_provider_name", return_value="new_gen"),
+        ):
             service.add_datasource_oauth_provider("conflict", "t1", make_id(), "http://cb", 9999, {})
         mock_db_session.add.assert_called_once()
 
@@ -444,8 +470,10 @@ class TestDatasourceProviderService:
         """name=None causes auto-generation via generate_next_datasource_provider_name."""
         mock_db_session.query().count.return_value = 0
         mock_db_session.query().all.return_value = []
-        with patch.object(service, "extract_secret_variables", return_value=[]), \
-             patch.object(service, "generate_next_datasource_provider_name", return_value="auto"):
+        with (
+            patch.object(service, "extract_secret_variables", return_value=[]),
+            patch.object(service, "generate_next_datasource_provider_name", return_value="auto"),
+        ):
             service.add_datasource_oauth_provider(None, "t1", make_id(), "http://cb", 9999, {})
         mock_db_session.add.assert_called_once()
 
@@ -495,9 +523,7 @@ class TestDatasourceProviderService:
         mock_db_session.query().first.return_value = p
         mock_db_session.query().count.return_value = 0
         with patch.object(service, "extract_secret_variables", return_value=["tok"]):
-            service.reauthorize_datasource_oauth_provider(
-                None, "t1", make_id(), "u", 9999, {"tok": "val"}, "cred-id"
-            )
+            service.reauthorize_datasource_oauth_provider(None, "t1", make_id(), "u", 9999, {"tok": "val"}, "cred-id")
         self._enc.encrypt_token.assert_called()
 
     def test_should_acquire_redis_lock_when_reauthorizing(self, service, mock_db_session):
@@ -521,29 +547,32 @@ class TestDatasourceProviderService:
 
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, mock_db_session, mock_user):
         mock_db_session.query().count.return_value = 0
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(
-                service.provider_manager, "validate_provider_credentials",
-                side_effect=Exception("bad cred")
-             ), \
-             patch.object(service, "extract_secret_variables", return_value=[]):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")),
+            patch.object(service, "extract_secret_variables", return_value=[]),
+        ):
             with pytest.raises(ValueError, match="Failed to validate"):
                 service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
 
     def test_should_add_api_key_provider_and_commit_when_valid(self, service, mock_db_session, mock_user):
         mock_db_session.query().count.return_value = 0
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service.provider_manager, "validate_provider_credentials"), \
-             patch.object(service, "extract_secret_variables", return_value=["sk"]):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service.provider_manager, "validate_provider_credentials"),
+            patch.object(service, "extract_secret_variables", return_value=["sk"]),
+        ):
             service.add_datasource_api_key_provider(None, "t1", make_id(), {"sk": "v"})
         mock_db_session.add.assert_called_once()
         mock_db_session.commit.assert_called_once()
 
     def test_should_acquire_redis_lock_when_adding_api_key_provider(self, service, mock_db_session, mock_user):
         mock_db_session.query().count.return_value = 0
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service.provider_manager, "validate_provider_credentials"), \
-             patch.object(service, "extract_secret_variables", return_value=[]):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service.provider_manager, "validate_provider_credentials"),
+            patch.object(service, "extract_secret_variables", return_value=[]),
+        ):
             service.add_datasource_api_key_provider(None, "t1", make_id(), {})
         self._redis.lock.assert_called()
 
@@ -629,10 +658,12 @@ class TestDatasourceProviderService:
             ds.declaration.oauth_schema.client_schema = []
             ds.declaration.oauth_schema.credentials_schema = []
             mock_mgr.return_value.fetch_installed_datasource_providers.return_value = [ds]
-            with patch.object(service, "list_datasource_credentials", return_value=[]), \
-                 patch.object(service, "get_tenant_oauth_client", return_value=None), \
-                 patch.object(service, "is_tenant_oauth_params_enabled", return_value=False), \
-                 patch.object(service, "is_system_oauth_params_exist", return_value=False):
+            with (
+                patch.object(service, "list_datasource_credentials", return_value=[]),
+                patch.object(service, "get_tenant_oauth_client", return_value=None),
+                patch.object(service, "is_tenant_oauth_params_enabled", return_value=False),
+                patch.object(service, "is_system_oauth_params_exist", return_value=False),
+            ):
                 results = service.get_all_datasource_credentials("t1")
         assert len(results) == 1
         assert results[0]["oauth_schema"] is not None
@@ -684,9 +715,11 @@ class TestDatasourceProviderService:
         p.encrypted_credentials = {"sk": "e"}
         mock_db_session.query().first.return_value = p
         mock_db_session.query().count.return_value = 0
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "extract_secret_variables", return_value=["sk"]), \
-             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "extract_secret_variables", return_value=["sk"]),
+            patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")),
+        ):
             with pytest.raises(ValueError, match="Failed to validate"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "v"}, "name")
 
@@ -698,9 +731,11 @@ class TestDatasourceProviderService:
         p.encrypted_credentials = {"sk": "old_enc"}
         mock_db_session.query().first.return_value = p
         mock_db_session.query().count.return_value = 0
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user), \
-             patch.object(service, "extract_secret_variables", return_value=["sk"]), \
-             patch.object(service.provider_manager, "validate_provider_credentials"):
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "extract_secret_variables", return_value=["sk"]),
+            patch.object(service.provider_manager, "validate_provider_credentials"),
+        ):
             service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "new_val"}, "name")
         # encrypter must have been called with the new secret value
         self._enc.encrypt_token.assert_called()

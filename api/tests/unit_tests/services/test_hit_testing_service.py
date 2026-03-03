@@ -81,7 +81,7 @@ class TestHitTestingService:
         query = "test query"
         mock_doc = MagicMock(spec=Document)
         documents = [mock_doc]
-        
+
         mock_record = MagicMock()
         mock_record.model_dump.return_value = {"content": "formatted content"}
         mock_format.return_value = [mock_record]
@@ -103,7 +103,7 @@ class TestHitTestingService:
         query = "test query"
         documents = [
             {"content": "c1", "title": "t1", "score": 0.9, "metadata": {"m1": "v1"}},
-            {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}}
+            {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}},
         ]
 
         # Act
@@ -144,30 +144,33 @@ class TestHitTestingService:
         query = 'test "query"'
         account = MagicMock()
         account.id = "account_id"
-        
+
         mock_ext_retrieve.return_value = [{"content": "ext content", "score": 1.0}]
 
         # Act
-        result = cast(dict[str, Any], HitTestingService.external_retrieve(
-            dataset=dataset,
-            query=query,
-            account=account,
-            external_retrieval_model={"model": "test"},
-            metadata_filtering_conditions={"key": "val"}
-        ))
+        result = cast(
+            dict[str, Any],
+            HitTestingService.external_retrieve(
+                dataset=dataset,
+                query=query,
+                account=account,
+                external_retrieval_model={"model": "test"},
+                metadata_filtering_conditions={"key": "val"},
+            ),
+        )
 
         # Assert
         assert cast(dict[str, Any], result["query"])["content"] == query
         assert cast(dict[str, Any], result["records"][0])["content"] == "ext content"
-        
+
         # Verify call to RetrievalService.external_retrieve with escaped query
         mock_ext_retrieve.assert_called_once_with(
             dataset_id="dataset_id",
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
-            metadata_filtering_conditions={"key": "val"}
+            metadata_filtering_conditions={"key": "val"},
         )
-        
+
         # Verify DatasetQuery record was added and committed
         mock_add.assert_called_once()
         mock_commit.assert_called_once()
@@ -201,17 +204,16 @@ class TestHitTestingService:
         query = "test query"
         account = MagicMock()
         account.id = "account_id"
-        
+
         mock_retrieve.return_value = []
 
         # Act
-        result = cast(dict[str, Any], HitTestingService.retrieve(
-            dataset=dataset,
-            query=query,
-            account=account,
-            retrieval_model=None,
-            external_retrieval_model={}
-        ))
+        result = cast(
+            dict[str, Any],
+            HitTestingService.retrieve(
+                dataset=dataset, query=query, account=account, retrieval_model=None, external_retrieval_model={}
+            ),
+        )
 
         # Assert
         assert cast(dict[str, Any], result["query"])["content"] == query
@@ -232,26 +234,22 @@ class TestHitTestingService:
         query = "test query"
         account = MagicMock()
         account.id = "account_id"
-        
+
         retrieval_model = {
             "search_method": "semantic_search",
             "metadata_filtering_conditions": {"some": "condition"},
             "top_k": 5,
             "reranking_enable": False,
-            "score_threshold_enabled": False
+            "score_threshold_enabled": False,
         }
-        
+
         # Mock metadata filtering response
         mock_get_meta.return_value = ({"dataset_id": ["doc_id1"]}, "condition_string")
         mock_retrieve.return_value = []
 
         # Act
         HitTestingService.retrieve(
-            dataset=dataset,
-            query=query,
-            account=account,
-            retrieval_model=retrieval_model,
-            external_retrieval_model={}
+            dataset=dataset, query=query, account=account, retrieval_model=retrieval_model, external_retrieval_model={}
         )
 
         # Assert
@@ -268,26 +266,29 @@ class TestHitTestingService:
         dataset.id = "dataset_id"
         query = "test query"
         account = MagicMock()
-        
+
         retrieval_model = {
             "search_method": "semantic_search",
             "metadata_filtering_conditions": {"some": "condition"},
             "top_k": 5,
             "reranking_enable": False,
-            "score_threshold_enabled": False
+            "score_threshold_enabled": False,
         }
-        
+
         # Mock metadata filtering response: condition returned but no IDs
         mock_get_meta.return_value = ({}, "condition_string")
 
         # Act
-        result = cast(dict[str, Any], HitTestingService.retrieve(
-            dataset=dataset,
-            query=query,
-            account=account,
-            retrieval_model=retrieval_model,
-            external_retrieval_model={}
-        ))
+        result = cast(
+            dict[str, Any],
+            HitTestingService.retrieve(
+                dataset=dataset,
+                query=query,
+                account=account,
+                retrieval_model=retrieval_model,
+                external_retrieval_model={},
+            ),
+        )
 
         # Assert
         assert result["records"] == []
@@ -305,12 +306,12 @@ class TestHitTestingService:
         account = MagicMock()
         account.id = "account_id"
         attachment_ids = ["att1", "att2"]
-        
+
         retrieval_model = {
             "search_method": "semantic_search",
             "top_k": 4,
             "reranking_enable": False,
-            "score_threshold_enabled": False
+            "score_threshold_enabled": False,
         }
         mock_retrieve.return_value = []
 
@@ -321,7 +322,7 @@ class TestHitTestingService:
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model={},
-            attachment_ids=attachment_ids
+            attachment_ids=attachment_ids,
         )
 
         # Assert
@@ -335,7 +336,7 @@ class TestHitTestingService:
             reranking_model=None,
             reranking_mode="reranking_model",
             weights=None,
-            document_ids_filter=None
+            document_ids_filter=None,
         )
         # Verify DatasetQuery record (there should be 2 queries: 1 text, 2 images)
         # The content is json.dumps([{"content_type": "text_query", ...}, {"content_type": "image_query", ...}])
@@ -357,7 +358,7 @@ class TestHitTestingService:
         query = "test query"
         account = MagicMock()
         account.id = "account_id"
-        
+
         retrieval_model = {
             "search_method": "hybrid_search",
             "top_k": 10,
@@ -366,17 +367,13 @@ class TestHitTestingService:
             "reranking_mode": "weighted_sum",
             "score_threshold_enabled": True,
             "score_threshold": 0.5,
-            "weights": {"vector": 0.5, "keyword": 0.5}
+            "weights": {"vector": 0.5, "keyword": 0.5},
         }
         mock_retrieve.return_value = []
 
         # Act
         HitTestingService.retrieve(
-            dataset=dataset,
-            query=query,
-            account=account,
-            retrieval_model=retrieval_model,
-            external_retrieval_model={}
+            dataset=dataset, query=query, account=account, retrieval_model=retrieval_model, external_retrieval_model={}
         )
 
         # Assert

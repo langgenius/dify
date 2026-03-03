@@ -19,21 +19,21 @@ class TestOperationService:
         # Arrange
         monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
         monkeypatch.setattr(OperationService, "secret_key", "s3cr3t")
-        
+
         mock_response = MagicMock()
         mock_response.json.return_value = {"status": "success"}
         mock_request.return_value = mock_response
-        
+
         method = "POST"
         endpoint = "/test_endpoint"
         json_data = {"key": "value"}
-        
+
         # Act
         result = OperationService._send_request(method, endpoint, json=json_data)
 
         # Assert
         assert result == {"status": "success"}
-        
+
         # Verify call parameters
         expected_url = "https://billing.example/test_endpoint"
         mock_request.assert_called_once()
@@ -52,7 +52,7 @@ class TestOperationService:
         # Arrange
         monkeypatch.setattr(OperationService, "base_url", "https://billing.example")
         mock_request.side_effect = httpx.RequestError("network error")
-        
+
         # Act & Assert
         with pytest.raises(httpx.RequestError):
             OperationService._send_request("POST", "/test")
@@ -68,7 +68,7 @@ class TestOperationService:
                     "utm_medium": "cpc",
                     "utm_campaign": "spring_sale",
                     "utm_content": "ad_1",
-                    "utm_term": "ai_agent"
+                    "utm_term": "ai_agent",
                 },
                 {
                     "tenant_id": "tenant-123",
@@ -76,8 +76,8 @@ class TestOperationService:
                     "utm_medium": "cpc",
                     "utm_campaign": "spring_sale",
                     "utm_content": "ad_1",
-                    "utm_term": "ai_agent"
-                }
+                    "utm_term": "ai_agent",
+                },
             ),
             (
                 {},  # Empty utm_info
@@ -87,8 +87,8 @@ class TestOperationService:
                     "utm_medium": "",
                     "utm_campaign": "",
                     "utm_content": "",
-                    "utm_term": ""
-                }
+                    "utm_term": "",
+                },
             ),
             (
                 {"utm_source": "newsletter"},  # Partial utm_info
@@ -98,10 +98,10 @@ class TestOperationService:
                     "utm_medium": "",
                     "utm_campaign": "",
                     "utm_content": "",
-                    "utm_term": ""
-                }
-            )
-        ]
+                    "utm_term": "",
+                },
+            ),
+        ],
     )
     @patch.object(OperationService, "_send_request")
     def test_should_map_parameters_correctly_when_record_utm_called(
@@ -117,8 +117,4 @@ class TestOperationService:
 
         # Assert
         assert result == {"status": "recorded"}
-        mock_send.assert_called_once_with(
-            "POST",
-            "/tenant_utms",
-            params=expected_params
-        )
+        mock_send.assert_called_once_with("POST", "/tenant_utms", params=expected_params)

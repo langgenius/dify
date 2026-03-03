@@ -47,8 +47,7 @@ class TestKnowledgeService:
 
         # Act
         result = cast(
-            dict[str, Any],
-            ExternalDatasetTestService.knowledge_retrieval(retrieval_setting, query, knowledge_id)
+            dict[str, Any], ExternalDatasetTestService.knowledge_retrieval(retrieval_setting, query, knowledge_id)
         )
 
         # Assert

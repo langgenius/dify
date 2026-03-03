@@ -32,9 +32,7 @@ DOC_IDS: list[str] = ["doc-1", "doc-2", "doc-3"]
 
 def make_proxy(**kwargs: Any) -> ConcreteBatchProxy:
     """Factory: returns a ConcreteBatchProxy with TenantIsolatedTaskQueue mocked out."""
-    with patch(
-        "services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"
-    ) as MockQueue:
+    with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
         proxy = ConcreteBatchProxy(
             tenant_id=kwargs.get("tenant_id", TENANT_ID),
             dataset_id=kwargs.get("dataset_id", DATASET_ID),
@@ -59,9 +57,7 @@ class TestBatchDocumentIndexingProxyInit:
         doc_ids: list[str] = ["doc-a", "doc-b"]
 
         # Act
-        with patch(
-            "services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"
-        ):
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"):
             proxy = ConcreteBatchProxy(TENANT_ID, DATASET_ID, doc_ids)
 
         # Assert
@@ -70,9 +66,7 @@ class TestBatchDocumentIndexingProxyInit:
     def test_should_propagate_tenant_and_dataset_to_base_when_initialized(self) -> None:
         """Verify that tenant_id and dataset_id are forwarded to the parent class."""
         # Arrange / Act
-        with patch(
-            "services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"
-        ):
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"):
             proxy = ConcreteBatchProxy(TENANT_ID, DATASET_ID, DOC_IDS)
 
         # Assert
@@ -82,23 +76,17 @@ class TestBatchDocumentIndexingProxyInit:
     def test_should_create_tenant_isolated_queue_with_correct_args_when_initialized(self) -> None:
         """Verify that TenantIsolatedTaskQueue is constructed with (tenant_id, QUEUE_NAME)."""
         # Arrange / Act
-        with patch(
-            "services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"
-        ) as MockQueue:
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
             ConcreteBatchProxy(TENANT_ID, DATASET_ID, DOC_IDS)
 
         # Assert
         MockQueue.assert_called_once_with(TENANT_ID, ConcreteBatchProxy.QUEUE_NAME)
 
     @pytest.mark.parametrize("doc_ids", [[], ["single-doc"], ["d1", "d2", "d3", "d4"]])
-    def test_should_accept_any_length_document_ids_when_initialized(
-        self, doc_ids: list[str]
-    ) -> None:
+    def test_should_accept_any_length_document_ids_when_initialized(self, doc_ids: list[str]) -> None:
         """Verify that empty, single, and multiple document IDs are all accepted."""
         # Arrange / Act
-        with patch(
-            "services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"
-        ):
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue"):
             proxy = ConcreteBatchProxy(TENANT_ID, DATASET_ID, doc_ids)
 
         # Assert
@@ -174,9 +162,7 @@ class TestSendToTenantQueue:
 
         # Assert
         mock_queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
-        expected_payload = [
-            asdict(DocumentTask(tenant_id=TENANT_ID, dataset_id=DATASET_ID, document_ids=DOC_IDS))
-        ]
+        expected_payload = [asdict(DocumentTask(tenant_id=TENANT_ID, dataset_id=DATASET_ID, document_ids=DOC_IDS))]
         mock_queue.push_tasks.assert_called_once_with(expected_payload)
 
     def test_should_not_call_task_func_delay_when_task_key_exists(self) -> None:
@@ -351,9 +337,7 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch(
-            "services.document_indexing_proxy.base.FeatureService.get_features"
-        ) as mock_features:
+        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
             mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
             with patch.object(proxy, "_send_to_priority_direct_queue"):
                 # Act
