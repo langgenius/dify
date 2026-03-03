@@ -1,7 +1,6 @@
 'use client'
 import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
-import { RiCloseLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
@@ -78,14 +77,18 @@ const InviteModal = ({
       notify({ type: 'error', message: t('members.emailInvalid', { ns: 'common' }) })
     }
     setIsSubmitted()
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
 
   return (
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
           <div className="text-xl font-semibold text-text-primary">{t('members.inviteTeamMember', { ns: 'common' })}</div>
-          <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
+          <div
+            data-testid="invite-modal-close"
+            className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary"
+            onClick={onCancel}
+          />
         </div>
         <div className="mb-3 text-[13px] text-text-tertiary">{t('members.inviteTeamMemberTip', { ns: 'common' })}</div>
         {!isEmailSetup && (
@@ -94,9 +97,9 @@ const InviteModal = ({
               <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
               <div className="relative flex h-full w-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
-                  <RiErrorWarningFill className="h-5 w-5 text-text-warning" />
+                  <div className="i-ri-error-warning-fill h-5 w-5 text-text-warning" />
                 </div>
-                <div className="system-xs-medium text-text-primary">
+                <div className="text-text-primary system-xs-medium">
                   <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
                 </div>
               </div>
@@ -116,7 +119,11 @@ const InviteModal = ({
               getLabel={(email, index, removeEmail) => (
                 <div data-tag key={index} className={cn('!bg-components-button-secondary-bg')}>
                   <div data-tag-item>{email}</div>
-                  <span data-tag-handle onClick={() => removeEmail(index)}>
+                  <span
+                    data-testid="remove-email-btn"
+                    data-tag-handle
+                    onClick={() => removeEmail(index)}
+                  >
                     ×
                   </span>
                 </div>
@@ -124,7 +131,7 @@ const InviteModal = ({
               placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}
             />
             <div className={
-              cn('system-xs-regular flex items-center justify-end text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
+              cn('flex items-center justify-end text-text-tertiary system-xs-regular', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
             }
             >
               <span>{usedSize}</span>

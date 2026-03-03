@@ -19,10 +19,9 @@ from core.trigger.debug.events import (
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
-from core.workflow.entities.graph_config import NodeConfigDict
-from core.workflow.enums import NodeType
-from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
+from dify_graph.enums import NodeType
+from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
+from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
@@ -42,10 +41,10 @@ class TriggerDebugEventPoller(ABC):
     app_id: str
     user_id: str
     tenant_id: str
-    node_config: NodeConfigDict
+    node_config: Mapping[str, Any]
     node_id: str
 
-    def __init__(self, tenant_id: str, user_id: str, app_id: str, node_config: NodeConfigDict, node_id: str):
+    def __init__(self, tenant_id: str, user_id: str, app_id: str, node_config: Mapping[str, Any], node_id: str):
         self.tenant_id = tenant_id
         self.user_id = user_id
         self.app_id = app_id
@@ -61,7 +60,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
     def poll(self) -> TriggerDebugEvent | None:
         from services.trigger.trigger_service import TriggerService
 
-        plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config["data"], from_attributes=True)
+        plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config.get("data", {}))
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = build_plugin_pool_key(
             name=plugin_trigger_data.event_name,
