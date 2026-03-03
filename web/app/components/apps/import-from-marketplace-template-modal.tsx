@@ -1,7 +1,7 @@
 'use client'
 
 import type { MarketplaceTemplate } from '@/service/marketplace-templates'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
@@ -9,8 +9,8 @@ import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import { MARKETPLACE_API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import {
-  fetchMarketplaceTemplateDetail,
   fetchMarketplaceTemplateDSL,
+  useMarketplaceTemplateDetail,
 } from '@/service/marketplace-templates'
 
 type ImportFromMarketplaceTemplateModalProps = {
@@ -27,32 +27,10 @@ const ImportFromMarketplaceTemplateModal = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
 
-  const [template, setTemplate] = useState<MarketplaceTemplate | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isImporting, setIsImporting] = useState(false)
-  const [fetchError, setFetchError] = useState(false)
+  const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
+  const template = data?.data ?? null
 
-  useEffect(() => {
-    const fetchTemplate = async () => {
-      setIsLoading(true)
-      setFetchError(false)
-      try {
-        const data = await fetchMarketplaceTemplateDetail(templateId)
-        setTemplate(data)
-      }
-      catch {
-        setFetchError(true)
-        notify({
-          type: 'error',
-          message: t('marketplace.template.fetchFailed', { ns: 'app' }),
-        })
-      }
-      finally {
-        setIsLoading(false)
-      }
-    }
-    fetchTemplate()
-  }, [templateId, notify, t])
+  const [isImporting, setIsImporting] = useState(false)
 
   const handleConfirm = useCallback(async () => {
     if (!template || isImporting)
@@ -102,7 +80,7 @@ const ImportFromMarketplaceTemplateModal = ({
           </div>
         )}
 
-        {fetchError && !isLoading && (
+        {isError && !isLoading && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-2">
             <div className="text-text-tertiary system-md-regular">
               {t('marketplace.template.fetchFailed', { ns: 'app' })}

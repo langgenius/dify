@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import { marketplaceClient, marketplaceQuery } from '@/service/client'
 
 export type MarketplaceTemplate = {
   id: string
@@ -22,27 +24,14 @@ export type MarketplaceTemplate = {
   updated_at: string
 }
 
-type MarketplaceResponse<T> = {
-  code: number
-  msg: string
-  data: T
-}
-
-export const fetchMarketplaceTemplateDetail = async (
-  templateId: string,
-): Promise<MarketplaceTemplate> => {
-  const res = await fetch(
-    `${MARKETPLACE_API_PREFIX}/templates/${encodeURIComponent(templateId)}`,
-    { credentials: 'omit' },
-  )
-  if (!res.ok)
-    throw new Error(`Failed to fetch template: ${res.status}`)
-
-  const json: MarketplaceResponse<MarketplaceTemplate> = await res.json()
-  if (json.code !== 0)
-    throw new Error(json.msg || 'Failed to fetch template')
-
-  return json.data
+export const useMarketplaceTemplateDetail = (templateId: string) => {
+  return useQuery({
+    queryKey: marketplaceQuery.templateDetail.queryKey({
+      input: { params: { templateId } },
+    }),
+    queryFn: () => marketplaceClient.templateDetail({ params: { templateId } }),
+    enabled: !!templateId,
+  })
 }
 
 export const fetchMarketplaceTemplateDSL = async (
