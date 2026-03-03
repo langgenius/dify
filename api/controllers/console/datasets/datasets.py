@@ -187,6 +187,14 @@ class IndexingEstimatePayload(BaseModel):
             raise ValueError("indexing_technique is required.")
         return result
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        result = _validate_doc_form(value)
+        if result is None:
+            return "text_model"
+        return result
+
 
 class ConsoleDatasetListQuery(BaseModel):
     page: int = Field(default=1, description="Page number")
