@@ -20,14 +20,17 @@ vi.mock('../search-box/search-box-wrapper', () => ({
   default: () => <div data-testid="search-box-wrapper">SearchBoxWrapper</div>,
 }))
 
-const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <JotaiProvider>
-    <NuqsWrapper>
-      {children}
-    </NuqsWrapper>
-  </JotaiProvider>
-)
+const createWrapper = () => {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <JotaiProvider>
+      <NuqsWrapper>
+        {children}
+      </NuqsWrapper>
+    </JotaiProvider>
+  )
+  return { Wrapper }
+}
 
 describe('StickySearchAndSwitchWrapper', () => {
   beforeEach(() => {
@@ -35,6 +38,7 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   it('should render SearchBoxWrapper and PluginTypeSwitch', () => {
+    const { Wrapper } = createWrapper()
     const { getByTestId } = render(
       <StickySearchAndSwitchWrapper />,
       { wrapper: Wrapper },
@@ -45,6 +49,7 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   it('should not apply sticky class when no pluginTypeSwitchClassName', () => {
+    const { Wrapper } = createWrapper()
     const { container } = render(
       <StickySearchAndSwitchWrapper />,
       { wrapper: Wrapper },
@@ -56,6 +61,7 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   it('should apply sticky class when pluginTypeSwitchClassName contains top-', () => {
+    const { Wrapper } = createWrapper()
     const { container } = render(
       <StickySearchAndSwitchWrapper pluginTypeSwitchClassName="top-10" />,
       { wrapper: Wrapper },
@@ -68,6 +74,7 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   it('should not apply sticky class when pluginTypeSwitchClassName does not contain top-', () => {
+    const { Wrapper } = createWrapper()
     const { container } = render(
       <StickySearchAndSwitchWrapper pluginTypeSwitchClassName="custom-class" />,
       { wrapper: Wrapper },

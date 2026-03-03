@@ -1,4 +1,3 @@
-import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
@@ -186,18 +185,13 @@ beforeAll(() => {
 })
 
 // Render helper wrapping with shared nuqs testing helper.
-const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
 const renderList = (searchParams = '') => {
-  return renderWithNuqs(
-    <List />,
-    { searchParams, onUrlUpdate },
-  )
+  return renderWithNuqs(<List />, { searchParams })
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    onUrlUpdate.mockClear()
     useTagStore.setState({
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
       showTagManagementModal: false,
@@ -274,7 +268,7 @@ describe('List', () => {
 
   describe('Tab Navigation', () => {
     it('should update URL when workflow tab is clicked', async () => {
-      renderList()
+      const { onUrlUpdate } = renderList()
 
       fireEvent.click(screen.getByText('app.types.workflow'))
 
@@ -284,7 +278,7 @@ describe('List', () => {
     })
 
     it('should update URL when all tab is clicked', async () => {
-      renderList('?category=workflow')
+      const { onUrlUpdate } = renderList('?category=workflow')
 
       fireEvent.click(screen.getByText('app.types.all'))
 
@@ -437,7 +431,7 @@ describe('List', () => {
     })
 
     it('should update URL for each app type tab click', async () => {
-      renderList()
+      const { onUrlUpdate } = renderList()
 
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
