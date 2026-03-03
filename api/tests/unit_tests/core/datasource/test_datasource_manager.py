@@ -3,13 +3,13 @@ from collections.abc import Generator
 
 import pytest
 
+from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
-from contexts.wrapper import RecyclableContextVar
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.file import File
 from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
 
 
@@ -70,10 +70,22 @@ def test_get_datasource_runtime_delegates_to_provider_controller(mocker):
 @pytest.mark.parametrize(
     ("datasource_type", "controller_path"),
     [
-        (DatasourceProviderType.ONLINE_DOCUMENT, "core.datasource.datasource_manager.OnlineDocumentDatasourcePluginProviderController"),
-        (DatasourceProviderType.ONLINE_DRIVE, "core.datasource.datasource_manager.OnlineDriveDatasourcePluginProviderController"),
-        (DatasourceProviderType.WEBSITE_CRAWL, "core.datasource.datasource_manager.WebsiteCrawlDatasourcePluginProviderController"),
-        (DatasourceProviderType.LOCAL_FILE, "core.datasource.datasource_manager.LocalFileDatasourcePluginProviderController"),
+        (
+            DatasourceProviderType.ONLINE_DOCUMENT,
+            "core.datasource.datasource_manager.OnlineDocumentDatasourcePluginProviderController",
+        ),
+        (
+            DatasourceProviderType.ONLINE_DRIVE,
+            "core.datasource.datasource_manager.OnlineDriveDatasourcePluginProviderController",
+        ),
+        (
+            DatasourceProviderType.WEBSITE_CRAWL,
+            "core.datasource.datasource_manager.WebsiteCrawlDatasourcePluginProviderController",
+        ),
+        (
+            DatasourceProviderType.LOCAL_FILE,
+            "core.datasource.datasource_manager.LocalFileDatasourcePluginProviderController",
+        ),
     ],
 )
 def test_get_datasource_plugin_provider_creates_controller_and_caches(mocker, datasource_type, controller_path):
@@ -416,7 +428,9 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
             return fake_tool_file
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
-    mocker.patch("core.datasource.datasource_manager.file_factory.get_file_type_by_mime_type", return_value=FileType.IMAGE)
+    mocker.patch(
+        "core.datasource.datasource_manager.file_factory.get_file_type_by_mime_type", return_value=FileType.IMAGE
+    )
     built = File(
         tenant_id="t1",
         type=FileType.IMAGE,
