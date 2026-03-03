@@ -29,3 +29,9 @@ updates:
         patterns:
           - "storybook"
           - "@storybook/*"
+      npm-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "storybook"
+          - "@storybook/*"
