@@ -10,10 +10,10 @@ from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -107,19 +107,19 @@ class AppService:
 
             if model_instance:
                 if (
-                    model_instance.model == default_model_config["model"]["name"]
+                    model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
                 ):
                     default_model_dict = default_model_config["model"]
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
                     if model_schema is None:
-                        raise ValueError(f"model schema not found for model {model_instance.model}")
+                        raise ValueError(f"model schema not found for model {model_instance.model_name}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
-                        "name": model_instance.model,
+                        "name": model_instance.model_name,
                         "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
                         "completion_params": {},
                     }
