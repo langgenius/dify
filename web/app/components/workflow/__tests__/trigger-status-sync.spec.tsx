@@ -276,7 +276,7 @@ describe('Trigger Status Synchronization Integration', () => {
       nodeId: string
       nodeType: string
     }> = ({ nodeId, nodeType }) => {
-      const triggerStatusSelector = useCallback((state: any) =>
+      const triggerStatusSelector = useCallback((state: { triggerStatuses: Record<string, string> }) =>
         mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled', [nodeId, nodeType])
       const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
 
@@ -319,9 +319,9 @@ describe('Trigger Status Synchronization Integration', () => {
 
       const TestComponent: React.FC<{ nodeType: string }> = ({ nodeType }) => {
         const triggerStatusSelector = useCallback(
-          (state: any) =>
+          (state: { triggerStatuses: Record<string, string> }) =>
             mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
-          ['test-node', nodeType], // Dependencies should match implementation
+          [nodeType],
         )
         const status = useTriggerStatusStore(triggerStatusSelector)
         return <div data-testid="test-component" data-status={status} />
