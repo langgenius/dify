@@ -407,7 +407,7 @@ class BillingService:
             "notification": {          # present only when should_show=true
               "notification_id": str,
               "contents": {            # lang -> LangContent
-                "en": {"lang": "en", "title": ..., "body": ..., "cta_label": ..., "cta_url": ...},
+                "en": {"lang": "en", "title": ..., "subtitle": ..., "body": ..., "title_pic_url": ...},
                 ...
               },
               "frequency": "once" | "every_page_load"
