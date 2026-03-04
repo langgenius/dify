@@ -30,7 +30,6 @@ const MenuDialog = ({
         overlayClassName="bg-transparent"
         className={cn(
           'left-0 top-0 h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-background-sidenav-bg p-0 shadow-none backdrop-blur-md',
-          'z-[60]',
           className,
         )}
       >

@@ -4933,11 +4933,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
