@@ -12,7 +12,7 @@ import type {
 import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { useCallback, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -161,7 +161,7 @@ function Form<
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -204,7 +204,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -229,7 +229,7 @@ function Form<
               >
                 <RadioE isChecked={value[variable] === option.value} />
 
-                <div className="system-sm-regular text-text-secondary">{option.label[language] || option.label.en_US}</div>
+                <div className="text-text-secondary system-sm-regular">{option.label[language] || option.label.en_US}</div>
               </div>
             ))}
           </div>
@@ -254,7 +254,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
 
             {required && (
@@ -295,9 +295,9 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+          <div className="flex items-center justify-between py-2 text-text-secondary system-sm-semibold">
             <div className="flex items-center space-x-2">
-              <span className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className="ml-1 text-red-500">*</span>
               )}
@@ -326,7 +326,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -358,7 +358,7 @@ function Form<
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -422,7 +422,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -451,7 +451,7 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-text-secondary system-sm-semibold')}>
             {label[language] || label.en_US}
             {required && (
               <span className="ml-1 text-red-500">*</span>
@@ -484,7 +484,11 @@ function Form<
 
   return (
     <div className={className}>
-      {formSchemas.map(formSchema => renderField(formSchema))}
+      {formSchemas.map(formSchema => (
+        <Fragment key={formSchema.variable}>
+          {renderField(formSchema)}
+        </Fragment>
+      ))}
     </div>
   )
 }

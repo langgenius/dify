@@ -186,6 +186,7 @@ describe('SystemModel', () => {
 
     // Modal should still be open after failed save
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
   })
 
   it('should not add duplicate model type to changedModelTypes when same type is selected twice', async () => {

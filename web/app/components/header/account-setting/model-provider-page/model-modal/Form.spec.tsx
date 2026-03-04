@@ -1,3 +1,4 @@
+import type { Node } from 'reactflow'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaBase,
@@ -7,6 +8,7 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../declarations'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '../declarations'
 import Form from './Form'
@@ -16,6 +18,9 @@ type CustomSchema = Omit<CredentialFormSchemaBase, 'type'> & { type: 'custom-typ
 type MockVarPayload = { type: string }
 
 type AnyFormSchema = CredentialFormSchema | (CredentialFormSchemaBase & { type: FormTypeEnum })
+
+const modelSelectorPropsSpy = vi.hoisted(() => vi.fn())
+const toolSelectorPropsSpy = vi.hoisted(() => vi.fn())
 
 const mockLanguageRef = { value: 'en_US' }
 vi.mock('../hooks', () => ({
@@ -29,9 +34,16 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
-  default: ({ setModel }: { setModel: (model: { model: string, model_type: string }) => void }) => (
-    <button type="button" onClick={() => setModel({ model: 'gpt-1', model_type: 'llm' })}>Select Model</button>
-  ),
+  default: (props: {
+    setModel: (model: { model: string, model_type: string }) => void
+    isAgentStrategy?: boolean
+    readonly?: boolean
+  }) => {
+    modelSelectorPropsSpy(props)
+    return (
+      <button type="button" onClick={() => props.setModel({ model: 'gpt-1', model_type: 'llm' })}>Select Model</button>
+    )
+  },
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/multiple-tool-selector', () => ({
@@ -41,12 +53,21 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/multiple-tool-selector', (
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
-  default: ({ onSelect, onDelete }: { onSelect: (item: { id: string }) => void, onDelete: () => void }) => (
-    <div>
-      <button type="button" onClick={() => onSelect({ id: 'tool-1' })}>Select Tool</button>
-      <button type="button" onClick={onDelete}>Remove Tool</button>
-    </div>
-  ),
+  default: (props: {
+    onSelect: (item: { id: string }) => void
+    onDelete: () => void
+    nodeOutputVars?: unknown[]
+    availableNodes?: unknown[]
+    disabled?: boolean
+  }) => {
+    toolSelectorPropsSpy(props)
+    return (
+      <div>
+        <button type="button" onClick={() => props.onSelect({ id: 'tool-1' })}>Select Tool</button>
+        <button type="button" onClick={props.onDelete}>Remove Tool</button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -474,7 +495,7 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('API Key')).toHaveClass('cursor-not-allowed')
+      expect(screen.getByPlaceholderText('API Key')).toBeDisabled()
     })
 
     // Override returns null: falls through to default renderer
@@ -596,7 +617,7 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('Model Type')).toHaveClass('cursor-not-allowed')
+      expect(screen.getByPlaceholderText('Model Type')).toBeDisabled()
     })
 
     // Label with missing language key → en_US fallback used
@@ -956,7 +977,9 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('RO Select')).toBeInTheDocument()
+      const selectTrigger = screen.getByRole('button', { name: 'Select A' })
+      fireEvent.click(selectTrigger)
+      expect(screen.queryByText('Select B')).not.toBeInTheDocument()
     })
 
     // isShowDefaultValue=false: value used even if empty
@@ -1581,6 +1604,7 @@ describe('Form', () => {
     })
 
     it('should pass nodeOutputVars and availableNodes to toolSelector', () => {
+      toolSelectorPropsSpy.mockClear()
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
           variable: 'tool_sel',
@@ -1589,6 +1613,8 @@ describe('Form', () => {
         }),
       ]
       const value: FormValue = { tool_sel: '' }
+      const nodeOutputVars: NodeOutPutVar[] = []
+      const availableNodes: Node[] = []
 
       render(
         <Form
@@ -1599,15 +1625,20 @@ describe('Form', () => {
           validatedSuccess={false}
           showOnVariableMap={{}}
           isEditMode={false}
-          nodeOutputVars={[]}
-          availableNodes={[]}
+          nodeOutputVars={nodeOutputVars}
+          availableNodes={availableNodes}
         />,
       )
 
       expect(screen.getByText('Select Tool')).toBeInTheDocument()
+      expect(toolSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
+        nodeOutputVars,
+        availableNodes,
+      }))
     })
 
     it('should pass isAgentStrategy to modelSelector', () => {
+      modelSelectorPropsSpy.mockClear()
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
           variable: 'model_sel',
@@ -1631,6 +1662,9 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('Select Model')).toBeInTheDocument()
+      expect(modelSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
+        isAgentStrategy: true,
+      }))
     })
 
     it('should use empty array fallback for multiToolSelector when value is null', () => {

@@ -4705,9 +4705,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 10
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -4879,9 +4876,6 @@
       "count": 1
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
     "ts/no-explicit-any": {

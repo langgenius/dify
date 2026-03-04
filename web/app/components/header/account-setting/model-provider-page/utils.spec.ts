@@ -255,12 +255,9 @@ describe('utils', () => {
       })
     })
 
-    it('should handle non-predefined removal with falsy value', async () => {
+    it('should not call delete endpoint when non-predefined payload is falsy', async () => {
       await removeCredentials(false, 'provider', null as unknown as Record<string, unknown>)
-      expect(deleteModelProvider).toHaveBeenCalledWith({
-        url: '',
-        body: undefined,
-      })
+      expect(deleteModelProvider).not.toHaveBeenCalled()
     })
   })
 

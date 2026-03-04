@@ -374,6 +374,7 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalled()
+      expect(mockNotify).toHaveBeenCalled()
     })
   })
 

@@ -194,6 +194,25 @@ describe('ModelListItem', () => {
     expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
   })
 
+  // Negative proof: non-sandbox plan without load balancing should NOT show ConfigModel
+  it('should hide ConfigModel for non-sandbox plan without load balancing enabled', () => {
+    // Arrange - set plan type to non-sandbox and keep load balancing disabled
+    mockModelLoadBalancingEnabled = false
+    mockPlanType = 'pro'
+
+    // Act
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+    )
+
+    // Assert - ConfigModel should NOT show because plan.type !== 'sandbox' and load balancing is disabled
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+  })
+
   // model.status=credentialRemoved: switch disabled, no ConfigModel
   it('should disable switch and hide ConfigModel when status is credentialRemoved', () => {
     // Arrange
@@ -211,6 +230,12 @@ describe('ModelListItem', () => {
 
     // Assert - ConfigModel should not render because status is not active/disabled
     expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+    const statusSwitch = screen.getByRole('switch')
+    expect(statusSwitch).toHaveClass('!cursor-not-allowed')
+    fireEvent.click(statusSwitch)
+    expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(enableModel).not.toHaveBeenCalled()
+    expect(disableModel).not.toHaveBeenCalled()
   })
 
   // isConfigurable=true: hover class on row

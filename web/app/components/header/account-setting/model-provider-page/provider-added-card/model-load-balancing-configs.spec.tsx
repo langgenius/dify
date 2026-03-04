@@ -302,8 +302,8 @@ describe('ModelLoadBalancingConfigs', () => {
     const mainSwitch = screen.getByTestId('load-balancing-switch-main')
     await user.click(mainSwitch)
 
-    // The description text remains regardless of enabled state
-    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+    expect(mainSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
 
   it('should not show provider badge when isProviderManaged=true but configurationMethod is customizableModel', () => {
@@ -432,8 +432,7 @@ describe('ModelLoadBalancingConfigs', () => {
     const panel = screen.getByTestId('load-balancing-main-panel')
     await user.click(panel)
 
-    // Assert: load balancing stays disabled (title stays the same)
-    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+    expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
 
   it('should return early from addConfigEntry setDraftConfig when prev is undefined', async () => {

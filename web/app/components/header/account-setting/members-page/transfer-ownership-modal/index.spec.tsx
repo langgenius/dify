@@ -213,7 +213,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show empty error message when sendOwnerEmail throws null', async () => {
+  it('should show fallback error prefix when sendOwnerEmail throws null', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(null)
 
@@ -228,7 +228,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show empty error message when verifyOwnerEmail throws null', async () => {
+  it('should show fallback error prefix when verifyOwnerEmail throws null', async () => {
     const user = userEvent.setup()
     mockEmailVerification()
     vi.mocked(verifyOwnerEmail).mockRejectedValue(null)
@@ -244,7 +244,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show empty error message when ownershipTransfer throws null', async () => {
+  it('should show fallback error prefix when ownershipTransfer throws null', async () => {
     const user = userEvent.setup()
     mockEmailVerification()
     vi.mocked(ownershipTransfer).mockRejectedValue(null)
