@@ -29,6 +29,10 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: () => <div data-testid="github-star">GithubStar</div>,
 }))
 
+vi.mock('@/app/components/base/theme-switcher', () => ({
+  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
@@ -275,6 +279,16 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
+    })
+
+    it('should keep account dropdown open when clicking the theme switcher', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+      fireEvent.click(screen.getByTestId('theme-switcher-button'))
+
+      // Assert
+      expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
     })
   })
 

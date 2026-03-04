@@ -21,10 +21,6 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   const { t } = useTranslation()
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
-  const handleTriggerClick = useCallback(() => {
-    setShowTriggerSelector(true)
-  }, [])
-
   const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
     setShowTriggerSelector(false)
     onSelectTrigger(nodeType, toolConfig)
@@ -67,10 +63,9 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
             )}
             title={t('onboarding.trigger', { ns: 'workflow' })}
             description={t('onboarding.triggerDescription', { ns: 'workflow' })}
-            onClick={handleTriggerClick}
+            onClick={() => setShowTriggerSelector(true)}
           />
         )}
-        popupClassName="z-[1200]"
       />
     </div>
   )
