@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { ReactMarkdownWrapper } from '../react-markdown-wrapper'
+import ReactMarkdownWrapper from '../react-markdown-wrapper'
 
 vi.mock('@/app/components/base/markdown-blocks', () => ({
   AudioBlock: ({ children }: PropsWithChildren) => <div data-testid="audio-block">{children}</div>,

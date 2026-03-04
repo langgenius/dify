@@ -99,7 +99,7 @@ describe('Markdown', () => {
 
   it('should pass customComponents through', () => {
     const customComponents = {
-      h1: ({ children }: { children: React.ReactNode }) => <h1>{children}</h1>,
+      h1: ({ children }: { children?: React.ReactNode }) => <h1>{children}</h1>,
     }
     render(<Markdown content="# title" customComponents={customComponents} />)
     const props = getLastWrapperProps()

@@ -128,7 +128,7 @@ const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
   const components: Components = useMemo(
     () => ({
       code: CodeBlock,
-      img: imgProps => pluginInfo ? <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} /> : <Img {...imgProps} />,
+      img: imgProps => pluginInfo ? <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} /> : <Img src={String(imgProps.src ?? '')} />,
       video: VideoBlock,
       audio: AudioBlock,
       a: Link,
