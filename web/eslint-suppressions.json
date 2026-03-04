@@ -5732,27 +5732,6 @@
       "count": 30
     }
   },
-  "app/components/plugins/update-plugin/downgrade-warning.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/update-plugin/from-market-place.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/update-plugin/plugin-version-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/rag-pipeline/components/chunk-card-list/chunk-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2

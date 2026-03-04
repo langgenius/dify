@@ -915,7 +915,7 @@ describe('update-plugin', () => {
       onShowChange: vi.fn(),
       pluginID: 'test-plugin-id',
       currentVersion: '1.0.0',
-      trigger: <button>Select Version</button>,
+      trigger: <span>Select Version</span>,
       onSelect: vi.fn(),
     }
 
@@ -1159,7 +1159,7 @@ describe('update-plugin', () => {
           onShowChange: vi.fn(),
           pluginID: 'test',
           currentVersion: '1.0.0',
-          trigger: <button>Select</button>,
+          trigger: <span>Select</span>,
           onSelect: vi.fn(),
         }}
         />,
