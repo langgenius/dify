@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
 import Button from '../index'
 
 afterEach(cleanup)
@@ -140,9 +139,16 @@ describe('Button', () => {
 
   describe('ref forwarding', () => {
     it('forwards ref to the button element', () => {
-      const ref = React.createRef<HTMLButtonElement>()
-      render(<Button ref={ref}>Click me</Button>)
-      expect(ref.current).toBeInstanceOf(HTMLButtonElement)
+      let buttonRef: HTMLButtonElement | null = null
+      render(
+        <Button ref={(el) => {
+          buttonRef = el
+        }}
+        >
+          Click me
+        </Button>,
+      )
+      expect(buttonRef).toBeInstanceOf(HTMLButtonElement)
     })
   })
 })
