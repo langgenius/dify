@@ -1,4 +1,5 @@
 import type { ModelProvider } from '../declarations'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { changeModelProviderPriority } from '@/service/common'
 import { ConfigurationMethodEnum } from '../declarations'
@@ -71,6 +72,21 @@ vi.mock('@/app/components/header/indicator', () => ({
   default: ({ color }: { color: string }) => <div data-testid="indicator">{color}</div>,
 }))
 
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, gcTime: 0 },
+  },
+})
+
+const renderWithQueryClient = (provider: ModelProvider) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <CredentialPanel provider={provider} />
+    </QueryClientProvider>,
+  )
+}
+
 describe('CredentialPanel', () => {
   const mockProvider: ModelProvider = {
     provider: 'test-provider',
@@ -94,7 +110,7 @@ describe('CredentialPanel', () => {
   })
 
   it('should show credential name and configuration actions', () => {
-    render(<CredentialPanel provider={mockProvider} />)
+    renderWithQueryClient(mockProvider)
 
     expect(screen.getByText('test-credential')).toBeInTheDocument()
     expect(screen.getByTestId('config-provider')).toBeInTheDocument()
@@ -103,7 +119,7 @@ describe('CredentialPanel', () => {
 
   it('should show unauthorized status label when credential is missing', () => {
     mockCredentialStatus.hasCredential = false
-    render(<CredentialPanel provider={mockProvider} />)
+    renderWithQueryClient(mockProvider)
 
     expect(screen.getByText(/modelProvider\.auth\.unAuthorized/)).toBeInTheDocument()
   })
@@ -111,7 +127,7 @@ describe('CredentialPanel', () => {
   it('should show removed credential label and priority tip for custom preference', () => {
     mockCredentialStatus.authorized = false
     mockCredentialStatus.authRemoved = true
-    render(<CredentialPanel provider={{ ...mockProvider, preferred_provider_type: 'custom' } as ModelProvider} />)
+    renderWithQueryClient({ ...mockProvider, preferred_provider_type: 'custom' } as ModelProvider)
 
     expect(screen.getByText(/modelProvider\.auth\.authRemoved/)).toBeInTheDocument()
     expect(screen.getByTestId('priority-use-tip')).toBeInTheDocument()
@@ -120,7 +136,7 @@ describe('CredentialPanel', () => {
   it('should change priority and refresh related data after success', async () => {
     const mockChangePriority = changeModelProviderPriority as ReturnType<typeof vi.fn>
     mockChangePriority.mockResolvedValue({ result: 'success' })
-    render(<CredentialPanel provider={mockProvider} />)
+    renderWithQueryClient(mockProvider)
 
     fireEvent.click(screen.getByTestId('priority-selector'))
 
@@ -138,7 +154,7 @@ describe('CredentialPanel', () => {
       ...mockProvider,
       provider_credential_schema: null,
     } as unknown as ModelProvider
-    render(<CredentialPanel provider={providerNoSchema} />)
+    renderWithQueryClient(providerNoSchema)
     expect(screen.getByTestId('priority-selector')).toBeInTheDocument()
     expect(screen.queryByTestId('config-provider')).not.toBeInTheDocument()
   })

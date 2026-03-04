@@ -120,13 +120,13 @@ describe('ProviderAddedCard', () => {
     // Explicitly re-find and click to re-open
     fireEvent.click(screen.getByTestId('show-models-button'))
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
-    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1) // Should not fetch again
+    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 
     // Refresh list from ModelList
     const refreshBtn = screen.getByRole('button', { name: 'refresh list' })
     fireEvent.click(refreshBtn)
     await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2)
+      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(3)
     })
   })
 

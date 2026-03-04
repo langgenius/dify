@@ -1,6 +1,7 @@
 import type {
   ModelProvider,
 } from '../declarations'
+import { useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
@@ -9,6 +10,7 @@ import { useCredentialStatus } from '@/app/components/header/account-setting/mod
 import Indicator from '@/app/components/header/indicator'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { consoleQuery } from '@/service/client'
 import { changeModelProviderPriority } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import {
@@ -34,6 +36,7 @@ const CredentialPanel = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
+  const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const customConfig = provider.custom_configuration
@@ -60,6 +63,10 @@ const CredentialPanel = ({
     })
     if (res.result === 'success') {
       notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.modelProviders.models.key(),
+        refetchType: 'none',
+      })
       updateModelProviders()
 
       configurateMethods.forEach((method) => {
@@ -82,7 +89,7 @@ const CredentialPanel = ({
       return t('modelProvider.auth.authRemoved', { ns: 'common' })
 
     return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential])
+  }, [authorized, authRemoved, current_credential_name, hasCredential, t])
 
   const color = useMemo(() => {
     if (authRemoved || !hasCredential)

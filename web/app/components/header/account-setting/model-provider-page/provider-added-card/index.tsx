@@ -83,14 +83,14 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showCustomModelActions = supportsCustomizableModel && isCurrentWorkspaceManager
 
   const refreshModelList = useCallback((targetProviderName: string) => {
-    if (targetProviderName !== currentProviderName || loading)
+    if (targetProviderName !== currentProviderName)
       return
 
     if (collapsed)
       setCollapsed(false)
 
     refetchModelList().catch(() => {})
-  }, [collapsed, currentProviderName, loading, refetchModelList])
+  }, [collapsed, currentProviderName, refetchModelList])
 
   const handleOpenModelList = useCallback(() => {
     if (loading)

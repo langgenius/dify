@@ -25,6 +25,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import {
   fetchDefaultModal,
   fetchModelList,
@@ -323,6 +324,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
 
 export const useRefreshModel = () => {
   const { eventEmitter } = useEventEmitterContextContext()
+  const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
   const handleRefreshModel = useCallback((
@@ -330,6 +332,11 @@ export const useRefreshModel = () => {
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     refreshModelList?: boolean,
   ) => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.modelProviders.models.key(),
+      refetchType: 'none',
+    })
+
     updateModelProviders()
 
     provider.supported_model_types.forEach((type) => {
@@ -345,7 +352,7 @@ export const useRefreshModel = () => {
       if (CustomConfigurationModelFixedFields?.__model_type)
         updateModelList(CustomConfigurationModelFixedFields.__model_type)
     }
-  }, [eventEmitter, updateModelList, updateModelProviders])
+  }, [eventEmitter, queryClient, updateModelList, updateModelProviders])
 
   return {
     handleRefreshModel,
