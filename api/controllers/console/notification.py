@@ -1,4 +1,6 @@
+from flask import request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
@@ -32,6 +34,10 @@ def _pick_lang_content(contents: dict, lang: str) -> dict:
     return contents.get(lang) or contents.get(_FALLBACK_LANG) or next(iter(contents.values()), {})
 
 
+class DismissNotificationPayload(BaseModel):
+    notification_id: str = Field(...)
+
+
 @console_ns.route("/notification")
 class NotificationApi(Resource):
     @console_ns.doc("get_notification")
@@ -39,8 +45,8 @@ class NotificationApi(Resource):
         description=(
             "Return the active in-product notification for the current user "
             "in their interface language (falls back to English if unavailable). "
-            "Calling this endpoint also marks the notification as seen; subsequent "
-            "calls return should_show=false when frequency='once'."
+            "The notification is NOT marked as seen here; call POST /notification/dismiss "
+            "when the user explicitly closes the modal."
         ),
         responses={
             200: "Success — inspect should_show to decide whether to render the modal",
@@ -58,23 +64,45 @@ class NotificationApi(Resource):
 
         # Proto JSON uses camelCase field names (Kratos default marshaling).
         if not result.get("shouldShow"):
-            return {"should_show": False}, 200
-
-        notification = result.get("notification") or {}
-        contents: dict = notification.get("contents") or {}
+            return {"should_show": False, "notifications": []}, 200
 
         lang = _resolve_lang(current_user.interface_language)
-        lang_content = _pick_lang_content(contents, lang)
 
-        return {
-            "should_show": True,
-            "notification": {
-                "notification_id": notification.get("notificationId"),
-                "frequency": notification.get("frequency"),
-                "lang": lang_content.get("lang", lang),
-                "title": lang_content.get("title", ""),
-                "body": lang_content.get("body", ""),
-                "cta_label": lang_content.get("ctaLabel", ""),
-                "cta_url": lang_content.get("ctaUrl", ""),
-            },
-        }, 200
+        notifications = []
+        for notification in result.get("notifications") or []:
+            contents: dict = notification.get("contents") or {}
+            lang_content = _pick_lang_content(contents, lang)
+            notifications.append(
+                {
+                    "notification_id": notification.get("notificationId"),
+                    "frequency": notification.get("frequency"),
+                    "lang": lang_content.get("lang", lang),
+                    "title": lang_content.get("title", ""),
+                    "subtitle": lang_content.get("subtitle", ""),
+                    "body": lang_content.get("body", ""),
+                    "title_pic_url": lang_content.get("titlePicUrl", ""),
+                }
+            )
+
+        return {"should_show": bool(notifications), "notifications": notifications}, 200
+
+
+@console_ns.route("/notification/dismiss")
+class NotificationDismissApi(Resource):
+    @console_ns.doc("dismiss_notification")
+    @console_ns.doc(
+        description="Mark a notification as dismissed for the current user.",
+        responses={200: "Success", 401: "Unauthorized"},
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @only_edition_cloud
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        payload = DismissNotificationPayload.model_validate(request.get_json())
+        BillingService.dismiss_notification(
+            notification_id=payload.notification_id,
+            account_id=str(current_user.id),
+        )
+        return {"result": "success"}, 200

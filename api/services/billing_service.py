@@ -456,3 +456,15 @@ class BillingService:
             f"/notifications/{notification_id}/accounts",
             json={"account_ids": account_ids},
         )
+
+    @classmethod
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> dict:
+        """Mark a notification as dismissed for an account.
+
+        Returns {"success": bool}.
+        """
+        return cls._send_request(
+            "POST",
+            f"/notifications/{notification_id}/dismiss",
+            json={"account_id": account_id},
+        )

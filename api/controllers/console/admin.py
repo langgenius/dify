@@ -285,9 +285,9 @@ class DeleteExploreBannerApi(Resource):
 class LangContentPayload(BaseModel):
     lang: str = Field(..., description="Language tag: 'zh' | 'en' | 'jp'")
     title: str = Field(...)
+    subtitle: str | None = Field(default=None)
     body: str = Field(...)
-    cta_label: str = Field(...)
-    cta_url: str = Field(...)
+    title_pic_url: str | None = Field(default=None)
 
 
 class UpsertNotificationPayload(BaseModel):
