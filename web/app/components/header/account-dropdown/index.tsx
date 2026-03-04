@@ -228,8 +228,8 @@ export default function AppSelector() {
           )}
           <AccountMenuSection>
             <DropdownMenuItem
+              closeOnClick={false}
               className="cursor-default data-[highlighted]:bg-transparent"
-              onSelect={e => e.preventDefault()}
             >
               <MenuItemContent
                 iconClassName="i-ri-t-shirt-2-line"

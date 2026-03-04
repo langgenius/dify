@@ -71,10 +71,10 @@ const createForceInspectorClientInjectionPlugin = (): Plugin => {
 }
 
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
+  const isTest = mode === 'test'
 
   return {
-    plugins: mode === 'test'
+    plugins: isTest
       ? [
           tsconfigPaths(),
           react(),
@@ -89,12 +89,8 @@ export default defineConfig(({ mode }) => {
           } as Plugin,
         ]
       : [
-          ...(isDev
-            ? [
-                createCodeInspectorPlugin(),
-                createForceInspectorClientInjectionPlugin(),
-              ]
-            : []),
+          createCodeInspectorPlugin(),
+          createForceInspectorClientInjectionPlugin(),
           vinext(),
         ],
     resolve: {
@@ -104,13 +100,33 @@ export default defineConfig(({ mode }) => {
     },
 
     // vinext related config
-    ...(mode !== 'test'
+    ...(!isTest
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
+            // Make Prism in lexical works
+            // https://github.com/vitejs/rolldown-vite/issues/396
+            rolldownOptions: {
+              output: {
+                strictExecutionOrder: true,
+              },
+            },
           },
           server: {
             port: 3000,
+          },
+          ssr: {
+            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
+            noExternal: ['emoji-mart'],
+          },
+          // Make Prism in lexical works
+          // https://github.com/vitejs/rolldown-vite/issues/396
+          build: {
+            rolldownOptions: {
+              output: {
+                strictExecutionOrder: true,
+              },
+            },
           },
         }
       : {}),

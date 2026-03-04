@@ -247,8 +247,8 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "uglify-js": "3.19.3",
-    "vinext": "https://pkg.pr.new/hyoban/vinext@cfae669",
-    "vite": "7.3.1",
+    "vinext": "https://pkg.pr.new/hyoban/vinext@a30ba79",
+    "vite": "8.0.0-beta.16",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.0.18",
     "vitest-canvas-mock": "1.1.3"
