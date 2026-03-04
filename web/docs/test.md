@@ -225,6 +225,38 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 
 Mock the specific Next.js navigation hooks your component consumes (`useRouter`, `usePathname`, `useSearchParams`) and drive realistic routing flows—query parameters, redirects, guarded routes, URL updates—while asserting the rendered outcome or navigation side effects.
 
+#### 7.1 `nuqs` Query State Testing
+
+When testing code that uses `useQueryState` or `useQueryStates`, treat `nuqs` as the source of truth for URL synchronization.
+
+- ✅ In runtime, keep `NuqsAdapter` in app layout (already wired in `app/layout.tsx`).
+- ✅ In tests, wrap with `NuqsTestingAdapter` (prefer helper utilities from `@/test/nuqs-testing`).
+- ✅ Assert URL behavior via `onUrlUpdate` events (`searchParams`, `options.history`) instead of only asserting router mocks.
+- ✅ For custom parsers created with `createParser`, keep `parse` and `serialize` bijective (round-trip safe). Add edge-case coverage for values like `%2F`, `%25`, spaces, and legacy encoded URLs.
+- ✅ Assert default-clearing behavior explicitly (`clearOnDefault` semantics remove params when value equals default).
+- ⚠️ Only mock `nuqs` directly when URL behavior is intentionally out of scope for the test. For ESM-safe partial mocks, use async `vi.mock` with `importOriginal`.
+
+Example:
+
+```tsx
+import { renderHookWithNuqs } from '@/test/nuqs-testing'
+
+it('should update query with push history', async () => {
+  const { result, onUrlUpdate } = renderHookWithNuqs(() => useMyQueryState(), {
+    searchParams: '?page=1',
+  })
+
+  act(() => {
+    result.current.setQuery({ page: 2 })
+  })
+
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  const update = onUrlUpdate.mock.calls.at(-1)![0]
+  expect(update.options.history).toBe('push')
+  expect(update.searchParams.get('page')).toBe('2')
+})
+```
+
 ### 8. Edge Cases (REQUIRED - All Components)
 
 **Must Test**:

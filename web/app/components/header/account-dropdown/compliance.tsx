@@ -1,9 +1,9 @@
-import type { FC, MouseEvent } from 'react'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import type { ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Fragment, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -11,14 +11,14 @@ import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
-import Button from '../../base/button'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
 import Soc2 from '../../base/icons/src/public/common/Soc2'
 import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
+import Spinner from '../../base/spinner'
 import Toast from '../../base/toast'
-import Tooltip from '../../base/tooltip'
+import { MenuItemContent } from './menu-item-content'
 
 enum DocName {
   SOC2_Type_I = 'SOC2_Type_I',
@@ -27,27 +27,84 @@ enum DocName {
   GDPR = 'GDPR',
 }
 
-type UpgradeOrDownloadProps = {
-  doc_name: DocName
+type ComplianceDocActionVisualProps = {
+  isCurrentPlanCanDownload: boolean
+  isPending: boolean
+  tooltipText: string
+  downloadText: string
+  upgradeText: string
 }
-const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
+
+function ComplianceDocActionVisual({
+  isCurrentPlanCanDownload,
+  isPending,
+  tooltipText,
+  downloadText,
+  upgradeText,
+}: ComplianceDocActionVisualProps) {
+  if (isCurrentPlanCanDownload) {
+    return (
+      <div
+        aria-hidden
+        data-disabled={isPending || undefined}
+        className={cn(
+          'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
+          isPending && 'cursor-not-allowed',
+        )}
+      >
+        <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
+        <span className="px-[3px] text-components-button-secondary-text system-xs-medium">{downloadText}</span>
+        {isPending && <Spinner loading={true} className="!ml-1 !h-3 !w-3 !border-2 !text-text-tertiary" />}
+      </div>
+    )
+  }
+
+  const canShowUpgradeTooltip = tooltipText.length > 0
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        delay={0}
+        disabled={!canShowUpgradeTooltip}
+        render={(
+          <PremiumBadge color="blue" allowHover={true}>
+            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <div className="px-1 system-xs-medium">
+              {upgradeText}
+            </div>
+          </PremiumBadge>
+        )}
+      />
+      {canShowUpgradeTooltip && (
+        <TooltipContent>
+          {tooltipText}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  )
+}
+
+type ComplianceDocRowItemProps = {
+  icon: ReactNode
+  label: ReactNode
+  docName: DocName
+}
+
+function ComplianceDocRowItem({
+  icon,
+  label,
+  docName,
+}: ComplianceDocRowItemProps) {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === Plan.sandbox
 
-  const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
-  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
-
   const { isPending, mutate: downloadCompliance } = useMutation({
-    mutationKey: ['downloadCompliance', doc_name],
+    mutationKey: ['downloadCompliance', docName],
     mutationFn: async () => {
       try {
-        const ret = await getDocDownloadUrl(doc_name)
+        const ret = await getDocDownloadUrl(docName)
         downloadUrl({ url: ret.url })
         Toast.notify({
           type: 'success',
@@ -63,6 +120,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
       }
     },
   })
+
   const whichPlanCanDownloadCompliance = {
     [DocName.SOC2_Type_I]: [Plan.professional, Plan.team],
     [DocName.SOC2_Type_II]: [Plan.team],
@@ -70,118 +128,85 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
     [DocName.GDPR]: [Plan.team, Plan.professional, Plan.sandbox],
   }
 
-  const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[doc_name].includes(plan.type)
-  const handleDownloadClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    downloadCompliance()
-  }, [downloadCompliance])
-  if (isCurrentPlanCanDownload) {
-    return (
-      <Button loading={isPending} disabled={isPending} size="small" variant="secondary" className="flex items-center gap-[1px]" onClick={handleDownloadClick}>
-        <RiArrowDownCircleLine className="size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="system-xs-medium px-[3px] text-components-button-secondary-text">{t('operation.download', { ns: 'common' })}</span>
-      </Button>
-    )
-  }
+  const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[docName].includes(plan.type)
+
+  const handleSelect = useCallback(() => {
+    if (isCurrentPlanCanDownload) {
+      if (!isPending)
+        downloadCompliance()
+      return
+    }
+
+    if (isFreePlan)
+      setShowPricingModal()
+    else
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+  }, [downloadCompliance, isCurrentPlanCanDownload, isFreePlan, isPending, setShowAccountSettingModal, setShowPricingModal])
+
   const upgradeTooltip: Record<Plan, string> = {
     [Plan.sandbox]: t('compliance.sandboxUpgradeTooltip', { ns: 'common' }),
     [Plan.professional]: t('compliance.professionalUpgradeTooltip', { ns: 'common' }),
     [Plan.team]: '',
     [Plan.enterprise]: '',
   }
+
   return (
-    <Tooltip asChild={false} popupContent={upgradeTooltip[plan.type]}>
-      <PremiumBadge color="blue" allowHover={true} onClick={handlePlanClick}>
-        <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-        <div className="system-xs-medium">
-          <span className="p-1">
-            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-          </span>
-        </div>
-      </PremiumBadge>
-    </Tooltip>
+    <DropdownMenuItem
+      className="h-10 justify-between py-1 pl-1 pr-2"
+      closeOnClick={!isCurrentPlanCanDownload}
+      onClick={handleSelect}
+    >
+      {icon}
+      <div className="grow truncate px-1 text-text-secondary system-md-regular">{label}</div>
+      <ComplianceDocActionVisual
+        isCurrentPlanCanDownload={isCurrentPlanCanDownload}
+        isPending={isPending}
+        tooltipText={upgradeTooltip[plan.type]}
+        downloadText={t('operation.download', { ns: 'common' })}
+        upgradeText={t('upgradeBtn.encourageShort', { ns: 'billing' })}
+      />
+    </DropdownMenuItem>
   )
 }
 
+// Submenu-only: this component must be rendered within an existing DropdownMenu root.
 export default function Compliance() {
-  const itemClassName = `
-  flex items-center w-full h-10 pl-1 pr-2 py-1 text-text-secondary system-md-regular
-  rounded-lg hover:bg-state-base-hover gap-1
-`
   const { t } = useTranslation()
 
   return (
-    <Menu as="div" className="relative h-full w-full">
-      {
-        ({ open }) => (
-          <>
-            <MenuButton className={
-              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
-            }
-            >
-              <RiVerifiedBadgeLine className="size-4 shrink-0 text-text-tertiary" />
-              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.compliance', { ns: 'common' })}</div>
-              <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                className={cn(
-                  `absolute top-[1px] z-10 max-h-[70vh] w-[337px] origin-top-right -translate-x-full divide-y divide-divider-subtle overflow-y-scroll
-                rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus:outline-none
-              `,
-                )}
-              >
-                <div className="px-1 py-1">
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type1', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type2', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Iso className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.iso27001', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.ISO_27001} />
-                    </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div
-                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                    >
-                      <Gdpr className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.gdpr', { ns: 'common' })}</div>
-                      <UpgradeOrDownload doc_name={DocName.GDPR} />
-                    </div>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Transition>
-          </>
-        )
-      }
-    </Menu>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <MenuItemContent
+          iconClassName="i-ri-verified-badge-line"
+          label={t('userProfile.compliance', { ns: 'common' })}
+        />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent
+        popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+      >
+        <DropdownMenuGroup className="p-1">
+          <ComplianceDocRowItem
+            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.soc2Type1', { ns: 'common' })}
+            docName={DocName.SOC2_Type_I}
+          />
+          <ComplianceDocRowItem
+            icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.soc2Type2', { ns: 'common' })}
+            docName={DocName.SOC2_Type_II}
+          />
+          <ComplianceDocRowItem
+            icon={<Iso aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.iso27001', { ns: 'common' })}
+            docName={DocName.ISO_27001}
+          />
+          <ComplianceDocRowItem
+            icon={<Gdpr aria-hidden className="size-7 shrink-0" />}
+            label={t('compliance.gdpr', { ns: 'common' })}
+            docName={DocName.GDPR}
+          />
+        </DropdownMenuGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
