@@ -17,11 +17,11 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from dify_graph.file.enums import FileTransferMethod
 from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from dify_graph.file.enums import FileTransferMethod
 from models.model import MessageFile, UploadFile
 
 
@@ -292,6 +292,31 @@ class TestMessageEndStreamResponseFiles:
 
             # Verify tool file signing was called
             mock_sign_tool.assert_called_once_with(tool_file_id="tool_file_123", extension=".png")
+
+    def test_message_end_with_tool_file_long_extension(self, mock_pipeline, mock_message_file_tool):
+        """Test that TOOL_FILE extensions longer than MAX_TOOL_FILE_EXTENSION_LENGTH fall back to .bin."""
+        mock_message_file_tool.message_id = mock_pipeline._message_id
+        mock_message_file_tool.url = "tool_file_abc.verylongextension"
+
+        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
+             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
+             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool:
+
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_scalars_result = Mock()
+            mock_scalars_result.all.return_value = [mock_message_file_tool]
+            mock_session.scalars.return_value = mock_scalars_result
+            mock_sign_tool.return_value = "https://example.com/signed.bin"
+
+            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
+
+            assert result.files is not None
+            file_dict = result.files[0]
+            assert file_dict["extension"] == ".bin"
+            mock_sign_tool.assert_called_once_with(tool_file_id="tool_file_abc", extension=".bin")
 
     def test_message_end_with_multiple_files(
         self, mock_pipeline, mock_message_file_local, mock_message_file_remote, mock_upload_file
