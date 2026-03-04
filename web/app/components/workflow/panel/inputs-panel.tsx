@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { useKeyPress } from 'ahooks'
 import {
   memo,
   useCallback,
@@ -15,6 +16,7 @@ import { TransferMethod } from '../../base/text-generation/types'
 import { useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
+import ShortcutsName from '../shortcuts-name'
 import {
   useStore,
   useWorkflowStore,
@@ -28,6 +30,8 @@ import {
 type Props = {
   onRun: () => void
 }
+
+const START_RUN_SHORTCUT = ['ctrl', '↵']
 
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
@@ -103,6 +107,13 @@ const InputsPanel = ({ onRun }: Props) => {
     return !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
   }, [files])
 
+  useKeyPress(['meta.enter', 'ctrl.enter'], (event) => {
+    if (canRun && workflowRunningData?.result?.status !== WorkflowRunningStatus.Running) {
+      event.preventDefault()
+      doRun()
+    }
+  })
+
   return (
     <>
       <div className="px-4 pb-2 pt-3">
@@ -130,7 +141,10 @@ const InputsPanel = ({ onRun }: Props) => {
           className="w-full"
           onClick={doRun}
         >
-          {t('singleRun.startRun', { ns: 'workflow' })}
+          <div className="flex gap-1">
+            <span>{t('singleRun.startRun', { ns: 'workflow' })}</span>
+            <ShortcutsName keys={START_RUN_SHORTCUT} bgColor="white" />
+          </div>
         </Button>
       </div>
     </>
