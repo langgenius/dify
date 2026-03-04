@@ -2964,16 +2964,6 @@
       "count": 2
     }
   },
-  "app/components/billing/pricing/header.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
