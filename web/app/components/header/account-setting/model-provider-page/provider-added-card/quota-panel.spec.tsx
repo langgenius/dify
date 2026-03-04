@@ -13,18 +13,6 @@ let mockPlugins = [{
   latest_package_identifier: 'openai@1.0.0',
 }]
 
-vi.mock('@/app/components/base/icons/src/public/llm', () => {
-  const Icon = ({ label }: { label: string }) => <span>{label}</span>
-  return {
-    OpenaiSmall: () => <Icon label="openai" />,
-    AnthropicShortLight: () => <Icon label="anthropic" />,
-    Gemini: () => <Icon label="gemini" />,
-    Grok: () => <Icon label="x" />,
-    Deepseek: () => <Icon label="deepseek" />,
-    Tongyi: () => <Icon label="tongyi" />,
-  }
-})
-
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: mockWorkspace,
@@ -80,6 +68,13 @@ describe('QuotaPanel', () => {
     mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
   })
 
+  const clickFirstTrialProviderIcon = () => {
+    const iconWrapper = document.querySelector('.relative.h-6.w-6') as HTMLDivElement | null
+    expect(iconWrapper).toBeInTheDocument()
+    if (iconWrapper)
+      fireEvent.click(iconWrapper)
+  }
+
   it('should render loading state', () => {
     render(
       <QuotaPanel
@@ -118,7 +113,7 @@ describe('QuotaPanel', () => {
   it('should open install modal when clicking an unsupported trial provider', () => {
     render(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    clickFirstTrialProviderIcon()
 
     expect(screen.getByText('install modal')).toBeInTheDocument()
   })
@@ -126,7 +121,7 @@ describe('QuotaPanel', () => {
   it('should close install modal when provider becomes installed', async () => {
     const { rerender } = render(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    clickFirstTrialProviderIcon()
     expect(screen.getByText('install modal')).toBeInTheDocument()
 
     rerender(<QuotaPanel providers={mockProviders} />)
@@ -134,5 +129,54 @@ describe('QuotaPanel', () => {
     await waitFor(() => {
       expect(screen.queryByText('install modal')).not.toBeInTheDocument()
     })
+  })
+
+  it('should not open install modal when clicking an already installed provider', () => {
+    render(<QuotaPanel providers={mockProviders} />)
+
+    clickFirstTrialProviderIcon()
+
+    expect(screen.queryByText('install modal')).not.toBeInTheDocument()
+  })
+
+  it('should not open install modal when plugin is not found in marketplace', () => {
+    mockPlugins = []
+    render(<QuotaPanel providers={[]} />)
+
+    clickFirstTrialProviderIcon()
+
+    expect(screen.queryByText('install modal')).not.toBeInTheDocument()
+  })
+
+  it('should show destructive border when credits are zero or negative', () => {
+    mockWorkspace = {
+      trial_credits: 0,
+      trial_credits_used: 0,
+      next_credit_reset_date: '',
+    }
+
+    const { container } = render(<QuotaPanel providers={mockProviders} />)
+
+    expect(container.querySelector('.border-state-destructive-border')).toBeInTheDocument()
+  })
+
+  it('should show modelAPI tooltip for configured provider with custom preference', () => {
+    render(<QuotaPanel providers={mockProviders} />)
+
+    expect(document.querySelector('.relative.h-6.w-6')).toBeInTheDocument()
+  })
+
+  it('should show modelSupported tooltip for installed provider without custom config', () => {
+    const systemProviders = [
+      {
+        provider: 'langgenius/openai/openai',
+        preferred_provider_type: 'system',
+        custom_configuration: { available_credentials: [] },
+      },
+    ] as unknown as ModelProvider[]
+
+    render(<QuotaPanel providers={systemProviders} />)
+
+    expect(document.querySelector('.relative.h-6.w-6')).toBeInTheDocument()
   })
 })

@@ -60,7 +60,15 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-const mockDefaultModelState = {
+type MockDefaultModelData = {
+  model: string
+  provider?: { provider: string }
+} | null
+
+const mockDefaultModelState: {
+  data: MockDefaultModelData
+  isLoading: boolean
+} = {
   data: null,
   isLoading: false,
 }
@@ -195,5 +203,140 @@ describe('ModelProviderPage', () => {
       'zeta-provider',
     ])
     expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should show not configured alert when all default models are absent', () => {
+    mockDefaultModelState.data = null
+    mockDefaultModelState.isLoading = false
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.getByText('common.modelProvider.notConfigured')).toBeInTheDocument()
+  })
+
+  it('should not show not configured alert when default model is loading', () => {
+    mockDefaultModelState.data = null
+    mockDefaultModelState.isLoading = true
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should filter providers by label text', () => {
+    render(<ModelProviderPage searchText="OpenAI" />)
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    expect(screen.getByText('openai')).toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+  })
+
+  it('should classify system-enabled providers with matching quota as configured', () => {
+    mockProviders.splice(0, mockProviders.length, {
+      provider: 'sys-provider',
+      label: { en_US: 'System Provider' },
+      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+      system_configuration: {
+        enabled: true,
+        current_quota_type: CurrentSystemQuotaTypeEnum.free,
+        quota_configurations: [mockQuotaConfig],
+      },
+    })
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.getByText('sys-provider')).toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should classify system-enabled provider with no matching quota as not configured', () => {
+    mockProviders.splice(0, mockProviders.length, {
+      provider: 'sys-no-quota',
+      label: { en_US: 'System No Quota' },
+      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+      system_configuration: {
+        enabled: true,
+        current_quota_type: CurrentSystemQuotaTypeEnum.free,
+        quota_configurations: [],
+      },
+    })
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.getByText('sys-no-quota')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
+  })
+
+  it('should preserve order of two non-fixed providers (sort returns 0)', () => {
+    mockProviders.splice(0, mockProviders.length, {
+      provider: 'alpha-provider',
+      label: { en_US: 'Alpha Provider' },
+      custom_configuration: { status: CustomConfigurationStatusEnum.active },
+      system_configuration: {
+        enabled: false,
+        current_quota_type: CurrentSystemQuotaTypeEnum.free,
+        quota_configurations: [mockQuotaConfig],
+      },
+    }, {
+      provider: 'beta-provider',
+      label: { en_US: 'Beta Provider' },
+      custom_configuration: { status: CustomConfigurationStatusEnum.active },
+      system_configuration: {
+        enabled: false,
+        current_quota_type: CurrentSystemQuotaTypeEnum.free,
+        quota_configurations: [mockQuotaConfig],
+      },
+    })
+
+    render(<ModelProviderPage searchText="" />)
+
+    const renderedProviders = screen.getAllByTestId('provider-card').map(item => item.textContent)
+    expect(renderedProviders).toEqual(['alpha-provider', 'beta-provider'])
+  })
+
+  it('should not show not configured alert when only embeddingsDefaultModel has data', () => {
+    vi.doMock('./hooks', () => ({
+      useDefaultModel: (type: string) => {
+        if (type === 'text-embedding')
+          return { data: { model: 'embed-model', provider: { provider: 'openai' } }, isLoading: false }
+        return { data: null, isLoading: false }
+      },
+    }))
+
+    // Re-import with new mock
+    mockDefaultModelState.data = { model: 'embed-model' }
+
+    render(<ModelProviderPage searchText="" />)
+
+    // Since the single mock state is shared, when data is non-null, alert disappears
+    expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should not show not configured alert when rerankDefaultModel has data', () => {
+    mockDefaultModelState.data = { model: 'rerank-model', provider: { provider: 'cohere' } }
+    mockDefaultModelState.isLoading = false
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should not show not configured alert when ttsDefaultModel has data', () => {
+    mockDefaultModelState.data = { model: 'tts-model', provider: { provider: 'openai' } }
+    mockDefaultModelState.isLoading = false
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+  })
+
+  it('should not show not configured alert when speech2textDefaultModel has data', () => {
+    mockDefaultModelState.data = { model: 'whisper', provider: { provider: 'openai' } }
+    mockDefaultModelState.isLoading = false
+
+    render(<ModelProviderPage searchText="" />)
+
+    expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
   })
 })

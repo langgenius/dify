@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import Operate from './Operate'
 
 describe('Operate', () => {
-  it('renders cancel and save when editing', () => {
+  it('should render cancel and save when editing is open', () => {
     render(
       <Operate
         isOpen
@@ -18,7 +18,7 @@ describe('Operate', () => {
     expect(screen.getByText('common.operation.save')).toBeInTheDocument()
   })
 
-  it('shows add key prompt when closed', () => {
+  it('should show add-key prompt when closed', () => {
     render(
       <Operate
         isOpen={false}
@@ -33,7 +33,7 @@ describe('Operate', () => {
     expect(screen.getByText('common.provider.addKey')).toBeInTheDocument()
   })
 
-  it('shows invalid state indicator and edit prompt when status is fail', () => {
+  it('should show invalid state and edit prompt when status is fail', () => {
     render(
       <Operate
         isOpen={false}
@@ -49,7 +49,7 @@ describe('Operate', () => {
     expect(screen.getByText('common.provider.editKey')).toBeInTheDocument()
   })
 
-  it('shows edit prompt without error text when status is success', () => {
+  it('should show edit prompt without error text when status is success', () => {
     render(
       <Operate
         isOpen={false}
@@ -65,7 +65,24 @@ describe('Operate', () => {
     expect(screen.queryByText('common.provider.invalidApiKey')).toBeNull()
   })
 
-  it('shows no actions for unsupported status', () => {
+  it('should not call onAdd when disabled', () => {
+    const onAdd = vi.fn()
+    render(
+      <Operate
+        isOpen={false}
+        status="add"
+        disabled
+        onAdd={onAdd}
+        onCancel={vi.fn()}
+        onEdit={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByText('common.provider.addKey'))
+    expect(onAdd).not.toHaveBeenCalled()
+  })
+
+  it('should show no actions when status is unsupported', () => {
     render(
       <Operate
         isOpen={false}

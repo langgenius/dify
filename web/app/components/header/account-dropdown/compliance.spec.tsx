@@ -225,5 +225,91 @@ describe('Compliance', () => {
         payload: ACCOUNT_SETTING_TAB.BILLING,
       })
     })
+
+    // isPending branches: spinner visible, disabled class, guard blocks second call
+    it('should show spinner and guard against duplicate download when isPending is true', async () => {
+      // Arrange
+      let resolveDownload: (value: { url: string }) => void
+      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
+        resolveDownload = resolve
+      }))
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.team,
+        },
+      })
+
+      // Act
+      openMenuAndRender()
+      const downloadButtons = screen.getAllByText('common.operation.download')
+      fireEvent.click(downloadButtons[0])
+
+      // Assert - spinner should appear while pending
+      await waitFor(() => {
+        expect(screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')!.querySelector('.btn-disabled')).toBeInTheDocument()
+      })
+
+      // Cleanup: resolve the pending promise
+      resolveDownload!({ url: 'http://example.com/doc.pdf' })
+      await waitFor(() => {
+        expect(downloadUrl).toHaveBeenCalled()
+      })
+    })
+
+    it('should not call downloadCompliance again while pending', async () => {
+      let resolveDownload: (value: { url: string }) => void
+      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
+        resolveDownload = resolve
+      }))
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.team,
+        },
+      })
+
+      openMenuAndRender()
+      const downloadButtons = screen.getAllByText('common.operation.download')
+
+      // First click starts download
+      fireEvent.click(downloadButtons[0])
+
+      // Wait for mutation to start (isPending=true)
+      await waitFor(() => {
+        expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
+      })
+
+      // Second click while pending - should be guarded by isPending check
+      fireEvent.click(downloadButtons[0])
+
+      resolveDownload!({ url: 'http://example.com/doc.pdf' })
+      await waitFor(() => {
+        expect(downloadUrl).toHaveBeenCalledTimes(1)
+      })
+      // getDocDownloadUrl should still have only been called once
+      expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
+    })
+
+    // canShowUpgradeTooltip=false: enterprise plan has empty tooltip text → no TooltipContent
+    it('should show upgrade badge with empty tooltip for enterprise plan', () => {
+      // Arrange
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.enterprise,
+        },
+      })
+
+      // Act
+      openMenuAndRender()
+
+      // Assert - enterprise is not in any download list, so upgrade badges should appear
+      // The key branch: upgradeTooltip[Plan.enterprise] = '' → canShowUpgradeTooltip=false
+      expect(screen.getAllByText('billing.upgradeBtn.encourageShort').length).toBeGreaterThan(0)
+    })
   })
 })

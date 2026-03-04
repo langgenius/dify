@@ -1,5 +1,6 @@
 import type { Model, ModelItem } from '../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -20,21 +21,6 @@ vi.mock('@/context/modal-context', () => ({
 const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
 vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
-}))
-
-const mockCloseActiveTooltip = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/base/tooltip/TooltipManager', () => ({
-  tooltipManager: {
-    closeActiveTooltip: mockCloseActiveTooltip,
-    register: vi.fn(),
-    clear: vi.fn(),
-  },
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/general', () => ({
-  XCircle: ({ onClick }: { onClick?: () => void }) => (
-    <button type="button" aria-label="clear-search" onClick={onClick} />
-  ),
 }))
 
 vi.mock('../hooks', async () => {
@@ -70,10 +56,13 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
 })
 
 describe('Popup', () => {
+  let closeActiveTooltipSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
     mockSupportFunctionCall.mockReturnValue(true)
+    closeActiveTooltipSpy = vi.spyOn(tooltipManager, 'closeActiveTooltip')
   })
 
   it('should filter models by search and allow clearing search', () => {
@@ -91,7 +80,7 @@ describe('Popup', () => {
     fireEvent.change(input, { target: { value: 'not-found' } })
     expect(screen.getByText('No model found for “not-found”')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'clear-search' }))
+    fireEvent.change(input, { target: { value: '' } })
     expect((input as HTMLInputElement).value).toBe('')
   })
 
@@ -168,6 +157,24 @@ describe('Popup', () => {
     expect(screen.getByText('openai')).toBeInTheDocument()
   })
 
+  it('should filter out model when features array exists but does not include required scopeFeature', () => {
+    const modelWithToolCallOnly = makeModel({
+      models: [makeModelItem({ features: [ModelFeatureEnum.toolCall] })],
+    })
+
+    render(
+      <Popup
+        modelList={[modelWithToolCallOnly]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.vision]}
+      />,
+    )
+
+    // The model item should be filtered out because it has toolCall but not vision
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+  })
+
   it('should close tooltip on scroll', () => {
     const { container } = render(
       <Popup
@@ -178,7 +185,7 @@ describe('Popup', () => {
     )
 
     fireEvent.scroll(container.firstElementChild as HTMLElement)
-    expect(mockCloseActiveTooltip).toHaveBeenCalled()
+    expect(closeActiveTooltipSpy).toHaveBeenCalled()
   })
 
   it('should open provider settings when clicking footer link', () => {
@@ -195,5 +202,36 @@ describe('Popup', () => {
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
       payload: 'provider',
     })
+  })
+
+  it('should call onHide when footer settings link is clicked', () => {
+    const mockOnHide = vi.fn()
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={mockOnHide}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.model.settingsLink'))
+
+    expect(mockOnHide).toHaveBeenCalled()
+  })
+
+  it('should match model label when searchText is non-empty and label key exists for current language', () => {
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    // GPT-4 label has en_US key, so modelItem.label[language] is defined
+    const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    fireEvent.change(input, { target: { value: 'gpt' } })
+
+    expect(screen.getByText('openai')).toBeInTheDocument()
   })
 })

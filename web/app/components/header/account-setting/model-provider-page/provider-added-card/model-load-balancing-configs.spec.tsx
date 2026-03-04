@@ -5,7 +5,7 @@ import type {
   ModelLoadBalancingConfig,
   ModelProvider,
 } from '../declarations'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -261,6 +261,131 @@ describe('ModelLoadBalancingConfigs', () => {
     expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
   })
 
+  it('should not remove credential at index 0 due to falsy index guard', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi.fn()
+    // Create config where the target credential is at index 0
+    const config: ModelLoadBalancingConfig = {
+      enabled: true,
+      configs: [
+        { id: 'cfg-target', credential_id: 'cred-2', enabled: true, name: 'Key 2' },
+        { id: 'cfg-other', credential_id: 'cred-1', enabled: true, name: 'Key 1' },
+      ],
+    } as ModelLoadBalancingConfig
+
+    render(<StatefulHarness initialConfig={config} onRemove={onRemove} />)
+
+    // cred-2 is at index 0: the `if (index && index > -1)` guard treats 0 as falsy,
+    // so the visual entry is NOT removed, but onRemove IS still called
+    await user.click(screen.getByRole('button', { name: 'trigger remove' }))
+
+    expect(onRemove).toHaveBeenCalledWith('cred-2')
+    // The item remains in the list because the index=0 guard blocks removal
+    expect(screen.getByText('Key 2')).toBeInTheDocument()
+  })
+
+  it('should not toggle load balancing when modelLoadBalancingEnabled=false and enabling via switch', async () => {
+    const user = userEvent.setup()
+    mockModelLoadBalancingEnabled = false
+    render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch />)
+
+    const mainSwitch = screen.getByTestId('load-balancing-switch-main')
+    await user.click(mainSwitch)
+
+    // Switch is disabled so toggling to true should not work
+    expect(mainSwitch).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('should toggle load balancing to false when modelLoadBalancingEnabled=false but enabled=true via switch', async () => {
+    const user = userEvent.setup()
+    mockModelLoadBalancingEnabled = false
+    // When draftConfig.enabled=true and !enabled (toggling off): condition `(modelLoadBalancingEnabled || !enabled)` = (!enabled) = true
+    render(<StatefulHarness initialConfig={createDraftConfig(true)} withSwitch />)
+
+    const mainSwitch = screen.getByTestId('load-balancing-switch-main')
+    await user.click(mainSwitch)
+
+    // The description text remains regardless of enabled state
+    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+  })
+
+  it('should not show provider badge when isProviderManaged=true but configurationMethod is customizableModel', () => {
+    const inheritConfig: ModelLoadBalancingConfig = {
+      enabled: true,
+      configs: [
+        { id: 'cfg-inherit', credential_id: '', enabled: true, name: '__inherit__' },
+      ],
+    } as ModelLoadBalancingConfig
+
+    render(
+      <StatefulHarness
+        initialConfig={inheritConfig}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+      />,
+    )
+
+    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.providerManaged')).not.toBeInTheDocument()
+  })
+
+  it('should show upgrade panel when modelLoadBalancingEnabled=false and not CE edition', () => {
+    mockModelLoadBalancingEnabled = false
+
+    render(<StatefulHarness initialConfig={createDraftConfig(false)} />)
+
+    expect(screen.getByText('upgrade')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.upgradeForLoadBalancing')).toBeInTheDocument()
+  })
+
+  it('should pass explicit boolean state to toggleConfigEntryEnabled (typeof state === boolean branch)', async () => {
+    // Arrange: render with a config entry; the Switch onChange passes explicit boolean value
+    const user = userEvent.setup()
+    render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
+
+    // Act: click the switch which calls toggleConfigEntryEnabled(index, value) where value is boolean
+    const entrySwitch = screen.getByTestId('load-balancing-switch-cfg-1')
+    await user.click(entrySwitch)
+
+    // Assert: component still renders after the toggle (state = explicit boolean true/false)
+    expect(screen.getByTestId('load-balancing-main-panel')).toBeInTheDocument()
+  })
+
+  it('should render with credential that has not_allowed_to_use flag (covers credential?.not_allowed_to_use ? false branch)', () => {
+    // Arrange: config where the credential is not allowed to use
+    const restrictedConfig: ModelLoadBalancingConfig = {
+      enabled: true,
+      configs: [
+        { id: 'cfg-restricted', credential_id: 'cred-restricted', enabled: true, name: 'Restricted Key' },
+      ],
+    } as ModelLoadBalancingConfig
+
+    const mockModelCredentialWithRestricted = {
+      available_credentials: [
+        {
+          credential_id: 'cred-restricted',
+          credential_name: 'Restricted Key',
+          not_allowed_to_use: true,
+        },
+      ],
+    } as unknown as ModelCredential
+
+    // Act
+    render(
+      <ModelLoadBalancingConfigs
+        draftConfig={restrictedConfig}
+        setDraftConfig={vi.fn()}
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={mockModelCredentialWithRestricted}
+        model={{ model: 'gpt-4', model_type: 'llm' } as CustomModelCredential}
+      />,
+    )
+
+    // Assert: Switch value should be false (credential?.not_allowed_to_use ? false branch)
+    const entrySwitch = screen.getByTestId('load-balancing-switch-cfg-restricted')
+    expect(entrySwitch).toHaveAttribute('aria-checked', 'false')
+  })
+
   it('should handle edge cases where draftConfig becomes null during callbacks', async () => {
     let capturedAdd: ((credential: Credential) => void) | null = null
     let capturedUpdate: ((payload?: unknown, formValues?: Record<string, unknown>) => void) | null = null
@@ -297,5 +422,84 @@ describe('ModelLoadBalancingConfigs', () => {
     })
 
     // Should not throw and just return prev (which is undefined)
+  })
+
+  it('should not toggle load balancing when modelLoadBalancingEnabled=false and clicking panel to enable', async () => {
+    // Arrange: load balancing not enabled in context, draftConfig.enabled=false (so panel is clickable)
+    const user = userEvent.setup()
+    mockModelLoadBalancingEnabled = false
+    render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch={false} />)
+
+    // Act: clicking the panel calls toggleModalBalancing(true)
+    // but (modelLoadBalancingEnabled || !enabled) = (false || false) = false → condition fails
+    const panel = screen.getByTestId('load-balancing-main-panel')
+    await user.click(panel)
+
+    // Assert: load balancing stays disabled (title stays the same)
+    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+  })
+
+  it('should return early from addConfigEntry setDraftConfig when prev is undefined', async () => {
+    // Arrange: use a controlled wrapper that exposes a way to force draftConfig to undefined
+    let capturedAdd: ((credential: Credential) => void) | null = null
+    const MockChild = ({ onSelectCredential }: {
+      onSelectCredential: (credential: Credential) => void
+    }) => {
+      capturedAdd = onSelectCredential
+      return null
+    }
+    vi.mocked(AddCredentialInLoadBalancing).mockImplementation(MockChild as unknown as typeof AddCredentialInLoadBalancing)
+
+    // Use a setDraftConfig spy that tracks calls and simulates null prev
+    const setDraftConfigSpy = vi.fn((updater: ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined) | ModelLoadBalancingConfig | undefined) => {
+      if (typeof updater === 'function')
+        updater(undefined)
+    })
+
+    render(
+      <ModelLoadBalancingConfigs
+        draftConfig={createDraftConfig(true)}
+        setDraftConfig={setDraftConfigSpy}
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={mockModelCredential}
+        model={{ model: 'gpt-4', model_type: 'llm' } as CustomModelCredential}
+      />,
+    )
+
+    // Act: trigger addConfigEntry with undefined prev via the spy
+    act(() => {
+      if (capturedAdd)
+        (capturedAdd as (credential: Credential) => void)({ credential_id: 'new', credential_name: 'New' } as Credential)
+    })
+
+    // Assert: setDraftConfig was called and the updater returned early (prev was undefined)
+    expect(setDraftConfigSpy).toHaveBeenCalled()
+  })
+
+  it('should return early from updateConfigEntry setDraftConfig when prev is undefined', async () => {
+    // Arrange: use setDraftConfig spy that invokes updater with undefined prev
+    const setDraftConfigSpy = vi.fn((updater: ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined) | ModelLoadBalancingConfig | undefined) => {
+      if (typeof updater === 'function')
+        updater(undefined)
+    })
+
+    render(
+      <ModelLoadBalancingConfigs
+        draftConfig={createDraftConfig(true)}
+        setDraftConfig={setDraftConfigSpy}
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={mockModelCredential}
+        model={{ model: 'gpt-4', model_type: 'llm' } as CustomModelCredential}
+      />,
+    )
+
+    // Act: click remove button which triggers updateConfigEntry → setDraftConfig with prev=undefined
+    const removeBtn = screen.getByTestId('load-balancing-remove-cfg-1')
+    fireEvent.click(removeBtn)
+
+    // Assert: setDraftConfig was called and handled undefined prev gracefully
+    expect(setDraftConfigSpy).toHaveBeenCalled()
   })
 })

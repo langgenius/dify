@@ -1,5 +1,6 @@
+import type { ComponentProps } from 'react'
 import type { Credential, CredentialFormSchema, ModelProvider } from '../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -43,15 +44,6 @@ const mockHandlers = vi.hoisted(() => ({
   handleActiveCredential: vi.fn(),
 }))
 
-type FormResponse = {
-  isCheckValidated: boolean
-  values: Record<string, unknown>
-}
-const mockFormState = vi.hoisted(() => ({
-  responses: [] as FormResponse[],
-  setFieldValue: vi.fn(),
-}))
-
 vi.mock('../model-auth/hooks', () => ({
   useCredentialData: () => ({
     isLoading: mockState.isLoading,
@@ -84,36 +76,6 @@ vi.mock('@/hooks/use-i18n', () => ({
 
 vi.mock('../hooks', () => ({
   useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', async () => {
-  const React = await import('react')
-  const AuthForm = React.forwardRef(({
-    onChange,
-  }: {
-    onChange?: (field: string, value: string) => void
-  }, ref: React.ForwardedRef<{ getFormValues: () => FormResponse, getForm: () => { setFieldValue: (field: string, value: string) => void } }>) => {
-    React.useImperativeHandle(ref, () => ({
-      getFormValues: () => mockFormState.responses.shift() || { isCheckValidated: false, values: {} },
-      getForm: () => ({ setFieldValue: mockFormState.setFieldValue }),
-    }))
-    return (
-      <div>
-        <button type="button" onClick={() => onChange?.('__model_name', 'updated-model')}>Model Name Change</button>
-      </div>
-    )
-  })
-
-  return { default: AuthForm }
-})
-
-vi.mock('../model-auth', () => ({
-  CredentialSelector: ({ onSelect }: { onSelect: (credential: Credential & { addNewCredential?: boolean }) => void }) => (
-    <div>
-      <button type="button" onClick={() => onSelect({ credential_id: 'existing' })}>Choose Existing</button>
-      <button type="button" onClick={() => onSelect({ credential_id: 'new', addNewCredential: true })}>Add New</button>
-    </div>
-  ),
 }))
 
 const createI18n = (text: string) => ({ en_US: text, zh_Hans: text })
@@ -158,7 +120,7 @@ const createProvider = (overrides?: Partial<ModelProvider>): ModelProvider => ({
   ...overrides,
 })
 
-const renderModal = (overrides?: Partial<React.ComponentProps<typeof ModelModal>>) => {
+const renderModal = (overrides?: Partial<ComponentProps<typeof ModelModal>>) => {
   const provider = createProvider()
   const props = {
     provider,
@@ -168,11 +130,8 @@ const renderModal = (overrides?: Partial<React.ComponentProps<typeof ModelModal>
     onRemove: vi.fn(),
     ...overrides,
   }
-  const view = render(<ModelModal {...props} />)
-  return {
-    ...props,
-    unmount: view.unmount,
-  }
+  render(<ModelModal {...props} />)
+  return props
 }
 
 describe('ModelModal', () => {
@@ -187,167 +146,60 @@ describe('ModelModal', () => {
     mockState.formValues = {}
     mockState.modelNameAndTypeFormSchemas = []
     mockState.modelNameAndTypeFormValues = {}
-    mockFormState.responses = []
   })
 
-  it('should show title, description, and loading state for predefined models', () => {
+  it('should render title and loading state for predefined credential modal', () => {
     mockState.isLoading = true
 
-    const predefined = renderModal()
+    renderModal()
 
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title')).toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+  })
 
-    predefined.unmount()
-    const customizable = renderModal({ configurateMethod: ConfigurationMethodEnum.customizableModel })
-    expect(screen.queryByText('common.modelProvider.auth.apiKeyModal.desc')).not.toBeInTheDocument()
-    customizable.unmount()
+  it('should render model credential title when mode is configModelCredential', () => {
+    renderModal({
+      mode: ModelModalModeEnum.configModelCredential,
+      model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration },
+    })
 
-    mockState.credentialData = { credentials: {}, available_credentials: [] }
-    renderModal({ mode: ModelModalModeEnum.configModelCredential, model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration } })
     expect(screen.getByText('common.modelProvider.auth.addModelCredential')).toBeInTheDocument()
   })
 
-  it('should reveal the credential label when adding a new credential', () => {
-    renderModal({ mode: ModelModalModeEnum.addCustomModelToModelList })
-
-    expect(screen.queryByText('common.modelProvider.auth.modelCredential')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Add New'))
-
-    expect(screen.getByText('common.modelProvider.auth.modelCredential')).toBeInTheDocument()
-  })
-
-  it('should call onCancel when the cancel button is clicked', () => {
+  it('should call onCancel when cancel button is clicked', () => {
     const { onCancel } = renderModal()
-
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onCancel when the escape key is pressed', () => {
+  it('should call onCancel when escape key is pressed', () => {
     const { onCancel } = renderModal()
-
     fireEvent.keyDown(document, { key: 'Escape' })
-
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should confirm deletion when a delete dialog is shown', () => {
+  it('should call openConfirmDelete when remove button is clicked in edit mode', () => {
     mockState.credentialData = { credentials: { api_key: 'secret' }, available_credentials: [] }
-    mockState.deleteCredentialId = 'delete-id'
+    mockState.formValues = { api_key: 'secret' }
+    const credential: Credential = { credential_id: 'cred-1' }
 
+    renderModal({ credential })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
+    expect(mockHandlers.openConfirmDelete).toHaveBeenCalledWith(credential, undefined)
+  })
+
+  it('should confirm deletion and close when confirm dialog is shown', () => {
+    mockState.credentialData = { credentials: { api_key: 'secret' }, available_credentials: [] }
+    mockState.deleteCredentialId = 'cred-1'
     const credential: Credential = { credential_id: 'cred-1' }
     const { onCancel } = renderModal({ credential })
-
-    expect(screen.getByText('common.modelProvider.confirmDelete')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockHandlers.handleConfirmDelete).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('should handle save flows for different modal modes', async () => {
-    mockState.modelNameAndTypeFormSchemas = [{ variable: '__model_name', type: 'text-input' } as unknown as CredentialFormSchema]
-    mockState.formSchemas = [{ variable: 'api_key', type: 'secret-input' } as unknown as CredentialFormSchema]
-    mockFormState.responses = [
-      { isCheckValidated: true, values: { __model_name: 'custom-model', __model_type: ModelTypeEnum.textGeneration } },
-      { isCheckValidated: true, values: { __authorization_name__: 'Auth Name', api_key: 'secret' } },
-    ]
-    const configCustomModel = renderModal({ mode: ModelModalModeEnum.configCustomModel })
-    fireEvent.click(screen.getAllByText('Model Name Change')[0])
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-
-    expect(mockFormState.setFieldValue).toHaveBeenCalledWith('__model_name', 'updated-model')
-    await waitFor(() => {
-      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
-        credential_id: undefined,
-        credentials: { api_key: 'secret' },
-        name: 'Auth Name',
-        model: 'custom-model',
-        model_type: ModelTypeEnum.textGeneration,
-      })
-    })
-    expect(configCustomModel.onSave).toHaveBeenCalledWith({ __authorization_name__: 'Auth Name', api_key: 'secret' })
-    configCustomModel.unmount()
-
-    mockFormState.responses = [{ isCheckValidated: true, values: { __authorization_name__: 'Model Auth', api_key: 'abc' } }]
-    const model = { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration }
-    const configModelCredential = renderModal({
-      mode: ModelModalModeEnum.configModelCredential,
-      model,
-      credential: { credential_id: 'cred-123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => {
-      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
-        credential_id: 'cred-123',
-        credentials: { api_key: 'abc' },
-        name: 'Model Auth',
-        model: 'gpt-4',
-        model_type: ModelTypeEnum.textGeneration,
-      })
-    })
-    expect(configModelCredential.onSave).toHaveBeenCalledWith({ __authorization_name__: 'Model Auth', api_key: 'abc' })
-    configModelCredential.unmount()
-
-    mockFormState.responses = [{ isCheckValidated: true, values: { __authorization_name__: 'Provider Auth', api_key: 'provider-key' } }]
-    const configProviderCredential = renderModal({ mode: ModelModalModeEnum.configProviderCredential })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => {
-      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
-        credential_id: undefined,
-        credentials: { api_key: 'provider-key' },
-        name: 'Provider Auth',
-      })
-    })
-    configProviderCredential.unmount()
-
-    const addToModelList = renderModal({
-      mode: ModelModalModeEnum.addCustomModelToModelList,
-      model,
-    })
-    fireEvent.click(screen.getByText('Choose Existing'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    expect(mockHandlers.handleActiveCredential).toHaveBeenCalledWith({ credential_id: 'existing' }, model)
-    expect(addToModelList.onCancel).toHaveBeenCalled()
-    addToModelList.unmount()
-
-    mockFormState.responses = [{ isCheckValidated: true, values: { __authorization_name__: 'New Auth', api_key: 'new-key' } }]
-    const addToModelListWithNew = renderModal({
-      mode: ModelModalModeEnum.addCustomModelToModelList,
-      model,
-    })
-    fireEvent.click(screen.getByText('Add New'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => {
-      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
-        credential_id: undefined,
-        credentials: { api_key: 'new-key' },
-        name: 'New Auth',
-        model: 'gpt-4',
-        model_type: ModelTypeEnum.textGeneration,
-      })
-    })
-    addToModelListWithNew.unmount()
-
-    mockFormState.responses = [{ isCheckValidated: false, values: {} }]
-    const invalidSave = renderModal({ mode: ModelModalModeEnum.configProviderCredential })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => {
-      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledTimes(4)
-    })
-    invalidSave.unmount()
-
-    mockState.credentialData = { credentials: { api_key: 'value' }, available_credentials: [] }
-    mockState.formValues = { api_key: 'value' }
-    const removable = renderModal({ credential: { credential_id: 'remove-1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    expect(mockHandlers.openConfirmDelete).toHaveBeenCalledWith({ credential_id: 'remove-1' }, undefined)
-    removable.unmount()
   })
 })

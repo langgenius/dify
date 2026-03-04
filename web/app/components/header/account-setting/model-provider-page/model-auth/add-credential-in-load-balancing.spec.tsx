@@ -96,4 +96,91 @@ describe('AddCredentialInLoadBalancing', () => {
 
     expect(onSelectCredential).toHaveBeenCalledWith(modelCredential.available_credentials[0])
   })
+
+  // renderTrigger with open=true: bg-state-base-hover style applied
+  it('should apply hover background when trigger is rendered with open=true', async () => {
+    vi.doMock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
+      Authorized: ({
+        renderTrigger,
+      }: {
+        renderTrigger: (open?: boolean) => React.ReactNode
+      }) => (
+        <div data-testid="open-trigger">{renderTrigger(true)}</div>
+      ),
+    }))
+
+    // Must invalidate module cache so the component picks up the new mock
+    vi.resetModules()
+    const { default: AddCredentialLB } = await import('./add-credential-in-load-balancing')
+
+    const { container } = render(
+      <AddCredentialLB
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={modelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    // The trigger div rendered by renderTrigger(true) should have bg-state-base-hover
+    // (the static class applied when open=true via cn())
+    const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
+    expect(triggerDiv).toBeInTheDocument()
+    expect(triggerDiv!.className).toContain('bg-state-base-hover')
+  })
+
+  // customizableModel configuration method: component renders the add credential label
+  it('should render correctly with customizableModel configuration method', () => {
+    render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        modelCredential={modelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+  })
+
+  it('should handle undefined available_credentials gracefully using nullish coalescing', () => {
+    const credentialWithNoAvailable = {
+      available_credentials: undefined,
+      credentials: {},
+      load_balancing: { enabled: false, configs: [] },
+    } as unknown as typeof modelCredential
+
+    render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={credentialWithNoAvailable}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    // Component should render without error - the ?? [] fallback is used
+    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+  })
+
+  it('should not call onUpdate when it is not provided and update action fires', () => {
+    // Arrange - no onUpdate prop
+    render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        modelCredential={modelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    // Act - trigger the update without onUpdate being set (should not throw)
+    expect(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Run update' }))
+    }).not.toThrow()
+  })
 })

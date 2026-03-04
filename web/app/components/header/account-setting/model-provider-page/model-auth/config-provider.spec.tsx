@@ -67,4 +67,60 @@ describe('ConfigProvider', () => {
 
     expect(screen.getByText(/operation.setup/i)).toBeInTheDocument()
   })
+
+  it('should show tooltip when custom credentials not allowed and no credential exists', () => {
+    mockUseCredentialStatus.mockReturnValue({
+      hasCredential: false,
+      authorized: false,
+      current_credential_id: '',
+      current_credential_name: '',
+      available_credentials: [],
+    })
+
+    render(<ConfigProvider provider={{ ...baseProvider, allow_custom_token: false }} />)
+
+    expect(screen.getByText(/operation.setup/i)).toBeInTheDocument()
+  })
+
+  it('should show config label with secondary-accent variant when hasCredential but not authorized', () => {
+    mockUseCredentialStatus.mockReturnValue({
+      hasCredential: true,
+      authorized: false,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'Key 1',
+      available_credentials: [],
+    })
+
+    render(<ConfigProvider provider={baseProvider} />)
+
+    expect(screen.getByText(/operation.config/i)).toBeInTheDocument()
+  })
+
+  it('should not show tooltip when custom credentials not allowed but has credential', () => {
+    mockUseCredentialStatus.mockReturnValue({
+      hasCredential: true,
+      authorized: true,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'Key 1',
+      available_credentials: [],
+    })
+
+    render(<ConfigProvider provider={{ ...baseProvider, allow_custom_token: false }} />)
+
+    expect(screen.getByText(/operation.config/i)).toBeInTheDocument()
+  })
+
+  it('should handle nullish credential values with fallbacks', () => {
+    mockUseCredentialStatus.mockReturnValue({
+      hasCredential: false,
+      authorized: false,
+      current_credential_id: null,
+      current_credential_name: null,
+      available_credentials: null,
+    })
+
+    render(<ConfigProvider provider={baseProvider} />)
+
+    expect(screen.getByText(/operation.setup/i)).toBeInTheDocument()
+  })
 })

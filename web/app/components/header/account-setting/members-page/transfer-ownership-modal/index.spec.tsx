@@ -13,11 +13,6 @@ vi.mock('@/context/app-context')
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
 
-// Mock Modal directly to avoid transition/portal issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow }: { children: React.ReactNode, isShow: boolean }) => isShow ? <div data-testid="mock-modal">{children}</div> : null,
-}))
-
 vi.mock('./member-selector', () => ({
   default: ({ onSelect }: { onSelect: (id: string) => void }) => (
     <button onClick={() => onSelect('new-owner-id')}>Select member</button>
@@ -198,6 +193,70 @@ describe('TransferOwnershipModal', () => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
         message: expect.stringContaining('transfer failed'),
+      }))
+    })
+  })
+
+  it('should handle sendOwnerEmail returning null data', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendOwnerEmail).mockResolvedValue({
+      data: null,
+      result: 'success',
+    } as unknown as Awaited<ReturnType<typeof sendOwnerEmail>>)
+
+    renderModal()
+    await user.click(screen.getByTestId('transfer-modal-send-code'))
+
+    // Should advance to verify step even with null data
+    await waitFor(() => {
+      expect(screen.getByText(/members\.transferModal\.verifyEmail/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should show empty error message when sendOwnerEmail throws null', async () => {
+    const user = userEvent.setup()
+    vi.mocked(sendOwnerEmail).mockRejectedValue(null)
+
+    renderModal()
+    await user.click(screen.getByTestId('transfer-modal-send-code'))
+
+    await waitFor(() => {
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        message: 'Error sending verification code: ',
+      }))
+    })
+  })
+
+  it('should show empty error message when verifyOwnerEmail throws null', async () => {
+    const user = userEvent.setup()
+    mockEmailVerification()
+    vi.mocked(verifyOwnerEmail).mockRejectedValue(null)
+
+    renderModal()
+    await goToTransferStep(user)
+
+    await waitFor(() => {
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        message: 'Error verifying email: ',
+      }))
+    })
+  })
+
+  it('should show empty error message when ownershipTransfer throws null', async () => {
+    const user = userEvent.setup()
+    mockEmailVerification()
+    vi.mocked(ownershipTransfer).mockRejectedValue(null)
+
+    renderModal()
+    await goToTransferStep(user)
+    await selectNewOwnerAndSubmit(user)
+
+    await waitFor(() => {
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        message: 'Error ownership transfer: ',
       }))
     })
   })

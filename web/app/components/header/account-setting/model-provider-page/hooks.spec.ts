@@ -433,6 +433,55 @@ describe('hooks', () => {
 
       expect(result.current.credentials).toBeUndefined()
     })
+
+    it('should not call invalidateQueries when neither predefined nor custom is enabled', () => {
+      const invalidateQueries = vi.fn()
+        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      ; (useQuery as Mock).mockReturnValue({
+        data: undefined,
+        isPending: false,
+      })
+
+      // Both predefinedEnabled and customEnabled are false (no credentialId)
+      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
+        'openai',
+        ConfigurationMethodEnum.predefinedModel,
+        false,
+        undefined,
+        undefined,
+      ))
+
+      act(() => {
+        result.current.mutate()
+      })
+
+      expect(invalidateQueries).not.toHaveBeenCalled()
+    })
+
+    it('should build URL without credentialId when not provided in predefined queryFn', async () => {
+      // Trigger the queryFn when credentialId is undefined but predefinedEnabled is true
+      ; (useQuery as Mock).mockReturnValue({
+        data: { credentials: { api_key: 'k' } },
+        isPending: false,
+      })
+
+      const { result: _result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
+        'openai',
+        ConfigurationMethodEnum.predefinedModel,
+        true,
+        undefined,
+        undefined,
+      ))
+
+      // Find and invoke the predefined queryFn
+      const queryCall = (useQuery as Mock).mock.calls.find(
+        call => call[0].queryKey?.[1] === 'credentials',
+      )
+      if (queryCall) {
+        await queryCall[0].queryFn()
+        expect(fetchModelProviderCredentials).toHaveBeenCalled()
+      }
+    })
   })
 
   describe('useModelList', () => {
@@ -1111,6 +1160,26 @@ describe('hooks', () => {
       expect(result.current.plugins![0].plugin_id).toBe('plugin1')
     })
 
+    it('should deduplicate plugins that exist in both collections and regular plugins', () => {
+      const duplicatePlugin = { plugin_id: 'shared-plugin', type: 'plugin' }
+
+        ; (useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        plugins: [duplicatePlugin],
+        isLoading: false,
+      })
+      ; (useMarketplacePlugins as Mock).mockReturnValue({
+        plugins: [{ ...duplicatePlugin }, { plugin_id: 'unique-plugin', type: 'plugin' }],
+        queryPlugins: vi.fn(),
+        queryPluginsWithDebounced: vi.fn(),
+        isLoading: false,
+      })
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+
+      expect(result.current.plugins).toHaveLength(2)
+      expect(result.current.plugins!.filter(p => p.plugin_id === 'shared-plugin')).toHaveLength(1)
+    })
+
     it('should handle loading states', () => {
       ; (useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
         plugins: [],
@@ -1126,6 +1195,45 @@ describe('hooks', () => {
       const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
 
       expect(result.current.isLoading).toBe(true)
+    })
+
+    it('should not crash when plugins is undefined', () => {
+      ; (useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        plugins: [],
+        isLoading: false,
+      })
+      ; (useMarketplacePlugins as Mock).mockReturnValue({
+        plugins: undefined,
+        queryPlugins: vi.fn(),
+        queryPluginsWithDebounced: vi.fn(),
+        isLoading: false,
+      })
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins([], ''))
+
+      expect(result.current.plugins).toBeDefined()
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    it('should return search plugins (not allPlugins) when searchText is truthy', () => {
+      const searchPlugins = [{ plugin_id: 'search-result', type: 'plugin' }]
+      const collectionPlugins = [{ plugin_id: 'collection-only', type: 'plugin' }]
+
+        ; (useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        plugins: collectionPlugins,
+        isLoading: false,
+      })
+      ; (useMarketplacePlugins as Mock).mockReturnValue({
+        plugins: searchPlugins,
+        queryPlugins: vi.fn(),
+        queryPluginsWithDebounced: vi.fn(),
+        isLoading: false,
+      })
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins([], 'openai'))
+
+      expect(result.current.plugins).toEqual(searchPlugins)
+      expect(result.current.plugins?.some(p => p.plugin_id === 'collection-only')).toBe(false)
     })
   })
 
@@ -1232,6 +1340,34 @@ describe('hooks', () => {
       })
 
       expect(emit).not.toHaveBeenCalled()
+    })
+
+    it('should emit event but not call updateModelList when __model_type is undefined', () => {
+      const invalidateQueries = vi.fn()
+      const emit = vi.fn()
+
+        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+      ; (useEventEmitterContextContext as Mock).mockReturnValue({
+        eventEmitter: { emit },
+      })
+
+      const provider = createMockProvider()
+      const customFields = { __model_name: 'my-model', __model_type: undefined } as unknown as CustomConfigurationModelFixedFields
+
+      const { result } = renderHook(() => useRefreshModel())
+
+      act(() => {
+        result.current.handleRefreshModel(provider, customFields, true)
+      })
+
+      expect(emit).toHaveBeenCalledWith({
+        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+        payload: 'openai',
+      })
+      const modelListCalls = invalidateQueries.mock.calls.filter(
+        call => call[0]?.queryKey?.[0] === 'model-list' && !provider.supported_model_types.includes(call[0]?.queryKey?.[1]),
+      )
+      expect(modelListCalls).toHaveLength(0)
     })
 
     it('should handle provider with single model type', () => {

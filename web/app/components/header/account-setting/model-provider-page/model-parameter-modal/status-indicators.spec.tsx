@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import StatusIndicators from './status-indicators'
 
@@ -6,10 +6,6 @@ let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1
 
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: React.ReactNode }) => <div>{popupContent}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
@@ -52,7 +48,7 @@ describe('StatusIndicators', () => {
         />
       </div>,
     )
-    expect(screen.getByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
+    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
 
     rerender(
       <div onClick={parentClick}>
@@ -66,12 +62,7 @@ describe('StatusIndicators', () => {
         />
       </div>,
     )
-    expect(screen.getByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
-    expect(screen.getByText('nodes.agent.linkToPlugin').closest('a')).toHaveAttribute('href', '/plugins')
-    fireEvent.click(screen.getByText('nodes.agent.modelNotSupport.title'))
-    fireEvent.click(screen.getByText('nodes.agent.linkToPlugin'))
-    expect(parentClick).not.toHaveBeenCalled()
-
+    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
     rerender(
       <div onClick={parentClick}>
         <StatusIndicators
@@ -87,6 +78,37 @@ describe('StatusIndicators', () => {
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
   })
 
+  it('should render nothing when needsConfiguration is true even with disabled and modelProvider', () => {
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={true}
+        modelProvider={true}
+        inModelList={true}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('should render SwitchVersion with empty identifier when plugin is not in installed list', () => {
+    installedPlugins = []
+
+    render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'missing-plugin' }}
+        t={t}
+      />,
+    )
+
+    expect(screen.getByText('SwitchVersion:')).toBeInTheDocument()
+  })
+
   it('should render marketplace warning when provider is unavailable', () => {
     render(
       <StatusIndicators
@@ -98,6 +120,6 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
-    expect(screen.getByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
+    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
   })
 })

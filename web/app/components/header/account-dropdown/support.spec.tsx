@@ -166,6 +166,20 @@ describe('Support', () => {
       expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
       expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     })
+
+    // Optional chain null guard: ZENDESK_WIDGET_KEY is null
+    it('should show Email Support when ZENDESK_WIDGET_KEY is null', () => {
+      // Arrange
+      mockZendeskKey.value = null as unknown as string
+
+      // Act
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
+
+      // Assert
+      expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
+      expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
+    })
   })
 
   describe('Interactions and Links', () => {
