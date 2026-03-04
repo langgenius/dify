@@ -186,11 +186,8 @@ class AliyunLogStore:
         )
         self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
 
-        # Get timeout configuration
-        check_timeout = int(os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", 30))
-
         # Pre-check endpoint connectivity to prevent indefinite hangs
-        self._check_endpoint_connectivity(self.endpoint, check_timeout)
+        self._check_endpoint_connectivity(self.endpoint)
 
         # Initialize SDK client
         self.client = LogClient(
@@ -210,19 +207,28 @@ class AliyunLogStore:
         self.__class__._initialized = True
 
     @staticmethod
-    def _check_endpoint_connectivity(endpoint: str, timeout: int) -> None:
+    def _check_endpoint_connectivity(
+        endpoint: str,
+        max_retries: int = 3,
+        base_timeout: int = 5,
+    ) -> None:
         """
         Check if the SLS endpoint is reachable before creating LogClient.
         Prevents indefinite hangs when the endpoint is unreachable.
 
+        Retries with exponential backoff timeout (base_timeout * 2^attempt):
+        default 5s → 10s → 20s.  Transient OS-level errors (e.g.
+        ``Bad file descriptor``) are recovered automatically while a truly
+        unreachable endpoint fails in ~35s total.
+
         Args:
             endpoint: SLS endpoint URL
-            timeout: Connection timeout in seconds
+            max_retries: Maximum number of attempts (default 3)
+            base_timeout: Initial timeout in seconds, doubled on each retry (default 5)
 
         Raises:
-            ConnectionError: If endpoint is not reachable
+            ConnectionError: If endpoint is not reachable after all attempts
         """
-        # Parse endpoint URL to extract hostname and port
         from urllib.parse import urlparse
 
         parsed_url = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
@@ -232,25 +238,48 @@ class AliyunLogStore:
         if not hostname:
             raise ConnectionError(f"Invalid endpoint URL: {endpoint}")
 
-        sock = None
-        try:
-            # Create socket and set timeout
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
-            sock.connect((hostname, port))
-        except Exception as e:
-            # Catch all exceptions and provide clear error message
-            error_type = type(e).__name__
-            raise ConnectionError(
-                f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{error_type}] {e}"
-            ) from e
-        finally:
-            # Ensure socket is properly closed
-            if sock:
-                try:
-                    sock.close()
-                except Exception:  # noqa: S110
-                    pass  # Ignore errors during cleanup
+        last_error: Exception | None = None
+        for attempt in range(max_retries):
+            timeout = base_timeout * (2**attempt)
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                sock.connect((hostname, port))
+                return
+            except OSError as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    next_timeout = base_timeout * (2 ** (attempt + 1))
+                    logger.warning(
+                        "Endpoint connectivity check failed (attempt %d/%d, timeout=%ds): "
+                        "%s:%d [%s] %s — retrying with timeout=%ds",
+                        attempt + 1,
+                        max_retries,
+                        timeout,
+                        hostname,
+                        port,
+                        type(e).__name__,
+                        e,
+                        next_timeout,
+                    )
+            except Exception as e:
+                # Non-socket exceptions are not retried
+                raise ConnectionError(
+                    f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{type(e).__name__}] {e}"
+                ) from e
+            finally:
+                if sock:
+                    try:
+                        sock.close()
+                    except Exception:  # noqa: S110
+                        pass
+
+        # All attempts exhausted
+        error_type = type(last_error).__name__ if last_error else "Unknown"
+        raise ConnectionError(
+            f"Cannot connect to {hostname}:{port} after {max_retries} attempts: [{error_type}] {last_error}"
+        ) from last_error
 
     @property
     def supports_pg_protocol(self) -> bool:
