@@ -123,7 +123,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         )}
         >
           {showWarning && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
-          {showWarning && warningTextKey && (
+          {showWarning && (
             <div className="flex items-center gap-1 text-text-primary system-xs-medium">
               <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
