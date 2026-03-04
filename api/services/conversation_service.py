@@ -49,7 +49,6 @@ class ConversationService:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
         stmt = select(Conversation).where(
-            Conversation.is_deleted == False,
             Conversation.app_id == app_model.id,
             Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
             Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
@@ -168,7 +167,6 @@ class ConversationService:
                 Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
                 Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
             )
             .first()
         )
