@@ -890,6 +890,8 @@ class WebhookService:
 
                 # create new webhook records
                 for node_id in nodes_not_found:
+                    if app.created_by is None:
+                        raise RuntimeError("App is missing created_by; cannot create webhook trigger")
                     webhook_record = WorkflowWebhookTrigger(
                         app_id=app.id,
                         tenant_id=app.tenant_id,

@@ -21,12 +21,18 @@ class TestModelConfigResourcePermissions:
     @pytest.fixture
     def mock_app_model(self):
         """Create a mock App model for testing."""
-        app = App()
+        app = App(
+            mode=AppMode.CHAT,
+            tenant_id=str(uuid.uuid4()),
+            status="normal",
+            app_model_config_id=str(uuid.uuid4()),
+            name="Test App",
+            icon="test-icon",
+            enable_site=True,
+            enable_api=True,
+            description="",
+        )
         app.id = str(uuid.uuid4())
-        app.mode = AppMode.CHAT
-        app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
-        app.app_model_config_id = str(uuid.uuid4())
         return app
 
     @pytest.fixture

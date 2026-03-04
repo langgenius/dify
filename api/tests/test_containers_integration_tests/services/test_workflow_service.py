@@ -90,7 +90,6 @@ class TestWorkflowService:
         """
         fake = fake or Faker()
         app = App(
-            id=fake.uuid4(),
             tenant_id=fake.uuid4(),
             name=fake.company(),
             description=fake.text(),
@@ -103,6 +102,7 @@ class TestWorkflowService:
             created_by=fake.uuid4(),
             workflow_id=None,  # Will be set when workflow is created
         )
+        app.id = fake.uuid4()
         app.updated_by = app.created_by
 
         db_session_with_containers.add(app)
