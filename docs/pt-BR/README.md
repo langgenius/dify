@@ -182,6 +182,12 @@ Implante o Dify na Alibaba Cloud com um clique usando o [Alibaba Cloud Data Mana
 
 Implante o Dify no AKS com um clique usando [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Implantar no Render
+
+Implante o Dify no [Render](https://render.com) usando o Blueprint [render.yaml](../../render.yaml). Clique no botão abaixo para implantar:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## Contribuindo
 
 Para aqueles que desejam contribuir com código, veja nosso [Guia de Contribuição](./CONTRIBUTING.md).
