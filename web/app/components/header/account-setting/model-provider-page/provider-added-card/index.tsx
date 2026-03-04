@@ -1,12 +1,13 @@
 import type { FC } from 'react'
 import type {
-  ModelItem,
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import type { EventEmitterValue } from '@/context/event-emitter'
 
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
@@ -16,7 +17,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
-import { fetchModelProviderModelList } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
@@ -30,6 +31,21 @@ import ModelList from './model-list'
 import ProviderCardActions from './provider-card-actions'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
+
+const isModelProviderCustomModelListUpdateEvent = (
+  value: EventEmitterValue,
+  providerName: string,
+): value is {
+  type: typeof UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST
+  payload: string
+} => {
+  return typeof value === 'object'
+    && value !== null
+    && value.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST
+    && typeof value.payload === 'string'
+    && value.payload === providerName
+}
+
 type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
@@ -43,52 +59,69 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const { refreshModelProviders } = useProviderContext()
-  const [fetched, setFetched] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
-  const [modelList, setModelList] = useState<ModelItem[]>([])
-  const configurationMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
+  const currentProviderName = provider.provider
+  const supportsPredefinedModel = provider.configurate_methods.includes(ConfigurationMethodEnum.predefinedModel)
+  const supportsCustomizableModel = provider.configurate_methods.includes(ConfigurationMethodEnum.customizableModel)
   const systemConfig = provider.system_configuration
-  const hasModelList = fetched && !!modelList.length
+  const {
+    data: modelList = [],
+    isFetching: loading,
+    isSuccess: hasFetchedModelList,
+    refetch: refetchModelList,
+  } = useQuery(consoleQuery.modelProviders.models.queryOptions({
+    input: { params: { provider: currentProviderName } },
+    enabled: !collapsed,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    select: response => response.data,
+  }))
+  const hasModelList = hasFetchedModelList && !!modelList.length
+  const showCollapsedSection = collapsed || !hasFetchedModelList
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
+  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
+  const showCredential = supportsPredefinedModel && isCurrentWorkspaceManager
+  const showCustomModelActions = supportsCustomizableModel && isCurrentWorkspaceManager
 
-  const getModelList = async (providerName: string) => {
+  const refreshModelList = useCallback((targetProviderName: string) => {
+    if (targetProviderName !== currentProviderName || loading)
+      return
+
+    if (collapsed)
+      setCollapsed(false)
+
+    refetchModelList().catch(() => {})
+  }, [collapsed, currentProviderName, loading, refetchModelList])
+
+  const handleOpenModelList = useCallback(() => {
     if (loading)
       return
-    try {
-      setLoading(true)
-      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
-      setModelList(modelsData.data)
-      setCollapsed(false)
-      setFetched(true)
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-  const handleOpenModelList = () => {
-    if (fetched) {
+
+    if (collapsed) {
       setCollapsed(false)
       return
     }
 
-    getModelList(provider.provider)
-  }
+    refetchModelList().catch(() => {})
+  }, [collapsed, loading, refetchModelList])
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST && v.payload === provider.provider)
-      getModelList(v.payload)
-  })
+  const handleModelProviderCustomModelListUpdate = useCallback((value: EventEmitterValue) => {
+    if (!isModelProviderCustomModelListUpdateEvent(value, currentProviderName))
+      return
+
+    refreshModelList(currentProviderName)
+  }, [currentProviderName, refreshModelList])
+
+  eventEmitter?.useSubscription(handleModelProviderCustomModelListUpdate)
 
   return (
     <div
       data-testid="provider-added-card"
       className={cn(
         'mb-2 rounded-xl border-[0.5px] border-divider-regular bg-third-party-model-bg-default shadow-xs',
-        provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
-        provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
+        currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
+        currentProviderName === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
       )}
     >
       <div className="flex rounded-t-xl py-2 pl-3 pr-2">
@@ -117,7 +150,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         )}
       </div>
       {
-        collapsed && (
+        showCollapsedSection && (
           <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
               <>
@@ -155,7 +188,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               </div>
             )}
             {
-              configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
+              showCustomModelActions && (
                 <div className="flex grow justify-end">
                   <ManageCustomModelCredentials
                     provider={provider}
@@ -173,12 +206,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         )
       }
       {
-        !collapsed && (
+        !showCollapsedSection && (
           <ModelList
             provider={provider}
             models={modelList}
             onCollapse={() => setCollapsed(true)}
-            onChange={(provider: string) => getModelList(provider)}
+            onChange={refreshModelList}
           />
         )
       }

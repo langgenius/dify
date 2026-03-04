@@ -1,17 +1,30 @@
-import type { ModelItem, ModelProvider } from '../declarations'
+import type { ReactNode } from 'react'
+import type { ModelProvider } from '../declarations'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { fetchModelProviderModelList } from '@/service/common'
 import { ConfigurationMethodEnum } from '../declarations'
 import ProviderAddedCard from './index'
 
 let mockIsCurrentWorkspaceManager = true
+const mockFetchModelProviderModels = vi.fn()
+const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
+  queryKey: ['console', 'modelProviders', 'models', input.params.provider],
+  queryFn: () => mockFetchModelProviderModels(input.params.provider),
+  ...options,
+}))
 const mockEventEmitter = {
   useSubscription: vi.fn(),
   emit: vi.fn(),
 }
 
-vi.mock('@/service/common', () => ({
-  fetchModelProviderModelList: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    modelProviders: {
+      models: {
+        queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+      },
+    },
+  },
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -53,6 +66,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
   ManageCustomModelCredentials: () => <div data-testid="manage-custom-model" />,
 }))
 
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, gcTime: 0 },
+  },
+})
+
+const renderWithQueryClient = (node: ReactNode) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {node}
+    </QueryClientProvider>,
+  )
+}
+
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
@@ -67,19 +95,21 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should render provider added card component', () => {
-    render(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
     expect(screen.getByTestId('provider-added-card')).toBeInTheDocument()
     expect(screen.getByTestId('provider-icon')).toBeInTheDocument()
   })
 
   it('should open, refresh and collapse model list', async () => {
-    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [{ model: 'gpt-4' }] } as unknown as { data: ModelItem[] })
-    render(<ProviderAddedCard provider={mockProvider} />)
+    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByTestId('show-models-button')
     fireEvent.click(showModelsBtn)
 
-    expect(fetchModelProviderModelList).toHaveBeenCalledWith(`/workspaces/current/model-providers/${mockProvider.provider}/models`)
+    await waitFor(() => {
+      expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
+    })
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
 
     // Test line 71-72: Opening when already fetched
@@ -90,13 +120,13 @@ describe('ProviderAddedCard', () => {
     // Explicitly re-find and click to re-open
     fireEvent.click(screen.getByTestId('show-models-button'))
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
-    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1) // Should not fetch again
+    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1) // Should not fetch again
 
     // Refresh list from ModelList
     const refreshBtn = screen.getByRole('button', { name: 'refresh list' })
     fireEvent.click(refreshBtn)
     await waitFor(() => {
-      expect(fetchModelProviderModelList).toHaveBeenCalledTimes(2)
+      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -105,18 +135,20 @@ describe('ProviderAddedCard', () => {
     const promise = new Promise((resolve) => {
       resolveOuter = resolve
     })
-    vi.mocked(fetchModelProviderModelList).mockReturnValue(promise as unknown as ReturnType<typeof fetchModelProviderModelList>)
+    mockFetchModelProviderModels.mockReturnValue(promise)
 
-    render(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
     const showModelsBtn = screen.getByTestId('show-models-button')
 
     // First call sets loading to true
     fireEvent.click(showModelsBtn)
-    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
+    })
 
     // Second call should return early because loading is true
     fireEvent.click(showModelsBtn)
-    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       resolveOuter({ data: [] })
@@ -130,7 +162,7 @@ describe('ProviderAddedCard', () => {
       ...mockProvider,
       provider: 'custom/provider',
     } as unknown as ModelProvider
-    render(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
+    renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
@@ -139,9 +171,9 @@ describe('ProviderAddedCard', () => {
     mockEventEmitter.useSubscription.mockImplementation((handler: (v: unknown) => void) => {
       capturedHandler = handler as (v: { type: string, payload: string } | null) => void
     })
-    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: [] } as unknown as { data: ModelItem[] })
+    mockFetchModelProviderModels.mockResolvedValue({ data: [] })
 
-    render(<ProviderAddedCard provider={mockProvider} />)
+    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     expect(capturedHandler).toBeDefined()
     act(() => {
@@ -152,7 +184,7 @@ describe('ProviderAddedCard', () => {
     })
 
     await waitFor(() => {
-      expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
     })
 
     // Should ignore non-matching events
@@ -160,7 +192,7 @@ describe('ProviderAddedCard', () => {
       capturedHandler({ type: 'OTHER', payload: '' })
       capturedHandler(null)
     })
-    expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
+    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
   })
 
   it('should render custom model actions for workspace managers', () => {
@@ -168,13 +200,22 @@ describe('ProviderAddedCard', () => {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    const { rerender } = render(<ProviderAddedCard provider={customConfigProvider} />)
+    const queryClient = createTestQueryClient()
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <ProviderAddedCard provider={customConfigProvider} />
+      </QueryClientProvider>,
+    )
 
     expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
 
     mockIsCurrentWorkspaceManager = false
-    rerender(<ProviderAddedCard provider={customConfigProvider} />)
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ProviderAddedCard provider={customConfigProvider} />
+      </QueryClientProvider>,
+    )
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 })
