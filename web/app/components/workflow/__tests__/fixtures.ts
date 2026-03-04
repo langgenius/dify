@@ -108,4 +108,53 @@ export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Ed
   return { nodes, edges }
 }
 
+// ---------------------------------------------------------------------------
+// Workflow-level factories
+// ---------------------------------------------------------------------------
+
+export function createWorkflowRunningData(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    task_id: 'task-test',
+    result: {
+      status: 'running',
+      inputs_truncated: false,
+      process_data_truncated: false,
+      outputs_truncated: false,
+    },
+    tracing: [],
+    resultText: '',
+    resultTabActive: false,
+    ...overrides,
+  }
+}
+
+export function createNodeTracing(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id: `trace-${overrides.node_id ?? 'unknown'}`,
+    node_id: 'node-1',
+    node_type: BlockEnum.Code,
+    title: 'Node',
+    status: NodeRunningStatus.Running,
+    ...overrides,
+  }
+}
+
+export function createToolWithProvider(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id: 'tool-provider-1',
+    name: 'test-tool',
+    icon: '/icon.svg',
+    icon_dark: '/icon-dark.svg',
+    plugin_id: 'plugin-1',
+    label: { en_US: 'Test Tool' },
+    ...overrides,
+  }
+}
+
 export { BlockEnum, NodeRunningStatus }

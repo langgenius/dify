@@ -1,6 +1,13 @@
-import { renderHook } from '@testing-library/react'
+import type { NodeDefault } from '../../types'
+import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { BlockClassificationEnum } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import { useAvailableBlocks } from '../use-available-blocks'
+
+// Transitive imports of use-nodes-meta-data.ts — only useNodeMetaData uses these
+vi.mock('@/service/use-tools', async () =>
+  (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
+vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en' }))
 
 const mockNodeTypes = [
   BlockEnum.Start,
@@ -17,39 +24,52 @@ const mockNodeTypes = [
   BlockEnum.LoopEnd,
 ]
 
-vi.mock('../use-nodes-meta-data', () => ({
-  useNodesMetaData: () => ({
-    nodes: mockNodeTypes.map(type => ({ metaData: { type } })),
-    nodesMap: {},
-  }),
-}))
+function createNodeDefault(type: BlockEnum): NodeDefault {
+  return {
+    metaData: {
+      classification: BlockClassificationEnum.Default,
+      sort: 0,
+      type,
+      title: type,
+      author: 'test',
+    },
+    defaultValue: {},
+    checkValid: () => ({ isValid: true }),
+  }
+}
+
+const hooksStoreProps = {
+  availableNodesMetaData: {
+    nodes: mockNodeTypes.map(createNodeDefault),
+  },
+}
 
 describe('useAvailableBlocks', () => {
   describe('availablePrevBlocks', () => {
     it('should return empty array when nodeType is undefined', () => {
-      const { result } = renderHook(() => useAvailableBlocks(undefined))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(undefined), { hooksStoreProps })
       expect(result.current.availablePrevBlocks).toEqual([])
     })
 
     it('should return empty array for Start node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.Start))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.Start), { hooksStoreProps })
       expect(result.current.availablePrevBlocks).toEqual([])
     })
 
     it('should return empty array for trigger nodes', () => {
       for (const trigger of [BlockEnum.TriggerPlugin, BlockEnum.TriggerWebhook, BlockEnum.TriggerSchedule]) {
-        const { result } = renderHook(() => useAvailableBlocks(trigger))
+        const { result } = renderWorkflowHook(() => useAvailableBlocks(trigger), { hooksStoreProps })
         expect(result.current.availablePrevBlocks).toEqual([])
       }
     })
 
     it('should return empty array for DataSource node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.DataSource))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.DataSource), { hooksStoreProps })
       expect(result.current.availablePrevBlocks).toEqual([])
     })
 
     it('should return all available nodes for regular block types', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       expect(result.current.availablePrevBlocks.length).toBeGreaterThan(0)
       expect(result.current.availablePrevBlocks).toContain(BlockEnum.Code)
     })
@@ -57,34 +77,34 @@ describe('useAvailableBlocks', () => {
 
   describe('availableNextBlocks', () => {
     it('should return empty array when nodeType is undefined', () => {
-      const { result } = renderHook(() => useAvailableBlocks(undefined))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(undefined), { hooksStoreProps })
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
     it('should return empty array for End node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.End))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.End), { hooksStoreProps })
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
     it('should return empty array for LoopEnd node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LoopEnd))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LoopEnd), { hooksStoreProps })
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
     it('should return empty array for KnowledgeBase node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.KnowledgeBase))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.KnowledgeBase), { hooksStoreProps })
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
     it('should return all available nodes for regular block types', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
     })
   })
 
   describe('inContainer filtering', () => {
     it('should exclude Iteration, Loop, End, DataSource, KnowledgeBase, HumanInput when inContainer=true', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM, true))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, true), { hooksStoreProps })
 
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.Iteration)
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.Loop)
@@ -95,14 +115,14 @@ describe('useAvailableBlocks', () => {
     })
 
     it('should exclude LoopEnd when not in container', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM, false))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, false), { hooksStoreProps })
       expect(result.current.availableNextBlocks).not.toContain(BlockEnum.LoopEnd)
     })
   })
 
   describe('getAvailableBlocks callback', () => {
     it('should return prev and next blocks for a given node type', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       const blocks = result.current.getAvailableBlocks(BlockEnum.Code)
 
       expect(blocks.availablePrevBlocks.length).toBeGreaterThan(0)
@@ -110,21 +130,21 @@ describe('useAvailableBlocks', () => {
     })
 
     it('should return empty prevBlocks for Start node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       const blocks = result.current.getAvailableBlocks(BlockEnum.Start)
 
       expect(blocks.availablePrevBlocks).toEqual([])
     })
 
     it('should return empty prevBlocks for DataSource node', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       const blocks = result.current.getAvailableBlocks(BlockEnum.DataSource)
 
       expect(blocks.availablePrevBlocks).toEqual([])
     })
 
     it('should return empty nextBlocks for End/LoopEnd/KnowledgeBase', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
 
       expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks).toEqual([])
       expect(result.current.getAvailableBlocks(BlockEnum.LoopEnd).availableNextBlocks).toEqual([])
@@ -132,7 +152,7 @@ describe('useAvailableBlocks', () => {
     })
 
     it('should filter by inContainer when provided', () => {
-      const { result } = renderHook(() => useAvailableBlocks(BlockEnum.LLM))
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       const blocks = result.current.getAvailableBlocks(BlockEnum.Code, true)
 
       expect(blocks.availableNextBlocks).not.toContain(BlockEnum.Iteration)
