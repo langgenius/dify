@@ -38,7 +38,7 @@ if [[ "${MODE}" == "worker" ]]; then
       DEFAULT_QUEUES="workflow_based_app_resumption,workflow_based_app_execution,api_token,dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
     else
       # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
-      DEFAULT_QUEUES="workflow_based_app_resumption,workflow_based_app_execution,api_token,dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,,"
+       DEFAULT_QUEUES="workflow_based_app_resumption,workflow_based_app_execution,api_token,dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
