@@ -205,7 +205,7 @@ class TestAppMessageExportServiceIntegration:
             app_id=app.id,
             start_from=base_time - datetime.timedelta(minutes=1),
             end_before=base_time + datetime.timedelta(minutes=10),
-            filename="unused.jsonl.gz",
+            filename="unused",
             batch_size=1,
             dry_run=True,
         )

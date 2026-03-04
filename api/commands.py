@@ -2684,7 +2684,11 @@ def clean_expired_messages(
     required=True,
     help="Upper bound (exclusive) for created_at.",
 )
-@click.option("--filename", required=True, help="Output filename (local path or cloud storage key).")
+@click.option(
+    "--filename",
+    required=True,
+    help="Base filename (relative path). Do not include suffix like .jsonl.gz.",
+)
 @click.option("--use-cloud-storage", is_flag=True, default=False, help="Upload to cloud storage instead of local file.")
 @click.option("--batch-size", default=1000, show_default=True, help="Batch size for cursor pagination.")
 @click.option("--dry-run", is_flag=True, default=False, help="Scan only, print stats without writing any file.")
@@ -2702,6 +2706,11 @@ def export_app_messages(
 
     from services.retention.conversation.message_export_service import AppMessageExportService
 
+    try:
+        validated_filename = AppMessageExportService.validate_export_filename(filename)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--filename") from e
+
     click.echo(click.style(f"export_app_messages: starting export for app {app_id}.", fg="green"))
     start_at = time.perf_counter()
 
@@ -2709,7 +2718,7 @@ def export_app_messages(
         service = AppMessageExportService(
             app_id=app_id,
             end_before=end_before,
-            filename=filename,
+            filename=validated_filename,
             start_from=start_from,
             batch_size=batch_size,
             use_cloud_storage=use_cloud_storage,
