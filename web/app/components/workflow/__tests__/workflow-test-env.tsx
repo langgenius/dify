@@ -4,7 +4,8 @@
  * ## Quick start
  *
  * ```ts
- * import { renderWorkflowHook, rfState, resetReactFlowMockState } from '../../__tests__/workflow-test-env'
+ * import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
+ * import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
  *
  * // Mock ReactFlow (one line, only needed when the hook imports reactflow)
  * vi.mock('reactflow', async () =>
@@ -33,8 +34,12 @@ import type { RenderHookOptions, RenderHookResult } from '@testing-library/react
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { Edge, Node, WorkflowRunningData } from '../types'
+import type { WorkflowHistoryStoreApi } from '../workflow-history-store'
 import { renderHook } from '@testing-library/react'
+import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
+import { temporal } from 'zundo'
+import { create } from 'zustand'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -156,14 +161,6 @@ export function renderWorkflowHook<R, P = undefined>(
 // ---------------------------------------------------------------------------
 
 function createTestHistoryStoreContext(config: HistoryStoreConfig) {
-  // Lazy import to avoid circular deps at module load time
-  // eslint-disable-next-line ts/no-require-imports
-  const { default: isDeepEqual } = require('fast-deep-equal')
-  // eslint-disable-next-line ts/no-require-imports
-  const { temporal } = require('zundo')
-  // eslint-disable-next-line ts/no-require-imports
-  const { create } = require('zustand')
-
   const nodes = config.nodes ?? []
   const edges = config.edges ?? []
 
@@ -177,8 +174,8 @@ function createTestHistoryStoreContext(config: HistoryStoreConfig) {
     setEdges: (e: Edge[]) => void
   }
 
-  const store = create(temporal(
-    (set: (partial: Partial<HistState>) => void, get: () => HistState) => ({
+  const store = create(temporal<HistState>(
+    (set, get) => ({
       workflowHistoryEvent: undefined,
       workflowHistoryEventMeta: undefined,
       nodes,
@@ -187,8 +184,8 @@ function createTestHistoryStoreContext(config: HistoryStoreConfig) {
       setNodes: (n: Node[]) => set({ nodes: n }),
       setEdges: (e: Edge[]) => set({ edges: e }),
     }),
-    { equality: (a: unknown, b: unknown) => isDeepEqual(a, b) },
-  ))
+    { equality: (a, b) => isDeepEqual(a, b) },
+  )) as unknown as WorkflowHistoryStoreApi
 
   return {
     store,

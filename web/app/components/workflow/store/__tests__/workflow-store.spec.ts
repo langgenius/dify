@@ -1,4 +1,4 @@
-import type { SliceFromInjection } from '../workflow'
+import type { Shape, SliceFromInjection } from '../workflow'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createTestWorkflowStore, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -8,15 +8,18 @@ function createStore() {
   return createTestWorkflowStore()
 }
 
+type SetterKey = keyof Shape & `set${string}`
+type StateKey = Exclude<keyof Shape, SetterKey>
+
 /**
  * Verifies a simple setter → state round-trip:
  * calling state[setter](value) should update state[stateKey] to equal value.
  */
-function testSetter(setter: string, stateKey: string, value: unknown) {
+function testSetter(setter: SetterKey, stateKey: StateKey, value: Shape[StateKey]) {
   const store = createStore()
-  const setFn = (store.getState() as unknown as Record<string, (v: unknown) => void>)[setter]
+  const setFn = store.getState()[setter] as (v: Shape[StateKey]) => void
   setFn(value)
-  expect((store.getState() as Record<string, unknown>)[stateKey]).toEqual(value)
+  expect(store.getState()[stateKey]).toEqual(value)
 }
 
 const emptyIterParallelLogMap = new Map<string, Map<string, never[]>>()
@@ -40,7 +43,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Workflow Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['workflowRunningData', 'setWorkflowRunningData', { result: { status: 'running', inputs_truncated: false, process_data_truncated: false, outputs_truncated: false } }],
       ['isListening', 'setIsListening', true],
       ['listeningTriggerType', 'setListeningTriggerType', BlockEnum.TriggerWebhook],
@@ -51,7 +54,7 @@ describe('createWorkflowStore', () => {
       ['selection', 'setSelection', { x1: 0, y1: 0, x2: 100, y2: 100 }],
       ['bundleNodeSize', 'setBundleNodeSize', { width: 200, height: 100 }],
       ['mousePosition', 'setMousePosition', { pageX: 10, pageY: 20, elementX: 5, elementY: 15 }],
-      ['showConfirm', 'setShowConfirm', { title: 'Delete?' }],
+      ['showConfirm', 'setShowConfirm', { title: 'Delete?', onConfirm: vi.fn() }],
       ['controlPromptEditorRerenderKey', 'setControlPromptEditorRerenderKey', 42],
       ['showImportDSLModal', 'setShowImportDSLModal', true],
       ['fileUploadConfig', 'setFileUploadConfig', { batch_count_limit: 5, image_file_batch_limit: 10, single_chunk_attachment_limit: 10, attachment_image_file_size_limit: 2, file_size_limit: 15, file_upload_limit: 5 }],
@@ -68,7 +71,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Node Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['showSingleRunPanel', 'setShowSingleRunPanel', true],
       ['nodeAnimation', 'setNodeAnimation', true],
       ['candidateNode', 'setCandidateNode', undefined],
@@ -87,7 +90,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Panel Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['showFeaturesPanel', 'setShowFeaturesPanel', true],
       ['showWorkflowVersionHistoryPanel', 'setShowWorkflowVersionHistoryPanel', true],
       ['showInputsPanel', 'setShowInputsPanel', true],
@@ -102,7 +105,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Help Line Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['helpLineHorizontal', 'setHelpLineHorizontal', { top: 100, left: 0, width: 500 }],
       ['helpLineVertical', 'setHelpLineVertical', { top: 0, left: 200, height: 300 }],
     ])('should update %s', (stateKey, setter, value) => {
@@ -118,7 +121,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('History Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['historyWorkflowData', 'setHistoryWorkflowData', { id: 'run-1', status: 'succeeded' }],
       ['showRunHistory', 'setShowRunHistory', true],
       ['versionHistory', 'setVersionHistory', []],
@@ -128,7 +131,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Form Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['inputs', 'setInputs', { name: 'test', count: 42 }],
       ['files', 'setFiles', []],
     ])('should update %s', (stateKey, setter, value) => {
@@ -137,7 +140,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Tool Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['toolPublished', 'setToolPublished', true],
       ['lastPublishedHasUserInput', 'setLastPublishedHasUserInput', true],
     ])('should update %s', (stateKey, setter, value) => {
@@ -146,7 +149,7 @@ describe('createWorkflowStore', () => {
   })
 
   describe('Layout Slice Setters', () => {
-    it.each<[string, string, unknown]>([
+    it.each<[StateKey, SetterKey, Shape[StateKey]]>([
       ['workflowCanvasWidth', 'setWorkflowCanvasWidth', 1200],
       ['workflowCanvasHeight', 'setWorkflowCanvasHeight', 800],
       ['rightPanelWidth', 'setRightPanelWidth', 500],

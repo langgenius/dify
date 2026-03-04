@@ -1,4 +1,5 @@
-import type { CommonEdgeType, CommonNodeType, Edge, Node } from '../types'
+import type { CommonEdgeType, CommonNodeType, Edge, Node, ToolWithProvider, WorkflowRunningData } from '../types'
+import type { NodeTracing } from '@/types/workflow'
 import { Position } from 'reactflow'
 import { CUSTOM_NODE } from '../constants'
 import { BlockEnum, NodeRunningStatus } from '../types'
@@ -113,8 +114,8 @@ export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Ed
 // ---------------------------------------------------------------------------
 
 export function createWorkflowRunningData(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+  overrides?: Partial<WorkflowRunningData>,
+): WorkflowRunningData {
   return {
     task_id: 'task-test',
     result: {
@@ -122,37 +123,58 @@ export function createWorkflowRunningData(
       inputs_truncated: false,
       process_data_truncated: false,
       outputs_truncated: false,
+      ...overrides?.result,
     },
-    tracing: [],
-    resultText: '',
-    resultTabActive: false,
+    tracing: overrides?.tracing ?? [],
     ...overrides,
   }
 }
 
 export function createNodeTracing(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+  overrides?: Partial<NodeTracing>,
+): NodeTracing {
+  const nodeId = overrides?.node_id ?? 'node-1'
   return {
-    id: `trace-${overrides.node_id ?? 'unknown'}`,
-    node_id: 'node-1',
+    id: `trace-${nodeId}`,
+    index: 0,
+    predecessor_node_id: '',
+    node_id: nodeId,
     node_type: BlockEnum.Code,
     title: 'Node',
+    inputs: null,
+    inputs_truncated: false,
+    process_data: null,
+    process_data_truncated: false,
+    outputs_truncated: false,
     status: NodeRunningStatus.Running,
+    elapsed_time: 0,
+    metadata: { iterator_length: 0, iterator_index: 0, loop_length: 0, loop_index: 0 },
+    created_at: 0,
+    created_by: { id: 'user-1', name: 'Test', email: 'test@test.com' },
+    finished_at: 0,
     ...overrides,
   }
 }
 
 export function createToolWithProvider(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+  overrides?: Partial<ToolWithProvider>,
+): ToolWithProvider {
   return {
     id: 'tool-provider-1',
     name: 'test-tool',
+    author: 'test',
+    description: { en_US: 'Test tool', zh_Hans: '测试工具' },
     icon: '/icon.svg',
     icon_dark: '/icon-dark.svg',
+    label: { en_US: 'Test Tool', zh_Hans: '测试工具' },
+    type: 'builtin',
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: true,
+    labels: [],
+    tools: [],
+    meta: { version: '0.0.1' },
     plugin_id: 'plugin-1',
-    label: { en_US: 'Test Tool' },
     ...overrides,
   }
 }
