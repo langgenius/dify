@@ -22,7 +22,6 @@ const PanelContextmenu = () => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const panelMenu = useStore(s => s.panelMenu)
-  const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
@@ -93,15 +92,10 @@ const PanelContextmenu = () => {
       <Divider className="m-0" />
       <div className="p-1">
         <div
-          className={cn(
-            'flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
-            !clipboardElements.length ? 'cursor-not-allowed opacity-50' : 'hover:bg-state-base-hover',
-          )}
+          className={cn('flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover')}
           onClick={() => {
-            if (clipboardElements.length) {
-              handleNodesPaste()
-              handlePaneContextmenuCancel()
-            }
+            handleNodesPaste()
+            handlePaneContextmenuCancel()
           }}
         >
           {t('common.pasteHere', { ns: 'workflow' })}
