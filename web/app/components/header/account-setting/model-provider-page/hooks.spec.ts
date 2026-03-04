@@ -23,6 +23,7 @@ import {
   useAnthropicBuyQuota,
   useCurrentProviderAndModel,
   useDefaultModel,
+  useInvalidateDefaultModel,
   useLanguage,
   useMarketplaceAllPlugins,
   useModelList,
@@ -853,6 +854,38 @@ describe('hooks', () => {
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
 
       const { result } = renderHook(() => useUpdateModelList())
+
+      act(() => {
+        result.current(ModelTypeEnum.textGeneration)
+        result.current(ModelTypeEnum.textEmbedding)
+        result.current(ModelTypeEnum.rerank)
+      })
+
+      expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    })
+  })
+
+  describe('useInvalidateDefaultModel', () => {
+    it('should invalidate default model queries', () => {
+      const invalidateQueries = vi.fn()
+        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+
+      const { result } = renderHook(() => useInvalidateDefaultModel())
+
+      act(() => {
+        result.current(ModelTypeEnum.textGeneration)
+      })
+
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['default-model', ModelTypeEnum.textGeneration],
+      })
+    })
+
+    it('should handle multiple model types', () => {
+      const invalidateQueries = vi.fn()
+        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+
+      const { result } = renderHook(() => useInvalidateDefaultModel())
 
       act(() => {
         result.current(ModelTypeEnum.textGeneration)

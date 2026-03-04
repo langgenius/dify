@@ -174,7 +174,8 @@ describe('ModelProviderPage', () => {
       })
 
       render(<ModelProviderPage searchText="" />)
-      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
     })
 
