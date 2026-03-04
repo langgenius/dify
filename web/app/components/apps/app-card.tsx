@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
@@ -23,7 +22,9 @@ import Toast, { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
-  AlertDialogClose,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
@@ -522,14 +523,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {t('deleteAppConfirmContent', { ns: 'app' })}
             </AlertDialogDescription>
           </div>
-          <div className="flex items-start justify-end gap-2 self-stretch p-6">
-            <AlertDialogClose render={<Button disabled={isDeleting} />}>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={isDeleting}>
               {t('operation.cancel', { ns: 'common' })}
-            </AlertDialogClose>
-            <Button variant="primary" destructive loading={isDeleting} disabled={isDeleting} onClick={onConfirmDelete}>
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={onConfirmDelete}>
               {t('operation.confirm', { ns: 'common' })}
-            </Button>
-          </div>
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
       {secretEnvList.length > 0 && (

@@ -1,15 +1,17 @@
 'use client'
 
+import type { ButtonProps } from '@/app/components/base/button'
+import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
+import * as React from 'react'
+import Button from '@/app/components/base/button'
+import { cn } from '@/utils/classnames'
+
 // z-index strategy (relies on root `isolation: isolate` in layout.tsx):
 //   All overlay primitives (Tooltip / Popover / Dropdown / Select / Dialog / AlertDialog) — z-50
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside an AlertDialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
 //   Toast — z-[99], always on top (defined in toast component)
-
-import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
-import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 export const AlertDialog = BaseAlertDialog.Root
 export const AlertDialogTrigger = BaseAlertDialog.Trigger
@@ -56,5 +58,52 @@ export function AlertDialogContent({
         {children}
       </BaseAlertDialog.Popup>
     </BaseAlertDialog.Portal>
+  )
+}
+
+type AlertDialogActionsProps = React.ComponentPropsWithoutRef<'div'>
+
+export function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
+  return (
+    <div
+      className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
+      {...props}
+    />
+  )
+}
+
+type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
+  children: React.ReactNode
+  closeProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Close>, 'children' | 'render'>
+}
+
+export function AlertDialogCancelButton({
+  children,
+  closeProps,
+  ...buttonProps
+}: AlertDialogCancelButtonProps) {
+  return (
+    <BaseAlertDialog.Close
+      {...closeProps}
+      render={<Button {...buttonProps} />}
+    >
+      {children}
+    </BaseAlertDialog.Close>
+  )
+}
+
+type AlertDialogConfirmButtonProps = ButtonProps
+
+export function AlertDialogConfirmButton({
+  variant = 'primary',
+  destructive = true,
+  ...props
+}: AlertDialogConfirmButtonProps) {
+  return (
+    <Button
+      variant={variant}
+      destructive={destructive}
+      {...props}
+    />
   )
 }
