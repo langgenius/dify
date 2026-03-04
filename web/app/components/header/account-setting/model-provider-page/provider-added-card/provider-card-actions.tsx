@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -17,10 +19,11 @@ type Props = {
 }
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
 
-  const { source, version, meta } = detail
+  const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
   const name = detail.declaration?.name ?? detail.name
 
@@ -30,6 +33,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     hasNewVersion,
     isAutoUpgradeEnabled,
     isFromMarketplace,
+    isFromGitHub,
   } = useDetailHeaderState(detail)
 
   const {
@@ -47,6 +51,16 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const handleVersionSelect = (state: { version: string, unique_identifier: string, isDowngrade?: boolean }) => {
     versionPicker.setTargetVersion(state)
     handleUpdate(state.isDowngrade)
+  }
+
+  const handleTriggerLatestUpdate = () => {
+    if (isFromMarketplace) {
+      versionPicker.setTargetVersion({
+        version: latest_version,
+        unique_identifier: latest_unique_identifier,
+      })
+    }
+    handleUpdate()
   }
 
   const detailUrl = useMemo(() => {
@@ -69,21 +83,33 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
           onSelect={handleVersionSelect}
           offset={{ mainAxis: 4, crossAxis: 0 }}
           trigger={(
-            <div
+            <button
+              type="button"
+              disabled={!isFromMarketplace}
               className={cn(
-                'relative inline-flex min-w-5 items-center justify-center gap-[3px] rounded-md border border-divider-deep px-[5px] py-[2px] text-text-tertiary system-xs-medium-uppercase',
-                versionPicker.isShow && 'bg-state-base-hover',
-                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
+                'relative inline-flex min-w-5 items-center justify-center gap-[3px] rounded-md border border-divider-deep bg-state-base-hover px-[5px] py-[2px] text-text-tertiary system-xs-medium-uppercase',
+                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover-alt',
               )}
             >
               <span>{version}</span>
-              {isFromMarketplace && <span className="i-ri-arrow-left-right-line h-3 w-3" />}
+              {isFromMarketplace && <span aria-hidden className="i-ri-arrow-left-right-line h-3 w-3" />}
               {hasNewVersion && (
                 <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-state-destructive-solid" />
               )}
-            </div>
+            </button>
           )}
         />
+      )}
+
+      {(hasNewVersion || isFromGitHub) && (
+        <Button
+          variant="secondary-accent"
+          size="small"
+          className="!h-5"
+          onClick={handleTriggerLatestUpdate}
+        >
+          {t('detailPanel.operation.update', { ns: 'plugin' })}
+        </Button>
       )}
 
       <OperationDropdown

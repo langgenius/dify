@@ -4723,11 +4723,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-badge/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -4851,11 +4846,6 @@
   },
   "app/components/header/account-setting/model-provider-page/model-selector/popup.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/add-model-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
