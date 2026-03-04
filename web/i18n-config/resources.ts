@@ -31,36 +31,36 @@ import type workflow from '../i18n/en-US/workflow.json'
 import { kebabCase } from 'string-ts'
 
 export type Resources = {
-  app: app
-  appAnnotation: appAnnotation
-  appApi: appApi
-  appDebug: appDebug
-  appLog: appLog
-  appOverview: appOverview
-  billing: billing
-  common: common
-  custom: custom
-  dataset: dataset
-  datasetCreation: datasetCreation
-  datasetDocuments: datasetDocuments
-  datasetHitTesting: datasetHitTesting
-  datasetPipeline: datasetPipeline
-  datasetSettings: datasetSettings
-  education: education
-  explore: explore
-  layout: layout
-  login: login
-  oauth: oauth
-  pipeline: pipeline
-  plugin: plugin
-  pluginTags: pluginTags
-  pluginTrigger: pluginTrigger
-  register: register
-  runLog: runLog
-  share: share
-  time: time
-  tools: tools
-  workflow: workflow
+  app: typeof app
+  appAnnotation: typeof appAnnotation
+  appApi: typeof appApi
+  appDebug: typeof appDebug
+  appLog: typeof appLog
+  appOverview: typeof appOverview
+  billing: typeof billing
+  common: typeof common
+  custom: typeof custom
+  dataset: typeof dataset
+  datasetCreation: typeof datasetCreation
+  datasetDocuments: typeof datasetDocuments
+  datasetHitTesting: typeof datasetHitTesting
+  datasetPipeline: typeof datasetPipeline
+  datasetSettings: typeof datasetSettings
+  education: typeof education
+  explore: typeof explore
+  layout: typeof layout
+  login: typeof login
+  oauth: typeof oauth
+  pipeline: typeof pipeline
+  plugin: typeof plugin
+  pluginTags: typeof pluginTags
+  pluginTrigger: typeof pluginTrigger
+  register: typeof register
+  runLog: typeof runLog
+  share: typeof share
+  time: typeof time
+  tools: typeof tools
+  workflow: typeof workflow
 }
 
 export const namespaces = [
