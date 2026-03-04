@@ -26,16 +26,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
       onClose()
   }, [onClose])
 
-  const handleSelectUserInput = useCallback(() => {
-    onSelectStartNode(BlockEnum.Start)
-    onClose()
-  }, [onSelectStartNode, onClose])
-
-  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
-    onSelectStartNode(nodeType, toolConfig)
-    onClose()
-  }, [onSelectStartNode, onClose])
-
   return (
     <Dialog open={isShow} onOpenChange={handleOpenChange} disablePointerDismissal>
       <DialogContent
@@ -55,8 +45,8 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
           </div>
 
           <StartNodeSelectionPanel
-            onSelectUserInput={handleSelectUserInput}
-            onSelectTrigger={handleTriggerSelect}
+            onSelectUserInput={() => onSelectStartNode(BlockEnum.Start)}
+            onSelectTrigger={onSelectStartNode}
           />
         </div>
       </DialogContent>

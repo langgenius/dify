@@ -6307,11 +6307,6 @@
       "count": 2
     }
   },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/workflow-app/hooks/use-DSL.ts": {
     "ts/no-explicit-any": {
       "count": 1

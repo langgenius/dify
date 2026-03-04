@@ -230,6 +230,16 @@ describe('WorkflowOnboardingModal', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose exactly once when close button is clicked (no double-close)', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      renderComponent({ onClose })
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should not call onClose when clicking backdrop', async () => {
       const user = userEvent.setup()
       renderComponent()
