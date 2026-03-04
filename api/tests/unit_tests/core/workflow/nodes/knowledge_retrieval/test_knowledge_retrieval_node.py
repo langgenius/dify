@@ -205,6 +205,7 @@ class TestKnowledgeRetrievalNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "result" in result.outputs
         assert mock_rag_retrieval.knowledge_retrieval.called
+        mock_source.model_dump.assert_called_once_with(by_alias=True)
 
     def test_run_with_query_variable_multiple_mode(
         self,
