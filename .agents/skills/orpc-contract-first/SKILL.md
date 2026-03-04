@@ -8,7 +8,7 @@ description: Guide for implementing oRPC contract-first API patterns in Dify fro
 ## Intent
 
 - Keep contract as single source of truth in `web/contract/*`.
-- Default query usage: call-site `useQuery(consoleQuery|marketplaceQuery.xxx.queryOptions(...))`.
+- Default query usage: call-site `useQuery(consoleQuery|marketplaceQuery.xxx.queryOptions(...))` when endpoint behavior maps 1:1 to the contract.
 - Keep abstractions minimal and preserve TypeScript inference.
 
 ## Minimal Structure
@@ -17,6 +17,7 @@ description: Guide for implementing oRPC contract-first API patterns in Dify fro
 web/contract/
 ├── base.ts
 ├── router.ts
+├── marketplace.ts
 └── console/
     ├── billing.ts
     └── ...other domains
@@ -25,7 +26,7 @@ web/service/client.ts
 
 ## Core Workflow
 
-1. Define contract in `web/contract/console/{domain}.ts`
+1. Define contract in `web/contract/console/{domain}.ts` or `web/contract/marketplace.ts`
    - Use `base.route({...}).output(type<...>())` as baseline.
    - Add `.input(type<...>())` only when request has `params/query/body`.
    - For `GET` without input, omit `.input(...)` (do not use `type<unknown>()`).
@@ -64,8 +65,8 @@ const invoiceQuery = useQuery({
 
 ## Mutation Usage Decision Rule
 
-1. Default: use `useMutation(orpc.xxx.mutationOptions(...))`.
-2. If mutation flow is heavily custom, use oRPC procedure call as `mutationFn` (for example `orpc.xxx.call` / `consoleClient.xxx`), instead of generic handwritten non-oRPC mutation logic.
+1. Default: use `useMutation(consoleQuery|marketplaceQuery.xxx.mutationOptions(...))`.
+2. If mutation flow is heavily custom, use oRPC clients as `mutationFn` (for example `consoleClient.xxx` / `marketplaceClient.xxx`), instead of generic handwritten non-oRPC mutation logic.
 
 ## Key API Guide (`.key` vs `.queryKey` vs `.mutationKey`)
 
@@ -81,7 +82,7 @@ const invoiceQuery = useQuery({
 ## Anti-Patterns
 
 - Do not wrap `useQuery` with `options?: Partial<UseQueryOptions>`.
-- Do not split local `queryKey/queryFn` when oRPC `queryOptions` already exists.
+- Do not split local `queryKey/queryFn` when oRPC `queryOptions` already exists and fits the use case.
 - Do not create thin `use-*` passthrough hooks for a single endpoint.
 - Reason: these patterns can degrade inference (`data` may become `unknown`, especially around `throwOnError`/`select`) and add unnecessary indirection.
 
