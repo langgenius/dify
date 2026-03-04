@@ -10,10 +10,10 @@ from typing import Any
 
 import pytest
 
-from core.workflow.file.enums import FileTransferMethod, FileType
-from core.workflow.file.models import File
-from core.workflow.variables.segment_group import SegmentGroup
-from core.workflow.variables.segments import (
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -22,7 +22,7 @@ from core.workflow.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from core.workflow.variables.types import ArrayValidation, SegmentType
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(

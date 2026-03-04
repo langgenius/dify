@@ -156,6 +156,26 @@ def wrap_span_metadata(metadata, **kwargs):
     return metadata
 
 
+# Mapping from NodeType string values to OpenInference span kinds.
+# NodeType values not listed here default to CHAIN.
+_NODE_TYPE_TO_SPAN_KIND: dict[str, OpenInferenceSpanKindValues] = {
+    "llm": OpenInferenceSpanKindValues.LLM,
+    "knowledge-retrieval": OpenInferenceSpanKindValues.RETRIEVER,
+    "tool": OpenInferenceSpanKindValues.TOOL,
+    "agent": OpenInferenceSpanKindValues.AGENT,
+}
+
+
+def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
+    """Return the OpenInference span kind for a given workflow node type.
+
+    Covers every ``NodeType`` enum value.  Nodes that do not have a
+    specialised span kind (e.g. ``start``, ``end``, ``if-else``,
+    ``code``, ``loop``, ``iteration``, etc.) are mapped to ``CHAIN``.
+    """
+    return _NODE_TYPE_TO_SPAN_KIND.get(node_type, OpenInferenceSpanKindValues.CHAIN)
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
@@ -290,30 +310,22 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 )
 
                 # Determine the correct span kind based on node type
-                span_kind = OpenInferenceSpanKindValues.CHAIN
-                match node_execution.node_type:
-                    case NodeType.LLM:
-                        span_kind = OpenInferenceSpanKindValues.LLM
-                        provider = process_data.get("model_provider")
-                        model = process_data.get("model_name")
-                        if provider:
-                            node_metadata["ls_provider"] = provider
-                        if model:
-                            node_metadata["ls_model_name"] = model
+                span_kind = _get_node_span_kind(node_execution.node_type)
+                if node_execution.node_type == "llm":
+                    provider = process_data.get("model_provider")
+                    model = process_data.get("model_name")
+                    if provider:
+                        node_metadata["ls_provider"] = provider
+                    if model:
+                        node_metadata["ls_model_name"] = model
 
-                        usage_data = (
-                            process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
-                        )
-                        if usage_data:
-                            node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
-                            node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
-                            node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
-                    case "dataset_retrieval":  # TODO: https://github.com/langgenius/dify/issues/31840
-                        span_kind = OpenInferenceSpanKindValues.RETRIEVER
-                    case NodeType.TOOL:
-                        span_kind = OpenInferenceSpanKindValues.TOOL
-                    case _:
-                        span_kind = OpenInferenceSpanKindValues.CHAIN
+                    usage_data = (
+                        process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
+                    )
+                    if usage_data:
+                        node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
+                        node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
+                        node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
 
                 workflow_span_context = set_span_in_context(workflow_span)
                 node_span = self.tracer.start_span(
