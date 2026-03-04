@@ -378,9 +378,7 @@ class BatchAddNotificationAccountsApi(Resource):
         chunk_size = 500
         for i in range(0, len(emails), chunk_size):
             chunk = emails[i : i + chunk_size]
-            rows = db.session.execute(
-                select(Account.id, Account.email).where(Account.email.in_(chunk))
-            ).all()
+            rows = db.session.execute(select(Account.id, Account.email).where(Account.email.in_(chunk))).all()
             account_ids.extend(str(row.id) for row in rows)
 
         if not account_ids:
