@@ -35,6 +35,35 @@ const ImageGallery: FC<Props> = ({
 
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
+
+  // For single image, return inline element to avoid hydration warning
+  if (imgNum === 1) {
+    const src = srcs[0]
+    return (
+      <span className={cn(s['img-1'], 'inline-block')}>
+        <img
+          className={s.item}
+          style={imgStyle}
+          src={src}
+          alt=""
+          data-testid="gallery-image"
+          onClick={() => setImagePreviewUrl(src)}
+          onError={e => e.currentTarget.remove()}
+        />
+        {
+          imagePreviewUrl && (
+            <ImagePreview
+              url={imagePreviewUrl}
+              onCancel={() => setImagePreviewUrl('')}
+              title=""
+            />
+          )
+        }
+      </span>
+    )
+  }
+
+  // For multiple images, keep the flex container
   return (
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
       {srcs.map((src, index) => (
@@ -47,7 +76,7 @@ const ImageGallery: FC<Props> = ({
                 style={imgStyle}
                 src={src}
                 alt=""
-                data-testid="gallery-image" // Added for testing
+                data-testid="gallery-image"
                 onClick={() => setImagePreviewUrl(src)}
                 onError={e => e.currentTarget.remove()}
               />

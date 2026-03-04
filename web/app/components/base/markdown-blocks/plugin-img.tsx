@@ -3,6 +3,9 @@ import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
  * @fileoverview Img component for rendering <img> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
+ *
+ * Fixes hydration warning: <div> cannot be a descendant of <p> in HTML.
+ * When rendering inline images, remove the div wrapper to maintain valid HTML.
  */
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -41,9 +44,5 @@ export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
     return getMarkdownImageURL(src, pluginId)
   }, [blobUrl, pluginId, src])
 
-  return (
-    <div className="markdown-img-wrapper">
-      <ImageGallery srcs={[imageUrl]} />
-    </div>
-  )
+  return <ImageGallery srcs={[imageUrl]} />
 }
