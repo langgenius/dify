@@ -71,7 +71,6 @@ const createForceInspectorClientInjectionPlugin = (): Plugin => {
 }
 
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
   const isTest = mode === 'test'
 
   return {
@@ -90,12 +89,8 @@ export default defineConfig(({ mode }) => {
           } as Plugin,
         ]
       : [
-          ...(isDev
-            ? [
-                createCodeInspectorPlugin(),
-                createForceInspectorClientInjectionPlugin(),
-              ]
-            : []),
+          createCodeInspectorPlugin(),
+          createForceInspectorClientInjectionPlugin(),
           vinext(),
         ],
     resolve: {
