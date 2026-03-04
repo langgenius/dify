@@ -83,6 +83,10 @@ vi.mock('./system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: () => ({ data: undefined }),
+}))
+
 describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()

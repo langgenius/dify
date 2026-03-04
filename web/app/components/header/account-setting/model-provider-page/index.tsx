@@ -1,11 +1,13 @@
 import type {
   ModelProvider,
 } from './declarations'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useCheckInstalled } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
@@ -18,6 +20,7 @@ import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
 import SystemModelSelector from './system-model-selector'
+import { providerToPluginId } from './utils'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
@@ -37,6 +40,22 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
   const { data: systemFeatures } = useSystemFeaturesQuery()
+
+  const allPluginIds = useMemo(() => {
+    return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
+  }, [providers])
+  const { data: installedPlugins } = useCheckInstalled({
+    pluginIds: allPluginIds,
+    enabled: allPluginIds.length > 0,
+  })
+  const pluginDetailMap = useMemo(() => {
+    const map = new Map<string, PluginDetail>()
+    if (installedPlugins?.plugins) {
+      for (const plugin of installedPlugins.plugins)
+        map.set(plugin.plugin_id, plugin)
+    }
+    return map
+  }, [installedPlugins])
   const enableMarketplace = systemFeatures?.enable_marketplace ?? false
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
@@ -150,6 +169,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
+              pluginDetail={pluginDetailMap.get(providerToPluginId(provider.provider))}
             />
           ))}
         </div>
@@ -163,6 +183,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
                 notConfigured
                 key={provider.provider}
                 provider={provider}
+                pluginDetail={pluginDetailMap.get(providerToPluginId(provider.provider))}
               />
             ))}
           </div>

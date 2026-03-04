@@ -4,6 +4,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
+import type { PluginDetail } from '@/app/components/plugins/types'
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,7 @@ import {
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useProviderContext } from '@/context/provider-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import { ConfigurationMethodEnum } from '../declarations'
@@ -25,18 +27,22 @@ import {
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
+import ProviderCardActions from './provider-card-actions'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
+  pluginDetail?: PluginDetail
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   notConfigured,
   provider,
+  pluginDetail,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
+  const { refreshModelProviders } = useProviderContext()
   const [fetched, setFetched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
@@ -87,27 +93,28 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     >
       <div className="flex rounded-t-xl py-2 pl-3 pr-2">
         <div className="grow px-1 pb-0.5 pt-1">
-          <ProviderIcon
-            className="mb-2"
-            provider={provider}
-          />
+          <div className="mb-2 flex items-center gap-1">
+            <ProviderIcon provider={provider} />
+            {pluginDetail && (
+              <ProviderCardActions
+                detail={pluginDetail}
+                onUpdate={refreshModelProviders}
+              />
+            )}
+          </div>
           <div className="flex gap-0.5">
-            {
-              provider.supported_model_types.map(modelType => (
-                <ModelBadge key={modelType}>
-                  {modelTypeFormat(modelType)}
-                </ModelBadge>
-              ))
-            }
+            {provider.supported_model_types.map(modelType => (
+              <ModelBadge key={modelType}>
+                {modelTypeFormat(modelType)}
+              </ModelBadge>
+            ))}
           </div>
         </div>
-        {
-          showCredential && (
-            <CredentialPanel
-              provider={provider}
-            />
-          )
-        }
+        {showCredential && (
+          <CredentialPanel
+            provider={provider}
+          />
+        )}
       </div>
       {
         collapsed && (

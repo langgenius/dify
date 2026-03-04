@@ -21,6 +21,11 @@ import {
 
 export { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 
+export const providerToPluginId = (providerKey: string): string => {
+  const lastSlash = providerKey.lastIndexOf('/')
+  return lastSlash > 0 ? providerKey.slice(0, lastSlash) : ''
+}
+
 export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
 
 export const modelNameMap = {
