@@ -124,7 +124,6 @@ export const CSRF_COOKIE_NAME = () => {
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
 export const CSRF_HEADER_NAME = 'X-CSRF-Token'
-export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
 export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
