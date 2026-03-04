@@ -67,6 +67,7 @@ def _raise_if_advanced_chat_rerun_triggered_from(args: Mapping[str, str]) -> Non
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
+WorkflowRunStatus = Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"]
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -145,15 +146,10 @@ workflow_run_export_fields = console_ns.model(
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class AdvancedChatWorkflowRunListQuery(BaseModel):
+class BaseWorkflowRunListQuery(BaseModel):
     last_id: str | None = Field(default=None, description="Last run ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
-    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
-        default=None, description="Workflow run status filter"
-    )
-    triggered_from: Literal["debugging", "app-run"] | None = Field(
-        default=None, description="Filter by trigger source: debugging or app-run"
-    )
+    status: WorkflowRunStatus | None = Field(default=None, description="Workflow run status filter")
 
     @field_validator("last_id")
     @classmethod
@@ -163,49 +159,21 @@ class AdvancedChatWorkflowRunListQuery(BaseModel):
         return uuid_value(value)
 
 
-class AdvancedChatWorkflowRunCountQuery(BaseModel):
-    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
-        default=None, description="Workflow run status filter"
-    )
-    time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
+class AdvancedChatWorkflowRunListQuery(BaseWorkflowRunListQuery):
     triggered_from: Literal["debugging", "app-run"] | None = Field(
         default=None, description="Filter by trigger source: debugging or app-run"
     )
 
-    @field_validator("time_range")
-    @classmethod
-    def validate_time_range(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return time_duration(value)
 
-
-class WorkflowRunListQuery(BaseModel):
-    last_id: str | None = Field(default=None, description="Last run ID for pagination")
-    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
-    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
-        default=None, description="Workflow run status filter"
-    )
+class WorkflowRunListQuery(BaseWorkflowRunListQuery):
     triggered_from: Literal["debugging", "app-run", "rerun"] | None = Field(
         default=None, description="Filter by trigger source: debugging, app-run, or rerun"
     )
 
-    @field_validator("last_id")
-    @classmethod
-    def validate_last_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return uuid_value(value)
 
-
-class WorkflowRunCountQuery(BaseModel):
-    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
-        default=None, description="Workflow run status filter"
-    )
+class BaseWorkflowRunCountQuery(BaseModel):
+    status: WorkflowRunStatus | None = Field(default=None, description="Workflow run status filter")
     time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
-    triggered_from: Literal["debugging", "app-run", "rerun"] | None = Field(
-        default=None, description="Filter by trigger source: debugging, app-run, or rerun"
-    )
 
     @field_validator("time_range")
     @classmethod
@@ -213,6 +181,18 @@ class WorkflowRunCountQuery(BaseModel):
         if value is None:
             return value
         return time_duration(value)
+
+
+class AdvancedChatWorkflowRunCountQuery(BaseWorkflowRunCountQuery):
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run"
+    )
+
+
+class WorkflowRunCountQuery(BaseWorkflowRunCountQuery):
+    triggered_from: Literal["debugging", "app-run", "rerun"] | None = Field(
+        default=None, description="Filter by trigger source: debugging, app-run, or rerun"
+    )
 
 
 class WorkflowRunRerunPayload(BaseModel):
