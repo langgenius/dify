@@ -358,9 +358,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         try:
             escaped_tenant_id = escape_identifier(tenant_id)
             escaped_app_id = escape_identifier(app_id)
-            run_id_filter = " OR ".join(
-                f"id = '{escape_identifier(run_id)}'" for run_id in normalized_run_ids
-            )
+            run_id_filter = " OR ".join(f"id = '{escape_identifier(run_id)}'" for run_id in normalized_run_ids)
 
             sql = f"""
                 SELECT * FROM (

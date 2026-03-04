@@ -238,10 +238,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
     )
     @console_ns.doc(
-        params={
-            "triggered_from": "Filter by trigger source (optional): debugging or app-run. "
-            "Default: debugging"
-        }
+        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunListQuery.__name__])
     @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
@@ -341,10 +338,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         }
     )
     @console_ns.doc(
-        params={
-            "triggered_from": "Filter by trigger source (optional): debugging or app-run. "
-            "Default: debugging"
-        }
+        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
     @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunCountQuery.__name__])
@@ -420,9 +414,7 @@ class WorkflowRunListApi(Resource):
             default_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
 
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
-            else default_triggered_from
+            WorkflowRunTriggeredFrom(args_model.triggered_from) if args_model.triggered_from else default_triggered_from
         )
 
         workflow_run_service = WorkflowRunService()
@@ -480,9 +472,7 @@ class WorkflowRunCountApi(Resource):
             default_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
 
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
-            else default_triggered_from
+            WorkflowRunTriggeredFrom(args_model.triggered_from) if args_model.triggered_from else default_triggered_from
         )
 
         workflow_run_service = WorkflowRunService()

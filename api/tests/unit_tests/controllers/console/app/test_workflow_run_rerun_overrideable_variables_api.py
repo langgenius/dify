@@ -78,9 +78,7 @@ def test_get_rerun_node_overrideable_variables_success(client, workflow_context,
     service.get_overrideable_variables.return_value = response_payload
     monkeypatch.setattr(workflow_run_module, "WorkflowRunRerunService", lambda: service)
 
-    response = client.get(
-        f"/console/api/apps/{TEST_APP_ID}/workflow-runs/{TEST_RUN_ID}/rerun/nodes/node_target"
-    )
+    response = client.get(f"/console/api/apps/{TEST_APP_ID}/workflow-runs/{TEST_RUN_ID}/rerun/nodes/node_target")
 
     assert response.status_code == 200
     assert response.get_json() == response_payload
@@ -100,9 +98,7 @@ def test_get_rerun_node_overrideable_variables_handles_service_error(client, wor
     )
     monkeypatch.setattr(workflow_run_module, "WorkflowRunRerunService", lambda: service)
 
-    response = client.get(
-        f"/console/api/apps/{TEST_APP_ID}/workflow-runs/{TEST_RUN_ID}/rerun/nodes/node_target"
-    )
+    response = client.get(f"/console/api/apps/{TEST_APP_ID}/workflow-runs/{TEST_RUN_ID}/rerun/nodes/node_target")
 
     assert response.status_code == 422
     assert response.get_json() == {
