@@ -265,6 +265,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
