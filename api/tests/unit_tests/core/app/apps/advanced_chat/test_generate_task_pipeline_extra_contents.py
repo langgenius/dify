@@ -17,8 +17,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import StreamEvent
-from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import EndUser
