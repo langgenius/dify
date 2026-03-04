@@ -8,7 +8,11 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org)
+- [Node.js](https://nodejs.org) (version 24 or higher)
+  - **Official Support**: Node 24+ is officially supported and tested
+  - **Node 22 Compatibility**: Node 22.x may work but is not guaranteed. Engine requirement warnings can be ignored, but issues specific to Node 22 will not be addressed
+  - **Version Management**: The project includes `.nvmrc` for automatic Node version switching with nvm
+  - **Verification**: Run `node --version` to confirm your version
 - [pnpm](https://pnpm.io)
 
 > [!TIP]
