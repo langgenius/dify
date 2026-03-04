@@ -172,7 +172,6 @@ def _get_base_redis_params() -> dict[str, Any]:
 
 
 def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
-    """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
 
@@ -189,6 +188,9 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
 
     if dify_config.REDIS_MAX_CONNECTIONS:
         sentinel_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        redis_params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
 
     sentinel = Sentinel(
         sentinel_hosts,
@@ -247,15 +249,11 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
 def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
     max_conns = dify_config.REDIS_MAX_CONNECTIONS
     if use_clusters:
-        if max_conns:
-            return RedisCluster.from_url(pubsub_url, max_connections=max_conns)
-        else:
-            return RedisCluster.from_url(pubsub_url)
-
-    if max_conns:
-        return redis.Redis.from_url(pubsub_url, max_connections=max_conns)
+        kwargs = {"max_connections": max_conns} if max_conns else {}
+        return RedisCluster.from_url(pubsub_url, **kwargs)
     else:
-        return redis.Redis.from_url(pubsub_url)
+        kwargs = {"max_connections": max_conns} if max_conns else {}
+        return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
 def init_app(app: DifyApp):
