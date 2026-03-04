@@ -14,9 +14,10 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings
+from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import RerankingModel, RetrievalModel
+from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.errors.dataset import DatasetNameDuplicateError
 
 
@@ -273,6 +274,276 @@ class TestDatasetServiceCreateDataset:
         db.session.refresh(result)
         assert result.retrieval_model == retrieval_model.model_dump()
         mock_check_reranking.assert_called_once_with(tenant.id, "cohere", "rerank-english-v2.0")
+
+    def test_create_internal_dataset_with_high_quality_indexing_custom_embedding(self, db_session_with_containers):
+        """Create high-quality dataset with explicitly configured embedding model."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        embedding_provider = "openai"
+        embedding_model_name = "text-embedding-3-small"
+        embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model(
+            provider=embedding_provider, model_name=embedding_model_name
+        )
+
+        # Act
+        with (
+            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.DatasetService.check_embedding_model_setting") as mock_check_embedding,
+        ):
+            mock_model_manager.return_value.get_model_instance.return_value = embedding_model
+
+            result = DatasetService.create_empty_dataset(
+                tenant_id=tenant.id,
+                name="Custom Embedding Dataset",
+                description=None,
+                indexing_technique="high_quality",
+                account=account,
+                embedding_model_provider=embedding_provider,
+                embedding_model_name=embedding_model_name,
+            )
+
+        # Assert
+        db.session.refresh(result)
+        assert result.indexing_technique == "high_quality"
+        assert result.embedding_model_provider == embedding_provider
+        assert result.embedding_model == embedding_model_name
+        mock_check_embedding.assert_called_once_with(tenant.id, embedding_provider, embedding_model_name)
+        mock_model_manager.return_value.get_model_instance.assert_called_once_with(
+            tenant_id=tenant.id,
+            provider=embedding_provider,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model=embedding_model_name,
+        )
+
+    def test_create_internal_dataset_with_retrieval_model(self, db_session_with_containers):
+        """Persist retrieval model settings when creating an internal dataset."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        retrieval_model = RetrievalModel(
+            search_method=RetrievalMethod.SEMANTIC_SEARCH,
+            reranking_enable=False,
+            top_k=2,
+            score_threshold_enabled=True,
+            score_threshold=0.0,
+        )
+
+        # Act
+        result = DatasetService.create_empty_dataset(
+            tenant_id=tenant.id,
+            name="Retrieval Model Dataset",
+            description=None,
+            indexing_technique=None,
+            account=account,
+            retrieval_model=retrieval_model,
+        )
+
+        # Assert
+        db.session.refresh(result)
+        assert result.retrieval_model == retrieval_model.model_dump()
+
+    def test_create_internal_dataset_with_custom_permission(self, db_session_with_containers):
+        """Persist canonical custom permission when creating an internal dataset."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+
+        # Act
+        result = DatasetService.create_empty_dataset(
+            tenant_id=tenant.id,
+            name="Custom Permission Dataset",
+            description=None,
+            indexing_technique=None,
+            account=account,
+            permission=DatasetPermissionEnum.ALL_TEAM,
+        )
+
+        # Assert
+        db.session.refresh(result)
+        assert result.permission == DatasetPermissionEnum.ALL_TEAM
+
+    def test_create_external_dataset_missing_api_id_error(self, db_session_with_containers):
+        """Raise error when external API template does not exist."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        external_knowledge_api_id = str(uuid4())
+
+        # Act / Assert
+        with patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api:
+            mock_get_api.return_value = None
+            with pytest.raises(ValueError, match=r"External API template not found\.?"):
+                DatasetService.create_empty_dataset(
+                    tenant_id=tenant.id,
+                    name="External Missing API Dataset",
+                    description=None,
+                    indexing_technique=None,
+                    account=account,
+                    provider="external",
+                    external_knowledge_api_id=external_knowledge_api_id,
+                    external_knowledge_id="knowledge-123",
+                )
+
+    def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers):
+        """Raise error when external knowledge id is missing for external dataset creation."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        external_knowledge_api_id = str(uuid4())
+
+        # Act / Assert
+        with patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api") as mock_get_api:
+            mock_get_api.return_value = Mock(id=external_knowledge_api_id)
+            with pytest.raises(ValueError, match="external_knowledge_id is required"):
+                DatasetService.create_empty_dataset(
+                    tenant_id=tenant.id,
+                    name="External Missing Knowledge Dataset",
+                    description=None,
+                    indexing_technique=None,
+                    account=account,
+                    provider="external",
+                    external_knowledge_api_id=external_knowledge_api_id,
+                    external_knowledge_id=None,
+                )
+
+
+class TestDatasetServiceCreateRagPipelineDataset:
+    """Integration coverage for DatasetService.create_empty_rag_pipeline_dataset."""
+
+    def test_create_rag_pipeline_dataset_with_name_success(self, db_session_with_containers):
+        """Create rag-pipeline dataset and pipeline rows when a name is provided."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
+        entity = RagPipelineDatasetCreateEntity(
+            name="RAG Pipeline Dataset",
+            description="RAG Pipeline Description",
+            icon_info=icon_info,
+            permission=DatasetPermissionEnum.ONLY_ME,
+        )
+
+        # Act
+        with patch("services.dataset_service.current_user", account):
+            result = DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
+            )
+
+        # Assert
+        created_dataset = db.session.get(Dataset, result.id)
+        created_pipeline = db.session.get(Pipeline, result.pipeline_id)
+        assert created_dataset is not None
+        assert created_dataset.name == entity.name
+        assert created_dataset.runtime_mode == "rag_pipeline"
+        assert created_dataset.created_by == account.id
+        assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
+        assert created_pipeline is not None
+        assert created_pipeline.name == entity.name
+        assert created_pipeline.created_by == account.id
+
+    def test_create_rag_pipeline_dataset_with_auto_generated_name(self, db_session_with_containers):
+        """Create rag-pipeline dataset with generated incremental name when input name is empty."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        generated_name = "Untitled 1"
+        icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
+        entity = RagPipelineDatasetCreateEntity(
+            name="",
+            description="",
+            icon_info=icon_info,
+            permission=DatasetPermissionEnum.ONLY_ME,
+        )
+
+        # Act
+        with (
+            patch("services.dataset_service.current_user", account),
+            patch("services.dataset_service.generate_incremental_name") as mock_generate_name,
+        ):
+            mock_generate_name.return_value = generated_name
+            result = DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
+            )
+
+        # Assert
+        db.session.refresh(result)
+        created_pipeline = db.session.get(Pipeline, result.pipeline_id)
+        assert result.name == generated_name
+        assert created_pipeline is not None
+        assert created_pipeline.name == generated_name
+        mock_generate_name.assert_called_once()
+
+    def test_create_rag_pipeline_dataset_duplicate_name_error(self, db_session_with_containers):
+        """Raise duplicate-name error when rag-pipeline dataset name already exists."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        duplicate_name = "Duplicate RAG Dataset"
+        DatasetServiceIntegrationDataFactory.create_dataset(
+            tenant_id=tenant.id,
+            created_by=account.id,
+            name=duplicate_name,
+            indexing_technique=None,
+        )
+        db.session.commit()
+        icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
+        entity = RagPipelineDatasetCreateEntity(
+            name=duplicate_name,
+            description="",
+            icon_info=icon_info,
+            permission=DatasetPermissionEnum.ONLY_ME,
+        )
+
+        # Act / Assert
+        with (
+            patch("services.dataset_service.current_user", account),
+            pytest.raises(DatasetNameDuplicateError, match=f"Dataset with name {duplicate_name} already exists"),
+        ):
+            DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
+            )
+
+    def test_create_rag_pipeline_dataset_with_custom_permission(self, db_session_with_containers):
+        """Persist canonical custom permission for rag-pipeline dataset creation."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
+        entity = RagPipelineDatasetCreateEntity(
+            name="Custom Permission RAG Dataset",
+            description="",
+            icon_info=icon_info,
+            permission=DatasetPermissionEnum.ALL_TEAM,
+        )
+
+        # Act
+        with patch("services.dataset_service.current_user", account):
+            result = DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
+            )
+
+        # Assert
+        db.session.refresh(result)
+        assert result.permission == DatasetPermissionEnum.ALL_TEAM
+
+    def test_create_rag_pipeline_dataset_with_icon_info(self, db_session_with_containers):
+        """Persist icon metadata when creating rag-pipeline dataset."""
+        # Arrange
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        icon_info = IconInfo(
+            icon="📚",
+            icon_background="#E8F5E9",
+            icon_type="emoji",
+            icon_url="https://example.com/icon.png",
+        )
+        entity = RagPipelineDatasetCreateEntity(
+            name="Icon Info RAG Dataset",
+            description="",
+            icon_info=icon_info,
+            permission=DatasetPermissionEnum.ONLY_ME,
+        )
+
+        # Act
+        with patch("services.dataset_service.current_user", account):
+            result = DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
+            )
+
+        # Assert
+        db.session.refresh(result)
+        assert result.icon_info == icon_info.model_dump()
 
 
 class TestDatasetServiceUpdateAndDeleteDataset:
