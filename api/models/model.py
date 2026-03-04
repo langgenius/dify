@@ -566,7 +566,7 @@ class RecommendedApp(Base):  # bug
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'"))
+    language: Mapped[str] = mapped_column(String(255), server_default=sa.text("'en-US'"))
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
@@ -716,9 +716,9 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
-    model_provider = mapped_column(String(255), nullable=True)
+    model_provider: Mapped[str | None] = mapped_column(String(255))
     override_model_configs = mapped_column(LongText)
-    model_id = mapped_column(String(255), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(255))
     mode: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
@@ -732,7 +732,7 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[str | None] = mapped_column(String(255))
 
     # ref: ConversationSource.
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1654,7 +1654,7 @@ class EndUser(Base, UserMixin):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    external_user_id = mapped_column(String(255), nullable=True)
+    external_user_id: Mapped[str | None] = mapped_column(String(255))
     name = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(
         "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
@@ -1729,7 +1729,7 @@ class Site(Base):
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    icon_type = mapped_column(String(255), nullable=True)
+    icon_type: Mapped[str | None] = mapped_column(String(255))
     icon = mapped_column(String(255))
     icon_background = mapped_column(String(255))
     description = mapped_column(LongText)
@@ -1744,7 +1744,7 @@ class Site(Base):
     customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
+    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"))
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -1789,7 +1789,7 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=True)
     tenant_id = mapped_column(StringUUID, nullable=True)
-    type = mapped_column(String(16), nullable=False)
+    type: Mapped[str] = mapped_column(String(16))
     token: Mapped[str] = mapped_column(String(255), nullable=False)
     last_used_at = mapped_column(sa.DateTime, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
