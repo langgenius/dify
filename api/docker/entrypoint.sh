@@ -117,6 +117,11 @@ elif [[ "${MODE}" == "job" ]]; then
 
   exit ${JOB_EXIT_CODE}
 
+elif [[ "${MODE}" == "fastapi" ]]; then
+  exec uvicorn fastapi_app:app \
+    --host "${DIFY_BIND_ADDRESS:-0.0.0.0}" \
+    --port "${DIFY_PORT:-5004}"
+
 else
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
