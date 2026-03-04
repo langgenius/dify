@@ -26,14 +26,14 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       </div>
       <div className="flex grow items-center gap-1 truncate px-1 py-[3px]">
         <div
-          className="truncate text-[13px] text-text-quaternary"
+          className="grow truncate text-[13px] text-text-quaternary"
           title="Configure model"
         >
           {t('detailPanel.configureModel', { ns: 'plugin' })}
         </div>
-      </div>
-      <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-        <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" />
+        <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+          <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" />
+        </div>
       </div>
     </div>
   )
