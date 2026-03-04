@@ -6,13 +6,19 @@ import type {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
-import Tooltip from '@/app/components/base/tooltip'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/app/components/base/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
@@ -113,139 +119,119 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     }
   }
 
+  const renderModelLabel = (labelKey: string, tipKey: string) => {
+    const tipText = t(tipKey, { ns: 'common' })
+
+    return (
+      <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
+        {t(labelKey, { ns: 'common' })}
+        <Tooltip>
+          <TooltipTrigger
+            aria-label={tipText}
+            delay={0}
+            render={(
+              <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+              </span>
+            )}
+          />
+          <TooltipContent>
+            <div className="w-[261px] text-text-tertiary">
+              {tipText}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
+
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 8,
-      }}
-    >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
-        <Button
-          className="relative"
-          variant={notConfigured ? 'primary' : 'secondary'}
-          size="small"
-          disabled={isLoading}
+    <>
+      <Button
+        className="relative"
+        variant={notConfigured ? 'primary' : 'secondary'}
+        size="small"
+        disabled={isLoading}
+        onClick={() => setOpen(true)}
+      >
+        {isLoading
+          ? <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />
+          : <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />}
+        {t('modelProvider.systemModelSettings', { ns: 'common' })}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="z-[60] w-[480px] max-w-[480px] overflow-hidden p-0"
+          overlayClassName="z-[60]"
         >
-          {isLoading
-            ? <span className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 animate-spin" />
-            : <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5" />}
-          {t('modelProvider.systemModelSettings', { ns: 'common' })}
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[60]">
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-4 shadow-xl">
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.systemReasoningModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
+          <DialogCloseButton className="right-5 top-5" />
+          <div className="px-6 pb-3 pr-14 pt-6">
+            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+              {t('modelProvider.systemModelSettings', { ns: 'common' })}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-text-tertiary system-xs-regular">
+              {t('modelProvider.systemModelSettingsLink', { ns: 'common' })}
+            </DialogDescription>
+          </div>
+          <div className="flex flex-col gap-4 px-6 py-3">
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.systemReasoningModel.key', 'modelProvider.systemReasoningModel.tip')}
+              <div>
+                <ModelSelector
+                  defaultModel={currentTextGenerationDefaultModel}
+                  modelList={textGenerationModelList}
+                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
+                />
+              </div>
             </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentTextGenerationDefaultModel}
-                modelList={textGenerationModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
-              />
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.embeddingModel.key', 'modelProvider.embeddingModel.tip')}
+              <div>
+                <ModelSelector
+                  defaultModel={currentEmbeddingsDefaultModel}
+                  modelList={embeddingModelList}
+                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
+              <div>
+                <ModelSelector
+                  defaultModel={currentRerankDefaultModel}
+                  modelList={rerankModelList}
+                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.speechToTextModel.key', 'modelProvider.speechToTextModel.tip')}
+              <div>
+                <ModelSelector
+                  defaultModel={currentSpeech2textDefaultModel}
+                  modelList={speech2textModelList}
+                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
+              <div>
+                <ModelSelector
+                  defaultModel={currentTTSDefaultModel}
+                  modelList={ttsModelList}
+                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                />
+              </div>
             </div>
           </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.embeddingModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.embeddingModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentEmbeddingsDefaultModel}
-                modelList={embeddingModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.rerankModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentRerankDefaultModel}
-                modelList={rerankModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.speechToTextModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.speechToTextModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentSpeech2textDefaultModel}
-                modelList={speech2textModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
-              />
-            </div>
-          </div>
-          <div className="px-6 py-1">
-            <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.ttsModel.key', { ns: 'common' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.ttsModel.tip', { ns: 'common' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-4 h-4 shrink-0"
-              />
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentTTSDefaultModel}
-                modelList={ttsModelList}
-                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end px-6 py-4">
+          <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-5">
             <Button
               onClick={() => setOpen(false)}
             >
               {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
-              className="ml-2"
               variant="primary"
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
@@ -253,9 +239,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               {t('operation.save', { ns: 'common' })}
             </Button>
           </div>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
