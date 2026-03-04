@@ -1,10 +1,6 @@
 import type {
   ModelProvider,
 } from './declarations'
-import {
-  RiAlertFill,
-  RiBrainLine,
-} from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +20,14 @@ import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
 import SystemModelSelector from './system-model-selector'
+
+type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
+
+const WARNING_TEXT_KEYS = {
+  'no-provider': 'modelProvider.noProviderInstalled',
+  'none-configured': 'modelProvider.noneConfigured',
+  'partially-configured': 'modelProvider.notConfigured',
+} as const
 
 type Props = {
   searchText: string
@@ -47,7 +51,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
     || isRerankDefaultModelLoading
     || isSpeech2textDefaultModelLoading
     || isTTSDefaultModelLoading
-  const defaultModelNotConfigured = !isDefaultModelLoading && !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []
     const notConfiguredProviders: ModelProvider[] = []
@@ -79,6 +82,23 @@ const ModelProviderPage = ({ searchText }: Props) => {
 
     return [configuredProviders, notConfiguredProviders]
   }, [providers])
+
+  const systemModelConfigStatus: SystemModelConfigStatus = useMemo(() => {
+    const defaultModels = [textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel]
+    const configuredCount = defaultModels.filter(Boolean).length
+    if (configuredCount === 0 && configuredProviders.length === 0)
+      return 'no-provider'
+    if (configuredCount === 0)
+      return 'none-configured'
+    if (configuredCount < defaultModels.length)
+      return 'partially-configured'
+    return 'fully-configured'
+  }, [configuredProviders, textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel])
+  const showWarning = !isDefaultModelLoading && systemModelConfigStatus !== 'fully-configured'
+  const warningTextKey = systemModelConfigStatus !== 'fully-configured'
+    ? WARNING_TEXT_KEYS[systemModelConfigStatus]
+    : undefined
+
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(
       provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
@@ -99,21 +119,21 @@ const ModelProviderPage = ({ searchText }: Props) => {
   return (
     <div className="relative -mt-2 pt-1">
       <div className={cn('mb-2 flex items-center')}>
-        <div className="system-md-semibold grow text-text-primary">{t('modelProvider.models', { ns: 'common' })}</div>
+        <div className="grow text-text-primary system-md-semibold">{t('modelProvider.models', { ns: 'common' })}</div>
         <div className={cn(
           'relative flex shrink-0 items-center justify-end gap-2 rounded-lg border border-transparent p-px',
-          defaultModelNotConfigured && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
+          showWarning && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
         )}
         >
-          {defaultModelNotConfigured && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
-          {defaultModelNotConfigured && (
-            <div className="system-xs-medium flex items-center gap-1 text-text-primary">
-              <RiAlertFill className="h-4 w-4 text-text-warning-secondary" />
-              <span className="max-w-[460px] truncate" title={t('modelProvider.notConfigured', { ns: 'common' })}>{t('modelProvider.notConfigured', { ns: 'common' })}</span>
+          {showWarning && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
+          {showWarning && warningTextKey && (
+            <div className="flex items-center gap-1 text-text-primary system-xs-medium">
+              <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
+              <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
             </div>
           )}
           <SystemModelSelector
-            notConfigured={defaultModelNotConfigured}
+            notConfigured={showWarning}
             textGenerationDefaultModel={textGenerationDefaultModel}
             embeddingsDefaultModel={embeddingsDefaultModel}
             rerankDefaultModel={rerankDefaultModel}
@@ -127,10 +147,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
-            <RiBrainLine className="h-5 w-5 text-text-primary" />
+            <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
           </div>
-          <div className="system-sm-medium mt-2 text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
-          <div className="system-xs-regular mt-1 text-text-tertiary">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
+          <div className="mt-2 text-text-secondary system-sm-medium">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
+          <div className="mt-1 text-text-tertiary system-xs-regular">{t('modelProvider.emptyProviderTip', { ns: 'common' })}</div>
         </div>
       )}
       {!!filteredConfiguredProviders?.length && (
@@ -145,7 +165,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {!!filteredNotConfiguredProviders?.length && (
         <>
-          <div className="system-md-semibold mb-2 flex items-center pt-2 text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
+          <div className="mb-2 flex items-center pt-2 text-text-primary system-md-semibold">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
           <div className="relative">
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard

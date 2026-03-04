@@ -4652,11 +4652,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
