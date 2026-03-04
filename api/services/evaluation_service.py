@@ -12,6 +12,7 @@ from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationCategory,
+    EvaluationConfigData,
     EvaluationItemInput,
     EvaluationRunData,
     EvaluationRunRequest,
@@ -224,7 +225,7 @@ class EvaluationService:
         target_type: str,
         target_id: str,
         account_id: str,
-        data: dict[str, Any],
+        data: EvaluationConfigData,
     ) -> EvaluationConfiguration:
         config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
         if config is None:
@@ -237,10 +238,15 @@ class EvaluationService:
             )
             session.add(config)
 
-        config.evaluation_model_provider = data.get("evaluation_model_provider")
-        config.evaluation_model = data.get("evaluation_model")
-        config.metrics_config = json.dumps(data.get("metrics_config", {}))
-        config.judgement_conditions = json.dumps(data.get("judgement_conditions", {}))
+        config.evaluation_model_provider = data.evaluation_model_provider
+        config.evaluation_model = data.evaluation_model
+        config.metrics_config = json.dumps({
+            "default_metrics": [m.model_dump() for m in data.default_metrics],
+            "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
+        })
+        config.judgement_conditions = json.dumps(
+            data.judgment_config.model_dump() if data.judgment_config else {}
+        )
         config.updated_by = account_id
         session.commit()
         session.refresh(config)
@@ -272,13 +278,6 @@ class EvaluationService:
         # Derive evaluation_category from default_metrics node types
         evaluation_category = cls._resolve_evaluation_category(run_request.default_metrics)
 
-        # Build metrics_config from default_metrics and customized_metrics
-        metrics_config: dict[str, Any] = {
-            "default_metrics": [m.model_dump() for m in run_request.default_metrics],
-        }
-        if run_request.customized_metrics is not None:
-            metrics_config["customized_metrics"] = run_request.customized_metrics.model_dump()
-
         # Save as latest EvaluationConfiguration
         config = cls.save_evaluation_config(
             session=session,
@@ -286,14 +285,7 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             account_id=account_id,
-            data={
-                "evaluation_model_provider": run_request.evaluation_model_provider,
-                "evaluation_model": run_request.evaluation_model,
-                "metrics_config": metrics_config,
-                "judgement_conditions": (
-                    run_request.judgment_config.model_dump() if run_request.judgment_config else {}
-                ),
-            },
+            data=run_request,
         )
 
         # Check concurrent run limit
@@ -338,7 +330,10 @@ class EvaluationService:
             evaluation_category=evaluation_category,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
-            metrics_config=metrics_config,
+            default_metrics=[m.model_dump() for m in run_request.default_metrics],
+            customized_metrics=(
+                run_request.customized_metrics.model_dump() if run_request.customized_metrics else None
+            ),
             judgment_config=run_request.judgment_config,
             items=items,
         )

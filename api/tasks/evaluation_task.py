@@ -82,7 +82,8 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
         target_id=run_data.target_id,
         target_type=run_data.target_type,
         items=run_data.items,
-        metrics_config=run_data.metrics_config,
+        default_metrics=run_data.default_metrics,
+        customized_metrics=run_data.customized_metrics,
         model_provider=run_data.evaluation_model_provider,
         model_name=run_data.evaluation_model,
     )

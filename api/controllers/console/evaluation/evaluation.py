@@ -20,7 +20,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
-from core.evaluation.entities.evaluation_entity import EvaluationCategory, EvaluationRunRequest
+from core.evaluation.entities.evaluation_entity import EvaluationCategory, EvaluationConfigData, EvaluationRunRequest
 from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -261,7 +261,12 @@ class EvaluationDetailApi(Resource):
         Save evaluation configuration for the target.
         """
         current_account, current_tenant_id = current_account_with_tenant()
-        data = request.get_json(force=True)
+        body = request.get_json(force=True)
+
+        try:
+            config_data = EvaluationConfigData.model_validate(body)
+        except Exception as e:
+            raise BadRequest(f"Invalid request body: {e}")
 
         with Session(db.engine, expire_on_commit=False) as session:
             config = EvaluationService.save_evaluation_config(
@@ -270,7 +275,7 @@ class EvaluationDetailApi(Resource):
                 target_type=target_type,
                 target_id=str(target.id),
                 account_id=str(current_account.id),
-                data=data,
+                data=config_data,
             )
 
         return {
