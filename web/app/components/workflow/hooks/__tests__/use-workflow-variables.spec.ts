@@ -8,8 +8,10 @@ vi.mock('reactflow', async () =>
 vi.mock('@/service/use-tools', async () =>
   (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
 
-const mockToNodeAvailableVars = vi.fn((_args: Record<string, unknown>) => [] as unknown[])
-const mockGetVarType = vi.fn((_args: Record<string, unknown>) => 'string' as string)
+const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({
+  mockToNodeAvailableVars: vi.fn((_args: Record<string, unknown>) => [] as unknown[]),
+  mockGetVarType: vi.fn((_args: Record<string, unknown>) => 'string' as string),
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
   toNodeAvailableVars: mockToNodeAvailableVars,
