@@ -18,6 +18,7 @@ vi.mock('react-i18next', async () => {
     'modelProvider.speechToTextModel.tip': 'Speech to text model tip',
     'modelProvider.ttsModel.key': 'TTS Model',
     'modelProvider.ttsModel.tip': 'TTS model tip',
+    'modelProvider.systemModelSettingsLink': 'Description text here',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',
@@ -101,7 +102,7 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeInTheDocument()
   })
 
-  it('should open modal when button is clicked', async () => {
+  it('should open dialog when button is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     const button = screen.getByRole('button', { name: /system model settings/i })
     fireEvent.click(button)
@@ -115,7 +116,7 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should close modal when cancel is clicked', async () => {
+  it('should close dialog when cancel is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {

@@ -1,13 +1,13 @@
 import type {
   ModelProvider,
 } from './declarations'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import { useDebounce } from 'ahooks'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useCheckInstalled } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
@@ -20,6 +20,7 @@ import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
 import SystemModelSelector from './system-model-selector'
+import { providerToPluginId } from './utils'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
@@ -32,14 +33,30 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
-  const { mutateCurrentWorkspace, isValidatingCurrentWorkspace } = useAppContext()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSystemFeaturesQuery()
+
+  const allPluginIds = useMemo(() => {
+    return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
+  }, [providers])
+  const { data: installedPlugins } = useCheckInstalled({
+    pluginIds: allPluginIds,
+    enabled: allPluginIds.length > 0,
+  })
+  const pluginDetailMap = useMemo(() => {
+    const map = new Map<string, PluginDetail>()
+    if (installedPlugins?.plugins) {
+      for (const plugin of installedPlugins.plugins)
+        map.set(plugin.plugin_id, plugin)
+    }
+    return map
+  }, [installedPlugins])
+  const enableMarketplace = systemFeatures?.enable_marketplace ?? false
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
     || isRerankDefaultModelLoading
@@ -109,10 +126,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  useEffect(() => {
-    mutateCurrentWorkspace()
-  }, [mutateCurrentWorkspace])
-
   return (
     <div className="relative -mt-2 pt-1">
       <div className={cn('mb-2 flex items-center')}>
@@ -123,7 +136,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         )}
         >
           {showWarning && <div className="absolute bottom-0 left-0 right-0 top-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
-          {showWarning && warningTextKey && (
+          {showWarning && (
             <div className="flex items-center gap-1 text-text-primary system-xs-medium">
               <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
               <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
@@ -140,7 +153,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace} />}
+      <QuotaPanel providers={providers} />
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
@@ -156,6 +169,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
+              pluginDetail={pluginDetailMap.get(providerToPluginId(provider.provider))}
             />
           ))}
         </div>
@@ -169,13 +183,14 @@ const ModelProviderPage = ({ searchText }: Props) => {
                 notConfigured
                 key={provider.provider}
                 provider={provider}
+                pluginDetail={pluginDetailMap.get(providerToPluginId(provider.provider))}
               />
             ))}
           </div>
         </>
       )}
       {
-        enable_marketplace && (
+        enableMarketplace && (
           <InstallFromMarketplace
             providers={providers}
             searchText={searchText}

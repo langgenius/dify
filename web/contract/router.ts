@@ -12,6 +12,7 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { modelProvidersModelsContract } from './console/model-providers'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -62,6 +63,9 @@ export const consoleRouterContract = {
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
+  },
+  modelProviders: {
+    models: modelProvidersModelsContract,
   },
   billing: {
     invoices: invoicesContract,
