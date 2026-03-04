@@ -1015,7 +1015,7 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id)
         params = FormCreateParams(
             app_id=app_model.id,
             workflow_execution_id=None,
@@ -1081,6 +1081,7 @@ class WorkflowService:
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
         )
         return node
 
