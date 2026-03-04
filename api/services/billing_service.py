@@ -428,7 +428,7 @@ class BillingService:
     ) -> dict:
         """Create or update a notification.
 
-        contents: list of {"lang": str, "title": str, "body": str, "cta_label": str, "cta_url": str}
+        contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
         start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
         Returns {"notification_id": str}.
         """
