@@ -7,7 +7,7 @@ import {
 
 // Mock the getMatchedSchemaType dependency
 vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
-  getMatchedSchemaType: (schema: any) => {
+  getMatchedSchemaType: (schema: Record<string, unknown> | null | undefined) => {
     // Return schema_type or schemaType if present
     return schema?.schema_type || schema?.schemaType || undefined
   },

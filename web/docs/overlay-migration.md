@@ -8,12 +8,14 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/portal-to-follow-elem`
   - `@/app/components/base/tooltip`
   - `@/app/components/base/modal`
+  - `@/app/components/base/confirm`
   - `@/app/components/base/select` (including `custom` / `pure`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
   - `@/app/components/base/ui/popover`
   - `@/app/components/base/ui/dialog`
+  - `@/app/components/base/ui/alert-dialog`
   - `@/app/components/base/ui/select`
 - Tracking issue: https://github.com/langgenius/dify/issues/32767
 

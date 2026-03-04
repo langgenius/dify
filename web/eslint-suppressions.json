@@ -130,7 +130,7 @@
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -325,7 +325,7 @@
   },
   "app/components/app-sidebar/dataset-info/dropdown.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -356,6 +356,11 @@
   },
   "app/components/app/annotation/add-annotation-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/app/annotation/batch-action.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -391,6 +396,11 @@
       "count": 2
     }
   },
+  "app/components/app/annotation/clear-all-annotations-confirm-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -408,6 +418,9 @@
     }
   },
   "app/components/app/annotation/edit-annotation-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -451,12 +464,20 @@
       "count": 2
     }
   },
+  "app/components/app/annotation/remove-annotation-confirm-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/app/annotation/view-annotation-modal/hit-history-no-data.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/app/annotation/view-annotation-modal/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
     },
@@ -494,6 +515,9 @@
     }
   },
   "app/components/app/app-publisher/features-wrapper.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -602,7 +626,7 @@
   },
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/app/configuration/config-var/input-type-icon.tsx": {
@@ -737,7 +761,7 @@
   },
   "app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -788,7 +812,7 @@
   },
   "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -999,6 +1023,9 @@
     }
   },
   "app/components/app/configuration/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -1189,7 +1216,7 @@
   },
   "app/components/app/overview/app-card.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
@@ -1255,7 +1282,7 @@
   },
   "app/components/app/switch-app-modal/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1527,13 +1554,16 @@
     }
   },
   "app/components/base/chat/chat-with-history/header-in-mobile.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/chat/chat-with-history/header/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1585,6 +1615,9 @@
     }
   },
   "app/components/base/chat/chat-with-history/sidebar/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -2804,7 +2837,7 @@
   },
   "app/components/base/tag-management/tag-item-editor.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/base/tag-management/tag-remove-modal.tsx": {
@@ -3145,7 +3178,7 @@
   },
   "app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
@@ -3377,7 +3410,7 @@
   },
   "app/components/datasets/documents/components/operations.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
@@ -3646,6 +3679,9 @@
     }
   },
   "app/components/datasets/documents/detail/completed/common/batch-action.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -3739,7 +3775,7 @@
   },
   "app/components/datasets/documents/detail/completed/segment-card/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -3831,7 +3867,7 @@
   },
   "app/components/datasets/external-api/external-api-modal/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -3846,6 +3882,9 @@
     }
   },
   "app/components/datasets/external-api/external-knowledge-api-card/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -3995,6 +4034,11 @@
       "count": 3
     }
   },
+  "app/components/datasets/list/dataset-card/components/dataset-card-modals.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/datasets/list/dataset-card/components/description.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4076,7 +4120,7 @@
   },
   "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
@@ -4229,7 +4273,7 @@
   },
   "app/components/develop/secret-key/secret-key-modal.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
@@ -4275,6 +4319,11 @@
   "app/components/explore/sidebar/app-nav-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    }
+  },
+  "app/components/explore/sidebar/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "app/components/explore/sidebar/no-apps/index.tsx": {
@@ -4372,6 +4421,11 @@
       "count": 2
     }
   },
+  "app/components/header/account-setting/api-based-extension-page/item.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/header/account-setting/api-based-extension-page/modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4383,6 +4437,9 @@
     }
   },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     },
@@ -4607,7 +4664,7 @@
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -4675,7 +4732,7 @@
   },
   "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
@@ -4832,7 +4889,7 @@
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -5161,7 +5218,7 @@
   },
   "app/components/plugins/plugin-auth/authorized/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -5264,6 +5321,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/plugin-detail-panel/detail-header/components/header-modals.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-detail-panel/detail-header/components/plugin-source-badge.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5279,7 +5341,7 @@
   },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
@@ -5398,6 +5460,9 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
@@ -5527,7 +5592,7 @@
   },
   "app/components/plugins/plugin-item/action.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/plugins/plugin-item/index.tsx": {
@@ -5726,6 +5791,9 @@
     }
   },
   "app/components/rag-pipeline/components/conversion.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -5884,6 +5952,9 @@
     }
   },
   "app/components/rag-pipeline/components/rag-pipeline-header/publisher/popup.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 8
     }
@@ -6115,7 +6186,7 @@
   },
   "app/components/tools/mcp/detail/content.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 12
@@ -6166,7 +6237,7 @@
   },
   "app/components/tools/mcp/mcp-service-card.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -6181,6 +6252,9 @@
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
     },
@@ -6217,6 +6291,9 @@
     }
   },
   "app/components/tools/provider/detail.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 10
     }
@@ -7002,6 +7079,11 @@
   },
   "app/components/workflow/nodes/_base/components/readonly-input-with-select-var.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/_base/components/remove-effect-var-confirm.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -9538,6 +9620,9 @@
     }
   },
   "hooks/use-pay.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -9593,6 +9678,17 @@
   "i18n/uk-UA/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
+    }
+  },
+  "lib/utils.ts": {
+    "import/consistent-type-specifier-style": {
+      "count": 1
+    },
+    "perfectionist/sort-named-imports": {
+      "count": 1
+    },
+    "style/quotes": {
+      "count": 2
     }
   },
   "models/common.ts": {
