@@ -297,17 +297,14 @@ class AccountService:
             email=email, name=name, interface_language=interface_language, password=password
         )
 
-        workspace_creation_error: Exception | None = None
         try:
             TenantService.create_owner_tenant_if_not_exist(account=account)
-        except Exception as e:  # noqa: BLE001
-            workspace_creation_error = e
+        except Exception:
+            # Enterprise-only side-effect should run independently from personal workspace creation.
+            _try_join_enterprise_default_workspace(str(account.id))
+            raise
 
-        # Enterprise-only side-effect should run independently from personal workspace creation.
         _try_join_enterprise_default_workspace(str(account.id))
-
-        if workspace_creation_error is not None:
-            raise workspace_creation_error
 
         return account
 
@@ -1363,7 +1360,6 @@ class RegisterService:
         db.session.begin_nested()
         """Register account"""
         try:
-            workspace_creation_error: Exception | None = None
             account = AccountService.create_account(
                 email=email,
                 name=name,
@@ -1387,15 +1383,13 @@ class RegisterService:
                     TenantService.create_tenant_member(tenant, account, role="owner")
                     account.current_tenant = tenant
                     tenant_was_created.send(tenant)
-                except Exception as e:  # noqa: BLE001
-                    workspace_creation_error = e
+                except Exception:
+                    _try_join_enterprise_default_workspace(str(account.id))
+                    raise
 
             db.session.commit()
 
             _try_join_enterprise_default_workspace(str(account.id))
-
-            if workspace_creation_error is not None:
-                raise workspace_creation_error
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             logger.exception("Register failed")
