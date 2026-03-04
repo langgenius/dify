@@ -59,7 +59,7 @@ const PluginVersionPicker: FC<Props> = ({
   const handleTriggerClick = () => {
     if (disabled)
       return
-    onShowChange(true)
+    onShowChange(!isShow)
   }
 
   const { data: res } = useVersionListOfPlugin(pluginID)
@@ -94,7 +94,7 @@ const PluginVersionPicker: FC<Props> = ({
           <div className="system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary">
             {t('detailPanel.switchVersion', { ns: 'plugin' })}
           </div>
-          <div className="relative">
+          <div className="relative max-h-[224px] overflow-y-auto">
             {res?.data.versions.map(version => (
               <div
                 key={version.unique_identifier}

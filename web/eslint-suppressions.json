@@ -4875,11 +4875,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-list-item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4918,14 +4913,6 @@
   "app/components/header/account-setting/model-provider-page/provider-added-card/priority-use-tip.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-icon/index.tsx": {
@@ -5422,14 +5409,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/operation-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {

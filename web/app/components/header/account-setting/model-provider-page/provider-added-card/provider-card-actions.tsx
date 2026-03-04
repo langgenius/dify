@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { useMemo } from 'react'
-import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -68,21 +67,21 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
           pluginID={detail.plugin_id}
           currentVersion={version}
           onSelect={handleVersionSelect}
+          offset={{ mainAxis: 4, crossAxis: 0 }}
           trigger={(
-            <Badge
+            <div
               className={cn(
-                'relative',
+                'relative inline-flex min-w-5 items-center justify-center gap-[3px] rounded-md border border-divider-deep px-[5px] py-[2px] text-text-tertiary system-xs-medium-uppercase',
                 versionPicker.isShow && 'bg-state-base-hover',
-                isFromMarketplace && 'hover:bg-state-base-hover',
+                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
               )}
-              uppercase
             >
               <span>{version}</span>
-              {isFromMarketplace && <span className="i-ri-arrow-down-s-line h-3 w-3 text-text-tertiary" />}
+              {isFromMarketplace && <span className="i-ri-arrow-down-s-line h-3 w-3" />}
               {hasNewVersion && (
                 <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-state-destructive-solid" />
               )}
-            </Badge>
+            </div>
           )}
         />
       )}
@@ -93,6 +92,8 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onCheckVersion={() => handleUpdate()}
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
+        placement="bottom-start"
+        popupClassName="w-[192px]"
       />
 
       <HeaderModals
