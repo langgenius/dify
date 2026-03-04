@@ -88,7 +88,9 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(m
     resumption_context = MagicMock()
     resumption_context.serialized_graph_runtime_state = "{}"
     resumption_context.get_generate_entity.return_value = generate_entity
-    mocker.patch("tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads", return_value=resumption_context)
+    mocker.patch(
+        "tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads", return_value=resumption_context
+    )
     mocker.patch("tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot", return_value=MagicMock())
 
     workflow_run = SimpleNamespace(
@@ -161,7 +163,9 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
     resumption_context = MagicMock()
     resumption_context.serialized_graph_runtime_state = "{}"
     resumption_context.get_generate_entity.return_value = generate_entity
-    mocker.patch("tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads", return_value=resumption_context)
+    mocker.patch(
+        "tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads", return_value=resumption_context
+    )
     mocker.patch("tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot", return_value=MagicMock())
 
     workflow_run = SimpleNamespace(
