@@ -1,110 +1,148 @@
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import Button from '../index'
 
 afterEach(cleanup)
-// https://testing-library.com/docs/queries/about
+
 describe('Button', () => {
-  describe('Button text', () => {
-    it('Button text should be same as children', async () => {
-      const { getByRole, container } = render(<Button>Click me</Button>)
-      expect(getByRole('button').textContent).toBe('Click me')
-      expect(container.querySelector('button')?.textContent).toBe('Click me')
+  describe('rendering', () => {
+    it('renders children text', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button')).toHaveTextContent('Click me')
+    })
+
+    it('renders as a native button element by default', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button').tagName).toBe('BUTTON')
+    })
+
+    it('defaults to type="button"', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button')).toHaveAttribute('type', 'button')
+    })
+
+    it('allows type override to submit', () => {
+      render(<Button type="submit">Submit</Button>)
+      expect(screen.getByRole('button')).toHaveAttribute('type', 'submit')
+    })
+
+    it('renders custom element via render prop', () => {
+      render(<Button render={<a href="/test" />}>Link</Button>)
+      const link = screen.getByRole('link')
+      expect(link).toHaveTextContent('Link')
+      expect(link).toHaveAttribute('href', '/test')
     })
   })
 
-  describe('Button loading', () => {
-    it('Loading button text should include same as children', async () => {
-      const { getByRole } = render(<Button loading>Click me</Button>)
-      expect(getByRole('button').textContent?.includes('Loading')).toBe(true)
-    })
-    it('Not loading button text should include same as children', async () => {
-      const { getByRole } = render(<Button loading={false}>Click me</Button>)
-      expect(getByRole('button').textContent?.includes('Loading')).toBe(false)
+  describe('variants', () => {
+    it('applies default secondary variant', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-secondary')
     })
 
-    it('Loading button should have loading classname', async () => {
+    it.each([
+      'primary',
+      'warning',
+      'secondary',
+      'secondary-accent',
+      'ghost',
+      'ghost-accent',
+      'tertiary',
+    ] as const)('applies %s variant', (variant) => {
+      render(<Button variant={variant}>Click me</Button>)
+      expect(screen.getByRole('button').className).toContain(`btn-${variant}`)
+    })
+
+    it('applies destructive modifier', () => {
+      render(<Button destructive>Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-destructive')
+    })
+  })
+
+  describe('sizes', () => {
+    it('applies default medium size', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-medium')
+    })
+
+    it.each(['small', 'medium', 'large'] as const)('applies %s size', (size) => {
+      render(<Button size={size}>Click me</Button>)
+      expect(screen.getByRole('button').className).toContain(`btn-${size}`)
+    })
+  })
+
+  describe('loading', () => {
+    it('shows spinner when loading', () => {
+      render(<Button loading>Click me</Button>)
+      expect(screen.getByRole('button').querySelector('.animate-spin')).toBeInTheDocument()
+    })
+
+    it('hides spinner when not loading', () => {
+      render(<Button loading={false}>Click me</Button>)
+      expect(screen.getByRole('button').querySelector('.animate-spin')).not.toBeInTheDocument()
+    })
+
+    it('auto-disables when loading', () => {
+      render(<Button loading>Click me</Button>)
+      expect(screen.getByRole('button')).toBeDisabled()
+    })
+
+    it('sets aria-busy when loading', () => {
+      render(<Button loading>Click me</Button>)
+      expect(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true')
+    })
+
+    it('does not set aria-busy when not loading', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
+    })
+
+    it('applies custom spinnerClassName', () => {
       const animClassName = 'anim-breath'
-      const { getByRole } = render(<Button loading spinnerClassName={animClassName}>Click me</Button>)
-      expect(getByRole('button').getElementsByClassName('animate-spin')[0]?.className).toContain(animClassName)
+      render(<Button loading spinnerClassName={animClassName}>Click me</Button>)
+      expect(screen.getByRole('button').querySelector('.animate-spin')?.className).toContain(animClassName)
     })
   })
 
-  describe('Button style', () => {
-    it('Button should have default variant', async () => {
-      const { getByRole } = render(<Button>Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-secondary')
+  describe('disabled', () => {
+    it('disables button when disabled prop is set', () => {
+      render(<Button disabled>Click me</Button>)
+      expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('Button should have primary variant', async () => {
-      const { getByRole } = render(<Button variant="primary">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-primary')
+    it('disables button when loading', () => {
+      render(<Button loading>Loading</Button>)
+      expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('Button should have warning variant', async () => {
-      const { getByRole } = render(<Button variant="warning">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-warning')
-    })
-
-    it('Button should have secondary variant', async () => {
-      const { getByRole } = render(<Button variant="secondary">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-secondary')
-    })
-
-    it('Button should have secondary-accent variant', async () => {
-      const { getByRole } = render(<Button variant="secondary-accent">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-secondary-accent')
-    })
-    it('Button should have ghost variant', async () => {
-      const { getByRole } = render(<Button variant="ghost">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-ghost')
-    })
-    it('Button should have ghost-accent variant', async () => {
-      const { getByRole } = render(<Button variant="ghost-accent">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-ghost-accent')
-    })
-
-    it('Button disabled should have disabled variant', async () => {
-      const { getByRole } = render(<Button disabled>Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-disabled')
+    it('keeps focusable when loading with focusableWhenDisabled', () => {
+      render(<Button loading focusableWhenDisabled>Loading</Button>)
+      const button = screen.getByRole('button')
+      expect(button).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
-  describe('Button size', () => {
-    it('Button should have default size', async () => {
-      const { getByRole } = render(<Button>Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-medium')
-    })
-
-    it('Button should have small size', async () => {
-      const { getByRole } = render(<Button size="small">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-small')
-    })
-
-    it('Button should have medium size', async () => {
-      const { getByRole } = render(<Button size="medium">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-medium')
-    })
-
-    it('Button should have large size', async () => {
-      const { getByRole } = render(<Button size="large">Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-large')
-    })
-  })
-
-  describe('Button destructive', () => {
-    it('Button should have destructive classname', async () => {
-      const { getByRole } = render(<Button destructive>Click me</Button>)
-      expect(getByRole('button').className).toContain('btn-destructive')
-    })
-  })
-
-  describe('Button events', () => {
-    it('onClick should been call after clicked', async () => {
+  describe('events', () => {
+    it('fires onClick when clicked', () => {
       const onClick = vi.fn()
-      const { getByRole } = render(<Button onClick={onClick}>Click me</Button>)
-      fireEvent.click(getByRole('button'))
-      expect(onClick).toHaveBeenCalled()
+      render(<Button onClick={onClick}>Click me</Button>)
+      fireEvent.click(screen.getByRole('button'))
+      expect(onClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not fire onClick when disabled', () => {
+      const onClick = vi.fn()
+      render(<Button onClick={onClick} disabled>Click me</Button>)
+      fireEvent.click(screen.getByRole('button'))
+      expect(onClick).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('ref forwarding', () => {
+    it('forwards ref to the button element', () => {
+      const ref = React.createRef<HTMLButtonElement>()
+      render(<Button ref={ref}>Click me</Button>)
+      expect(ref.current).toBeInstanceOf(HTMLButtonElement)
     })
   })
 })
