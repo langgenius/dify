@@ -105,5 +105,9 @@ def init_app(app: Flask):
     """Initialize the request logging extension."""
     if not dify_config.ENABLE_REQUEST_LOGGING:
         return
-    request_started.connect(_log_request_started, app)
-    request_finished.connect(_log_request_finished, app)
+    # Use weak=False and check if already connected to avoid duplicate handlers
+    # when init_app() is called multiple times (e.g. during testing or reloads)
+    if not request_started.has_receivers_for(app):
+        request_started.connect(_log_request_started, app)
+    if not request_finished.has_receivers_for(app):
+        request_finished.connect(_log_request_finished, app)
