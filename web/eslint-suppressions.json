@@ -8078,11 +8078,8 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message.tsx": {
@@ -9712,17 +9709,6 @@
   "i18n/uk-UA/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "lib/utils.ts": {
-    "import/consistent-type-specifier-style": {
-      "count": 1
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    },
-    "style/quotes": {
-      "count": 2
     }
   },
   "models/common.ts": {

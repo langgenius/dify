@@ -76,7 +76,6 @@
     "@lexical/selection": "0.38.2",
     "@lexical/text": "0.38.2",
     "@lexical/utils": "0.39.0",
-    "@monaco-editor/react": "4.7.0",
     "@octokit/core": "6.1.6",
     "@octokit/request-error": "6.1.8",
     "@orpc/client": "1.13.6",
@@ -126,6 +125,7 @@
     "mermaid": "11.11.0",
     "mime": "4.1.0",
     "mitt": "3.0.1",
+    "modern-monaco": "0.4.0",
     "negotiator": "1.0.0",
     "next": "16.1.5",
     "next-themes": "0.4.6",
@@ -255,7 +255,6 @@
   },
   "pnpm": {
     "overrides": {
-      "@monaco-editor/loader": "1.5.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
       "@stylistic/eslint-plugin": "https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8",
       "array-includes": "npm:@nolyfill/array-includes@^1",
