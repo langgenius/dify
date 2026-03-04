@@ -1,5 +1,4 @@
 import type { VariantProps } from 'class-variance-authority'
-import type { CSSProperties } from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
@@ -24,6 +23,9 @@ const buttonVariants = cva(
         medium: 'btn-medium',
         large: 'btn-large',
       },
+      destructive: {
+        true: 'btn-destructive',
+      },
     },
     defaultVariants: {
       variant: 'secondary',
@@ -33,9 +35,7 @@ const buttonVariants = cva(
 )
 
 export type ButtonProps = {
-  destructive?: boolean
   loading?: boolean
-  styleCss?: CSSProperties
   spinnerClassName?: string
   ref?: React.Ref<HTMLButtonElement>
   render?: React.ReactElement
@@ -48,7 +48,6 @@ const Button = ({
   size,
   destructive,
   loading,
-  styleCss,
   children,
   spinnerClassName,
   ref,
@@ -63,9 +62,8 @@ const Button = ({
   return (
     <BaseButton
       type={type}
-      className={cn(buttonVariants({ variant, size, className }), destructive && 'btn-destructive')}
+      className={cn(buttonVariants({ variant, size, destructive, className }))}
       ref={ref}
-      style={styleCss}
       render={render}
       {...props}
       disabled={isDisabled}

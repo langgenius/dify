@@ -46,6 +46,7 @@ function ComplianceDocActionVisual({
     return (
       <div
         aria-hidden
+        data-disabled={isPending || undefined}
         className={cn(
           'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
           isPending && 'cursor-not-allowed',

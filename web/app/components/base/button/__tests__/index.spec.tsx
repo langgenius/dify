@@ -109,11 +109,6 @@ describe('Button', () => {
       expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('disables button when loading', () => {
-      render(<Button loading>Loading</Button>)
-      expect(screen.getByRole('button')).toBeDisabled()
-    })
-
     it('keeps focusable when loading with focusableWhenDisabled', () => {
       render(<Button loading focusableWhenDisabled>Loading</Button>)
       const button = screen.getByRole('button')
@@ -132,6 +127,13 @@ describe('Button', () => {
     it('does not fire onClick when disabled', () => {
       const onClick = vi.fn()
       render(<Button onClick={onClick} disabled>Click me</Button>)
+      fireEvent.click(screen.getByRole('button'))
+      expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('does not fire onClick when loading', () => {
+      const onClick = vi.fn()
+      render(<Button onClick={onClick} loading>Click me</Button>)
       fireEvent.click(screen.getByRole('button'))
       expect(onClick).not.toHaveBeenCalled()
     })
