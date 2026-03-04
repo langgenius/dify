@@ -242,11 +242,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-5">
             <Button
+              className="min-w-[72px]"
               onClick={() => setOpen(false)}
             >
               {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
+              className="min-w-[72px]"
               variant="primary"
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
