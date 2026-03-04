@@ -89,8 +89,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     try {
       await mutateDeleteApp(app.id)
       notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
-      if (onRefresh)
-        onRefresh()
       onPlanInfoChanged()
     }
     catch (e: any) {
@@ -102,7 +100,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     finally {
       setShowConfirmDelete(false)
     }
-  }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, onRefresh, t])
+  }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, t])
 
   const onDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (isDeleting)

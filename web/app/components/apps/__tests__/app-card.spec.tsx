@@ -550,7 +550,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should call onRefresh after successful delete', async () => {
+    it('should not call onRefresh after successful delete', async () => {
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
@@ -559,8 +559,9 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(mockOnRefresh).toHaveBeenCalled()
+        expect(mockDeleteAppMutation).toHaveBeenCalled()
       })
+      expect(mockOnRefresh).not.toHaveBeenCalled()
     })
 
     it('should handle delete failure', async () => {

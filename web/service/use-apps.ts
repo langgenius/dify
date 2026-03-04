@@ -138,12 +138,24 @@ export const useInvalidateAppList = () => {
 }
 
 export const useDeleteAppMutation = () => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationKey: consoleQuery.apps.deleteApp.mutationKey(),
     mutationFn: (appId: string) => {
       return consoleClient.apps.deleteApp({
         params: { appId },
       })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [NAME_SPACE, 'list'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
     },
   })
 }
