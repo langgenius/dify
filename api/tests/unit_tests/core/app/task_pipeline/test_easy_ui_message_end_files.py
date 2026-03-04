@@ -40,6 +40,11 @@ class TestMessageEndStreamResponseFiles:
         pipeline._task_state.llm_result.usage = Mock()
         pipeline._application_generate_entity = Mock()
         pipeline._application_generate_entity.task_id = str(uuid.uuid4())
+        # Bind the real _prepare_file_dict so that _message_end_to_stream_response
+        # exercises the production implementation instead of a Mock.
+        pipeline._prepare_file_dict = EasyUIBasedGenerateTaskPipeline._prepare_file_dict.__get__(
+            pipeline, EasyUIBasedGenerateTaskPipeline
+        )
         return pipeline
 
     @pytest.fixture
