@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@/app/components/base/ui/dialog'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
@@ -21,13 +20,8 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open)
-      onClose()
-  }, [onClose])
-
   return (
-    <Dialog open={isShow} onOpenChange={handleOpenChange} disablePointerDismissal>
+    <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
         className="w-[618px] max-w-[618px] rounded-2xl border border-effects-highlight bg-background-default-subtle shadow-lg"
         overlayClassName="bg-workflow-canvas-canvas-overlay"
