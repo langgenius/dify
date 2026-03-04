@@ -41,19 +41,19 @@ type SystemModelSelectorProps = {
   isLoading?: boolean
 }
 
-type SystemModelLabelKey =
-  | 'modelProvider.systemReasoningModel.key'
-  | 'modelProvider.embeddingModel.key'
-  | 'modelProvider.rerankModel.key'
-  | 'modelProvider.speechToTextModel.key'
-  | 'modelProvider.ttsModel.key'
+type SystemModelLabelKey
+  = | 'modelProvider.systemReasoningModel.key'
+    | 'modelProvider.embeddingModel.key'
+    | 'modelProvider.rerankModel.key'
+    | 'modelProvider.speechToTextModel.key'
+    | 'modelProvider.ttsModel.key'
 
-type SystemModelTipKey =
-  | 'modelProvider.systemReasoningModel.tip'
-  | 'modelProvider.embeddingModel.tip'
-  | 'modelProvider.rerankModel.tip'
-  | 'modelProvider.speechToTextModel.tip'
-  | 'modelProvider.ttsModel.tip'
+type SystemModelTipKey
+  = | 'modelProvider.systemReasoningModel.tip'
+    | 'modelProvider.embeddingModel.tip'
+    | 'modelProvider.rerankModel.tip'
+    | 'modelProvider.speechToTextModel.tip'
+    | 'modelProvider.ttsModel.tip'
 
 const SystemModel: FC<SystemModelSelectorProps> = ({
   textGenerationDefaultModel,
@@ -176,7 +176,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="z-[60] w-[480px] max-w-[480px] overflow-hidden p-0"
+          backdropProps={{ forceRender: true }}
+          className="w-[480px] max-w-[480px] overflow-hidden p-0"
         >
           <DialogCloseButton className="right-5 top-5" />
           <div className="px-6 pb-3 pr-14 pt-6">
