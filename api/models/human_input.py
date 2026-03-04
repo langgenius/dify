@@ -93,6 +93,12 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
 class HumanInputDelivery(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_deliveries"
+    __table_args__ = (
+        sa.Index(
+            None,
+            "form_id",
+        ),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -190,6 +196,10 @@ RecipientPayload = Annotated[
 
 class HumanInputFormRecipient(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_form_recipients"
+    __table_args__ = (
+        sa.Index(None, "form_id"),
+        sa.Index(None, "delivery_id"),
+    )
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
