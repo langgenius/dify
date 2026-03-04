@@ -9,10 +9,10 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from dify_graph.model_runtime.entities.model_entities import ModelType
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
 from services.dataset_service import DatasetService
@@ -25,7 +25,9 @@ class DatasetServiceIntegrationDataFactory:
     """Factory for creating real database entities used by integration tests."""
 
     @staticmethod
-    def create_account_with_tenant(role: TenantAccountRole = TenantAccountRole.OWNER) -> tuple[Account, Tenant]:
+    def create_account_with_tenant(
+        db_session_with_containers: Session, role: TenantAccountRole = TenantAccountRole.OWNER
+    ) -> tuple[Account, Tenant]:
         """Create an account and tenant, then bind the account as current tenant member."""
         account = Account(
             email=f"{uuid4()}@example.com",
@@ -34,8 +36,8 @@ class DatasetServiceIntegrationDataFactory:
             status="active",
         )
         tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
-        db.session.add_all([account, tenant])
-        db.session.flush()
+        db_session_with_containers.add_all([account, tenant])
+        db_session_with_containers.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -43,8 +45,8 @@ class DatasetServiceIntegrationDataFactory:
             role=role,
             current=True,
         )
-        db.session.add(join)
-        db.session.flush()
+        db_session_with_containers.add(join)
+        db_session_with_containers.flush()
 
         # Keep tenant context on the in-memory user without opening a separate session.
         account.role = role
@@ -53,6 +55,7 @@ class DatasetServiceIntegrationDataFactory:
 
     @staticmethod
     def create_dataset(
+        db_session_with_containers: Session,
         tenant_id: str,
         created_by: str,
         name: str = "Test Dataset",
@@ -82,12 +85,14 @@ class DatasetServiceIntegrationDataFactory:
             collection_binding_id=collection_binding_id,
             chunk_structure=chunk_structure,
         )
-        db.session.add(dataset)
-        db.session.flush()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.flush()
         return dataset
 
     @staticmethod
-    def create_document(dataset: Dataset, created_by: str, name: str = "doc.txt") -> Document:
+    def create_document(
+        db_session_with_containers: Session, dataset: Dataset, created_by: str, name: str = "doc.txt"
+    ) -> Document:
         """Create a document row belonging to the given dataset."""
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -102,8 +107,8 @@ class DatasetServiceIntegrationDataFactory:
             indexing_status="completed",
             doc_form="text_model",
         )
-        db.session.add(document)
-        db.session.flush()
+        db_session_with_containers.add(document)
+        db_session_with_containers.flush()
         return document
 
     @staticmethod
@@ -118,10 +123,10 @@ class DatasetServiceIntegrationDataFactory:
 class TestDatasetServiceCreateDataset:
     """Integration coverage for DatasetService.create_empty_dataset."""
 
-    def test_create_internal_dataset_basic_success(self, db_session_with_containers):
+    def test_create_internal_dataset_basic_success(self, db_session_with_containers: Session):
         """Create a basic internal dataset with minimal configuration."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
 
         # Act
         result = DatasetService.create_empty_dataset(
@@ -133,17 +138,17 @@ class TestDatasetServiceCreateDataset:
         )
 
         # Assert
-        created_dataset = db.session.get(Dataset, result.id)
+        created_dataset = db_session_with_containers.get(Dataset, result.id)
         assert created_dataset is not None
         assert created_dataset.provider == "vendor"
         assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
         assert created_dataset.embedding_model_provider is None
         assert created_dataset.embedding_model is None
 
-    def test_create_internal_dataset_with_economy_indexing(self, db_session_with_containers):
+    def test_create_internal_dataset_with_economy_indexing(self, db_session_with_containers: Session):
         """Create an internal dataset with economy indexing and no embedding model."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
 
         # Act
         result = DatasetService.create_empty_dataset(
@@ -155,15 +160,15 @@ class TestDatasetServiceCreateDataset:
         )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.indexing_technique == "economy"
         assert result.embedding_model_provider is None
         assert result.embedding_model is None
 
-    def test_create_internal_dataset_with_high_quality_indexing(self, db_session_with_containers):
+    def test_create_internal_dataset_with_high_quality_indexing(self, db_session_with_containers: Session):
         """Create a high-quality dataset and persist embedding model settings."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model()
 
         # Act
@@ -179,7 +184,7 @@ class TestDatasetServiceCreateDataset:
             )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.indexing_technique == "high_quality"
         assert result.embedding_model_provider == embedding_model.provider
         assert result.embedding_model == embedding_model.model_name
@@ -188,11 +193,12 @@ class TestDatasetServiceCreateDataset:
             model_type=ModelType.TEXT_EMBEDDING,
         )
 
-    def test_create_dataset_duplicate_name_error(self, db_session_with_containers):
+    def test_create_dataset_duplicate_name_error(self, db_session_with_containers: Session):
         """Raise duplicate-name error when the same tenant already has the name."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name="Duplicate Dataset",
@@ -209,10 +215,10 @@ class TestDatasetServiceCreateDataset:
                 account=account,
             )
 
-    def test_create_external_dataset_success(self, db_session_with_containers):
+    def test_create_external_dataset_success(self, db_session_with_containers: Session):
         """Create an external dataset and persist external knowledge binding."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         external_knowledge_api_id = str(uuid4())
         external_knowledge_id = "knowledge-123"
 
@@ -231,16 +237,16 @@ class TestDatasetServiceCreateDataset:
             )
 
         # Assert
-        binding = db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=result.id).first()
+        binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(dataset_id=result.id).first()
         assert result.provider == "external"
         assert binding is not None
         assert binding.external_knowledge_id == external_knowledge_id
         assert binding.external_knowledge_api_id == external_knowledge_api_id
 
-    def test_create_dataset_with_retrieval_model_and_reranking(self, db_session_with_containers):
+    def test_create_dataset_with_retrieval_model_and_reranking(self, db_session_with_containers: Session):
         """Create a high-quality dataset with retrieval/reranking settings."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model()
         retrieval_model = RetrievalModel(
             search_method=RetrievalMethod.SEMANTIC_SEARCH,
@@ -271,14 +277,16 @@ class TestDatasetServiceCreateDataset:
             )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.retrieval_model == retrieval_model.model_dump()
         mock_check_reranking.assert_called_once_with(tenant.id, "cohere", "rerank-english-v2.0")
 
-    def test_create_internal_dataset_with_high_quality_indexing_custom_embedding(self, db_session_with_containers):
+    def test_create_internal_dataset_with_high_quality_indexing_custom_embedding(
+        self, db_session_with_containers: Session
+    ):
         """Create high-quality dataset with explicitly configured embedding model."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         embedding_provider = "openai"
         embedding_model_name = "text-embedding-3-small"
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model(
@@ -303,7 +311,7 @@ class TestDatasetServiceCreateDataset:
             )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.indexing_technique == "high_quality"
         assert result.embedding_model_provider == embedding_provider
         assert result.embedding_model == embedding_model_name
@@ -315,10 +323,10 @@ class TestDatasetServiceCreateDataset:
             model=embedding_model_name,
         )
 
-    def test_create_internal_dataset_with_retrieval_model(self, db_session_with_containers):
+    def test_create_internal_dataset_with_retrieval_model(self, db_session_with_containers: Session):
         """Persist retrieval model settings when creating an internal dataset."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         retrieval_model = RetrievalModel(
             search_method=RetrievalMethod.SEMANTIC_SEARCH,
             reranking_enable=False,
@@ -338,13 +346,13 @@ class TestDatasetServiceCreateDataset:
         )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.retrieval_model == retrieval_model.model_dump()
 
-    def test_create_internal_dataset_with_custom_permission(self, db_session_with_containers):
+    def test_create_internal_dataset_with_custom_permission(self, db_session_with_containers: Session):
         """Persist canonical custom permission when creating an internal dataset."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
 
         # Act
         result = DatasetService.create_empty_dataset(
@@ -357,13 +365,13 @@ class TestDatasetServiceCreateDataset:
         )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.permission == DatasetPermissionEnum.ALL_TEAM
 
-    def test_create_external_dataset_missing_api_id_error(self, db_session_with_containers):
+    def test_create_external_dataset_missing_api_id_error(self, db_session_with_containers: Session):
         """Raise error when external API template does not exist."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
@@ -381,10 +389,10 @@ class TestDatasetServiceCreateDataset:
                     external_knowledge_id="knowledge-123",
                 )
 
-    def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers):
+    def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers: Session):
         """Raise error when external knowledge id is missing for external dataset creation."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
@@ -406,10 +414,10 @@ class TestDatasetServiceCreateDataset:
 class TestDatasetServiceCreateRagPipelineDataset:
     """Integration coverage for DatasetService.create_empty_rag_pipeline_dataset."""
 
-    def test_create_rag_pipeline_dataset_with_name_success(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_with_name_success(self, db_session_with_containers: Session):
         """Create rag-pipeline dataset and pipeline rows when a name is provided."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
         entity = RagPipelineDatasetCreateEntity(
             name="RAG Pipeline Dataset",
@@ -425,8 +433,8 @@ class TestDatasetServiceCreateRagPipelineDataset:
             )
 
         # Assert
-        created_dataset = db.session.get(Dataset, result.id)
-        created_pipeline = db.session.get(Pipeline, result.pipeline_id)
+        created_dataset = db_session_with_containers.get(Dataset, result.id)
+        created_pipeline = db_session_with_containers.get(Pipeline, result.pipeline_id)
         assert created_dataset is not None
         assert created_dataset.name == entity.name
         assert created_dataset.runtime_mode == "rag_pipeline"
@@ -436,10 +444,10 @@ class TestDatasetServiceCreateRagPipelineDataset:
         assert created_pipeline.name == entity.name
         assert created_pipeline.created_by == account.id
 
-    def test_create_rag_pipeline_dataset_with_auto_generated_name(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_with_auto_generated_name(self, db_session_with_containers: Session):
         """Create rag-pipeline dataset with generated incremental name when input name is empty."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         generated_name = "Untitled 1"
         icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
         entity = RagPipelineDatasetCreateEntity(
@@ -460,25 +468,26 @@ class TestDatasetServiceCreateRagPipelineDataset:
             )
 
         # Assert
-        db.session.refresh(result)
-        created_pipeline = db.session.get(Pipeline, result.pipeline_id)
+        db_session_with_containers.refresh(result)
+        created_pipeline = db_session_with_containers.get(Pipeline, result.pipeline_id)
         assert result.name == generated_name
         assert created_pipeline is not None
         assert created_pipeline.name == generated_name
         mock_generate_name.assert_called_once()
 
-    def test_create_rag_pipeline_dataset_duplicate_name_error(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_duplicate_name_error(self, db_session_with_containers: Session):
         """Raise duplicate-name error when rag-pipeline dataset name already exists."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         duplicate_name = "Duplicate RAG Dataset"
         DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name=duplicate_name,
             indexing_technique=None,
         )
-        db.session.commit()
+        db_session_with_containers.commit()
         icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
         entity = RagPipelineDatasetCreateEntity(
             name=duplicate_name,
@@ -496,10 +505,10 @@ class TestDatasetServiceCreateRagPipelineDataset:
                 tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
-    def test_create_rag_pipeline_dataset_with_custom_permission(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_with_custom_permission(self, db_session_with_containers: Session):
         """Persist canonical custom permission for rag-pipeline dataset creation."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         icon_info = IconInfo(icon="📙", icon_background="#FFF4ED", icon_type="emoji")
         entity = RagPipelineDatasetCreateEntity(
             name="Custom Permission RAG Dataset",
@@ -515,13 +524,13 @@ class TestDatasetServiceCreateRagPipelineDataset:
             )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.permission == DatasetPermissionEnum.ALL_TEAM
 
-    def test_create_rag_pipeline_dataset_with_icon_info(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_with_icon_info(self, db_session_with_containers: Session):
         """Persist icon metadata when creating rag-pipeline dataset."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         icon_info = IconInfo(
             icon="📚",
             icon_background="#E8F5E9",
@@ -542,23 +551,25 @@ class TestDatasetServiceCreateRagPipelineDataset:
             )
 
         # Assert
-        db.session.refresh(result)
+        db_session_with_containers.refresh(result)
         assert result.icon_info == icon_info.model_dump()
 
 
 class TestDatasetServiceUpdateAndDeleteDataset:
     """Integration coverage for SQL-backed update and delete behavior."""
 
-    def test_update_dataset_duplicate_name_error(self, db_session_with_containers):
+    def test_update_dataset_duplicate_name_error(self, db_session_with_containers: Session):
         """Reject update when target name already exists within the same tenant."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         source_dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name="Source Dataset",
         )
         DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name="Existing Dataset",
@@ -568,17 +579,20 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         with pytest.raises(ValueError, match="Dataset name already exists"):
             DatasetService.update_dataset(source_dataset.id, {"name": "Existing Dataset"}, account)
 
-    def test_delete_dataset_with_documents_success(self, db_session_with_containers):
+    def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session):
         """Delete a dataset that already has documents."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             indexing_technique="high_quality",
             chunk_structure="text_model",
         )
-        DatasetServiceIntegrationDataFactory.create_document(dataset=dataset, created_by=account.id)
+        DatasetServiceIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, created_by=account.id
+        )
 
         # Act
         with patch("services.dataset_service.dataset_was_deleted") as dataset_deleted_signal:
@@ -586,14 +600,15 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Assert
         assert result is True
-        assert db.session.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
         dataset_deleted_signal.send.assert_called_once_with(dataset)
 
-    def test_delete_empty_dataset_success(self, db_session_with_containers):
+    def test_delete_empty_dataset_success(self, db_session_with_containers: Session):
         """Delete a dataset that has no documents and no indexing technique."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             indexing_technique=None,
@@ -606,14 +621,15 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Assert
         assert result is True
-        assert db.session.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
         dataset_deleted_signal.send.assert_called_once_with(dataset)
 
-    def test_delete_dataset_with_partial_none_values(self, db_session_with_containers):
+    def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session):
         """Delete dataset when indexing_technique is None but doc_form path still exists."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             indexing_technique=None,
@@ -626,17 +642,17 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Assert
         assert result is True
-        assert db.session.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
         dataset_deleted_signal.send.assert_called_once_with(dataset)
 
 
 class TestDatasetServiceRetrievalConfiguration:
     """Integration coverage for retrieval configuration persistence."""
 
-    def test_get_dataset_retrieval_configuration(self, db_session_with_containers):
+    def test_get_dataset_retrieval_configuration(self, db_session_with_containers: Session):
         """Return retrieval configuration that is persisted in SQL."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         retrieval_model = {
             "search_method": "semantic_search",
             "top_k": 5,
@@ -644,6 +660,7 @@ class TestDatasetServiceRetrievalConfiguration:
             "reranking_enable": True,
         }
         dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             retrieval_model=retrieval_model,
@@ -658,11 +675,12 @@ class TestDatasetServiceRetrievalConfiguration:
         assert result.retrieval_model["search_method"] == "semantic_search"
         assert result.retrieval_model["top_k"] == 5
 
-    def test_update_dataset_retrieval_configuration(self, db_session_with_containers):
+    def test_update_dataset_retrieval_configuration(self, db_session_with_containers: Session):
         """Persist retrieval configuration updates through DatasetService.update_dataset."""
         # Arrange
-        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant()
+        account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetServiceIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             indexing_technique="high_quality",
@@ -684,6 +702,6 @@ class TestDatasetServiceRetrievalConfiguration:
         result = DatasetService.update_dataset(dataset.id, update_data, account)
 
         # Assert
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
         assert result.id == dataset.id
         assert dataset.retrieval_model == update_data["retrieval_model"]

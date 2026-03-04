@@ -106,6 +106,10 @@ vi.mock('@/service/use-apps', () => ({
     error: mockServiceState.error,
     refetch: mockRefetch,
   }),
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/service/tag', () => ({

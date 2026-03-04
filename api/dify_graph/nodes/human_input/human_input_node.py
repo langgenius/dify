@@ -3,7 +3,6 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import InvokeFrom, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import (
@@ -21,7 +20,6 @@ from dify_graph.repositories.human_input_form_repository import (
     HumanInputFormRepository,
 )
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 
 from .entities import DeliveryChannelConfig, HumanInputNodeData, apply_debug_email_recipient
@@ -66,7 +64,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        form_repository: HumanInputFormRepository | None = None,
+        form_repository: HumanInputFormRepository,
     ) -> None:
         super().__init__(
             id=id,
@@ -74,11 +72,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        if form_repository is None:
-            form_repository = HumanInputFormRepositoryImpl(
-                session_factory=db.engine,
-                tenant_id=self.tenant_id,
-            )
         self._form_repository = form_repository
 
     @classmethod
