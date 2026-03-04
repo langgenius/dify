@@ -36,8 +36,8 @@ class HumanInputForm(DefaultFieldsMixin, Base):
             "workflow_run_id",
             "node_id",
         ),
-        sa.Index('human_input_forms_status_expiration_time_idx', "status", "expiration_time"),
-        sa.Index('human_input_forms_status_created_at_idx', "status", "created_at"),
+        sa.Index("human_input_forms_status_expiration_time_idx", "status", "expiration_time"),
+        sa.Index("human_input_forms_status_created_at_idx", "status", "created_at"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
