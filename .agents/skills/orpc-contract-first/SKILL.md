@@ -29,7 +29,7 @@ web/service/client.ts
 1. Define contract in `web/contract/console/{domain}.ts` or `web/contract/marketplace.ts`
    - Use `base.route({...}).output(type<...>())` as baseline.
    - Add `.input(type<...>())` only when request has `params/query/body`.
-   - For `GET` without input, omit `.input(...)` (do not use `type<unknown>()`).
+   - For `GET` without input, omit `.input(...)` (do not use `.input(type<unknown>())`).
 2. Register contract in `web/contract/router.ts`
    - Import directly from domain files and nest by API prefix.
 3. Consume from UI call sites via oRPC query utils.
@@ -65,7 +65,7 @@ const invoiceQuery = useQuery({
 
 ## Mutation Usage Decision Rule
 
-1. Default: use `useMutation(consoleQuery|marketplaceQuery.xxx.mutationOptions(...))`.
+1. Default: call mutation helpers from `consoleQuery` / `marketplaceQuery`, for example `useMutation(consoleQuery.billing.bindPartnerStack.mutationOptions(...))`.
 2. If mutation flow is heavily custom, use oRPC clients as `mutationFn` (for example `consoleClient.xxx` / `marketplaceClient.xxx`), instead of generic handwritten non-oRPC mutation logic.
 
 ## Key API Guide (`.key` vs `.queryKey` vs `.mutationKey`)
@@ -89,9 +89,9 @@ const invoiceQuery = useQuery({
 ## Contract Rules
 
 - **Input structure**: Always use `{ params, query?, body? }` format
-- **No-input GET**: Omit `.input(...)`; do not write `.input(type<unknown>())`
+- **No-input GET**: Omit `.input(...)`; do not use `.input(type<unknown>())`
 - **Path params**: Use `{paramName}` in path, match in `params` object
-- **Router nesting**: Group by API prefix (e.g., `/billing/*` → `billing: {}`)
+- **Router nesting**: Group by API prefix (e.g., `/billing/*` -> `billing: {}`)
 - **No barrel files**: Import directly from specific files
 - **Types**: Import from `@/types/`, use `type<T>()` helper
 - **Mutations**: Prefer `mutationOptions`; use explicit `mutationKey` mainly for defaults/filtering/devtools
