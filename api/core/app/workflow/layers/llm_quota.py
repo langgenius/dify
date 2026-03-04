@@ -12,17 +12,17 @@ from typing_extensions import override
 from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
-from core.workflow.enums import NodeType
-from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase
-from core.workflow.graph_events.node import NodeRunSucceededEvent
-from core.workflow.nodes.base.node import Node
+from dify_graph.enums import NodeType
+from dify_graph.graph_engine.entities.commands import AbortCommand, CommandType
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase
+from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.nodes.base.node import Node
 
 if TYPE_CHECKING:
-    from core.workflow.nodes.llm.node import LLMNode
-    from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-    from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
+    from dify_graph.nodes.llm.node import LLMNode
+    from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+    from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 
 logger = logging.getLogger(__name__)
 

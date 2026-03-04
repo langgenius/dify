@@ -8,14 +8,14 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     ExternalRecipient,
     MemberRecipient,
 )
-from core.workflow.runtime import VariablePool
+from dify_graph.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_template_renderer import render_email_template
