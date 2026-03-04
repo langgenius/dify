@@ -67,7 +67,7 @@ const Button = ({
       render={render}
       {...props}
       disabled={isDisabled}
-      focusableWhenDisabled={focusableWhenDisabled ?? loading}
+      focusableWhenDisabled={focusableWhenDisabled}
       aria-busy={loading || undefined}
     >
       {children}
