@@ -204,8 +204,8 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
 
     resource_type = "dataset"
     resource_model = Dataset
-    resource_id_field = "dataset_id"
-    token_prefix = "ds-"
+    resource_id_field = "app_id"
+    token_prefix = "dataset-"
 
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
@@ -220,4 +220,4 @@ class DatasetApiKeyResource(BaseApiKeyResource):
 
     resource_type = "dataset"
     resource_model = Dataset
-    resource_id_field = "dataset_id"
+    resource_id_field = "app_id"
