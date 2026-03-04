@@ -20,9 +20,10 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
-from core.evaluation.entities.evaluation_entity import EvaluationCategory
+from core.evaluation.entities.evaluation_entity import EvaluationCategory, EvaluationRunRequest
 from core.workflow.file import helpers as file_helpers
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import App
@@ -332,32 +333,42 @@ class EvaluationRunApi(Resource):
         """
         Start an evaluation run.
 
-        Expects multipart form data with:
-        - file: XLSX dataset file
-        - evaluation_category: one of llm, retrieval, agent, workflow
+        Expects JSON body with:
+        - file_id: uploaded dataset file ID
+        - evaluation_model: evaluation model name
+        - evaluation_model_provider: evaluation model provider
+        - default_metrics: list of default metric objects
+        - customized_metrics: customized metrics object (optional)
+        - judgment_config: judgment conditions config (optional)
         """
         current_account, current_tenant_id = current_account_with_tenant()
 
-        # Validate file upload
-        if "file" not in request.files:
-            raise BadRequest("Dataset file is required.")
-        file = request.files["file"]
-        if not file.filename or not file.filename.endswith(".xlsx"):
-            raise BadRequest("Dataset file must be an XLSX file.")
+        body = request.get_json(force=True)
+        if not body:
+            raise BadRequest("Request body is required.")
 
-        dataset_content = file.read()
+        # Validate and parse request body
+        try:
+            run_request = EvaluationRunRequest.model_validate(body)
+        except Exception as e:
+            raise BadRequest(f"Invalid request body: {e}")
+
+        # Load dataset file
+        upload_file = (
+            db.session.query(UploadFile)
+            .filter_by(id=run_request.file_id, tenant_id=current_tenant_id)
+            .first()
+        )
+        if not upload_file:
+            raise NotFound("Dataset file not found.")
+
+        try:
+            dataset_content = storage.load_once(upload_file.key)
+        except Exception:
+            raise BadRequest("Failed to read dataset file.")
+
         if not dataset_content:
             raise BadRequest("Dataset file is empty.")
-
-        # Validate evaluation category
-        category_str = request.form.get("evaluation_category", "llm")
-        try:
-            evaluation_category = EvaluationCategory(category_str)
-        except ValueError:
-            raise BadRequest(
-                f"Invalid evaluation_category: {category_str}. "
-                f"Must be one of: {', '.join(e.value for e in EvaluationCategory)}"
-            )
 
         try:
             with Session(db.engine, expire_on_commit=False) as session:
@@ -368,7 +379,7 @@ class EvaluationRunApi(Resource):
                     target_id=str(target.id),
                     account_id=str(current_account.id),
                     dataset_file_content=dataset_content,
-                    evaluation_category=evaluation_category,
+                    run_request=run_request,
                 )
                 return _serialize_evaluation_run(evaluation_run), 200
         except EvaluationFrameworkNotConfiguredError as e:

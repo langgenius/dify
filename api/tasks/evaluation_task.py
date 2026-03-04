@@ -1,6 +1,8 @@
 import io
 import json
 import logging
+from configs import dify_config
+from models.model import UploadFile
 from typing import Any
 
 from celery import shared_task
@@ -279,20 +281,16 @@ def _store_result_file(
     """Store result XLSX file and return the UploadFile ID."""
     try:
         from extensions.ext_storage import storage
-        from models.model import UploadFile
-
         from libs.uuid_utils import uuidv7
 
-        file_id = str(uuidv7())
         filename = f"evaluation-result-{run_id[:8]}.xlsx"
-        storage_key = f"evaluation_results/{tenant_id}/{file_id}.xlsx"
+        storage_key = f"evaluation_results/{tenant_id}/{str(uuidv7())}.xlsx"
 
         storage.save(storage_key, xlsx_content)
 
-        upload_file = UploadFile(
-            id=file_id,
+        upload_file: UploadFile = UploadFile(
             tenant_id=tenant_id,
-            storage_type="evaluation_result",
+            storage_type=dify_config.STORAGE_TYPE,
             key=storage_key,
             name=filename,
             size=len(xlsx_content),
@@ -300,10 +298,12 @@ def _store_result_file(
             mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             created_by_role="account",
             created_by="system",
+            created_at=naive_utc_now(),
+            used=False,
         )
         session.add(upload_file)
         session.commit()
-        return file_id
+        return upload_file.id
     except Exception:
         logger.exception("Failed to store result file for run %s", run_id)
         return None
