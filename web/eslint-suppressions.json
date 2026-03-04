@@ -1216,10 +1216,7 @@
   },
   "app/components/app/overview/app-card.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
+      "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3

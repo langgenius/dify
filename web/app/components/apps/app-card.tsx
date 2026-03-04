@@ -518,15 +518,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
               {t('deleteAppConfirmTitle', { ns: 'app' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-secondary system-md-regular">
+            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
               {t('deleteAppConfirmContent', { ns: 'app' })}
             </AlertDialogDescription>
           </div>
-          <div className="flex items-center justify-end gap-2 p-6">
-            <AlertDialogClose render={<Button className="min-w-[80px]" disabled={isDeleting} />}>
+          <div className="flex items-start justify-end gap-2 self-stretch p-6">
+            <AlertDialogClose render={<Button disabled={isDeleting} />}>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogClose>
-            <Button className="min-w-[80px]" variant="primary" destructive loading={isDeleting} disabled={isDeleting} onClick={onConfirmDelete}>
+            <Button variant="primary" destructive loading={isDeleting} disabled={isDeleting} onClick={onConfirmDelete}>
               {t('operation.confirm', { ns: 'common' })}
             </Button>
           </div>
