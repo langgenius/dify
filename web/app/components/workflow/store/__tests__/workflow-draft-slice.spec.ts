@@ -1,8 +1,8 @@
 import type { Node } from '@/app/components/workflow/types'
-import { createWorkflowStore } from '../workflow'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 describe('Workflow Draft Slice', () => {
@@ -69,13 +69,20 @@ describe('Workflow Draft Slice', () => {
   })
 
   describe('debouncedSyncWorkflowDraft', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
     it('should be a callable function', () => {
       const store = createStore()
       expect(typeof store.getState().debouncedSyncWorkflowDraft).toBe('function')
     })
 
     it('should debounce the sync call', () => {
-      vi.useFakeTimers()
       const store = createStore()
       const syncFn = vi.fn()
 
@@ -84,12 +91,9 @@ describe('Workflow Draft Slice', () => {
 
       vi.advanceTimersByTime(5000)
       expect(syncFn).toHaveBeenCalledTimes(1)
-
-      vi.useRealTimers()
     })
 
     it('should flush pending sync via flushPendingSync', () => {
-      vi.useFakeTimers()
       const store = createStore()
       const syncFn = vi.fn()
 
@@ -98,8 +102,6 @@ describe('Workflow Draft Slice', () => {
 
       store.getState().flushPendingSync()
       expect(syncFn).toHaveBeenCalledTimes(1)
-
-      vi.useRealTimers()
     })
   })
 })

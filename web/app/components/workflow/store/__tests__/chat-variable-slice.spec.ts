@@ -1,9 +1,9 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { createWorkflowStore } from '../workflow'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 describe('Chat Variable Slice', () => {

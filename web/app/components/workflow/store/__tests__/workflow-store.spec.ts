@@ -1,16 +1,15 @@
-import type { Shape, SliceFromInjection } from '../workflow'
+import type { SliceFromInjection } from '../workflow'
 import type { HelpLineHorizontalPosition, HelpLineVerticalPosition } from '@/app/components/workflow/help-line/types'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { VersionHistory } from '@/types/workflow'
 import { renderHook } from '@testing-library/react'
-import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { WorkflowContext } from '../../context'
+import { createTestWorkflowStore, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { createWorkflowStore, useStore, useWorkflowStore } from '../workflow'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 describe('createWorkflowStore', () => {
@@ -35,7 +34,7 @@ describe('createWorkflowStore', () => {
     it('should update workflowRunningData', () => {
       const store = createStore()
       const data: Partial<WorkflowRunningData> = { result: { status: 'running', inputs_truncated: false, process_data_truncated: false, outputs_truncated: false } }
-      store.getState().setWorkflowRunningData(data as Parameters<Shape['setWorkflowRunningData']>[0])
+      store.getState().setWorkflowRunningData(data as unknown as WorkflowRunningData)
       expect(store.getState().workflowRunningData).toEqual(data)
     })
 
@@ -446,13 +445,10 @@ describe('createWorkflowStore', () => {
 
   describe('useStore hook', () => {
     it('should read state via selector when wrapped in WorkflowContext', () => {
-      const store = createStore()
-      store.getState().setShowSingleRunPanel(true)
-
-      const wrapper = ({ children }: { children: React.ReactNode }) =>
-        React.createElement(WorkflowContext.Provider, { value: store }, children)
-
-      const { result } = renderHook(() => useStore(s => s.showSingleRunPanel), { wrapper })
+      const { result } = renderWorkflowHook(
+        () => useStore(s => s.showSingleRunPanel),
+        { initialStoreState: { showSingleRunPanel: true } },
+      )
       expect(result.current).toBe(true)
     })
 
@@ -465,11 +461,7 @@ describe('createWorkflowStore', () => {
 
   describe('useWorkflowStore hook', () => {
     it('should return the store instance when wrapped in WorkflowContext', () => {
-      const store = createStore()
-      const wrapper = ({ children }: { children: React.ReactNode }) =>
-        React.createElement(WorkflowContext.Provider, { value: store }, children)
-
-      const { result } = renderHook(() => useWorkflowStore(), { wrapper })
+      const { result, store } = renderWorkflowHook(() => useWorkflowStore())
       expect(result.current).toBe(store)
     })
   })
