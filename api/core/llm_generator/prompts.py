@@ -11,6 +11,8 @@ Automatically identify the language of the user’s input (e.g. English, Chinese
 - The title must be natural, friendly, and in the same language as the input.
 - If the input is a direct question to the model, you may add an emoji at the end.
 
+- Special Note for Persian (Farsi): If the input is Persian (Farsi), ALWAYS generate the title in Persian (Farsi). Prefer using distinctly Persian characters (for example: پ، چ، ژ، گ). You may also use ک and ی, but prefer the Persian form (e.g., U+06CC for "ye"). Ensure the "Language Type" field is "Persian" or "Farsi". Do NOT use Arabic or any other language or script when the input is Persian.
+
 3. Output Format
 Return **only** a valid JSON object with these exact keys and no additional text:
 {
