@@ -182,25 +182,30 @@ class SchemaResolver:
         if next_depth >= self.max_depth:
             raise MaxDepthExceededError(self.max_depth)
 
+        # Determine whether the resolved schema itself contains further Dify refs
+        has_nested_refs = _has_dify_refs(resolved_schema)
+
         if item.parent is None:
             # Root level replacement
             item.current.clear()
             item.current.update(resolved_schema)
-            queue.append(
-                QueueItem(current=item.current, parent=None, key=None, depth=next_depth, ref_path=new_ref_path)
-            )
+            if has_nested_refs:
+                queue.append(
+                    QueueItem(current=item.current, parent=None, key=None, depth=next_depth, ref_path=new_ref_path)
+                )
         else:
             # Update parent container
             item.parent[item.key] = resolved_schema.copy()
-            queue.append(
-                QueueItem(
-                    current=item.parent[item.key],
-                    parent=item.parent,
-                    key=item.key,
-                    depth=next_depth,
-                    ref_path=new_ref_path,
+            if has_nested_refs:
+                queue.append(
+                    QueueItem(
+                        current=item.parent[item.key],
+                        parent=item.parent,
+                        key=item.key,
+                        depth=next_depth,
+                        ref_path=new_ref_path,
+                    )
                 )
-            )
 
     def _get_resolved_schema(self, ref_uri: str) -> SchemaDict | None:
         """Get resolved schema from cache or registry"""
