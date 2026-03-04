@@ -833,6 +833,11 @@ class TestDuplicateDocumentIndexingTasks:
         dataset, documents = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=2
         )
+        for document in documents:
+            document.is_paused = True
+            db_session_with_containers.add(document)
+        db_session_with_containers.commit()
+
         document_ids = [doc.id for doc in documents]
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
             "Document paused"
@@ -845,7 +850,9 @@ class TestDuplicateDocumentIndexingTasks:
         # Assert
         for doc_id in document_ids:
             updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.is_paused is True
             assert updated_document.indexing_status == "parsing"
+            assert updated_document.display_status == "paused"
             assert updated_document.processing_started_at is not None
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
