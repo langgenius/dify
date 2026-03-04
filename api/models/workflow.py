@@ -758,9 +758,7 @@ class WorkflowRun(Base):
             exceptions_count=data.get("exceptions_count"),
             rerun_from_workflow_run_id=data.get("rerun_from_workflow_run_id"),
             rerun_from_node_id=data.get("rerun_from_node_id"),
-            rerun_overrides=(
-                rerun_overrides if isinstance(rerun_overrides, str) else json.dumps(rerun_overrides)
-            )
+            rerun_overrides=(rerun_overrides if isinstance(rerun_overrides, str) else json.dumps(rerun_overrides))
             if rerun_overrides is not None
             else None,
             rerun_scope=(rerun_scope if isinstance(rerun_scope, str) else json.dumps(rerun_scope))

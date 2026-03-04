@@ -509,12 +509,9 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
-        is_replay = (
-            isinstance(metadata, Mapping)
-            and (
-                metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
-                or metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value) == "replay"
-            )
+        is_replay = isinstance(metadata, Mapping) and (
+            metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
+            or metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value) == "replay"
         )
         elapsed_time = 0.0 if is_replay else (finished_at - start_at).total_seconds()
         if is_replay and isinstance(metadata, Mapping):
