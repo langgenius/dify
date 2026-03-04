@@ -17,7 +17,7 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from core.file.enums import FileTransferMethod
+from dify_graph.file.enums import FileTransferMethod
 from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
@@ -40,11 +40,6 @@ class TestMessageEndStreamResponseFiles:
         pipeline._task_state.llm_result.usage = Mock()
         pipeline._application_generate_entity = Mock()
         pipeline._application_generate_entity.task_id = str(uuid.uuid4())
-        # Bind the real _prepare_file_dict so that _message_end_to_stream_response
-        # exercises the production implementation instead of a Mock.
-        pipeline._prepare_file_dict = EasyUIBasedGenerateTaskPipeline._prepare_file_dict.__get__(
-            pipeline, EasyUIBasedGenerateTaskPipeline
-        )
         return pipeline
 
     @pytest.fixture
@@ -126,7 +121,7 @@ class TestMessageEndStreamResponseFiles:
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
             ) as mock_get_url,
         ):
             mock_engine = MagicMock()
@@ -266,7 +261,7 @@ class TestMessageEndStreamResponseFiles:
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sign_tool_file") as mock_sign_tool,
+            patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
@@ -310,7 +305,7 @@ class TestMessageEndStreamResponseFiles:
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
             ) as mock_get_url,
         ):
             mock_engine = MagicMock()
@@ -364,7 +359,7 @@ class TestMessageEndStreamResponseFiles:
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url"
+                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
             ) as mock_get_url,
         ):
             mock_engine = MagicMock()
