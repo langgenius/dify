@@ -2,7 +2,6 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
 import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -25,6 +24,8 @@ import {
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
 import PrioritySelector from './priority-selector'
 import PriorityUseTip from './priority-use-tip'
+import SystemQuotaCard from './system-quota-card'
+import { useTrialCredits } from './use-trial-credits'
 
 type CredentialPanelProps = {
   provider: ModelProvider
@@ -53,6 +54,8 @@ const CredentialPanel = ({
   } = useCredentialStatus(provider)
 
   const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
+  const isUsingSystemQuota = systemConfig.enabled && priorityUseType === PreferredProviderTypeEnum.system && IS_CLOUD_EDITION
+  const { isExhausted } = useTrialCredits()
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -80,24 +83,40 @@ const CredentialPanel = ({
       } as any)
     }
   }
-  const credentialLabel = useMemo(() => {
-    if (!hasCredential)
-      return t('modelProvider.auth.unAuthorized', { ns: 'common' })
-    if (authorized)
-      return current_credential_name
-    if (authRemoved)
-      return t('modelProvider.auth.authRemoved', { ns: 'common' })
+  const credentialLabel = !hasCredential
+    ? t('modelProvider.auth.unAuthorized', { ns: 'common' })
+    : authorized
+      ? current_credential_name
+      : authRemoved
+        ? t('modelProvider.auth.authRemoved', { ns: 'common' })
+        : ''
 
-    return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential, t])
+  const color = (authRemoved || !hasCredential)
+    ? 'red'
+    : notAllowedToUse
+      ? 'gray'
+      : 'green'
 
-  const color = useMemo(() => {
-    if (authRemoved || !hasCredential)
-      return 'red'
-    if (notAllowedToUse)
-      return 'gray'
-    return 'green'
-  }, [authRemoved, notAllowedToUse, hasCredential])
+  if (isUsingSystemQuota) {
+    return (
+      <SystemQuotaCard variant={isExhausted ? 'destructive' : 'default'}>
+        <SystemQuotaCard.Label>
+          {isExhausted
+            ? t('modelProvider.card.quotaExhausted', { ns: 'common' })
+            : t('modelProvider.card.aiCreditsInUse', { ns: 'common' })}
+        </SystemQuotaCard.Label>
+        <SystemQuotaCard.Actions>
+          <ConfigProvider provider={provider} />
+          {showPrioritySelector && (
+            <PrioritySelector
+              value={priorityUseType}
+              onSelect={handleChangePriority}
+            />
+          )}
+        </SystemQuotaCard.Actions>
+      </SystemQuotaCard>
+    )
+  }
 
   return (
     <>
@@ -108,7 +127,7 @@ const CredentialPanel = ({
             authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
           )}
           >
-            <div className="system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary">
+            <div className="mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary system-xs-medium">
               <div
                 className={cn(
                   'grow truncate',

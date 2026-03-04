@@ -340,6 +340,7 @@
   "modelProvider.auth.unAuthorized": "Unauthorized",
   "modelProvider.buyQuota": "Buy Quota",
   "modelProvider.callTimes": "Call times",
+  "modelProvider.card.aiCreditsInUse": "AI credits in use",
   "modelProvider.card.buyQuota": "Buy Quota",
   "modelProvider.card.callTimes": "Call times",
   "modelProvider.card.modelAPI": "{{modelName}} models are using the API Key.",

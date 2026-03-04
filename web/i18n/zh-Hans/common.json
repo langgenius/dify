@@ -340,6 +340,7 @@
   "modelProvider.auth.unAuthorized": "未授权",
   "modelProvider.buyQuota": "购买额度",
   "modelProvider.callTimes": "调用次数",
+  "modelProvider.card.aiCreditsInUse": "AI 额度使用中",
   "modelProvider.card.buyQuota": "购买额度",
   "modelProvider.card.callTimes": "调用次数",
   "modelProvider.card.modelAPI": "{{modelName}} 模型正在使用 API Key。",

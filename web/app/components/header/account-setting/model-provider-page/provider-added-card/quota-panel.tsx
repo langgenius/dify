@@ -11,7 +11,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/u
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { useCurrentWorkspace } from '@/service/use-common'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -19,6 +18,7 @@ import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap } from '../utils'
 import styles from './quota-panel.module.css'
+import { useTrialCredits } from './use-trial-credits'
 
 const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
   [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
@@ -50,11 +50,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   providers,
 }) => {
   const { t } = useTranslation()
-  const { data: currentWorkspace, isPending: isPendingWorkspace } = useCurrentWorkspace()
+  const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
   const { data: systemFeatures } = useSystemFeaturesQuery()
   const trialModels = systemFeatures?.trial_models ?? []
-  const credits = Math.max(((currentWorkspace?.trial_credits ?? 0) - (currentWorkspace?.trial_credits_used ?? 0)) || 0, 0)
-  const isLoading = isPendingWorkspace && !currentWorkspace
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -111,7 +109,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   return (
     <div className={cn(
       'relative my-2 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs',
-      credits <= 0
+      isExhausted
         ? 'border-state-destructive-border hover:bg-state-destructive-hover'
         : 'border-components-panel-border bg-third-party-model-bg-default',
     )}
@@ -140,14 +138,14 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             {credits > 0
               ? <span className="mr-0.5 text-text-secondary system-xl-semibold">{formatNumber(credits)}</span>
               : <span className="mr-0.5 text-text-destructive system-xl-semibold">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
-            {currentWorkspace?.next_credit_reset_date
+            {nextCreditResetDate
               ? (
                   <>
                     <span>·</span>
                     <span>
                       {t('modelProvider.resetDate', {
                         ns: 'common',
-                        date: formatTime(currentWorkspace.next_credit_reset_date, t('dateFormat', { ns: 'appLog' })),
+                        date: formatTime(nextCreditResetDate!, t('dateFormat', { ns: 'appLog' })),
                         interpolation: { escapeValue: false },
                       })}
                     </span>
