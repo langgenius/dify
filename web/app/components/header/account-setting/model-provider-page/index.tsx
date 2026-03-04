@@ -2,11 +2,10 @@ import type {
   ModelProvider,
 } from './declarations'
 import { useDebounce } from 'ahooks'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import {
@@ -32,14 +31,14 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
-  const { mutateCurrentWorkspace, isValidatingCurrentWorkspace } = useAppContext()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSystemFeaturesQuery()
+  const enableMarketplace = systemFeatures?.enable_marketplace ?? false
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
     || isRerankDefaultModelLoading
@@ -109,10 +108,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  useEffect(() => {
-    mutateCurrentWorkspace()
-  }, [mutateCurrentWorkspace])
-
   return (
     <div className="relative -mt-2 pt-1">
       <div className={cn('mb-2 flex items-center')}>
@@ -140,7 +135,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace} />}
+      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
@@ -175,7 +170,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </>
       )}
       {
-        enable_marketplace && (
+        enableMarketplace && (
           <InstallFromMarketplace
             providers={providers}
             searchText={searchText}

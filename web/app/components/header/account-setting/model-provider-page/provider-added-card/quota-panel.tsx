@@ -9,9 +9,9 @@ import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useCurrentWorkspace } from '@/service/use-common'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -48,16 +48,16 @@ const providerKeyToPluginId: Record<ModelProviderQuotaGetPaid, string> = {
 
 type QuotaPanelProps = {
   providers: ModelProvider[]
-  isLoading?: boolean
 }
 const QuotaPanel: FC<QuotaPanelProps> = ({
   providers,
-  isLoading = false,
 }) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
-  const { trial_models } = useGlobalPublicStore(s => s.systemFeatures)
-  const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
+  const { data: currentWorkspace, isPending: isPendingWorkspace } = useCurrentWorkspace()
+  const { data: systemFeatures } = useSystemFeaturesQuery()
+  const trialModels = systemFeatures?.trial_models ?? []
+  const credits = Math.max(((currentWorkspace?.trial_credits ?? 0) - (currentWorkspace?.trial_credits_used ?? 0)) || 0, 0)
+  const isLoading = isPendingWorkspace && !currentWorkspace
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -110,13 +110,13 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
       <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
         {t('modelProvider.quota', { ns: 'common' })}
-        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trial_models.map(key => modelNameMap[key as keyof typeof modelNameMap]).filter(Boolean).join(', ') })} />
+        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trialModels.map(key => modelNameMap[key as keyof typeof modelNameMap]).filter(Boolean).join(', ') })} />
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-text-tertiary">
           <span className="system-md-semibold-uppercase mr-0.5 text-text-secondary">{formatNumber(credits)}</span>
           <span>{t('modelProvider.credits', { ns: 'common' })}</span>
-          {currentWorkspace.next_credit_reset_date
+          {currentWorkspace?.next_credit_reset_date
             ? (
                 <>
                   <span>·</span>
@@ -132,7 +132,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             : null}
         </div>
         <div className="flex items-center gap-1">
-          {allProviders.filter(({ key }) => trial_models.includes(key)).map(({ key, Icon }) => {
+          {allProviders.filter(({ key }) => trialModels.includes(key)).map(({ key, Icon }) => {
             const providerType = providerMap.get(key)
             const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0 // means the provider is configured API key
             const getTooltipKey = () => {

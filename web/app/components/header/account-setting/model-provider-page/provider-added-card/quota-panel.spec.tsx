@@ -2,11 +2,16 @@ import type { ModelProvider } from '../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import QuotaPanel from './quota-panel'
 
-let mockWorkspace = {
+let mockWorkspaceData: {
+  trial_credits: number
+  trial_credits_used: number
+  next_credit_reset_date: string
+} | undefined = {
   trial_credits: 100,
   trial_credits_used: 30,
   next_credit_reset_date: '2024-12-31',
 }
+let mockWorkspaceIsPending = false
 let mockTrialModels: string[] = ['langgenius/openai/openai']
 let mockPlugins = [{
   plugin_id: 'langgenius/openai',
@@ -25,15 +30,16 @@ vi.mock('@/app/components/base/icons/src/public/llm', () => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: mockWorkspace,
+vi.mock('@/service/use-common', () => ({
+  useCurrentWorkspace: () => ({
+    data: mockWorkspaceData,
+    isPending: mockWorkspaceIsPending,
   }),
 }))
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { trial_models: string[] } }) => unknown) => selector({
-    systemFeatures: {
+  useSystemFeaturesQuery: () => ({
+    data: {
       trial_models: mockTrialModels,
     },
   }),
@@ -71,22 +77,21 @@ describe('QuotaPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspace = {
+    mockWorkspaceData = {
       trial_credits: 100,
       trial_credits_used: 30,
       next_credit_reset_date: '2024-12-31',
     }
+    mockWorkspaceIsPending = false
     mockTrialModels = ['langgenius/openai/openai']
     mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
   })
 
   it('should render loading state', () => {
-    render(
-      <QuotaPanel
-        providers={mockProviders}
-        isLoading
-      />,
-    )
+    mockWorkspaceData = undefined
+    mockWorkspaceIsPending = true
+
+    render(<QuotaPanel providers={mockProviders} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
@@ -102,8 +107,17 @@ describe('QuotaPanel', () => {
     expect(screen.getByText(/modelProvider\.resetDate/)).toBeInTheDocument()
   })
 
+  it('should keep quota content during background refetch when cached workspace exists', () => {
+    mockWorkspaceIsPending = true
+
+    render(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText('70')).toBeInTheDocument()
+  })
+
   it('should floor credits at zero when usage is higher than quota', () => {
-    mockWorkspace = {
+    mockWorkspaceData = {
       trial_credits: 10,
       trial_credits_used: 999,
       next_credit_reset_date: '',

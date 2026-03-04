@@ -7,16 +7,7 @@ import {
 } from './declarations'
 import ModelProviderPage from './index'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    mutateCurrentWorkspace: vi.fn(),
-    isValidatingCurrentWorkspace: false,
-  }),
-}))
-
-const mockGlobalState = {
-  systemFeatures: { enable_marketplace: true },
-}
+let mockEnableMarketplace = true
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -28,7 +19,11 @@ const mockQuotaConfig = {
 }
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector(mockGlobalState),
+  useSystemFeaturesQuery: () => ({
+    data: {
+      enable_marketplace: mockEnableMarketplace,
+    },
+  }),
 }))
 
 const mockProviders = [
@@ -92,7 +87,7 @@ describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    mockGlobalState.systemFeatures.enable_marketplace = true
+    mockEnableMarketplace = true
     Object.keys(mockDefaultModels).forEach((key) => {
       mockDefaultModels[key] = { data: null, isLoading: false }
     })
@@ -153,7 +148,7 @@ describe('ModelProviderPage', () => {
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {
-    mockGlobalState.systemFeatures.enable_marketplace = false
+    mockEnableMarketplace = false
 
     render(<ModelProviderPage searchText="" />)
 
