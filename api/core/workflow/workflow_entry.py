@@ -1,33 +1,34 @@
 import logging
 import time
-import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.file.models import File
-from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
-from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.enums import UserFrom
+from dify_graph.errors import WorkflowNodeRunFailedError
+from dify_graph.file.models import File
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
-from models.enums import UserFrom
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,7 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
+        self.graph_engine.layer(LLMQuotaLayer())
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
@@ -144,11 +146,11 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = dict(workflow.get_node_config_by_id(node_id))
-        node_config_data = node_config.get("data", {})
+        node_config = workflow.get_node_config_by_id(node_id)
+        node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data.get("type"))
+        node_type = NodeType(node_config_data["type"])
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -168,7 +170,8 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node = node_factory.create_node(node_config)
+        typed_node_config = cast(dict[str, object], node_config)
+        node = cast(Any, node_factory).create_node(typed_node_config)
         node_cls = type(node)
 
         try:
@@ -256,7 +259,7 @@ class WorkflowEntry:
 
     @classmethod
     def run_free_node(
-        cls, node_data: dict, node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
+        cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
     ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Run free node
@@ -302,16 +305,15 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config = {
+        node_config: NodeConfigDict = {
             "id": node_id,
-            "data": node_data,
+            "data": cast(NodeConfigData, node_data),
         }
-        node: Node = node_cls(
-            id=str(uuid.uuid4()),
-            config=node_config,
+        node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        node = node_factory.create_node(node_config)
 
         try:
             # variable selector to variable mapping

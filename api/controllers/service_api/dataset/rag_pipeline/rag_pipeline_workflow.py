@@ -1,24 +1,24 @@
-import string
-import uuid
 from collections.abc import Generator
 from typing import Any
 
 from flask import request
 from pydantic import BaseModel
-from werkzeug.exceptions import Forbidden
+from sqlalchemy import select
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs import helper
 from libs.login import current_user
 from models import Account
-from models.dataset import Pipeline
+from models.dataset import Dataset, Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
@@ -41,7 +41,7 @@ register_schema_model(service_api_ns, DatasourceNodeRunPayload)
 register_schema_model(service_api_ns, PipelineRunApiEntity)
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource-plugins")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource-plugins")
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
@@ -66,6 +66,12 @@ class DatasourcePluginsApi(DatasetApiResource):
     )
     def get(self, tenant_id: str, dataset_id: str):
         """Resource for getting datasource plugins."""
+        # Verify dataset ownership
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        dataset = db.session.scalar(stmt)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         # Get query parameter to determine published or draft
         is_published: bool = request.args.get("is_published", default=True, type=bool)
 
@@ -76,7 +82,7 @@ class DatasourcePluginsApi(DatasetApiResource):
         return datasource_plugins, 200
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource/nodes/{string:node_id}/run")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource/nodes/<string:node_id>/run")
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
@@ -105,6 +111,12 @@ class DatasourceNodeRunApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
     def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
+        # Verify dataset ownership
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        dataset = db.session.scalar(stmt)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
@@ -131,7 +143,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         )
 
 
-@service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/run")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/run")
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
@@ -162,6 +174,12 @@ class PipelineRunApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
     def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
+        # Verify dataset ownership
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        dataset = db.session.scalar(stmt)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
         payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})
 
         if not isinstance(current_user, Account):
@@ -232,12 +250,4 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return {
-            "id": upload_file.id,
-            "name": upload_file.name,
-            "size": upload_file.size,
-            "extension": upload_file.extension,
-            "mime_type": upload_file.mime_type,
-            "created_by": upload_file.created_by,
-            "created_at": upload_file.created_at,
-        }, 201
+        return serialize_upload_file(upload_file), 201

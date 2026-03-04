@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
+import { downloadBlob } from '@/utils/download'
 
 type ModalState = {
   showRenameModal: boolean
@@ -65,13 +66,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         pipelineId: pipeline_id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${name}.pipeline`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
       Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })

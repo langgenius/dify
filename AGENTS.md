@@ -7,7 +7,7 @@ Dify is an open-source platform for developing LLM applications with an intuitiv
 The codebase is split into:
 
 - **Backend API** (`/api`): Python Flask application organized with Domain-Driven Design
-- **Frontend Web** (`/web`): Next.js 15 application using TypeScript and React 19
+- **Frontend Web** (`/web`): Next.js application using TypeScript and React
 - **Docker deployment** (`/docker`): Containerized deployment configurations
 
 ## Backend Workflow
@@ -18,36 +18,7 @@ The codebase is split into:
 
 ## Frontend Workflow
 
-```bash
-cd web
-pnpm lint:fix
-pnpm type-check:tsgo
-pnpm test
-```
-
-### Frontend Linting
-
-ESLint is used for frontend code quality. Available commands:
-
-```bash
-# Lint all files (report only)
-pnpm lint
-
-# Lint and auto-fix issues
-pnpm lint:fix
-
-# Lint specific files or directories
-pnpm lint:fix app/components/base/button/
-pnpm lint:fix app/components/base/button/index.tsx
-
-# Lint quietly (errors only, no warnings)
-pnpm lint:quiet
-
-# Check code complexity
-pnpm lint:complexity
-```
-
-**Important**: Always run `pnpm lint:fix` before committing. The pre-commit hook runs `lint-staged` which only lints staged files.
+- Read `web/AGENTS.md` for details
 
 ## Testing & Quality Practices
 

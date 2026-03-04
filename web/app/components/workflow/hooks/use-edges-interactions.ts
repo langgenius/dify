@@ -151,11 +151,65 @@ export const useEdgesInteractions = () => {
     setEdges(newEdges)
   }, [store, getNodesReadOnly])
 
+  const handleEdgeSourceHandleChange = useCallback((nodeId: string, oldHandleId: string, newHandleId: string) => {
+    if (getNodesReadOnly())
+      return
+
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+
+    // Find edges connected to the old handle
+    const affectedEdges = edges.filter(
+      edge => edge.source === nodeId && edge.sourceHandle === oldHandleId,
+    )
+
+    if (affectedEdges.length === 0)
+      return
+
+    // Update node metadata: remove old handle, add new handle
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      [
+        ...affectedEdges.map(edge => ({ type: 'remove', edge })),
+        ...affectedEdges.map(edge => ({
+          type: 'add',
+          edge: { ...edge, sourceHandle: newHandleId },
+        })),
+      ],
+      nodes,
+    )
+
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+      })
+    })
+    setNodes(newNodes)
+
+    // Update edges to use new sourceHandle and regenerate edge IDs
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (edge.source === nodeId && edge.sourceHandle === oldHandleId) {
+          edge.sourceHandle = newHandleId
+          edge.id = `${edge.source}-${newHandleId}-${edge.target}-${edge.targetHandle}`
+        }
+      })
+    })
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
+
   return {
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
     handleEdgesChange,
+    handleEdgeSourceHandleChange,
   }
 }

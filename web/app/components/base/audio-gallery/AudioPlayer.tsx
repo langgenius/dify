@@ -1,7 +1,3 @@
-import {
-  RiPauseCircleFill,
-  RiPlayLargeFill,
-} from '@remixicon/react'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -299,25 +295,26 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
           <source key={index} src={srcUrl} />
         ))}
       </audio>
-      <button type="button" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-              <RiPauseCircleFill className="h-5 w-5" />
+              <div className="i-ri-pause-circle-fill h-5 w-5" />
             )
           : (
-              <RiPlayLargeFill className="h-5 w-5" />
+              <div className="i-ri-play-large-fill h-5 w-5" />
             )}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">
           <canvas
             ref={canvasRef}
+            data-testid="waveform-canvas"
             className="relative flex h-6 w-full grow cursor-pointer items-center justify-center"
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className="system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary">
+          <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>

@@ -7,7 +7,7 @@ description: Generate Vitest + React Testing Library tests for Dify frontend com
 
 This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
-> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. Use Vitest mock/timer APIs (`vi.*`).
+> **⚠️ Authoritative Source**: This skill is derived from `web/docs/test.md`. Use Vitest mock/timer APIs (`vi.*`).
 
 ## When to Apply This Skill
 
@@ -204,6 +204,16 @@ When assigned to test a directory/path, test **ALL content** within that path:
 
 > See [Test Structure Template](#test-structure-template) for correct import/mock patterns.
 
+### `nuqs` Query State Testing (Required for URL State Hooks)
+
+When a component or hook uses `useQueryState` / `useQueryStates`:
+
+- ✅ Use `NuqsTestingAdapter` (prefer shared helpers in `web/test/nuqs-testing.tsx`)
+- ✅ Assert URL synchronization via `onUrlUpdate` (`searchParams`, `options.history`)
+- ✅ For custom parsers (`createParser`), keep `parse` and `serialize` bijective and add round-trip edge cases (`%2F`, `%25`, spaces, legacy encoded values)
+- ✅ Verify default-clearing behavior (default values should be removed from URL when applicable)
+- ⚠️ Only mock `nuqs` directly when URL behavior is explicitly out of scope for the test
+
 ## Core Principles
 
 ### 1. AAA Pattern (Arrange-Act-Assert)
@@ -309,7 +319,7 @@ For more detailed information, refer to:
 
 ### Primary Specification (MUST follow)
 
-- **`web/testing/testing.md`** - The canonical testing specification. This skill is derived from this document.
+- **`web/docs/test.md`** - The canonical testing specification. This skill is derived from this document.
 
 ### Reference Examples in Codebase
 

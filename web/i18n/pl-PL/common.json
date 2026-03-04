@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "Wpisz swoje słowo kluczowe tutaj, wprowadź '{' aby wstawić zmienną, wprowadź '/' aby wstawić blok treści słownika",
   "promptEditor.query.item.desc": "Wstaw szablon zapytania użytkownika",
   "promptEditor.query.item.title": "Zapytanie",
+  "promptEditor.requestURL.item.desc": "Wstaw URL żądania",
+  "promptEditor.requestURL.item.title": "URL żądania",
   "promptEditor.variable.item.desc": "Wstaw Zmienne i Narzędzia Zewnętrzne",
   "promptEditor.variable.item.title": "Zmienne i Narzędzia Zewnętrzne",
   "promptEditor.variable.modal.add": "Nowa zmienna",

@@ -68,9 +68,10 @@ lint:
 	@echo "✅ Linting complete"
 
 type-check:
-	@echo "📝 Running type check with basedpyright..."
-	@uv run --directory api --dev basedpyright
-	@echo "✅ Type check complete"
+	@echo "📝 Running type checks (basedpyright + mypy)..."
+	@./dev/basedpyright-check $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@echo "✅ Type checks complete"
 
 test:
 	@echo "🧪 Running backend unit tests..."
@@ -78,7 +79,7 @@ test:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
-		uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
+		PYTEST_XDIST_ARGS="-n auto" uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
 	fi
 	@echo "✅ Tests complete"
 
@@ -130,7 +131,7 @@ help:
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
-	@echo "  make type-check     - Run type checking with basedpyright"
+	@echo "  make type-check     - Run type checks (basedpyright, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"

@@ -1,10 +1,10 @@
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_plugin_result
+from dify_graph.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_plugin_result
 
 
 def _make_chunk(
@@ -101,3 +101,26 @@ def test__normalize_non_stream_plugin_result__empty_iterator_defaults():
     assert result.message.tool_calls == []
     assert result.usage == LLMUsage.empty_usage()
     assert result.system_fingerprint is None
+
+
+def test__normalize_non_stream_plugin_result__accumulates_all_chunks():
+    """All chunks are accumulated from the iterator."""
+    prompt_messages = [UserPromptMessage(content="hi")]
+
+    closed: list[bool] = []
+
+    def _chunk_iter():
+        try:
+            yield _make_chunk(content="hello", usage=LLMUsage.empty_usage())
+            yield _make_chunk(content=" world", usage=LLMUsage.empty_usage())
+        finally:
+            closed.append(True)
+
+    result = _normalize_non_stream_plugin_result(
+        model="test-model",
+        prompt_messages=prompt_messages,
+        result=_chunk_iter(),
+    )
+
+    assert result.message.content == "hello world"
+    assert closed == [True]

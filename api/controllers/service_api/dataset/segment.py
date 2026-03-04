@@ -17,7 +17,7 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import current_account_with_tenant
@@ -233,7 +233,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
     @service_api_ns.doc("update_segment")
@@ -499,7 +499,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
     @service_api_ns.doc("update_child_chunk")

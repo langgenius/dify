@@ -8,7 +8,7 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
@@ -136,7 +136,7 @@ class AudioService:
             message = db.session.query(Message).where(Message.id == message_id).first()
             if message is None:
                 return None
-            if message.answer == "" and message.status == MessageStatus.NORMAL:
+            if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:
                 return None
 
             else:
