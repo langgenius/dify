@@ -167,13 +167,13 @@ describe('WorkflowOnboardingModal', () => {
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
     })
 
-    it('should call onClose after selecting user input', async () => {
+    it('should not call onClose when selecting user input (parent handles closing)', async () => {
       const user = userEvent.setup()
       renderComponent()
 
       await user.click(getUserInputHeading())
 
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should call onSelectStartNode with trigger type when trigger is selected', async () => {
@@ -187,14 +187,14 @@ describe('WorkflowOnboardingModal', () => {
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerSchedule, undefined)
     })
 
-    it('should call onClose after selecting trigger', async () => {
+    it('should not call onClose when selecting trigger (parent handles closing)', async () => {
       const user = userEvent.setup()
       renderComponent()
 
       await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
 
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should pass tool config when selecting trigger with config', async () => {
@@ -206,7 +206,7 @@ describe('WorkflowOnboardingModal', () => {
 
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
   })
 
@@ -316,16 +316,15 @@ describe('WorkflowOnboardingModal', () => {
 
       await user.click(getUserInputHeading())
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
 
-      mockOnClose.mockClear()
       mockOnSelectStartNode.mockClear()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} />)
 
       await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-schedule'))
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerSchedule, undefined)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should handle prop updates correctly', () => {
@@ -421,7 +420,7 @@ describe('WorkflowOnboardingModal', () => {
       await user.click(getUserInputHeading())
 
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should complete full flow of selecting trigger node', async () => {
@@ -434,7 +433,7 @@ describe('WorkflowOnboardingModal', () => {
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
       expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(mockOnClose).not.toHaveBeenCalled()
     })
 
     it('should render all components in correct hierarchy', () => {
