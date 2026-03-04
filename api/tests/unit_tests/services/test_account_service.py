@@ -1304,6 +1304,7 @@ class TestRegisterService:
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_db_dependencies["db"].session.commit.assert_not_called()
 
     def test_register_still_calls_default_workspace_join_when_workspace_limit_exceeded(
         self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
@@ -1342,6 +1343,7 @@ class TestRegisterService:
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_db_dependencies["db"].session.commit.assert_not_called()
 
     def test_register_with_oauth(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test account registration with OAuth integration."""
