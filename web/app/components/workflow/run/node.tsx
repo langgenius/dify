@@ -202,7 +202,7 @@ const NodePanel: FC<Props> = ({
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5', canShowRerunEntry && 'group-hover:hidden')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className={cn('flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent', canShowRerunEntry && 'group-hover:hidden')}>
+            <div className={cn('flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-[white]', canShowRerunEntry && 'group-hover:hidden')}>
               <span className="mr-2 text-xs font-normal">Running</span>
               <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
             </div>
@@ -210,7 +210,7 @@ const NodePanel: FC<Props> = ({
           {canShowRerunEntry && (
             <button
               type="button"
-              className="ml-auto hidden h-5 shrink-0 items-center gap-0.5 rounded-md border border-components-button-primary-border bg-components-button-primary-bg px-1.5 text-text-accent transition-colors system-xs-medium hover:bg-components-button-primary-bg-hover group-hover:flex"
+              className="ml-auto hidden h-5 shrink-0 items-center gap-0.5 rounded-md border border-components-button-primary-border bg-components-button-primary-bg px-1.5 text-text-primary transition-colors system-xs-medium hover:bg-components-button-primary-bg-hover group-hover:flex"
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenRerunEditor?.(nodeInfo)
