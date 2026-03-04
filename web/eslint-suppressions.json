@@ -2351,16 +2351,6 @@
       "count": 2
     }
   },
-  "app/components/base/markdown-blocks/pre-code.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/markdown-blocks/script-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/markdown-blocks/think-block.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1

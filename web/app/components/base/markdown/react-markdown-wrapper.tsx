@@ -13,7 +13,6 @@ import {
   Paragraph,
   PluginImg,
   PluginParagraph,
-  ScriptBlock,
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
@@ -76,9 +75,9 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
 
   return [
     defaultRehypePlugins.raw,
+    ...(extraPlugins ?? []),
     [sanitizePlugin, customSchema] as Pluggable,
     defaultRehypePlugins.harden,
-    ...(extraPlugins ?? []),
   ]
 }
 
@@ -98,7 +97,7 @@ export type ReactMarkdownWrapperProps = {
 }
 
 const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
-  const { customComponents, latexContent, pluginInfo, isAnimating } = props
+  const { customComponents, latexContent, pluginInfo, isAnimating, className } = props
 
   const remarkPlugins = useMemo(
     () => [
@@ -135,7 +134,6 @@ const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
       p: pProps => pluginInfo ? <PluginParagraph {...pProps} pluginInfo={pluginInfo} /> : <Paragraph {...pProps} />,
       button: MarkdownButton,
       form: MarkdownForm,
-      script: ScriptBlock,
       details: ThinkBlock as React.ComponentType,
       ...customComponents,
     }),
@@ -148,6 +146,7 @@ const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
 
   return (
     <Streamdown
+      className={className}
       remarkPlugins={remarkPlugins}
       rehypePlugins={rehypePlugins}
       plugins={plugins}
