@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, Union, cast
+from typing import Any, NewType, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -60,6 +60,7 @@ from dify_graph.enums import (
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.file import FILE_MODEL_IDENTITY, File
+from dify_graph.graph_engine.replay import normalize_execution_metadata
 from dify_graph.runtime import GraphRuntimeState
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
@@ -508,18 +509,11 @@ class WorkflowResponseConverter:
         process_data, process_data_truncated = self._truncate_mapping(event.process_data)
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
-        metadata = self._merge_metadata(event.execution_metadata, snapshot)
-        execution_mode = None
-        if isinstance(metadata, Mapping):
-            execution_mode = metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE)
-            if execution_mode is None:
-                metadata_by_str_key = cast("Mapping[str, Any]", metadata)
-                execution_mode = metadata_by_str_key.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value)
-        is_replay = execution_mode == "replay"
+        merged_metadata = self._merge_metadata(event.execution_metadata, snapshot)
+        metadata = normalize_execution_metadata(merged_metadata)
+        is_replay = metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
         elapsed_time = 0.0 if is_replay else (finished_at - start_at).total_seconds()
-        if is_replay and isinstance(metadata, Mapping):
-            if not isinstance(metadata, dict):
-                metadata = dict(metadata)
+        if is_replay:
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
 
@@ -551,7 +545,7 @@ class WorkflowResponseConverter:
                 status=status,
                 error=error_message,
                 elapsed_time=elapsed_time,
-                execution_metadata=metadata,
+                execution_metadata=metadata or None,
                 created_at=int(start_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
