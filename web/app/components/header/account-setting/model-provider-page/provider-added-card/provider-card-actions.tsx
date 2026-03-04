@@ -77,7 +77,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               )}
             >
               <span>{version}</span>
-              {isFromMarketplace && <span className="i-ri-arrow-down-s-line h-3 w-3" />}
+              {isFromMarketplace && <span className="i-ri-arrow-left-right-line h-3 w-3" />}
               {hasNewVersion && (
                 <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-state-destructive-solid" />
               )}
