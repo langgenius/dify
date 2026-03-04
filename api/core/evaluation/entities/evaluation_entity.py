@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentResult
+
 
 class EvaluationCategory(StrEnum):
     LLM = "llm"
@@ -28,6 +30,7 @@ class EvaluationItemResult(BaseModel):
     index: int
     actual_output: str | None = None
     metrics: list[EvaluationMetric] = Field(default_factory=list)
+    judgment: JudgmentResult | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
 
@@ -49,4 +52,5 @@ class EvaluationRunData(BaseModel):
     evaluation_model_provider: str
     evaluation_model: str
     metrics_config: dict[str, Any] = Field(default_factory=dict)
+    judgment_config: JudgmentConfig | None = None
     items: list[EvaluationItemInput]

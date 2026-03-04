@@ -162,6 +162,7 @@ class EvaluationRunItem(Base):
     actual_output: Mapped[str | None] = mapped_column(LongText, nullable=True)
 
     metrics: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    judgment: Mapped[str | None] = mapped_column(LongText, nullable=True)
     metadata_json: Mapped[str | None] = mapped_column(LongText, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 

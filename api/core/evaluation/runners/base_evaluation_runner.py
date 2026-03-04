@@ -9,6 +9,8 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemInput,
     EvaluationItemResult,
 )
+from core.evaluation.entities.judgment_entity import JudgmentConfig
+from core.evaluation.judgment.processor import JudgmentProcessor
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
 
@@ -20,7 +22,13 @@ class BaseEvaluationRunner(ABC):
 
     Runners are responsible for executing the target (App/Snippet/Retrieval)
     to collect actual outputs, then delegating to the evaluation instance
-    for metric computation.
+    for metric computation, and optionally applying judgment conditions.
+
+    Execution phases:
+      1. execute_target  — run the target and collect actual outputs
+      2. evaluate_metrics — compute evaluation metrics via the framework
+      3. apply_judgment   — evaluate pass/fail judgment conditions on metrics
+      4. persist          — save results to the database
     """
 
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
@@ -61,8 +69,11 @@ class BaseEvaluationRunner(ABC):
         metrics_config: dict,
         model_provider: str,
         model_name: str,
+        judgment_config: JudgmentConfig | None = None,
     ) -> list[EvaluationItemResult]:
-        """Orchestrate target execution + metric evaluation for all items."""
+        """Orchestrate target execution + metric evaluation + judgment for all items.
+
+        """
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
         if not evaluation_run:
             raise ValueError(f"EvaluationRun {evaluation_run_id} not found")
@@ -108,7 +119,11 @@ class BaseEvaluationRunner(ABC):
             except Exception:
                 logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
 
-        # Phase 3: Persist individual items
+        # Phase 3: Apply judgment conditions on metrics
+        if judgment_config and judgment_config.conditions:
+            results = self._apply_judgment(results, judgment_config)
+
+        # Phase 4: Persist individual items
         for result in results:
             item_input = next((item for item in items if item.index == result.index), None)
             run_item = EvaluationRunItem(
@@ -119,6 +134,7 @@ class BaseEvaluationRunner(ABC):
                 context=json.dumps(item_input.context) if item_input and item_input.context else None,
                 actual_output=result.actual_output,
                 metrics=json.dumps([m.model_dump() for m in result.metrics]) if result.metrics else None,
+                judgment=json.dumps(result.judgment.model_dump()) if result.judgment else None,
                 metadata_json=json.dumps(result.metadata) if result.metadata else None,
                 error=result.error,
                 overall_score=result.overall_score,
@@ -128,3 +144,28 @@ class BaseEvaluationRunner(ABC):
         self.session.commit()
 
         return results
+
+    @staticmethod
+    def _apply_judgment(
+        results: list[EvaluationItemResult],
+        judgment_config: JudgmentConfig,
+    ) -> list[EvaluationItemResult]:
+        """Apply judgment conditions to each result's metrics.
+
+        Builds a metric_name → score mapping from each result's metrics,
+        then delegates to JudgmentProcessor for condition evaluation.
+        Results with errors are skipped.
+        """
+        judged_results: list[EvaluationItemResult] = []
+        for result in results:
+            if result.error is not None or not result.metrics:
+                judged_results.append(result)
+                continue
+
+            metric_values = {m.name: m.score for m in result.metrics}
+            judgment_result = JudgmentProcessor.evaluate(metric_values, judgment_config)
+
+            judged_results.append(
+                result.model_copy(update={"judgment": judgment_result})
+            )
+        return judged_results
