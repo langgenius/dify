@@ -26,6 +26,7 @@ vi.mock('react-i18next', async () => {
 
 const mockNotify = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
+const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 
 let mockIsCurrentWorkspaceManager = true
@@ -57,6 +58,7 @@ vi.mock('../hooks', () => ({
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
+  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
 }))
 
 vi.mock('@/service/common', () => ({
@@ -144,6 +146,7 @@ describe('SystemModel', () => {
         type: 'success',
         message: 'Modified successfully',
       })
+      expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
   })

@@ -222,6 +222,14 @@ export const useUpdateModelList = () => {
   return updateModelList
 }
 
+export const useInvalidateDefaultModel = () => {
+  const queryClient = useQueryClient()
+
+  return useCallback((type: ModelTypeEnum) => {
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+  }, [queryClient])
+}
+
 export const useAnthropicBuyQuota = () => {
   const [loading, setLoading] = useState(false)
 
