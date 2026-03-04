@@ -71,6 +71,48 @@ def test_get_workflow_runs_count_supports_single_triggered_from_value() -> None:
     assert "AND (triggered_from='debugging')" in sql_statement
 
 
+def test_get_workflow_runs_by_ids_batches_lookup() -> None:
+    repository, logstore_client = _new_repository()
+    logstore_client.execute_sql.return_value = [
+        {
+            "id": "run_1",
+            "tenant_id": "tenant_1",
+            "app_id": "app_1",
+            "workflow_id": "wf_1",
+            "type": "workflow",
+            "triggered_from": "rerun",
+            "version": "v1",
+            "status": "succeeded",
+            "created_by_role": "account",
+            "created_by": "user_1",
+        },
+        {
+            "id": "run_2",
+            "tenant_id": "tenant_1",
+            "app_id": "app_1",
+            "workflow_id": "wf_1",
+            "type": "workflow",
+            "triggered_from": "rerun",
+            "version": "v1",
+            "status": "failed",
+            "created_by_role": "account",
+            "created_by": "user_1",
+        },
+    ]
+
+    result = repository.get_workflow_runs_by_ids(
+        tenant_id="tenant_1",
+        app_id="app_1",
+        run_ids=["run_1", "run_2", "run_1"],
+    )
+
+    assert [run.id for run in result] == ["run_1", "run_2"]
+    sql_statement = logstore_client.execute_sql.call_args.kwargs["sql"]
+    assert "ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC)" in sql_statement
+    assert "id = 'run_1'" in sql_statement
+    assert "id = 'run_2'" in sql_statement
+
+
 def test_dict_to_workflow_run_maps_rerun_fields() -> None:
     workflow_run = _dict_to_workflow_run(
         {

@@ -74,6 +74,33 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         assert len(result.data) == 2
         assert all(run.status == "succeeded" for run in result.data)
 
+    def test_get_workflow_runs_by_ids_uses_single_in_query(self, repository, mock_session_maker):
+        """Test batch lookup by IDs uses a single query."""
+        tenant_id = str(uuid.uuid4())
+        app_id = str(uuid.uuid4())
+        run_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+        mock_session = MagicMock()
+        mock_session_maker.return_value.__enter__.return_value = mock_session
+
+        mock_runs = [MagicMock(spec=WorkflowRun, id=run_ids[0]), MagicMock(spec=WorkflowRun, id=run_ids[1])]
+        mock_session.scalars.return_value.all.return_value = mock_runs
+
+        result = repository.get_workflow_runs_by_ids(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            run_ids=run_ids,
+        )
+
+        assert list(result) == mock_runs
+        mock_session.scalars.assert_called_once()
+        stmt = mock_session.scalars.call_args[0][0]
+        query_str = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert " IN " in query_str.upper()
+        assert tenant_id in query_str
+        assert app_id in query_str
+        assert run_ids[0] in query_str
+        assert run_ids[1] in query_str
+
     def test_get_workflow_runs_count_without_status(self, repository, mock_session_maker):
         """Test getting workflow runs count without status filter."""
         # Arrange
