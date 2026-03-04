@@ -1,6 +1,4 @@
-"""
-Unit tests for non-SQL duplicate document indexing task behaviors.
-"""
+"""Unit tests for queue/wrapper behaviors in duplicate document indexing tasks (non-database logic)."""
 
 import uuid
 from unittest.mock import Mock, patch
