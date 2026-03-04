@@ -110,15 +110,17 @@ class ExecutionStrategyDecision:
 class NodeExecutionStrategyResolver(Protocol):
     def resolve(self, *, node_id: str, is_branch_node: bool) -> ExecutionStrategyDecision:
         """Resolve execution mode for a node."""
+        ...
 
 
 class ReplayExecutionExecutor(Protocol):
     def execute(self, *, node: Node, snapshot: BaselineNodeSnapshot) -> Generator[GraphNodeEventBase, None, None]:
         """Emit replay events for one node execution."""
+        ...
 
 
 def normalize_execution_metadata(
-    metadata: Mapping[str | WorkflowNodeExecutionMetadataKey, Any] | None,
+    metadata: Mapping[Any, Any] | None,
 ) -> dict[WorkflowNodeExecutionMetadataKey, Any]:
     if not metadata:
         return {}

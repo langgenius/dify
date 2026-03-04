@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
+from dify_graph.enums import UserFrom
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
-from models.enums import UserFrom
 
 
 def test_init_graph_forwards_skip_validation(monkeypatch) -> None:
