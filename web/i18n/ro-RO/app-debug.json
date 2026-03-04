@@ -177,6 +177,8 @@
   "feature.tools.tips": "Instrumentele oferă o metodă de apel API standard, luând intrarea utilizatorului sau variabilele ca parametri de solicitare pentru interogarea datelor externe ca context.",
   "feature.tools.title": "Instrumente",
   "feature.tools.toolsInUse": "{{count}} instrumente în uz",
+  "feature.videoUpload.description": "Activarea video va permite modelului să proceseze fișiere video pentru transcriere și analiză.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Modificarea formatării va reseta zona de depanare, ești sigur?",
   "formattingChangedTitle": "Formatarea s-a schimbat",
   "generate.apply": "Aplica",

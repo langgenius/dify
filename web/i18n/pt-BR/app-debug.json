@@ -177,6 +177,8 @@
   "feature.tools.tips": "Tools provide a standard API call method, taking user input or variables as request parameters for querying external data as context.",
   "feature.tools.title": "Tools",
   "feature.tools.toolsInUse": "{{count}} tools in use",
+  "feature.videoUpload.description": "Ativar o vídeo permitirá que o modelo processe arquivos de vídeo para transcrição e análise.",
+  "feature.videoUpload.title": "Vídeo",
   "formattingChangedText": "Modificar a formatação redefinirá a área de depuração, você tem certeza?",
   "formattingChangedTitle": "Formatação alterada",
   "generate.apply": "Aplicar",

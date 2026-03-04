@@ -177,6 +177,8 @@
   "feature.tools.tips": "توفر الأدوات طريقة استدعاء API قياسية، مع أخذ مدخلات المستخدم أو المتغيرات كمعلمات طلب للاستعلام عن البيانات الخارجية كسياق.",
   "feature.tools.title": "الأدوات",
   "feature.tools.toolsInUse": "{{count}} أدوات قيد الاستخدام",
+  "feature.videoUpload.description": "تفعيل الفيديو سيسمح للنموذج بمعالجة ملفات الفيديو للنسخ والتحليل.",
+  "feature.videoUpload.title": "فيديو",
   "formattingChangedText": "سيؤدي تعديل التنسيق إلى إعادة تعيين منطقة التصحيح، هل أنت متأكد؟",
   "formattingChangedTitle": "تغيير التنسيق",
   "generate.apply": "تطبيق",

@@ -177,6 +177,8 @@
   "feature.tools.tips": "ツールは、ユーザー入力または変数をリクエストパラメーターとして使用して外部データをコンテキストとしてクエリするための標準的な API 呼び出し方法を提供します。",
   "feature.tools.title": "ツール",
   "feature.tools.toolsInUse": "{{count}} 個のツールが使用中",
+  "feature.videoUpload.description": "ビデオを有効にすると、モデルがビデオファイルを処理して転写と分析を行うことができます。",
+  "feature.videoUpload.title": "ビデオ",
   "formattingChangedText": "書式を変更すると、デバッグ領域がリセットされます。よろしいですか？",
   "formattingChangedTitle": "書式が変更されました",
   "generate.apply": "適用",

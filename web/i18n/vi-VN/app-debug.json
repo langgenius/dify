@@ -177,6 +177,8 @@
   "feature.tools.tips": "Công cụ cung cấp phương thức gọi API tiêu chuẩn, sử dụng đầu vào của người dùng hoặc biến làm tham số yêu cầu để truy vấn dữ liệu bên ngoài như ngữ cảnh.",
   "feature.tools.title": "Công cụ",
   "feature.tools.toolsInUse": "Đang sử dụng {{count}} công cụ",
+  "feature.videoUpload.description": "Bật video sẽ cho phép mô hình xử lý các tệp video để chuyển ngữ và phân tích.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Thay đổi định dạng sẽ đặt lại khu vực gỡ lỗi, bạn có chắc chắn không?",
   "formattingChangedTitle": "Định dạng đã thay đổi",
   "generate.apply": "Áp dụng",
