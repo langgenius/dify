@@ -23,7 +23,7 @@
     "and_qq >= 14.9"
   ],
   "engines": {
-    "node": ">=24"
+    "node": "^22"
   },
   "scripts": {
     "dev": "next dev",
@@ -63,6 +63,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
     "@amplitude/plugin-session-replay-browser": "1.23.6",
+    "@base-ui/react": "1.2.0",
     "@emoji-mart/data": "1.2.1",
     "@floating-ui/react": "0.26.28",
     "@formatjs/intl-localematcher": "0.5.10",
@@ -78,10 +79,10 @@
     "@monaco-editor/react": "4.7.0",
     "@octokit/core": "6.1.6",
     "@octokit/request-error": "6.1.8",
-    "@orpc/client": "1.13.4",
-    "@orpc/contract": "1.13.4",
-    "@orpc/openapi-client": "1.13.4",
-    "@orpc/tanstack-query": "1.13.4",
+    "@orpc/client": "1.13.6",
+    "@orpc/contract": "1.13.6",
+    "@orpc/openapi-client": "1.13.6",
+    "@orpc/tanstack-query": "1.13.6",
     "@remixicon/react": "4.7.0",
     "@sentry/react": "8.55.0",
     "@svgdotjs/svg.js": "3.2.5",
@@ -234,7 +235,7 @@
     "nock": "14.0.10",
     "postcss": "8.5.6",
     "postcss-js": "5.0.3",
-    "react-scan": "0.4.3",
+    "react-scan": "0.5.3",
     "react-server-dom-webpack": "19.2.4",
     "sass": "1.93.2",
     "storybook": "10.2.13",
@@ -242,8 +243,8 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "uglify-js": "3.19.3",
-    "vinext": "https://pkg.pr.new/hyoban/vinext@e283197",
-    "vite": "7.3.1",
+    "vinext": "https://pkg.pr.new/hyoban/vinext@a30ba79",
+    "vite": "8.0.0-beta.16",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.0.18",
     "vitest-canvas-mock": "1.1.3"

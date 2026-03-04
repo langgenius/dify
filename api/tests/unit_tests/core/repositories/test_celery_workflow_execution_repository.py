@@ -11,7 +11,7 @@ from uuid import uuid4
 import pytest
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
+from dify_graph.entities.workflow_execution import WorkflowExecution, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom

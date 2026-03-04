@@ -9,6 +9,7 @@ import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
+import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -54,13 +55,14 @@ const LocaleLayout = async ({
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        <ReactScanLoader />
       </head>
       <body
         className="h-full select-auto"
         {...datasetMap}
       >
         <div className="isolate h-full">
-          <ReactScanLoader />
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
@@ -76,7 +78,9 @@ const LocaleLayout = async ({
                       <I18nServerProvider>
                         <ToastProvider>
                           <GlobalPublicStoreProvider>
-                            {children}
+                            <TooltipProvider delay={300} closeDelay={200}>
+                              {children}
+                            </TooltipProvider>
                           </GlobalPublicStoreProvider>
                         </ToastProvider>
                       </I18nServerProvider>

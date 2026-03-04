@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import ProviderList from '../provider-list'
 import { getToolType } from '../utils'
@@ -206,10 +206,9 @@ describe('getToolType', () => {
 })
 
 const renderProviderList = (searchParams?: Record<string, string>) => {
-  return render(
-    <NuqsTestingAdapter searchParams={searchParams}>
-      <ProviderList />
-    </NuqsTestingAdapter>,
+  return renderWithNuqs(
+    <ProviderList />,
+    { searchParams },
   )
 }
 
