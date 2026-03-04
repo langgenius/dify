@@ -21,6 +21,11 @@ const Paragraph = (paragraph: any) => {
       </div>
     )
   }
+  const hasBlockChild = children_node?.some(
+    (child: any) => 'tagName' in child && child.tagName === 'img',
+  )
+  if (hasBlockChild)
+    return <div className="markdown-paragraph">{paragraph.children}</div>
   return <p>{paragraph.children}</p>
 }
 
