@@ -124,15 +124,12 @@ class WorkflowRunService:
                 workflow_run_obj.rerun_source_workflow_run = None
             return
 
-        source_runs_by_id: dict[str, WorkflowRun] = {}
-        for source_run_id in source_run_ids:
-            source_run = self._workflow_run_repo.get_workflow_run_by_id(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                run_id=source_run_id,
-            )
-            if source_run is not None:
-                source_runs_by_id[source_run_id] = source_run
+        source_runs = self._workflow_run_repo.get_workflow_runs_by_ids(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_ids=tuple(source_run_ids),
+        )
+        source_runs_by_id: dict[str, WorkflowRun] = {source_run.id: source_run for source_run in source_runs}
 
         for workflow_run in workflow_runs:
             source_run_id = workflow_run.rerun_from_workflow_run_id

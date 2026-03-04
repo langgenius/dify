@@ -122,11 +122,13 @@ def test_get_paginate_workflow_runs_attaches_rerun_source_summary() -> None:
         limit=20,
     )
     repo.get_paginated_workflow_runs.return_value = pagination
-    repo.get_workflow_run_by_id.return_value = SimpleNamespace(
-        id="source_1",
-        status="failed",
-        finished_at=1704067201,
-    )
+    repo.get_workflow_runs_by_ids.return_value = [
+        SimpleNamespace(
+            id="source_1",
+            status="failed",
+            finished_at=1704067201,
+        )
+    ]
     service._workflow_run_repo = repo  # type: ignore[attr-defined]
 
     result = service.get_paginate_workflow_runs(
@@ -144,11 +146,58 @@ def test_get_paginate_workflow_runs_attaches_rerun_source_summary() -> None:
     assert result.data[0].rerun_from_node_title == "Code"
     assert result.data[1].rerun_source_workflow_run is None
     assert result.data[1].rerun_from_node_title is None
-    repo.get_workflow_run_by_id.assert_called_once_with(
+    repo.get_workflow_runs_by_ids.assert_called_once_with(
         tenant_id="tenant_1",
         app_id="app_1",
-        run_id="source_1",
+        run_ids=("source_1",),
     )
+
+
+def test_get_paginate_workflow_runs_batches_distinct_rerun_source_ids() -> None:
+    service = _new_service()
+    repo = MagicMock()
+    pagination = SimpleNamespace(
+        data=[
+            SimpleNamespace(id="run_1", rerun_from_workflow_run_id="source_1", rerun_from_node_id=None),
+            SimpleNamespace(id="run_2", rerun_from_workflow_run_id="source_1", rerun_from_node_id=None),
+            SimpleNamespace(id="run_3", rerun_from_workflow_run_id="source_2", rerun_from_node_id=None),
+        ],
+        has_more=False,
+        limit=20,
+    )
+    repo.get_paginated_workflow_runs.return_value = pagination
+    repo.get_workflow_runs_by_ids.return_value = [
+        SimpleNamespace(id="source_1", status="succeeded", finished_at=1704067201),
+        SimpleNamespace(id="source_2", status="failed", finished_at=1704067202),
+    ]
+    service._workflow_run_repo = repo  # type: ignore[attr-defined]
+
+    result = service.get_paginate_workflow_runs(
+        app_model=SimpleNamespace(tenant_id="tenant_1", id="app_1"),
+        args={"limit": 20},
+        triggered_from=[WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.RERUN],
+    )
+
+    assert result is pagination
+    kwargs = repo.get_workflow_runs_by_ids.call_args.kwargs
+    assert kwargs["tenant_id"] == "tenant_1"
+    assert kwargs["app_id"] == "app_1"
+    assert set(kwargs["run_ids"]) == {"source_1", "source_2"}
+    assert result.data[0].rerun_source_workflow_run == {
+        "id": "source_1",
+        "status": "succeeded",
+        "finished_at": 1704067201,
+    }
+    assert result.data[1].rerun_source_workflow_run == {
+        "id": "source_1",
+        "status": "succeeded",
+        "finished_at": 1704067201,
+    }
+    assert result.data[2].rerun_source_workflow_run == {
+        "id": "source_2",
+        "status": "failed",
+        "finished_at": 1704067202,
+    }
 
 
 def test_get_workflow_run_skips_source_lookup_when_not_rerun() -> None:
@@ -198,4 +247,4 @@ def test_get_paginate_workflow_runs_skips_source_lookup_when_not_rerun() -> None
     assert result is pagination
     assert result.data[0].rerun_source_workflow_run is None
     assert result.data[1].rerun_source_workflow_run is None
-    repo.get_workflow_run_by_id.assert_not_called()
+    repo.get_workflow_runs_by_ids.assert_not_called()

@@ -335,6 +335,83 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     )
             raise
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> Sequence[WorkflowRun]:
+        """
+        Get multiple workflow runs by IDs with tenant and app isolation.
+        """
+        normalized_run_ids = tuple(dict.fromkeys(run_id for run_id in run_ids if run_id))
+        if not normalized_run_ids:
+            return []
+
+        logger.debug(
+            "get_workflow_runs_by_ids: tenant_id=%s, app_id=%s, run_ids_count=%d",
+            tenant_id,
+            app_id,
+            len(normalized_run_ids),
+        )
+
+        try:
+            escaped_tenant_id = escape_identifier(tenant_id)
+            escaped_app_id = escape_identifier(app_id)
+            run_id_filter = " OR ".join(
+                f"id = '{escape_identifier(run_id)}'" for run_id in normalized_run_ids
+            )
+
+            sql = f"""
+                SELECT * FROM (
+                    SELECT *,
+                        ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
+                    FROM "{AliyunLogStore.workflow_execution_logstore}"
+                    WHERE tenant_id = '{escaped_tenant_id}'
+                      AND app_id = '{escaped_app_id}'
+                      AND ({run_id_filter})
+                      AND __time__ > 0
+                ) AS subquery
+                WHERE rn = 1
+                LIMIT {len(normalized_run_ids)}
+            """
+            results = self.logstore_client.execute_sql(
+                sql=sql,
+                logstore=AliyunLogStore.workflow_execution_logstore,
+            )
+            if not results:
+                if self._enable_dual_read:
+                    return self._fallback_get_workflow_runs_by_ids_with_tenant(
+                        run_ids=normalized_run_ids,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                    )
+                return []
+            return [_dict_to_workflow_run(row) for row in results]
+        except Exception:
+            logger.exception(
+                "Failed to get workflow runs by IDs from LogStore: tenant_id=%s, app_id=%s, run_ids_count=%d",
+                tenant_id,
+                app_id,
+                len(normalized_run_ids),
+            )
+            if self._enable_dual_read:
+                try:
+                    return self._fallback_get_workflow_runs_by_ids_with_tenant(
+                        run_ids=normalized_run_ids,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "PostgreSQL fallback also failed for get_workflow_runs_by_ids: tenant_id=%s, app_id=%s, "
+                        "run_ids_count=%d",
+                        tenant_id,
+                        app_id,
+                        len(normalized_run_ids),
+                    )
+            raise
+
     def _fallback_get_workflow_run_by_id_with_tenant(
         self, run_id: str, tenant_id: str, app_id: str
     ) -> WorkflowRun | None:
@@ -349,6 +426,26 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id
             )
             return session.scalar(stmt)
+
+    def _fallback_get_workflow_runs_by_ids_with_tenant(
+        self, run_ids: Sequence[str], tenant_id: str, app_id: str
+    ) -> Sequence[WorkflowRun]:
+        """Fallback to PostgreSQL batch query for records not in LogStore (with tenant isolation)."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+
+        from extensions.ext_database import db
+
+        if not run_ids:
+            return []
+
+        with Session(db.engine) as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id.in_(run_ids),
+            )
+            return list(session.scalars(stmt).all())
 
     def get_workflow_run_by_id_without_tenant(
         self,

@@ -121,6 +121,29 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> Sequence[WorkflowRun]:
+        """
+        Get multiple workflow runs by IDs.
+
+        Retrieves workflow runs in batch with tenant and app isolation.
+        This is intended for list enrichment scenarios to avoid N+1
+        lookups for related workflow run metadata.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            run_ids: Workflow run identifiers to fetch
+
+        Returns:
+            Sequence of found WorkflowRun objects. Missing IDs are omitted.
+        """
+        ...
+
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
