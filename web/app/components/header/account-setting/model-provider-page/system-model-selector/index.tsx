@@ -19,6 +19,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { ModelTypeEnum } from '../declarations'
 import {
+  useInvalidateDefaultModel,
   useModelList,
   useSystemDefaultModelAndModelList,
   useUpdateModelList,
@@ -48,6 +49,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
+  const invalidateDefaultModel = useInvalidateDefaultModel()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: speech2textModelList } = useModelList(ModelTypeEnum.speech2text)
@@ -106,18 +108,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setOpen(false)
 
-      changedModelTypes.forEach((modelType) => {
-        if (modelType === ModelTypeEnum.textGeneration)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.textEmbedding)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.rerank)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.speech2text)
-          updateModelList(modelType)
-        else if (modelType === ModelTypeEnum.tts)
-          updateModelList(modelType)
-      })
+      const allModelTypes = [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts]
+      allModelTypes.forEach(type => invalidateDefaultModel(type))
+      changedModelTypes.forEach(type => updateModelList(type))
     }
   }
 

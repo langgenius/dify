@@ -161,7 +161,7 @@ describe('ModelProviderPage', () => {
   })
 
   describe('system model config status', () => {
-    it('should show no-provider warning when no configured providers exist', () => {
+    it('should not show top warning when no configured providers exist (empty state card handles it)', () => {
       mockProviders.splice(0, mockProviders.length, {
         provider: 'anthropic',
         label: { en_US: 'Anthropic' },
@@ -174,7 +174,8 @@ describe('ModelProviderPage', () => {
       })
 
       render(<ModelProviderPage searchText="" />)
-      expect(screen.getByText('common.modelProvider.noProviderInstalled')).toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
     })
 
     it('should show none-configured warning when providers exist but no default models set', () => {

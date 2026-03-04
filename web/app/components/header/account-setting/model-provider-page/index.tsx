@@ -23,12 +23,6 @@ import SystemModelSelector from './system-model-selector'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
-const WARNING_TEXT_KEYS = {
-  'no-provider': 'modelProvider.noProviderInstalled',
-  'none-configured': 'modelProvider.noneConfigured',
-  'partially-configured': 'modelProvider.notConfigured',
-} as const
-
 type Props = {
   searchText: string
 }
@@ -94,10 +88,13 @@ const ModelProviderPage = ({ searchText }: Props) => {
       return 'partially-configured'
     return 'fully-configured'
   }, [configuredProviders, textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel])
-  const showWarning = !isDefaultModelLoading && systemModelConfigStatus !== 'fully-configured'
-  const warningTextKey = systemModelConfigStatus !== 'fully-configured'
-    ? WARNING_TEXT_KEYS[systemModelConfigStatus]
-    : undefined
+  const warningTextKey
+    = systemModelConfigStatus === 'none-configured'
+      ? 'modelProvider.noneConfigured'
+      : systemModelConfigStatus === 'partially-configured'
+        ? 'modelProvider.notConfigured'
+        : null
+  const showWarning = !isDefaultModelLoading && !!warningTextKey
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(

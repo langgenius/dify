@@ -390,7 +390,6 @@
   "modelProvider.models": "Models",
   "modelProvider.modelsNum": "{{num}} Models",
   "modelProvider.noModelFound": "No model found for {{model}}",
-  "modelProvider.noProviderInstalled": "No model provider installed. Install one to configure system models.",
   "modelProvider.noneConfigured": "Configure a default system model to run applications",
   "modelProvider.notConfigured": "The system model has not yet been fully configured",
   "modelProvider.parameters": "PARAMETERS",

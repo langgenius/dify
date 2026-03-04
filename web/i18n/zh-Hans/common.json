@@ -390,7 +390,6 @@
   "modelProvider.models": "模型列表",
   "modelProvider.modelsNum": "{{num}} 个模型",
   "modelProvider.noModelFound": "找不到模型 {{model}}",
-  "modelProvider.noProviderInstalled": "尚未安装模型供应商，请先安装以配置系统模型。",
   "modelProvider.noneConfigured": "配置默认系统模型以运行应用",
   "modelProvider.notConfigured": "系统模型尚未完全配置",
   "modelProvider.parameters": "参数",
