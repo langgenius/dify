@@ -825,7 +825,7 @@ class TestDuplicateDocumentIndexingTasks:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-    def test_duplicate_document_indexing_document_is_paused(
+    def test_duplicate_document_indexing_task_document_is_paused(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when document is paused."""
@@ -848,6 +848,14 @@ class TestDuplicateDocumentIndexingTasks:
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+    def test_duplicate_document_indexing_document_is_paused(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """Test duplicate document indexing when document is paused."""
+        self.test_duplicate_document_indexing_task_document_is_paused(
+            db_session_with_containers, mock_external_service_dependencies
+        )
 
     def test_duplicate_document_indexing_cleans_old_segments(
         self, db_session_with_containers, mock_external_service_dependencies
