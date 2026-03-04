@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, Union
+from typing import Any, NewType, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -509,10 +509,13 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs)
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
-        is_replay = isinstance(metadata, Mapping) and (
-            metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
-            or metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value) == "replay"
-        )
+        execution_mode = None
+        if isinstance(metadata, Mapping):
+            execution_mode = metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE)
+            if execution_mode is None:
+                metadata_by_str_key = cast("Mapping[str, Any]", metadata)
+                execution_mode = metadata_by_str_key.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE.value)
+        is_replay = execution_mode == "replay"
         elapsed_time = 0.0 if is_replay else (finished_at - start_at).total_seconds()
         if is_replay and isinstance(metadata, Mapping):
             if not isinstance(metadata, dict):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Generator, Mapping
-from typing import Any
+from typing import Any, cast
 
 from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.file.normalizer import rebuild_runtime_file_value
@@ -96,7 +96,7 @@ class DefaultReplayExecutionExecutor(ReplayExecutionExecutor):
         return merged_outputs
 
     def _rewrite_start_sys_outputs(self, *, outputs: dict[str, Any]) -> None:
-        system_values = self._variable_pool.system_variables.to_dict()
+        system_values = cast("Mapping[str, Any]", self._variable_pool.system_variables.to_dict())
         for key in list(outputs.keys()):
             if not key.startswith("sys."):
                 continue

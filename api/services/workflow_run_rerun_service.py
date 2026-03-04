@@ -8,7 +8,7 @@ import uuid
 from collections import defaultdict, deque
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, NoReturn, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Engine, select
@@ -227,7 +227,7 @@ class WorkflowRunRerunService:
                 ),
             ],
         )
-        return cast("dict[str, Any]", response.model_dump(mode="json"))
+        return response.model_dump(mode="json")
 
     def _build_plan_or_raise(
         self,
@@ -685,14 +685,15 @@ class WorkflowRunRerunService:
         def on_subscribe() -> None:
             workflow_run_rerun_task.delay(payload_json)
 
-        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(on_subscribe)
-        return WorkflowAppGenerator.convert_to_event_stream(
+        on_subscribe = AppGenerateService.build_streaming_task_on_subscribe(on_subscribe)
+        response_stream = WorkflowAppGenerator.convert_to_event_stream(
             MessageBasedAppGenerator.retrieve_events(
                 AppMode.WORKFLOW,
                 plan.workflow_run_id,
                 on_subscribe=on_subscribe,
             )
         )
+        return cast("Generator[str | Mapping[str, Any], None, None]", response_stream)
 
     def _execute_blocking_with_plan(
         self,
@@ -1410,8 +1411,13 @@ class WorkflowRunRerunService:
     @staticmethod
     def _node_execution_replay_sort_key(node_execution: Any) -> tuple[float, int, str]:
         created_at = getattr(node_execution, "created_at", None)
-        if hasattr(created_at, "timestamp"):
-            created_at_key = float(created_at.timestamp())
+        timestamp_func = getattr(created_at, "timestamp", None)
+        if callable(timestamp_func):
+            timestamp_value = timestamp_func()
+            if isinstance(timestamp_value, (int, float)):
+                created_at_key = float(timestamp_value)
+            else:
+                created_at_key = 0.0
         elif isinstance(created_at, (int, float)):
             created_at_key = float(created_at)
         else:
@@ -1475,7 +1481,7 @@ class WorkflowRunRerunService:
         return str(status)
 
     @staticmethod
-    def _raise_error(code: str, status: int, message: str) -> None:
+    def _raise_error(code: str, status: int, message: str) -> NoReturn:
         raise WorkflowRunRerunServiceError(code=code, status=status, message=message)
 
     @staticmethod

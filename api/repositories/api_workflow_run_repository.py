@@ -42,7 +42,6 @@ from sqlalchemy.orm import Session
 
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.enums import WorkflowType
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
@@ -55,7 +54,7 @@ from repositories.types import (
 )
 
 
-class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
+class APIWorkflowRunRepository(Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 
