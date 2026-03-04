@@ -3,6 +3,7 @@
 import type { PluginDetail } from '../../../types'
 import type { ModalStates, VersionTarget } from './use-detail-header-state'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
@@ -36,6 +37,7 @@ export const usePluginOperations = ({
   isFromMarketplace,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
+  const { t } = useTranslation()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
@@ -114,6 +116,10 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
+      Toast.notify({
+        type: 'success',
+        message: t('action.deleteSuccess', { ns: 'plugin' }),
+      })
       onUpdate?.(true)
 
       if (PluginCategoryEnum.model.includes(category))

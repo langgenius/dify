@@ -5317,11 +5317,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header/components/header-modals.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/detail-header/components/plugin-source-badge.tsx": {
     "no-restricted-imports": {
       "count": 1
