@@ -181,13 +181,18 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
 
     sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
 
+    sentinel_kwargs = {
+        "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
+        "username": dify_config.REDIS_SENTINEL_USERNAME,
+        "password": dify_config.REDIS_SENTINEL_PASSWORD,
+    }
+
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        sentinel_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+
     sentinel = Sentinel(
         sentinel_hosts,
-        sentinel_kwargs={
-            "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
-            "username": dify_config.REDIS_SENTINEL_USERNAME,
-            "password": dify_config.REDIS_SENTINEL_PASSWORD,
-        },
+        sentinel_kwargs=sentinel_kwargs,
     )
 
     master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
@@ -204,12 +209,15 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
         for node in dify_config.REDIS_CLUSTERS.split(",")
     ]
 
-    cluster: RedisCluster = RedisCluster(
-        startup_nodes=nodes,
-        password=dify_config.REDIS_CLUSTERS_PASSWORD,
-        protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
-        cache_config=_get_cache_configuration(),
-    )
+    cluster_kwargs: dict[str, Any] = {
+        "startup_nodes": nodes,
+        "password": dify_config.REDIS_CLUSTERS_PASSWORD,
+        "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        "cache_config": _get_cache_configuration(),
+    }
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        cluster_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+    cluster: RedisCluster = RedisCluster(**cluster_kwargs)
     return cluster
 
 
@@ -225,6 +233,9 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
         }
     )
 
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        redis_params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+
     if ssl_kwargs:
         redis_params.update(ssl_kwargs)
 
@@ -234,9 +245,17 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
 
 
 def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
+    max_conns = dify_config.REDIS_MAX_CONNECTIONS
     if use_clusters:
-        return RedisCluster.from_url(pubsub_url)
-    return redis.Redis.from_url(pubsub_url)
+        if max_conns:
+            return RedisCluster.from_url(pubsub_url, max_connections=max_conns)
+        else:
+            return RedisCluster.from_url(pubsub_url)
+
+    if max_conns:
+        return redis.Redis.from_url(pubsub_url, max_connections=max_conns)
+    else:
+        return redis.Redis.from_url(pubsub_url)
 
 
 def init_app(app: DifyApp):
