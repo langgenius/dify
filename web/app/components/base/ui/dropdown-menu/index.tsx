@@ -13,8 +13,8 @@ export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
 export const DropdownMenuRadioGroup = Menu.RadioGroup
 
-const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center rounded-lg px-2 outline-none'
-const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50'
+const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-none'
+const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-30'
 
 export function DropdownMenuRadioItem({
   className,
@@ -89,7 +89,7 @@ export function DropdownMenuGroupLabel({
   return (
     <Menu.GroupLabel
       className={cn(
-        'px-3 py-1 text-text-tertiary system-2xs-medium-uppercase',
+        'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase',
         className,
       )}
       {...props}
@@ -148,7 +148,7 @@ function renderDropdownMenuPopup({
       >
         <Menu.Popup
           className={cn(
-            'max-h-[var(--available-height)] overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-1 text-sm text-text-secondary shadow-lg',
+            'max-h-[var(--available-height)] overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 text-sm text-text-secondary shadow-lg backdrop-blur-[5px]',
             'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
@@ -204,7 +204,7 @@ export function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <span aria-hidden className="i-ri-arrow-right-s-line ml-auto size-[14px] shrink-0 text-text-tertiary" />
+      <span aria-hidden className="i-ri-arrow-right-s-line ml-auto size-4 shrink-0 text-text-tertiary" />
     </Menu.SubmenuTrigger>
   )
 }
@@ -270,7 +270,7 @@ export function DropdownMenuSeparator({
 }: React.ComponentPropsWithoutRef<typeof Menu.Separator>) {
   return (
     <Menu.Separator
-      className={cn('my-1 h-px bg-divider-regular', className)}
+      className={cn('my-1 h-px bg-divider-subtle', className)}
       {...props}
     />
   )
