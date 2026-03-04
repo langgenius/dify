@@ -89,6 +89,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     minimap: { enabled: false },
     wordWrap: 'on',
     fixedOverflowWidgets: true,
+    tabFocusMode: false,
     ...options,
   }), [readOnly, options])
 
@@ -120,18 +121,11 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
         }
         callbacksRef.current.onChange?.(editor.getValue())
       })
-      const container = containerRef.current
-      const handleKeydown = (event: KeyboardEvent) => {
-        if (event.key === 'Tab')
-          event.preventDefault()
-        event.stopPropagation()
-      }
-      const handleKeyup = (event: KeyboardEvent) => {
-        event.stopPropagation()
-      }
-      const keyListenerAbortController = new AbortController()
-      container?.addEventListener('keydown', handleKeydown, { signal: keyListenerAbortController.signal })
-      container?.addEventListener('keyup', handleKeyup, { signal: keyListenerAbortController.signal })
+      const keydownDisposable = editor.onKeyDown((event) => {
+        const { key, code } = event.browserEvent
+        if (key === ' ' || code === 'Space')
+          event.stopPropagation()
+      })
 
       const focusDisposable = editor.onDidFocusEditorText(() => {
         callbacksRef.current.onFocus?.()
@@ -149,7 +143,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
         resizeObserver.disconnect()
         blurDisposable.dispose()
         focusDisposable.dispose()
-        keyListenerAbortController.abort()
+        keydownDisposable.dispose()
         changeDisposable.dispose()
         editor.dispose()
         model.dispose()
