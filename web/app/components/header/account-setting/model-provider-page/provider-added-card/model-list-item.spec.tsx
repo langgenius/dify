@@ -5,6 +5,7 @@ import { ModelStatusEnum } from '../declarations'
 import ModelListItem from './model-list-item'
 
 let mockModelLoadBalancingEnabled = false
+let mockPlanType: string = 'pro'
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -14,7 +15,7 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    plan: { type: 'pro' },
+    plan: { type: mockPlanType },
   }),
   useProviderContextSelector: () => mockModelLoadBalancingEnabled,
 }))
@@ -60,6 +61,7 @@ describe('ModelListItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
+    mockPlanType = 'pro'
   })
 
   it('should render model item with icon and name', () => {
@@ -175,12 +177,9 @@ describe('ModelListItem', () => {
 
   // Plan.sandbox: ConfigModel shown without load balancing enabled
   it('should show ConfigModel for sandbox plan even without load balancing enabled', () => {
-    // Arrange - plan.type is 'pro' from mock but we need sandbox
-    vi.mocked(vi.fn()) // The mock already returns plan.type: 'pro'
-    // The ConfigModel check is: isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox)
-    // With mockModelLoadBalancingEnabled = false and plan.type = 'pro', ConfigModel should not show
-    // Let's enable load balancing to test the ConfigModel presence
-    mockModelLoadBalancingEnabled = true
+    // Arrange - set plan type to sandbox and keep load balancing disabled
+    mockModelLoadBalancingEnabled = false
+    mockPlanType = 'sandbox'
 
     // Act
     render(
@@ -191,7 +190,7 @@ describe('ModelListItem', () => {
       />,
     )
 
-    // Assert
+    // Assert - ConfigModel should show because plan.type === 'sandbox'
     expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
   })
 

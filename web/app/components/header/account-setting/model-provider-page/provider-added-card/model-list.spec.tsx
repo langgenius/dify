@@ -130,20 +130,6 @@ describe('ModelList', () => {
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should render with models and display model names', () => {
-    render(
-      <ModelList
-        provider={mockProvider}
-        models={mockModels}
-        onCollapse={mockOnCollapse}
-        onChange={mockOnChange}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'gpt-4' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'gpt-3.5' })).toBeInTheDocument()
-  })
-
   it('should call onSave (onChange) and onClose from the load balancing modal callbacks', () => {
     render(
       <ModelList

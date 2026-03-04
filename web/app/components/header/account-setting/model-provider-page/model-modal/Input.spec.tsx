@@ -114,7 +114,7 @@ describe('Input', () => {
   })
 
   it('should show check circle icon when validated is true', () => {
-    render(
+    const { container } = render(
       <Input
         placeholder="Key"
         onChange={vi.fn()}
@@ -123,10 +123,11 @@ describe('Input', () => {
     )
 
     expect(screen.getByPlaceholderText('Key')).toBeInTheDocument()
+    expect(container.querySelector('.absolute.right-2\\.5.top-2\\.5')).toBeInTheDocument()
   })
 
   it('should not show check circle icon when validated is false', () => {
-    render(
+    const { container } = render(
       <Input
         placeholder="Key"
         onChange={vi.fn()}
@@ -135,6 +136,7 @@ describe('Input', () => {
     )
 
     expect(screen.getByPlaceholderText('Key')).toBeInTheDocument()
+    expect(container.querySelector('.absolute.right-2\\.5.top-2\\.5')).not.toBeInTheDocument()
   })
 
   it('should apply disabled attribute when disabled prop is true', () => {

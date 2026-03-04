@@ -23,7 +23,7 @@ describe('PresetsParameter', () => {
     render(<PresetsParameter onSelect={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i }))
 
-    const button = screen.getByText('common.modelProvider.loadPresets').closest('button')
+    const button = screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i })
     expect(button).toHaveClass('bg-state-base-hover')
   })
 

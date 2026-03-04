@@ -111,23 +111,29 @@ describe('AddCredentialInLoadBalancing', () => {
 
     // Must invalidate module cache so the component picks up the new mock
     vi.resetModules()
-    const { default: AddCredentialLB } = await import('./add-credential-in-load-balancing')
+    try {
+      const { default: AddCredentialLB } = await import('./add-credential-in-load-balancing')
 
-    const { container } = render(
-      <AddCredentialLB
-        provider={provider}
-        model={model}
-        configurationMethod={ConfigurationMethodEnum.predefinedModel}
-        modelCredential={modelCredential}
-        onSelectCredential={vi.fn()}
-      />,
-    )
+      const { container } = render(
+        <AddCredentialLB
+          provider={provider}
+          model={model}
+          configurationMethod={ConfigurationMethodEnum.predefinedModel}
+          modelCredential={modelCredential}
+          onSelectCredential={vi.fn()}
+        />,
+      )
 
-    // The trigger div rendered by renderTrigger(true) should have bg-state-base-hover
-    // (the static class applied when open=true via cn())
-    const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
-    expect(triggerDiv).toBeInTheDocument()
-    expect(triggerDiv!.className).toContain('bg-state-base-hover')
+      // The trigger div rendered by renderTrigger(true) should have bg-state-base-hover
+      // (the static class applied when open=true via cn())
+      const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
+      expect(triggerDiv).toBeInTheDocument()
+      expect(triggerDiv!.className).toContain('bg-state-base-hover')
+    }
+    finally {
+      vi.doUnmock('@/app/components/header/account-setting/model-provider-page/model-auth')
+      vi.resetModules()
+    }
   })
 
   // customizableModel configuration method: component renders the add credential label
@@ -166,7 +172,7 @@ describe('AddCredentialInLoadBalancing', () => {
     expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
   })
 
-  it('should not call onUpdate when it is not provided and update action fires', () => {
+  it('should not throw when update action fires without onUpdate prop', () => {
     // Arrange - no onUpdate prop
     render(
       <AddCredentialInLoadBalancing

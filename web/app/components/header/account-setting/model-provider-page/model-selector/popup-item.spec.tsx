@@ -173,7 +173,8 @@ describe('PopupItem', () => {
     expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
   })
 
-  it('should fall back to en_US label when language key is missing', () => {
+  it('should fall back to en_US label when current locale translation is empty', () => {
+    mockLanguageRef.value = 'zh_Hans'
     const model = makeModel({
       label: { en_US: 'English Label', zh_Hans: '' },
     })

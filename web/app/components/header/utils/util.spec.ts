@@ -20,13 +20,12 @@ describe('generateMailToLink', () => {
   })
 
   // Body provided, no subject: subject branch false, body branch true
-  it('should append body with ampersand when body is provided without subject', () => {
+  it('should append body with question mark when body is provided without subject', () => {
     // Act
     const result = generateMailToLink('test@example.com', undefined, 'Some body text')
 
     // Assert
-    // Note: this exposes a latent bug where body uses `&` instead of `?` when subject is absent
-    expect(result).toBe('mailto:test@example.com&body=Some%20body%20text')
+    expect(result).toBe('mailto:test@example.com?body=Some%20body%20text')
   })
 
   // Both subject and body provided: both branches true
@@ -46,10 +45,17 @@ describe('mailToSupport', () => {
     const result = mailToSupport('user@test.com', 'Pro', '1.0.0')
 
     // Assert
-    expect(result).toContain('mailto:support@dify.ai')
-    expect(result).toContain('subject=')
-    expect(result).toContain('Pro')
-    expect(result).toContain('user%40test.com')
-    expect(result).toContain('1.0.0')
+    expect(result.startsWith('mailto:support@dify.ai?')).toBe(true)
+
+    const query = result.split('?')[1]
+    expect(query).toBeDefined()
+
+    const params = new URLSearchParams(query)
+    expect(params.get('subject')).toBe('Technical Support Request Pro user@test.com')
+
+    const body = params.get('body')
+    expect(body).toContain('Current Plan: Pro')
+    expect(body).toContain('Account: user@test.com')
+    expect(body).toContain('Version: 1.0.0')
   })
 })

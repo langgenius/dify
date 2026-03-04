@@ -261,7 +261,7 @@ describe('ModelLoadBalancingConfigs', () => {
     expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
   })
 
-  it('should not remove credential at index 0 due to falsy index guard', async () => {
+  it('should remove credential at index 0', async () => {
     const user = userEvent.setup()
     const onRemove = vi.fn()
     // Create config where the target credential is at index 0
@@ -275,13 +275,10 @@ describe('ModelLoadBalancingConfigs', () => {
 
     render(<StatefulHarness initialConfig={config} onRemove={onRemove} />)
 
-    // cred-2 is at index 0: the `if (index && index > -1)` guard treats 0 as falsy,
-    // so the visual entry is NOT removed, but onRemove IS still called
     await user.click(screen.getByRole('button', { name: 'trigger remove' }))
 
     expect(onRemove).toHaveBeenCalledWith('cred-2')
-    // The item remains in the list because the index=0 guard blocks removal
-    expect(screen.getByText('Key 2')).toBeInTheDocument()
+    expect(screen.queryByText('Key 2')).not.toBeInTheDocument()
   })
 
   it('should not toggle load balancing when modelLoadBalancingEnabled=false and enabling via switch', async () => {

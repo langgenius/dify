@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Operate from './Operate'
 
 describe('Operate', () => {
@@ -65,7 +66,8 @@ describe('Operate', () => {
     expect(screen.queryByText('common.provider.invalidApiKey')).toBeNull()
   })
 
-  it('should not call onAdd when disabled', () => {
+  it('should not call onAdd when disabled', async () => {
+    const user = userEvent.setup()
     const onAdd = vi.fn()
     render(
       <Operate
@@ -78,7 +80,7 @@ describe('Operate', () => {
         onSave={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByText('common.provider.addKey'))
+    await user.click(screen.getByText('common.provider.addKey'))
     expect(onAdd).not.toHaveBeenCalled()
   })
 
@@ -86,7 +88,8 @@ describe('Operate', () => {
     render(
       <Operate
         isOpen={false}
-        status={'unknown' as never}
+        // @ts-expect-error intentional invalid status for runtime fallback coverage
+        status="unknown"
         onAdd={vi.fn()}
         onCancel={vi.fn()}
         onEdit={vi.fn()}

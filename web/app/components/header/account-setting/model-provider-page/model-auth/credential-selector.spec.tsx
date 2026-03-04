@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CredentialSelector from './credential-selector'
 
 vi.mock('./authorized/credential-item', () => ({
@@ -53,7 +54,8 @@ describe('CredentialSelector', () => {
     expect(screen.getByText(/modelProvider.auth.selectModelCredential/)).toBeInTheDocument()
   })
 
-  it('should call onSelect when a credential item is clicked', () => {
+  it('should call onSelect when a credential item is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         credentials={mockCredentials}
@@ -61,13 +63,14 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
-    fireEvent.click(screen.getByRole('button', { name: 'Key 2' }))
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    await user.click(screen.getByRole('button', { name: 'Key 2' }))
 
     expect(mockOnSelect).toHaveBeenCalledWith(mockCredentials[1])
   })
 
-  it('should call onSelect with add-new payload when add action is clicked', () => {
+  it('should call onSelect with add-new payload when add action is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         credentials={mockCredentials}
@@ -75,8 +78,8 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
-    fireEvent.click(screen.getByText(/modelProvider.auth.addNewModelCredential/))
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    await user.click(screen.getByText(/modelProvider.auth.addNewModelCredential/))
 
     expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
       credential_id: '__add_new_credential',
@@ -84,7 +87,8 @@ describe('CredentialSelector', () => {
     }))
   })
 
-  it('should not open options when disabled is true', () => {
+  it('should not open options when disabled is true', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         disabled
@@ -93,7 +97,7 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
     expect(screen.queryByRole('button', { name: 'Key 1' })).not.toBeInTheDocument()
   })
 })

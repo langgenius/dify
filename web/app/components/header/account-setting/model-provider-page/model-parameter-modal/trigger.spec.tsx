@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Trigger from './trigger'
 
 vi.mock('../hooks', () => ({
@@ -50,7 +51,7 @@ describe('Trigger', () => {
   })
 
   // isInWorkflow=true: workflow border class + RiArrowDownSLine arrow
-  it('should render workflow styles and down arrow when isInWorkflow is true', () => {
+  it('should render workflow styles when isInWorkflow is true', () => {
     // Act
     const { container } = render(
       <Trigger
@@ -63,6 +64,7 @@ describe('Trigger', () => {
     // Assert
     expect(container.firstChild).toHaveClass('border-workflow-block-parma-bg')
     expect(container.firstChild).toHaveClass('bg-workflow-block-parma-bg')
+    expect(container.querySelectorAll('svg').length).toBe(2)
   })
 
   // disabled=true + hasDeprecated=true: AlertTriangle + deprecated tooltip
@@ -99,8 +101,9 @@ describe('Trigger', () => {
     expect(warningIcon).toBeInTheDocument()
   })
 
-  it('should render empty tooltip content when disabled without deprecated or modelDisabled', () => {
-    render(
+  it('should render empty tooltip content when disabled without deprecated or modelDisabled', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
       <Trigger
         currentProvider={currentProvider}
         currentModel={currentModel}
@@ -111,6 +114,14 @@ describe('Trigger', () => {
     )
     const warningIcon = document.querySelector('.text-\\[\\#F79009\\]')
     expect(warningIcon).toBeInTheDocument()
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+    const tooltip = screen.queryByRole('tooltip')
+    if (tooltip)
+      expect(tooltip).toBeEmptyDOMElement()
+    expect(screen.queryByText('modelProvider.deprecated')).not.toBeInTheDocument()
+    expect(screen.queryByText('No Configure')).not.toBeInTheDocument()
   })
 
   // providerName not matching any provider: find() returns undefined

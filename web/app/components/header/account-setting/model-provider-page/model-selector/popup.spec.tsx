@@ -82,6 +82,7 @@ describe('Popup', () => {
 
     fireEvent.change(input, { target: { value: '' } })
     expect((input as HTMLInputElement).value).toBe('')
+    expect(screen.getByText('openai')).toBeInTheDocument()
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
@@ -172,7 +173,7 @@ describe('Popup', () => {
     )
 
     // The model item should be filtered out because it has toolCall but not vision
-    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
   })
 
   it('should close tooltip on scroll', () => {

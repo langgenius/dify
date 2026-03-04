@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import StatusIndicators from './status-indicators'
 
@@ -34,47 +35,58 @@ describe('StatusIndicators', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('should render warning states when provider model is disabled', () => {
-    const parentClick = vi.fn()
-    const { rerender } = render(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={true}
-          disabled={true}
-          pluginInfo={null}
-          t={t}
-        />
-      </div>,
+  it('should render deprecated tooltip when provider model is disabled and in model list', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={true}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
     )
-    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
 
-    rerender(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={false}
-          disabled={true}
-          pluginInfo={null}
-          t={t}
-        />
-      </div>,
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
+  })
+
+  it('should render model-not-support tooltip when disabled model is not in model list and has no pluginInfo', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
     )
-    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
-    rerender(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={false}
-          disabled={true}
-          pluginInfo={{ name: 'demo-plugin' }}
-          t={t}
-        />
-      </div>,
+
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
+  })
+
+  it('should render switch plugin version when pluginInfo exists for disabled unsupported model', () => {
+    render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'demo-plugin' }}
+        t={t}
+      />,
     )
+
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
   })
 
@@ -109,8 +121,9 @@ describe('StatusIndicators', () => {
     expect(screen.getByText('SwitchVersion:')).toBeInTheDocument()
   })
 
-  it('should render marketplace warning when provider is unavailable', () => {
-    render(
+  it('should render marketplace warning tooltip when provider is unavailable', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={false}
@@ -120,6 +133,11 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
-    expect(document.querySelectorAll('.text-text-destructive')).toHaveLength(1)
+
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
   })
 })

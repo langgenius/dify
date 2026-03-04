@@ -500,7 +500,7 @@ describe('Form', () => {
           validatedSuccess={false}
           showOnVariableMap={{}}
           isEditMode={false}
-          override={[[FormTypeEnum.textInput], () => null as unknown as React.ReactNode]}
+          override={[[FormTypeEnum.textInput], () => null]}
         />,
       )
 
@@ -601,11 +601,12 @@ describe('Form', () => {
 
     // Label with missing language key → en_US fallback used
     it('should fall back to en_US label when current language key is missing', () => {
-      // Arrange
+    // Arrange
+      mockLanguageRef.value = 'fr_FR'
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
           variable: 'field1',
-          label: { en_US: 'English Label', zh_Hans: 'English Label' },
+          label: createPartialI18n('English Label'),
           placeholder: createI18n('Field 1'),
         }),
       ]

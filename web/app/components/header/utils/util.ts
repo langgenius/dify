@@ -5,7 +5,7 @@ export const generateMailToLink = (email: string, subject?: string, body?: strin
     mailtoLink += `?subject=${encodeURIComponent(subject)}`
 
   if (body)
-    mailtoLink += `&body=${encodeURIComponent(body)}`
+    mailtoLink += `${subject ? '&' : '?'}body=${encodeURIComponent(body)}`
 
   return mailtoLink
 }

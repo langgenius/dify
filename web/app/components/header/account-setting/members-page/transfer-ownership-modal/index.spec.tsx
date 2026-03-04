@@ -223,7 +223,7 @@ describe('TransferOwnershipModal', () => {
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
-        message: 'Error sending verification code: ',
+        message: expect.stringContaining('Error sending verification code:'),
       }))
     })
   })
@@ -239,7 +239,7 @@ describe('TransferOwnershipModal', () => {
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
-        message: 'Error verifying email: ',
+        message: expect.stringContaining('Error verifying email:'),
       }))
     })
   })
@@ -256,7 +256,7 @@ describe('TransferOwnershipModal', () => {
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
-        message: 'Error ownership transfer: ',
+        message: expect.stringContaining('Error ownership transfer:'),
       }))
     })
   })

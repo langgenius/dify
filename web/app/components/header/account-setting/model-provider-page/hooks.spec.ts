@@ -1342,7 +1342,7 @@ describe('hooks', () => {
       expect(emit).not.toHaveBeenCalled()
     })
 
-    it('should emit event but not call updateModelList when __model_type is undefined', () => {
+    it('should emit event and invalidate all supported model types when __model_type is undefined', () => {
       const invalidateQueries = vi.fn()
       const emit = vi.fn()
 
@@ -1364,10 +1364,11 @@ describe('hooks', () => {
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
         payload: 'openai',
       })
+      // When __model_type is undefined, all supported model types are invalidated
       const modelListCalls = invalidateQueries.mock.calls.filter(
-        call => call[0]?.queryKey?.[0] === 'model-list' && !provider.supported_model_types.includes(call[0]?.queryKey?.[1]),
+        call => call[0]?.queryKey?.[0] === 'model-list',
       )
-      expect(modelListCalls).toHaveLength(0)
+      expect(modelListCalls).toHaveLength(provider.supported_model_types.length)
     })
 
     it('should handle provider with single model type', () => {

@@ -1,5 +1,6 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ConfigProvider from './config-provider'
 
 const mockUseCredentialStatus = vi.fn()
@@ -54,7 +55,8 @@ describe('ConfigProvider', () => {
     expect(screen.getByText(/operation.config/i)).toBeInTheDocument()
   })
 
-  it('should still render setup label when custom credentials are not allowed', () => {
+  it('should show setup label and unavailable tooltip when custom credentials are not allowed and no credential exists', async () => {
+    const user = userEvent.setup()
     mockUseCredentialStatus.mockReturnValue({
       hasCredential: false,
       authorized: false,
@@ -66,23 +68,11 @@ describe('ConfigProvider', () => {
     render(<ConfigProvider provider={{ ...baseProvider, allow_custom_token: false }} />)
 
     expect(screen.getByText(/operation.setup/i)).toBeInTheDocument()
+    await user.hover(screen.getByText(/operation.setup/i))
+    expect(await screen.findByText(/auth\.credentialUnavailable/i)).toBeInTheDocument()
   })
 
-  it('should show tooltip when custom credentials not allowed and no credential exists', () => {
-    mockUseCredentialStatus.mockReturnValue({
-      hasCredential: false,
-      authorized: false,
-      current_credential_id: '',
-      current_credential_name: '',
-      available_credentials: [],
-    })
-
-    render(<ConfigProvider provider={{ ...baseProvider, allow_custom_token: false }} />)
-
-    expect(screen.getByText(/operation.setup/i)).toBeInTheDocument()
-  })
-
-  it('should show config label with secondary-accent variant when hasCredential but not authorized', () => {
+  it('should show config label when hasCredential but not authorized', () => {
     mockUseCredentialStatus.mockReturnValue({
       hasCredential: true,
       authorized: false,
@@ -96,7 +86,7 @@ describe('ConfigProvider', () => {
     expect(screen.getByText(/operation.config/i)).toBeInTheDocument()
   })
 
-  it('should not show tooltip when custom credentials not allowed but has credential', () => {
+  it('should show config label when custom credentials are not allowed but credential exists', () => {
     mockUseCredentialStatus.mockReturnValue({
       hasCredential: true,
       authorized: true,

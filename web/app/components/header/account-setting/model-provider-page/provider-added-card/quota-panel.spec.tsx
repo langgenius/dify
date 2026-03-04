@@ -1,5 +1,6 @@
 import type { ModelProvider } from '../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import QuotaPanel from './quota-panel'
 
 let mockWorkspace = {
@@ -68,11 +69,16 @@ describe('QuotaPanel', () => {
     mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
   })
 
-  const clickFirstTrialProviderIcon = () => {
-    const iconWrapper = document.querySelector('.relative.h-6.w-6') as HTMLDivElement | null
-    expect(iconWrapper).toBeInTheDocument()
-    if (iconWrapper)
-      fireEvent.click(iconWrapper)
+  const getTrialProviderIconTrigger = (container: HTMLElement) => {
+    const providerIcon = container.querySelector('svg.h-6.w-6.rounded-lg')
+    expect(providerIcon).toBeInTheDocument()
+    const trigger = providerIcon?.closest('[data-state]') as HTMLDivElement | null
+    expect(trigger).toBeInTheDocument()
+    return trigger as HTMLDivElement
+  }
+
+  const clickFirstTrialProviderIcon = (container: HTMLElement) => {
+    fireEvent.click(getTrialProviderIconTrigger(container))
   }
 
   it('should render loading state', () => {
@@ -111,17 +117,17 @@ describe('QuotaPanel', () => {
   })
 
   it('should open install modal when clicking an unsupported trial provider', () => {
-    render(<QuotaPanel providers={[]} />)
+    const { container } = render(<QuotaPanel providers={[]} />)
 
-    clickFirstTrialProviderIcon()
+    clickFirstTrialProviderIcon(container)
 
     expect(screen.getByText('install modal')).toBeInTheDocument()
   })
 
   it('should close install modal when provider becomes installed', async () => {
-    const { rerender } = render(<QuotaPanel providers={[]} />)
+    const { rerender, container } = render(<QuotaPanel providers={[]} />)
 
-    clickFirstTrialProviderIcon()
+    clickFirstTrialProviderIcon(container)
     expect(screen.getByText('install modal')).toBeInTheDocument()
 
     rerender(<QuotaPanel providers={mockProviders} />)
@@ -132,18 +138,18 @@ describe('QuotaPanel', () => {
   })
 
   it('should not open install modal when clicking an already installed provider', () => {
-    render(<QuotaPanel providers={mockProviders} />)
+    const { container } = render(<QuotaPanel providers={mockProviders} />)
 
-    clickFirstTrialProviderIcon()
+    clickFirstTrialProviderIcon(container)
 
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
   })
 
   it('should not open install modal when plugin is not found in marketplace', () => {
     mockPlugins = []
-    render(<QuotaPanel providers={[]} />)
+    const { container } = render(<QuotaPanel providers={[]} />)
 
-    clickFirstTrialProviderIcon()
+    clickFirstTrialProviderIcon(container)
 
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
   })
@@ -160,13 +166,18 @@ describe('QuotaPanel', () => {
     expect(container.querySelector('.border-state-destructive-border')).toBeInTheDocument()
   })
 
-  it('should show modelAPI tooltip for configured provider with custom preference', () => {
-    render(<QuotaPanel providers={mockProviders} />)
+  it('should show modelAPI tooltip for configured provider with custom preference', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<QuotaPanel providers={mockProviders} />)
 
-    expect(document.querySelector('.relative.h-6.w-6')).toBeInTheDocument()
+    const trigger = getTrialProviderIconTrigger(container)
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText(/common\.modelProvider\.card\.modelAPI/)).toHaveTextContent('OpenAI')
   })
 
-  it('should show modelSupported tooltip for installed provider without custom config', () => {
+  it('should show modelSupported tooltip for installed provider without custom config', async () => {
+    const user = userEvent.setup()
     const systemProviders = [
       {
         provider: 'langgenius/openai/openai',
@@ -175,8 +186,11 @@ describe('QuotaPanel', () => {
       },
     ] as unknown as ModelProvider[]
 
-    render(<QuotaPanel providers={systemProviders} />)
+    const { container } = render(<QuotaPanel providers={systemProviders} />)
 
-    expect(document.querySelector('.relative.h-6.w-6')).toBeInTheDocument()
+    const trigger = getTrialProviderIconTrigger(container)
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText(/common\.modelProvider\.card\.modelSupported/)).toHaveTextContent('OpenAI')
   })
 })

@@ -627,7 +627,7 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  it('should use predefined provider schema without fallback when credential_form_schemas is defined', () => {
+  it('should use predefined provider schema without fallback when credential_form_schemas is undefined', () => {
     // Arrange: provider with no credential_form_schemas → triggers ?? [] fallback
     const providerWithoutSchemas = {
       provider: 'test-provider',
@@ -652,7 +652,7 @@ describe('ModelLoadBalancingModal', () => {
     expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/)).toBeInTheDocument()
   })
 
-  it('should use custom model schema without fallback when credential_form_schemas is undefined', () => {
+  it('should use custom model credential schema without fallback when credential_form_schemas is undefined', () => {
     // Arrange: provider with no model credential schemas → triggers ?? [] fallback for custom model path
     const providerWithoutModelSchemas = {
       provider: 'test-provider',

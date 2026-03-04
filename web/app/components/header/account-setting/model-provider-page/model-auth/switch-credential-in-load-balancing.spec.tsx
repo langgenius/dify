@@ -196,7 +196,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
     render(
       <SwitchCredentialInLoadBalancing
         provider={mockProvider}
-        model={undefined as unknown as typeof mockModel}
+        // @ts-expect-error testing runtime handling when model is omitted
+        model={undefined}
         credentials={mockCredentials}
         customModelCredential={mockCredentials[0]}
         setCustomModelCredential={mockSetCustomModelCredential}

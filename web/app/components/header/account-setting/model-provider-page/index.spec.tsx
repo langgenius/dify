@@ -295,21 +295,11 @@ describe('ModelProviderPage', () => {
     expect(renderedProviders).toEqual(['alpha-provider', 'beta-provider'])
   })
 
-  it('should not show not configured alert when only embeddingsDefaultModel has data', () => {
-    vi.doMock('./hooks', () => ({
-      useDefaultModel: (type: string) => {
-        if (type === 'text-embedding')
-          return { data: { model: 'embed-model', provider: { provider: 'openai' } }, isLoading: false }
-        return { data: null, isLoading: false }
-      },
-    }))
-
-    // Re-import with new mock
+  it('should not show not configured alert when shared default model mock has data', () => {
     mockDefaultModelState.data = { model: 'embed-model' }
 
     render(<ModelProviderPage searchText="" />)
 
-    // Since the single mock state is shared, when data is non-null, alert disappears
     expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
   })
 
