@@ -1629,9 +1629,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2319,9 +2316,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 7
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -2335,11 +2329,6 @@
     },
     "ts/no-explicit-any": {
       "count": 11
-    }
-  },
-  "app/components/base/markdown-blocks/img.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {
@@ -2359,9 +2348,6 @@
   },
   "app/components/base/markdown-blocks/plugin-paragraph.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 2
     }
   },
@@ -2396,11 +2382,6 @@
   "app/components/base/markdown/markdown-utils.ts": {
     "regexp/no-unused-capturing-group": {
       "count": 1
-    }
-  },
-  "app/components/base/markdown/react-markdown-wrapper.tsx": {
-    "ts/no-explicit-any": {
-      "count": 9
     }
   },
   "app/components/base/mermaid/index.tsx": {
@@ -7597,11 +7578,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/human-input/components/form-content.tsx": {

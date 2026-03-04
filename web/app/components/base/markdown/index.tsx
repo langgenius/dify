@@ -1,11 +1,16 @@
 import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
 import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
+import { memo, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
-const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod => mod.ReactMarkdownWrapper), { ssr: false })
+const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper'), { ssr: false })
+
+const preprocess = flow([preprocessThinkTag, preprocessLaTeX])
+
+const EMPTY_COMPONENTS = {} as const
 
 /**
  * @fileoverview Main Markdown rendering component.
@@ -18,24 +23,32 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins'>
+} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins' | 'isAnimating'>
 
-export const Markdown = (props: MarkdownProps) => {
-  const { customComponents = {}, pluginInfo } = props
-  const latexContent = flow([
-    preprocessThinkTag,
-    preprocessLaTeX,
-  ])(props.content)
+export const Markdown = memo((props: MarkdownProps) => {
+  const {
+    content,
+    customComponents = EMPTY_COMPONENTS,
+    pluginInfo,
+    isAnimating,
+    customDisallowedElements,
+    rehypePlugins,
+    className,
+  } = props
+  const latexContent = useMemo(() => preprocess(content), [content])
 
   return (
-    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
+    <div className={cn('markdown-body', '!text-text-primary', className)}>
       <ReactMarkdown
         pluginInfo={pluginInfo}
         latexContent={latexContent}
         customComponents={customComponents}
-        customDisallowedElements={props.customDisallowedElements}
-        rehypePlugins={props.rehypePlugins}
+        customDisallowedElements={customDisallowedElements}
+        rehypePlugins={rehypePlugins}
+        isAnimating={isAnimating}
       />
     </div>
   )
-}
+})
+
+Markdown.displayName = 'Markdown'

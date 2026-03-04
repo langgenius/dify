@@ -1,24 +1,30 @@
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
-import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
 /**
  * @fileoverview Paragraph component for rendering <p> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
  * Handles special rendering for paragraphs that directly contain an image.
  */
+import type { ExtraProps } from 'streamdown'
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { getMarkdownImageURL } from './utils'
 
+type HastChildNode = {
+  tagName?: string
+  properties?: { src?: string, [key: string]: unknown }
+}
+
 type PluginParagraphProps = {
   pluginInfo?: SimplePluginInfo
-  node?: any
+  node?: ExtraProps['node']
   children?: React.ReactNode
 }
 
 export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, node, children }) => {
   const { pluginUniqueIdentifier, pluginId } = pluginInfo || {}
-  const childrenNode = node?.children as Array<any> | undefined
+  const childrenNode = node?.children as HastChildNode[] | undefined
   const firstChild = childrenNode?.[0]
   const isImageParagraph = firstChild?.tagName === 'img'
   const imageSrc = isImageParagraph ? firstChild?.properties?.src : undefined

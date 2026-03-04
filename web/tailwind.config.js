@@ -6,6 +6,7 @@ const config = {
     './app/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
     './context/**/*.{js,ts,jsx,tsx}',
+    './node_modules/streamdown/dist/*.js',
   ],
   ...commonConfig,
 }
