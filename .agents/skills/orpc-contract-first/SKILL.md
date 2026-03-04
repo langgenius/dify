@@ -91,7 +91,7 @@ const invoiceQuery = useQuery({
 - **Input structure**: Always use `{ params, query?, body? }` format
 - **No-input GET**: Omit `.input(...)`; do not write `.input(type<unknown>())`
 - **Path params**: Use `{paramName}` in path, match in `params` object
-- **Router nesting**: Group by API prefix (e.g., `/billing/*` -> `billing: {}`)
+- **Router nesting**: Group by API prefix (e.g., `/billing/*` → `billing: {}`)
 - **No barrel files**: Import directly from specific files
 - **Types**: Import from `@/types/`, use `type<T>()` helper
 - **Mutations**: Prefer `mutationOptions`; use explicit `mutationKey` mainly for defaults/filtering/devtools
