@@ -116,7 +116,7 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = ssrf_proxy.get(file_url)
+            response = ssrf_proxy.get(file_url, follow_redirects=True)
             response.raise_for_status()
             blob = response.content
         except httpx.TimeoutException:
