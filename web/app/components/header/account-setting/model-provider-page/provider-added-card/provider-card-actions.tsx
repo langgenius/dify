@@ -81,11 +81,10 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
           pluginID={detail.plugin_id}
           currentVersion={version}
           onSelect={handleVersionSelect}
-          offset={{ mainAxis: 4, crossAxis: 0 }}
+          sideOffset={4}
+          alignOffset={0}
           trigger={(
-            <button
-              type="button"
-              disabled={!isFromMarketplace}
+            <span
               className={cn(
                 'relative inline-flex min-w-5 items-center justify-center gap-[3px] rounded-md border border-divider-deep bg-state-base-hover px-[5px] py-[2px] text-text-tertiary system-xs-medium-uppercase',
                 isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover-alt',
@@ -96,7 +95,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               {hasNewVersion && (
                 <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-state-destructive-solid" />
               )}
-            </button>
+            </span>
           )}
         />
       )}

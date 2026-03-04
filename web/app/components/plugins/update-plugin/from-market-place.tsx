@@ -6,7 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogTitle,
+} from '@/app/components/base/ui/dialog'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
@@ -125,63 +130,65 @@ const UpdatePluginModal: FC<Props> = ({
   const doShowDowngradeWarningModal = isShowDowngradeWarningModal && uploadStep === UploadStep.notStarted
 
   return (
-    <Modal
-      isShow={true}
-      onClose={onCancel}
-      className={cn('min-w-[560px]', doShowDowngradeWarningModal && 'min-w-[640px]')}
-      closable
-      title={!doShowDowngradeWarningModal && t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
-    >
-      {doShowDowngradeWarningModal && (
-        <DowngradeWarningModal
-          onCancel={onCancel}
-          onJustDowngrade={handleConfirm}
-          onExcludeAndDowngrade={handleExcludeAndDownload}
-        />
-      )}
-      {!doShowDowngradeWarningModal && (
-        <>
-          <div className="system-md-regular mb-2 mt-3 text-text-secondary">
-            {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
-          </div>
-          <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
-            <Card
-              installed={uploadStep === UploadStep.installed}
-              payload={pluginManifestToCardPluginProps({
-                ...originalPackageInfo.payload,
-                icon: icon!,
-              })}
-              className="w-full"
-              titleLeft={(
-                <>
-                  <Badge className="mx-1" size="s" state={BadgeState.Warning}>
-                    {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
-                  </Badge>
-                </>
+    <Dialog open onOpenChange={() => onCancel()}>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn('min-w-[560px]', doShowDowngradeWarningModal && 'min-w-[640px]')}
+      >
+        <DialogCloseButton />
+        {doShowDowngradeWarningModal && (
+          <DowngradeWarningModal
+            onCancel={onCancel}
+            onJustDowngrade={handleConfirm}
+            onExcludeAndDowngrade={handleExcludeAndDownload}
+          />
+        )}
+        {!doShowDowngradeWarningModal && (
+          <>
+            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+              {t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
+            </DialogTitle>
+            <div className="mb-2 mt-3 text-text-secondary system-md-regular">
+              {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
+            </div>
+            <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+              <Card
+                installed={uploadStep === UploadStep.installed}
+                payload={pluginManifestToCardPluginProps({
+                  ...originalPackageInfo.payload,
+                  icon: icon!,
+                })}
+                className="w-full"
+                titleLeft={(
+                  <>
+                    <Badge className="mx-1" size="s" state={BadgeState.Warning}>
+                      {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
+                    </Badge>
+                  </>
+                )}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+              {uploadStep === UploadStep.notStarted && (
+                <Button
+                  onClick={handleCancel}
+                >
+                  {t('operation.cancel', { ns: 'common' })}
+                </Button>
               )}
-            />
-          </div>
-          <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-            {uploadStep === UploadStep.notStarted && (
               <Button
-                onClick={handleCancel}
+                variant="primary"
+                loading={uploadStep === UploadStep.upgrading}
+                onClick={handleConfirm}
+                disabled={uploadStep === UploadStep.upgrading}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {configBtnText}
               </Button>
-            )}
-            <Button
-              variant="primary"
-              loading={uploadStep === UploadStep.upgrading}
-              onClick={handleConfirm}
-              disabled={uploadStep === UploadStep.upgrading}
-            >
-              {configBtnText}
-            </Button>
-          </div>
-        </>
-      )}
-
-    </Modal>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(UpdatePluginModal)

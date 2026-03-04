@@ -104,36 +104,6 @@ vi.mock('../../install-plugin/install-from-github', () => ({
   ),
 }))
 
-// Mock Portal components for PluginVersionPicker
-let mockPortalOpen = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
-    children: React.ReactNode
-    open: boolean
-    onOpenChange: (open: boolean) => void
-  }) => {
-    mockPortalOpen = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: () => void
-    className?: string
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
-    if (!mockPortalOpen)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
-  },
-}))
-
 // Mock semver
 vi.mock('semver', () => ({
   lt: (v1: string, v2: string) => {
@@ -247,7 +217,6 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('update-plugin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
     mockCheck.mockResolvedValue({ status: TaskStatus.success })
   })
 
@@ -964,7 +933,7 @@ describe('update-plugin', () => {
         render(<PluginVersionPicker {...defaultProps} isShow={false} />)
 
         // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        expect(screen.queryByText('plugin.detailPanel.switchVersion')).not.toBeInTheDocument()
       })
 
       it('should render version list when isShow is true', () => {
@@ -972,7 +941,6 @@ describe('update-plugin', () => {
         render(<PluginVersionPicker {...defaultProps} isShow={true} />)
 
         // Assert
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
 
@@ -1002,7 +970,7 @@ describe('update-plugin', () => {
 
         // Act
         render(<PluginVersionPicker {...defaultProps} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('Select Version'))
 
         // Assert
         expect(onShowChange).toHaveBeenCalledWith(true)
@@ -1014,7 +982,7 @@ describe('update-plugin', () => {
 
         // Act
         render(<PluginVersionPicker {...defaultProps} disabled={true} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByText('Select Version'))
 
         // Assert
         expect(onShowChange).not.toHaveBeenCalled()
@@ -1116,7 +1084,7 @@ describe('update-plugin', () => {
         )
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
 
       it('should support custom offset', () => {
@@ -1125,12 +1093,13 @@ describe('update-plugin', () => {
           <PluginVersionPicker
             {...defaultProps}
             isShow={true}
-            offset={{ mainAxis: 10, crossAxis: 20 }}
+            sideOffset={10}
+            alignOffset={20}
           />,
         )
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
       })
     })
 
