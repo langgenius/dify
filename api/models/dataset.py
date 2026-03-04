@@ -42,7 +42,7 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
-class Dataset(Base):
+class Dataset(TypeBase):
     __tablename__ = "datasets"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -57,16 +57,16 @@ class Dataset(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(LongText, nullable=True)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'"))
-    data_source_type = mapped_column(String(255))
+    data_source_type: Mapped[str] = mapped_column(String(255))
     indexing_technique: Mapped[str | None] = mapped_column(String(255))
-    index_struct = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
+    index_struct: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     embedding_model = mapped_column(sa.String(255), nullable=True)
