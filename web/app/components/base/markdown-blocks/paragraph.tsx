@@ -21,6 +21,11 @@ const Paragraph = (paragraph: any) => {
       </div>
     )
   }
+  const hasImgChild = children_node?.some(
+    (child: any) => 'tagName' in child && child.tagName === 'img',
+  )
+  if (hasImgChild)
+    return <div>{paragraph.children}</div>
   return <p>{paragraph.children}</p>
 }
 
