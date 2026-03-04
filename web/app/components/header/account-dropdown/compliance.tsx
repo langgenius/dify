@@ -48,7 +48,7 @@ function ComplianceDocActionVisual({
         aria-hidden
         className={cn(
           'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
-          isPending && 'btn-disabled',
+          isPending && 'cursor-not-allowed',
         )}
       >
         <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
