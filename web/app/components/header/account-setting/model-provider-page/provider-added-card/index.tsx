@@ -72,9 +72,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   } = useQuery(consoleQuery.modelProviders.models.queryOptions({
     input: { params: { provider: currentProviderName } },
     enabled: !collapsed,
-    staleTime: Infinity,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     select: response => response.data,
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
