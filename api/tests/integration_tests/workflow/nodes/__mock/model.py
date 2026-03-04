@@ -4,8 +4,8 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import ProviderType
 
 
@@ -48,3 +48,19 @@ def get_mocked_fetch_model_config(
     )
 
     return MagicMock(return_value=(model_instance, model_config))
+
+
+def get_mocked_fetch_model_instance(
+    provider: str,
+    model: str,
+    mode: str,
+    credentials: dict,
+):
+    mock_fetch_model_config = get_mocked_fetch_model_config(
+        provider=provider,
+        model=model,
+        mode=mode,
+        credentials=credentials,
+    )
+    model_instance, _ = mock_fetch_model_config()
+    return MagicMock(return_value=model_instance)

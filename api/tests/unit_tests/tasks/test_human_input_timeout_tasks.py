@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from tasks import human_input_timeout_tasks as task_module
 
 
@@ -47,7 +47,7 @@ class _FakeSessionFactory:
 
 
 class _FakeFormRepo:
-    def __init__(self, _session_factory, form_map: dict[str, Any] | None = None):
+    def __init__(self, form_map: dict[str, Any] | None = None):
         self.calls: list[dict[str, Any]] = []
         self._form_map = form_map or {}
 
@@ -149,9 +149,9 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pyt
     monkeypatch.setattr(task_module, "sessionmaker", lambda *args, **kwargs: _FakeSessionFactory(forms, capture))
 
     form_map = {form.id: form for form in forms}
-    repo = _FakeFormRepo(None, form_map=form_map)
+    repo = _FakeFormRepo(form_map=form_map)
 
-    def _repo_factory(_session_factory):
+    def _repo_factory():
         return repo
 
     service = _FakeService(None)

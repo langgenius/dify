@@ -5,16 +5,15 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.graph import Graph
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.code.code_node import CodeNode
+from dify_graph.nodes.code.limits import CodeNodeLimits
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
@@ -68,6 +67,7 @@ def init_code_node(code_config: dict):
         config=code_config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        code_executor=node_factory._code_executor,
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
             max_number=dify_config.CODE_MAX_NUMBER,

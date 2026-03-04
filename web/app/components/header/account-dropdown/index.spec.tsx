@@ -1,10 +1,9 @@
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime'
+import { useRouter } from 'next/navigation'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -30,6 +29,10 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: () => <div data-testid="github-star">GithubStar</div>,
 }))
 
+vi.mock('@/app/components/base/theme-switcher', () => ({
+  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
@@ -50,6 +53,14 @@ vi.mock('@/service/use-common', () => ({
   useLogout: vi.fn(),
 }))
 
+vi.mock('next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/navigation')>()
+  return {
+    ...actual,
+    useRouter: vi.fn(),
+  }
+})
+
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
@@ -58,6 +69,7 @@ vi.mock('@/context/i18n', () => ({
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
+    ZENDESK_WIDGET_KEY: '',
   },
   mockEnv: {
     env: {
@@ -67,6 +79,7 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 }))
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
   IS_DEV: false,
   IS_CE_EDITION: false,
 }))
@@ -119,15 +132,6 @@ describe('AccountDropdown', () => {
   const mockSetShowAccountSettingModal = vi.fn()
 
   const renderWithRouter = (ui: React.ReactElement) => {
-    const mockRouter = {
-      push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-    } as unknown as AppRouterInstance
-
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -138,9 +142,7 @@ describe('AccountDropdown', () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <AppRouterContext.Provider value={mockRouter}>
-          {ui}
-        </AppRouterContext.Provider>
+        {ui}
       </QueryClientProvider>,
     )
   }
@@ -166,6 +168,14 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
+    vi.mocked(useRouter).mockReturnValue({
+      push: mockPush,
+      replace: vi.fn(),
+      prefetch: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+    })
   })
 
   afterEach(() => {
@@ -181,6 +191,14 @@ describe('AccountDropdown', () => {
       // Assert
       expect(screen.getByText('Test User')).toBeInTheDocument()
       expect(screen.getByText('test@example.com')).toBeInTheDocument()
+    })
+
+    it('should set an accessible label on avatar trigger when menu trigger is rendered', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
     })
 
     it('should show EDU badge for education accounts', () => {
@@ -261,6 +279,16 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
+    })
+
+    it('should keep account dropdown open when clicking the theme switcher', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+      fireEvent.click(screen.getByTestId('theme-switcher-button'))
+
+      // Assert
+      expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
     })
   })
 

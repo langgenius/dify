@@ -1,26 +1,15 @@
 'use client'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import {
-  RiAccountCircleLine,
-  RiArrowRightUpLine,
-  RiBookOpenLine,
-  RiGithubLine,
-  RiGraduationCapFill,
-  RiInformation2Line,
-  RiLogoutBoxRLine,
-  RiMap2Line,
-  RiSettings3Line,
-  RiStarLine,
-  RiTShirt2Line,
-} from '@remixicon/react'
+
+import type { MouseEventHandler, ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -35,15 +24,90 @@ import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Indicator from '../indicator'
 import Compliance from './compliance'
+import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
 
+type AccountMenuRouteItemProps = {
+  href: string
+  iconClassName: string
+  label: ReactNode
+  trailing?: ReactNode
+}
+
+function AccountMenuRouteItem({
+  href,
+  iconClassName,
+  label,
+  trailing,
+}: AccountMenuRouteItemProps) {
+  return (
+    <DropdownMenuItem
+      className="justify-between"
+      render={<Link href={href} />}
+    >
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+    </DropdownMenuItem>
+  )
+}
+
+type AccountMenuExternalItemProps = {
+  href: string
+  iconClassName: string
+  label: ReactNode
+  trailing?: ReactNode
+}
+
+function AccountMenuExternalItem({
+  href,
+  iconClassName,
+  label,
+  trailing,
+}: AccountMenuExternalItemProps) {
+  return (
+    <DropdownMenuItem
+      className="justify-between"
+      render={<a href={href} rel="noopener noreferrer" target="_blank" />}
+    >
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+    </DropdownMenuItem>
+  )
+}
+
+type AccountMenuActionItemProps = {
+  iconClassName: string
+  label: ReactNode
+  onClick?: MouseEventHandler<HTMLElement>
+  trailing?: ReactNode
+}
+
+function AccountMenuActionItem({
+  iconClassName,
+  label,
+  onClick,
+  trailing,
+}: AccountMenuActionItemProps) {
+  return (
+    <DropdownMenuItem
+      className="justify-between"
+      onClick={onClick}
+    >
+      <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
+    </DropdownMenuItem>
+  )
+}
+
+type AccountMenuSectionProps = {
+  children: ReactNode
+}
+
+function AccountMenuSection({ children }: AccountMenuSectionProps) {
+  return <DropdownMenuGroup className="p-1">{children}</DropdownMenuGroup>
+}
+
 export default function AppSelector() {
-  const itemClassName = `
-    flex items-center w-full h-8 pl-3 pr-2 text-text-secondary system-md-regular
-    rounded-lg hover:bg-state-base-hover cursor-pointer gap-1
-  `
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { systemFeatures } = useGlobalPublicStore()
 
   const { t } = useTranslation()
@@ -68,161 +132,124 @@ export default function AppSelector() {
   }
 
   return (
-    <div className="">
-      <Menu as="div" className="relative inline-block text-left">
-        {
-          ({ open, close }) => (
-            <>
-              <MenuButton className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', open && 'bg-background-default-dodge')}>
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
-              </MenuButton>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-              >
-                <MenuItems
-                  className="
-                    absolute right-0 mt-1.5 w-60 max-w-80
-                    origin-top-right divide-y divide-divider-subtle rounded-xl bg-components-panel-bg-blur shadow-lg
-                    backdrop-blur-sm focus:outline-none
-                  "
-                >
-                  <div className="px-1 py-1">
-                    <MenuItem disabled>
-                      <div className="flex flex-nowrap items-center py-2 pl-3 pr-2">
-                        <div className="grow">
-                          <div className="system-md-medium break-all text-text-primary">
-                            {userProfile.name}
-                            {isEducationAccount && (
-                              <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                                <RiGraduationCapFill className="mr-1 h-3 w-3" />
-                                <span className="system-2xs-medium">EDU</span>
-                              </PremiumBadge>
-                            )}
-                          </div>
-                          <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
-                        </div>
-                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
-                      </div>
-                    </MenuItem>
-                    <MenuItem>
-                      <Link
-                        className={cn(itemClassName, 'group', 'data-[active]:bg-state-base-hover')}
-                        href="/account"
-                        target="_self"
-                        rel="noopener noreferrer"
-                      >
-                        <RiAccountCircleLine className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('account.account', { ns: 'common' })}</div>
-                        <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
-                      </Link>
-                    </MenuItem>
-                    <MenuItem>
-                      <div
-                        className={cn(itemClassName, 'data-[active]:bg-state-base-hover')}
-                        onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
-                      >
-                        <RiSettings3Line className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.settings', { ns: 'common' })}</div>
-                      </div>
-                    </MenuItem>
-                  </div>
-                  {!systemFeatures.branding.enabled && (
-                    <>
-                      <div className="p-1">
-                        <MenuItem>
-                          <Link
-                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                            href={docLink('/use-dify/getting-started/introduction')}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <RiBookOpenLine className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.helpCenter', { ns: 'common' })}</div>
-                            <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
-                          </Link>
-                        </MenuItem>
-                        <Support closeAccountDropdown={close} />
-                        {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
-                      </div>
-                      <div className="p-1">
-                        <MenuItem>
-                          <Link
-                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                            href="https://roadmap.dify.ai"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <RiMap2Line className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.roadmap', { ns: 'common' })}</div>
-                            <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
-                          </Link>
-                        </MenuItem>
-                        <MenuItem>
-                          <Link
-                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                            href="https://github.com/langgenius/dify"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <RiGithubLine className="size-4 shrink-0 text-text-tertiary" />
-                            <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.github', { ns: 'common' })}</div>
-                            <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
-                              <RiStarLine className="size-3 shrink-0 text-text-tertiary" />
-                              <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
-                            </div>
-                          </Link>
-                        </MenuItem>
-                        {
-                          env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
-                            <MenuItem>
-                              <div
-                                className={cn(itemClassName, 'justify-between', 'data-[active]:bg-state-base-hover')}
-                                onClick={() => setAboutVisible(true)}
-                              >
-                                <RiInformation2Line className="size-4 shrink-0 text-text-tertiary" />
-                                <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.about', { ns: 'common' })}</div>
-                                <div className="flex shrink-0 items-center">
-                                  <div className="system-xs-regular mr-2 text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                                  <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                                </div>
-                              </div>
-                            </MenuItem>
-                          )
-                        }
-                      </div>
-                    </>
+    <div>
+      <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
+        <DropdownMenuTrigger
+          aria-label={t('account.account', { ns: 'common' })}
+          className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
+        >
+          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          sideOffset={6}
+          popupClassName="w-60 max-w-80 !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+        >
+          <DropdownMenuGroup className="px-1 py-1">
+            <div className="flex flex-nowrap items-center py-2 pl-3 pr-2">
+              <div className="grow">
+                <div className="break-all text-text-primary system-md-medium">
+                  {userProfile.name}
+                  {isEducationAccount && (
+                    <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
+                      <span aria-hidden className="i-ri-graduation-cap-fill mr-1 h-3 w-3" />
+                      <span className="system-2xs-medium">EDU</span>
+                    </PremiumBadge>
                   )}
-                  <MenuItem disabled>
-                    <div className="p-1">
-                      <div className={cn(itemClassName, 'hover:bg-transparent')}>
-                        <RiTShirt2Line className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('theme.theme', { ns: 'common' })}</div>
-                        <ThemeSwitcher />
-                      </div>
+                </div>
+                <div className="break-all text-text-tertiary system-xs-regular">{userProfile.email}</div>
+              </div>
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+            </div>
+            <AccountMenuRouteItem
+              href="/account"
+              iconClassName="i-ri-account-circle-line"
+              label={t('account.account', { ns: 'common' })}
+              trailing={<ExternalLinkIndicator />}
+            />
+            <AccountMenuActionItem
+              iconClassName="i-ri-settings-3-line"
+              label={t('userProfile.settings', { ns: 'common' })}
+              onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
+            />
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+          {!systemFeatures.branding.enabled && (
+            <>
+              <AccountMenuSection>
+                <AccountMenuExternalItem
+                  href={docLink('/use-dify/getting-started/introduction')}
+                  iconClassName="i-ri-book-open-line"
+                  label={t('userProfile.helpCenter', { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+                <Support closeAccountDropdown={() => setIsAccountMenuOpen(false)} />
+                {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+              </AccountMenuSection>
+              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+              <AccountMenuSection>
+                <AccountMenuExternalItem
+                  href="https://roadmap.dify.ai"
+                  iconClassName="i-ri-map-2-line"
+                  label={t('userProfile.roadmap', { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+                <AccountMenuExternalItem
+                  href="https://github.com/langgenius/dify"
+                  iconClassName="i-ri-github-line"
+                  label={t('userProfile.github', { ns: 'common' })}
+                  trailing={(
+                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                      <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
+                      <GithubStar className="text-text-tertiary system-2xs-medium-uppercase" />
                     </div>
-                  </MenuItem>
-                  <MenuItem>
-                    <div className="p-1" onClick={() => handleLogout()}>
-                      <div
-                        className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
-                      >
-                        <RiLogoutBoxRLine className="size-4 shrink-0 text-text-tertiary" />
-                        <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</div>
-                      </div>
-                    </div>
-                  </MenuItem>
-                </MenuItems>
-              </Transition>
+                  )}
+                />
+                {
+                  env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
+                    <AccountMenuActionItem
+                      iconClassName="i-ri-information-2-line"
+                      label={t('userProfile.about', { ns: 'common' })}
+                      onClick={() => {
+                        setAboutVisible(true)
+                        setIsAccountMenuOpen(false)
+                      }}
+                      trailing={(
+                        <div className="flex shrink-0 items-center">
+                          <div className="mr-2 text-text-tertiary system-xs-regular">{langGeniusVersionInfo.current_version}</div>
+                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                        </div>
+                      )}
+                    />
+                  )
+                }
+              </AccountMenuSection>
+              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
             </>
-          )
-        }
-      </Menu>
+          )}
+          <AccountMenuSection>
+            <DropdownMenuItem
+              closeOnClick={false}
+              className="cursor-default data-[highlighted]:bg-transparent"
+            >
+              <MenuItemContent
+                iconClassName="i-ri-t-shirt-2-line"
+                label={t('theme.theme', { ns: 'common' })}
+                trailing={<ThemeSwitcher />}
+              />
+            </DropdownMenuItem>
+          </AccountMenuSection>
+          <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+          <AccountMenuSection>
+            <AccountMenuActionItem
+              iconClassName="i-ri-logout-box-r-line"
+              label={t('userProfile.logout', { ns: 'common' })}
+              onClick={() => {
+                void handleLogout()
+              }}
+            />
+          </AccountMenuSection>
+        </DropdownMenuContent>
+      </DropdownMenu>
       {
         aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />
       }
