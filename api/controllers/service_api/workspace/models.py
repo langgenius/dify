@@ -1,6 +1,6 @@
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource
-from core.model_runtime.utils.encoders import jsonable_encoder
+from controllers.service_api.wraps import validate_dataset_token
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from services.model_provider_service import ModelProviderService
 
 

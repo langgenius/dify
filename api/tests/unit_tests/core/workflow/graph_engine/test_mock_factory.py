@@ -8,9 +8,9 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.node import Node
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.enums import NodeType
+from dify_graph.nodes.base.node import Node
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -28,8 +28,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
