@@ -17,11 +17,11 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from core.file.enums import FileTransferMethod
 from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from core.file.enums import FileTransferMethod
 from models.model import MessageFile, UploadFile
 
 
