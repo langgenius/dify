@@ -1,8 +1,10 @@
+from typing import Any
+
 import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import InstrumentedAttribute, Session
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -14,6 +16,43 @@ from services.api_token_service import ApiTokenCache
 
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
+
+# Field mapping for ApiToken attributes to avoid getattr reflection
+API_TOKEN_RESOURCE_FIELD_MAP: dict[str, InstrumentedAttribute[Any]] = {
+    "app_id": ApiToken.app_id,
+    # Note: ApiToken model does not have dataset_id field
+    # Dataset API keys are managed by tenant_id in a separate implementation
+}
+
+
+class ApiTokenResourceFieldMixin:
+    """Mixin class providing safe field mapping for ApiToken resources."""
+
+    resource_id_field: str | None = None
+
+    def _get_resource_field(self):
+        """
+        Get the ApiToken field for the current resource type.
+
+        Replaces getattr(ApiToken, self.resource_id_field) with safer dictionary lookup.
+
+        Returns:
+            The ApiToken field for querying
+
+        Raises:
+            ValueError: If resource_id_field is not supported
+        """
+        if self.resource_id_field is None:
+            raise ValueError("resource_id_field must be set")
+
+        if self.resource_id_field not in API_TOKEN_RESOURCE_FIELD_MAP:
+            raise ValueError(
+                f"Unsupported resource_id_field: {self.resource_id_field}. "
+                f"Supported fields: {list(API_TOKEN_RESOURCE_FIELD_MAP.keys())}"
+            )
+
+        return API_TOKEN_RESOURCE_FIELD_MAP[self.resource_id_field]
+
 
 api_key_fields = {
     "id": fields.String,
@@ -50,7 +89,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
     return resource
 
 
-class BaseApiKeyListResource(Resource):
+class BaseApiKeyListResource(Resource, ApiTokenResourceFieldMixin):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
@@ -67,9 +106,7 @@ class BaseApiKeyListResource(Resource):
 
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         keys = db.session.scalars(
-            select(ApiToken).where(
-                ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
-            )
+            select(ApiToken).where(ApiToken.type == self.resource_type, resource_field == resource_id)
         ).all()
         return {"items": keys}
 
@@ -81,9 +118,7 @@ class BaseApiKeyListResource(Resource):
         _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
+            db.session.query(ApiToken).where(ApiToken.type == self.resource_type, resource_field == resource_id).count()
         )
 
         if current_key_count >= self.max_keys:
@@ -104,7 +139,7 @@ class BaseApiKeyListResource(Resource):
         return api_token, 201
 
 
-class BaseApiKeyResource(Resource):
+class BaseApiKeyResource(Resource, ApiTokenResourceFieldMixin):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
@@ -119,10 +154,11 @@ class BaseApiKeyResource(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
+        resource_field = self._get_resource_field()
         key = (
             db.session.query(ApiToken)
             .where(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
+                resource_field == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
