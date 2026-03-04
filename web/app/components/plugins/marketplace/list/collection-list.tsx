@@ -119,6 +119,7 @@ type CollectionListProps<TItem, TCollection extends BaseCollection> = {
   gridClassName?: string
   cardContainerClassName?: string
   emptyClassName?: string
+  emptyText?: string
 }
 
 function CollectionList<TItem, TCollection extends BaseCollection>({
@@ -131,6 +132,7 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
   gridClassName = GRID_CLASS,
   cardContainerClassName,
   emptyClassName,
+  emptyText,
 }: CollectionListProps<TItem, TCollection>) {
   const locale = useLocale()
 
@@ -139,7 +141,7 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
   })
 
   if (collectionsWithItems.length === 0) {
-    return <Empty className={emptyClassName} />
+    return <Empty className={emptyClassName} text={emptyText} />
   }
 
   return (

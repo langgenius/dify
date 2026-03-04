@@ -75,8 +75,6 @@ const TemplateCardComponent = ({
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <a
             href={href}
-            target="_blank"
-            rel="noopener noreferrer"
             className="system-md-medium truncate text-text-primary after:absolute after:inset-0"
           >
             {template_name}

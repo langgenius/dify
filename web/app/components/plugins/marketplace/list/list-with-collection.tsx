@@ -2,6 +2,7 @@
 
 import type { PluginCollection, Template, TemplateCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
+import { useTranslation } from '#i18n'
 import CardWrapper from './card-wrapper'
 import { CAROUSEL_COLLECTION_NAMES } from './collection-constants'
 import CollectionList from './collection-list'
@@ -29,6 +30,7 @@ type ListWithCollectionProps = PluginsVariant | TemplatesVariant
 
 const ListWithCollection = (props: ListWithCollectionProps) => {
   const { variant, cardContainerClassName } = props
+  const { t } = useTranslation()
 
   if (variant === 'plugins') {
     const {
@@ -76,6 +78,7 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
       renderCard={renderTemplateCard}
       carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.featured]}
       cardContainerClassName={cardContainerClassName}
+      emptyText={t('marketplace.noTemplateFound', { ns: 'plugin' })}
     />
   )
 }
