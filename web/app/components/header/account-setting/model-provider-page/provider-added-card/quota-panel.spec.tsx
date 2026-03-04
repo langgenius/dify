@@ -125,7 +125,7 @@ describe('QuotaPanel', () => {
 
     render(<QuotaPanel providers={mockProviders} />)
 
-    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.card\.quotaExhausted/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
