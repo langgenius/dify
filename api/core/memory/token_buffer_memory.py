@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -22,6 +23,8 @@ from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+
+logger = logging.getLogger(__name__)
 
 
 class TokenBufferMemory:
@@ -65,18 +68,31 @@ class TokenBufferMemory:
             if not app:
                 raise ValueError("App not found for conversation")
 
-            if not message.workflow_run_id:
-                raise ValueError("Workflow run ID not found")
+            file_extra_config = None
 
-            workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
-                tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
-            )
-            if not workflow_run:
-                raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
-            workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-            if not workflow:
-                raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-            file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+            if message.workflow_run_id:
+                workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
+                    tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+                )
+                if not workflow_run:
+                    logger.warning(
+                        "TokenBufferMemory: workflow run not found; run_id=%s app_id=%s tenant_id=%s",
+                        message.workflow_run_id,
+                        app.id,
+                        app.tenant_id,
+                    )
+                else:
+                    workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+                    if workflow:
+                        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                    else:
+                        logger.warning(
+                            "TokenBufferMemory: workflow not found; workflow_id=%s run_id=%s",
+                            workflow_run.workflow_id,
+                            message.workflow_run_id,
+                        )
+            else:
+                logger.warning("TokenBufferMemory: message missing workflow_run_id in workflow mode")
         else:
             raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
