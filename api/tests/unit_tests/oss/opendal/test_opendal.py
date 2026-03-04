@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 from pathlib import Path
 
@@ -34,7 +35,7 @@ class TestOpenDAL:
 
     def test_save_and_exists(self):
         """Test saving data and checking existence."""
-        filename = get_example_filename()
+        filename = f"{uuid.uuid4().hex}-" + get_example_filename()
         data = get_example_data()
 
         assert not self.storage.exists(filename)
@@ -43,7 +44,7 @@ class TestOpenDAL:
 
     def test_load_once(self):
         """Test loading data once."""
-        filename = get_example_filename()
+        filename = f"{uuid.uuid4().hex}-" + get_example_filename()
         data = get_example_data()
 
         self.storage.save(filename, data)
@@ -52,7 +53,7 @@ class TestOpenDAL:
 
     def test_load_stream(self):
         """Test loading data as a stream."""
-        filename = get_example_filename()
+        filename = f"{uuid.uuid4().hex}-" + get_example_filename()
         chunks = 5
         chunk_size = 4096
         data = get_example_data(length=chunk_size * chunks)
@@ -69,7 +70,7 @@ class TestOpenDAL:
 
     def test_download(self):
         """Test downloading data to a file."""
-        filename = get_example_filename()
+        filename = f"{uuid.uuid4().hex}-" + get_example_filename()
         filepath = str(Path(get_opendal_bucket()) / filename)
         data = get_example_data()
 
@@ -78,7 +79,7 @@ class TestOpenDAL:
 
     def test_delete(self):
         """Test deleting a file."""
-        filename = get_example_filename()
+        filename = f"{uuid.uuid4().hex}-" + get_example_filename()
         data = get_example_data()
 
         self.storage.save(filename, data)

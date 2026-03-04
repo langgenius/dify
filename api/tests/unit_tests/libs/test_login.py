@@ -138,9 +138,10 @@ class TestLoginRequired:
         def protected_view():
             return "Protected content"
 
-        # Remove ensure_sync to simulate Flask 1.x
+        # Simulate Flask 1.x (no ensure_sync). Deleting an attribute defined on the class
+        # raises AttributeError on the instance; overriding to identity is sufficient.
         if hasattr(setup_app, "ensure_sync"):
-            delattr(setup_app, "ensure_sync")
+            setup_app.ensure_sync = lambda f: f
 
         with setup_app.test_request_context():
             mock_user = MockUser("test_user", is_authenticated=True)

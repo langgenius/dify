@@ -43,11 +43,16 @@ def document_extractor_node(graph_init_params):
         variable_selector=["node_id", "variable_name"],
     )
     node_config = {"id": "test_node_id", "data": node_data.model_dump()}
+
+    # Provide a minimal HTTP client mock expected by the node
+    http_client = Mock()
+
     node = DocumentExtractorNode(
         id="test_node_id",
         config=node_config,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
+        http_client=http_client,
     )
     return node
 
@@ -141,12 +146,14 @@ def test_run_extract_text(
     mock_graph_runtime_state.variable_pool.get.return_value = mock_array_file_segment
 
     mock_download = Mock(return_value=file_content)
-    mock_ssrf_proxy_get = Mock()
-    mock_ssrf_proxy_get.return_value.content = file_content
-    mock_ssrf_proxy_get.return_value.raise_for_status = Mock()
+
+    # Configure the node's http client mock to return the current file_content
+    mock_response = Mock()
+    mock_response.content = file_content
+    mock_response.raise_for_status = Mock()
+    document_extractor_node._http_client.get = Mock(return_value=mock_response)
 
     monkeypatch.setattr("dify_graph.file.file_manager.download", mock_download)
-    monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
@@ -163,7 +170,7 @@ def test_run_extract_text(
     assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
-        mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
+        document_extractor_node._http_client.get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
         mock_download.assert_called_once_with(mock_file)
 
