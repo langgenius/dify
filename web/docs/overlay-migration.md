@@ -1,10 +1,14 @@
 # Overlay Migration Guide
 
-This document tracks the migration away from legacy `portal-to-follow-elem` APIs.
+This document tracks the migration away from legacy overlay APIs.
 
 ## Scope
 
-- Deprecated API: `@/app/components/base/portal-to-follow-elem`
+- Deprecated imports:
+  - `@/app/components/base/portal-to-follow-elem`
+  - `@/app/components/base/tooltip`
+  - `@/app/components/base/modal`
+  - `@/app/components/base/select` (including `custom` / `pure`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
@@ -15,33 +19,33 @@ This document tracks the migration away from legacy `portal-to-follow-elem` APIs
 
 ## ESLint policy
 
-- `no-restricted-imports` blocks new usage of `portal-to-follow-elem`.
-- The rule is enabled for normal source files and test files are excluded.
-- Legacy `app/components/base/*` callers are temporarily allowlisted in ESLint config.
+- `no-restricted-imports` blocks all deprecated imports listed above.
+- The rule is enabled for normal source files (`.ts` / `.tsx`) and test files are excluded.
+- Legacy `app/components/base/*` callers are temporarily allowlisted in `OVERLAY_MIGRATION_LEGACY_BASE_FILES` (`web/eslint.constants.mjs`).
 - New files must not be added to the allowlist without migration owner approval.
 
 ## Migration phases
 
 1. Business/UI features outside `app/components/base/**`
-   - Migrate old calls to semantic primitives.
-   - Keep `eslint-suppressions.json` stable or shrinking.
+   - Migrate old calls to semantic primitives from `@/app/components/base/ui/**`.
+   - Keep deprecated imports out of newly touched files.
 1. Legacy base components in allowlist
    - Migrate allowlisted base callers gradually.
-   - Remove migrated files from allowlist immediately.
+   - Remove migrated files from `OVERLAY_MIGRATION_LEGACY_BASE_FILES` immediately.
 1. Cleanup
-   - Remove remaining suppressions for `no-restricted-imports`.
-   - Remove legacy `portal-to-follow-elem` implementation.
+   - Remove remaining allowlist entries.
+   - Remove legacy overlay implementations when import count reaches zero.
 
-## Suppression maintenance
+## Allowlist maintenance
 
 - After each migration batch, run:
 
 ```sh
-pnpm eslint --prune-suppressions --pass-on-unpruned-suppressions <changed-files>
+pnpm -C web lint:fix --prune-suppressions <changed-files>
 ```
 
-- Never increase suppressions to bypass new code.
-- Prefer direct migration over adding suppression entries.
+- If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
+- Never increase allowlist scope to bypass new code.
 
 ## React Refresh policy for base UI primitives
 

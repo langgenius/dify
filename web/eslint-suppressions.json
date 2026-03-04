@@ -6298,28 +6298,12 @@
     }
   },
   "app/components/workflow-app/components/workflow-children.tsx": {
-    "no-console": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
   },
