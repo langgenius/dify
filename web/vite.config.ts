@@ -71,10 +71,10 @@ const createForceInspectorClientInjectionPlugin = (): Plugin => {
 }
 
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
+  const isTest = mode === 'test'
 
   return {
-    plugins: mode === 'test'
+    plugins: isTest
       ? [
           tsconfigPaths(),
           react(),
@@ -89,12 +89,9 @@ export default defineConfig(({ mode }) => {
           } as Plugin,
         ]
       : [
-          ...(isDev
-            ? [
-                createCodeInspectorPlugin(),
-                createForceInspectorClientInjectionPlugin(),
-              ]
-            : []),
+          createCodeInspectorPlugin(),
+          createForceInspectorClientInjectionPlugin(),
+          react(),
           vinext(),
         ],
     resolve: {
@@ -104,7 +101,7 @@ export default defineConfig(({ mode }) => {
     },
 
     // vinext related config
-    ...(mode !== 'test'
+    ...(!isTest
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],

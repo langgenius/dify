@@ -14,7 +14,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppCard from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
-import { deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -26,6 +26,8 @@ let mockSystemFeatures = {
 const mockRouterPush = vi.fn()
 const mockNotify = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
+const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
+let mockDeleteMutationPending = false
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -115,6 +117,13 @@ vi.mock('@/app/components/base/tag-management/store', () => ({
 
 vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/service/use-apps', () => ({
+  useDeleteAppMutation: () => ({
+    mutateAsync: mockDeleteAppMutation,
+    isPending: mockDeleteMutationPending,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -270,6 +279,7 @@ const renderAppCard = (app?: Partial<App>) => {
 describe('App Card Operations Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDeleteMutationPending = false
     mockIsCurrentWorkspaceEditor = true
     mockSystemFeatures = {
       branding: { enabled: false },
@@ -341,7 +351,7 @@ describe('App Card Operations Flow', () => {
           fireEvent.click(confirmBtn)
 
           await waitFor(() => {
-            expect(deleteApp).toHaveBeenCalledWith('app-to-delete')
+            expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
           })
         }
       }

@@ -189,6 +189,12 @@ export default antfu(
             '**/base/select/pure',
           ],
           message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/confirm',
+            '**/base/confirm/index',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
         }],
       }],
     },
