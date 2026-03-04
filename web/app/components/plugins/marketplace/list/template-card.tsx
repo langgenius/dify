@@ -13,7 +13,7 @@ import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { formatUsedCount } from '@/utils/template'
 import { getMarketplaceUrl } from '@/utils/var'
-import { getTemplateIconUrl } from '../utils'
+import { buildSearchParamsString, getTemplateIconUrl } from '../utils'
 
 type TemplateCardProps = {
   template: Template
@@ -45,7 +45,7 @@ const TemplateCardComponent = ({
     }
     return includeSource
       ? getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, queryParams)
-      : `${MARKETPLACE_URL_PREFIX}/template/${publisher_handle}/${template_name}?${new URLSearchParams(queryParams).toString()}`
+      : `${MARKETPLACE_URL_PREFIX}/template/${publisher_handle}/${template_name}?${buildSearchParamsString(queryParams)}`
   }, [publisher_handle, template_name, theme, locale, id, includeSource])
 
   const visibleDepsPlugins = deps_plugins?.slice(0, MAX_VISIBLE_DEPS_PLUGINS) || []

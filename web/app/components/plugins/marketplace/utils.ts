@@ -102,6 +102,28 @@ export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
   return `/plugin/${plugin.org}/${plugin.name}`
 }
 
+export const buildSearchParamsString = (params?: Record<string, string | undefined>) => {
+  const searchParams = new URLSearchParams()
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null)
+        searchParams.append(key, value)
+    }
+  }
+  return searchParams.toString()
+}
+
+export const buildMarketplaceHref = (
+  path: string,
+  params: Record<string, string | undefined> | undefined,
+  includeSource: boolean,
+) => {
+  if (includeSource)
+    return getMarketplaceUrl(path, params)
+  const query = buildSearchParamsString(params)
+  return query ? `${path}?${query}` : path
+}
+
 export const getMarketplacePluginsByCollectionId = async (
   collectionId: string,
   query?: CollectionsAndPluginsSearchParams,

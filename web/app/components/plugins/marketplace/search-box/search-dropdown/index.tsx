@@ -9,9 +9,8 @@ import { useCategories } from '@/app/components/plugins/hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import { formatUsedCount } from '@/utils/template'
-import { getMarketplaceUrl } from '@/utils/var'
 import { MARKETPLACE_TYPE_ICON_COMPONENTS } from '../../plugin-type-icons'
-import { getCreatorAvatarUrl, getPluginDetailLinkInMarketplace, getTemplateIconUrl } from '../../utils'
+import { buildMarketplaceHref, getCreatorAvatarUrl, getPluginDetailLinkInMarketplace, getTemplateIconUrl } from '../../utils'
 
 const DROPDOWN_PANEL = 'w-[472px] max-h-[710px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-sm'
 const ICON_BOX_BASE = 'flex shrink-0 items-center justify-center overflow-hidden border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
@@ -78,29 +77,6 @@ const ItemMeta = ({ items }: { items: (React.ReactNode | string)[] }) => (
     ))}
   </div>
 )
-
-const getSearchParamsString = (params?: Record<string, string | undefined>) => {
-  const searchParams = new URLSearchParams()
-  if (params) {
-    Object.keys(params).forEach((key) => {
-      const value = params[key]
-      if (value !== undefined && value !== null)
-        searchParams.append(key, value)
-    })
-  }
-  return searchParams.toString()
-}
-
-const getDropdownMarketplaceUrl = (
-  path: string,
-  params: Record<string, string | undefined> | undefined,
-  includeSource: boolean,
-) => {
-  if (includeSource)
-    return getMarketplaceUrl(path, params)
-  const query = getSearchParamsString(params)
-  return query ? `${path}?${query}` : path
-}
 
 type SearchDropdownProps = {
   query: string
@@ -226,7 +202,7 @@ function TemplatesSection({ templates, includeSource, t }: {
         return (
           <DropdownItem
             key={template.id}
-            href={getDropdownMarketplaceUrl(
+            href={buildMarketplaceHref(
               `/template/${template.publisher_handle}/${template.template_name}`,
               { templateId: template.id },
               includeSource,
@@ -326,7 +302,7 @@ function CreatorsSection({ creators, includeSource, t }: {
         <a
           key={creator.unique_handle}
           className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-state-base-hover"
-          href={getDropdownMarketplaceUrl(`/creators/${creator.unique_handle}`, undefined, includeSource)}
+          href={buildMarketplaceHref(`/creators/${creator.unique_handle}`, undefined, includeSource)}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border-[0.5px] border-divider-regular">
             <img
