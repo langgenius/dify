@@ -15,6 +15,7 @@ from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime.variable_pool import VariablePool
 
 if TYPE_CHECKING:
+    from dify_graph.entities import GraphInitParams
     from dify_graph.entities.pause_reason import PauseReason
 
 
@@ -135,6 +136,31 @@ class GraphProtocol(Protocol):
     def get_outgoing_edges(self, node_id: str) -> Sequence[EdgeProtocol]: ...
 
 
+class ChildGraphEngineBuilderProtocol(Protocol):
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: Mapping[str, Any],
+        root_node_id: str,
+        layers: Sequence[object] = (),
+    ) -> Any: ...
+
+
+class ChildEngineError(ValueError):
+    """Base error type for child-engine creation failures."""
+
+
+class ChildEngineBuilderNotConfiguredError(ChildEngineError):
+    """Raised when child-engine creation is requested without a bound builder."""
+
+
+class ChildGraphNotFoundError(ChildEngineError):
+    """Raised when the requested child graph entry point cannot be resolved."""
+
+
 class _GraphStateSnapshot(BaseModel):
     """Serializable graph state snapshot for node/edge states."""
 
@@ -209,6 +235,7 @@ class GraphRuntimeState:
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
         self._deferred_nodes: set[str] = set()
+        self._child_engine_builder: ChildGraphEngineBuilderProtocol | None = None
 
         # Node and edges states needed to be restored into
         # graph object.
@@ -249,6 +276,31 @@ class GraphRuntimeState:
         _ = self.graph_execution
         if self._graph is not None:
             _ = self.response_coordinator
+
+    def bind_child_engine_builder(self, builder: ChildGraphEngineBuilderProtocol) -> None:
+        self._child_engine_builder = builder
+
+    def create_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: Mapping[str, Any],
+        root_node_id: str,
+        layers: Sequence[object] = (),
+    ) -> Any:
+        if self._child_engine_builder is None:
+            raise ChildEngineBuilderNotConfiguredError("Child engine builder is not configured.")
+
+        return self._child_engine_builder.build_child_engine(
+            workflow_id=workflow_id,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+            graph_config=graph_config,
+            root_node_id=root_node_id,
+            layers=layers,
+        )
 
     # ------------------------------------------------------------------
     # Primary collaborators
