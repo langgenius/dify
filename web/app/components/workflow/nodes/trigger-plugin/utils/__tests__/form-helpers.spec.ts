@@ -281,7 +281,7 @@ describe('Form Helpers', () => {
 
   describe('Edge cases', () => {
     it('should handle objects with non-string keys', () => {
-      const input = { [Symbol('test')]: 'value', regular: 'field' } as any
+      const input = { [Symbol('test')]: 'value', regular: 'field' } as Record<string, unknown>
       const result = sanitizeFormValues(input)
 
       expect(result.regular).toBe('field')
@@ -299,7 +299,7 @@ describe('Form Helpers', () => {
     })
 
     it('should handle circular references in deepSanitizeFormValues gracefully', () => {
-      const obj: any = { field: 'value' }
+      const obj: Record<string, unknown> = { field: 'value' }
       obj.circular = obj
 
       expect(() => deepSanitizeFormValues(obj)).not.toThrow()
