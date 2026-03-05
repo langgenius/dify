@@ -3,13 +3,18 @@
 import type { FC, ReactNode } from 'react'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import { useQueryClient } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useMemo } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import {
+  AppContext,
+  initialLangGeniusVersionInfo,
+  initialWorkspaceInfo,
+  userProfilePlaceholder,
+  useSelector,
+} from '@/context/app-context'
 import { env } from '@/env'
 import {
   useCurrentWorkspace,
@@ -17,72 +22,6 @@ import {
   useUserProfile,
 } from '@/service/use-common'
 import { useGlobalPublicStore } from './global-public-context'
-
-export type AppContextValue = {
-  userProfile: UserProfileResponse
-  mutateUserProfile: VoidFunction
-  currentWorkspace: ICurrentWorkspace
-  isCurrentWorkspaceManager: boolean
-  isCurrentWorkspaceOwner: boolean
-  isCurrentWorkspaceEditor: boolean
-  isCurrentWorkspaceDatasetOperator: boolean
-  mutateCurrentWorkspace: VoidFunction
-  langGeniusVersionInfo: LangGeniusVersionResponse
-  useSelector: typeof useSelector
-  isLoadingCurrentWorkspace: boolean
-  isValidatingCurrentWorkspace: boolean
-}
-
-const userProfilePlaceholder = {
-  id: '',
-  name: '',
-  email: '',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: false,
-}
-
-const initialLangGeniusVersionInfo = {
-  current_env: '',
-  current_version: '',
-  latest_version: '',
-  release_date: '',
-  release_notes: '',
-  version: '',
-  can_auto_update: false,
-}
-
-const initialWorkspaceInfo: ICurrentWorkspace = {
-  id: '',
-  name: '',
-  plan: '',
-  status: '',
-  created_at: 0,
-  role: 'normal',
-  providers: [],
-  trial_credits: 200,
-  trial_credits_used: 0,
-  next_credit_reset_date: 0,
-}
-
-const AppContext = createContext<AppContextValue>({
-  userProfile: userProfilePlaceholder,
-  currentWorkspace: initialWorkspaceInfo,
-  isCurrentWorkspaceManager: false,
-  isCurrentWorkspaceOwner: false,
-  isCurrentWorkspaceEditor: false,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: noop,
-  mutateCurrentWorkspace: noop,
-  langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector,
-  isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
-})
-
-export function useSelector<T>(selector: (value: AppContextValue) => T): T {
-  return useContextSelector(AppContext, selector)
-}
 
 export type AppContextProviderProps = {
   children: ReactNode
@@ -170,7 +109,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     // Report user and workspace info to Amplitude when loaded
     if (userProfile?.id) {
       setUserId(userProfile.email)
-      const properties: Record<string, any> = {
+      const properties: Record<string, string | number | boolean> = {
         email: userProfile.email,
         name: userProfile.name,
         has_password: userProfile.is_password_set,
@@ -213,7 +152,3 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     </AppContext.Provider>
   )
 }
-
-export const useAppContext = () => useContext(AppContext)
-
-export default AppContext
