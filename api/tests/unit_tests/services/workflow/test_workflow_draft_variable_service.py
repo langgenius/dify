@@ -501,16 +501,16 @@ class TestModelToInsertionDict:
         # is_default_value must always be present
         assert "is_default_value" in d
 
-    def test_description_truncated_to_255(self):
-        """Problem 2: StringDataRightTruncation — description longer than 255
-        chars causes psycopg2 error on varchar(255) column.
+    def test_description_passthrough(self):
+        """_model_to_insertion_dict passes description as-is;
+        length validation is enforced earlier in build_conversation_variable_from_mapping.
         """
-        long_desc = "a" * 500
+        desc = "a" * 200
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id="app-1",
             name="counter",
             value=StringSegment(value="0"),
-            description=long_desc,
+            description=desc,
         )
         d = _model_to_insertion_dict(conv_var)
-        assert len(d["description"]) <= 255
+        assert d["description"] == desc
