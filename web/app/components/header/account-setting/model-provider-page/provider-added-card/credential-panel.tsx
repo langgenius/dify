@@ -7,7 +7,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/client'
 import {
   ConfigurationMethodEnum,
@@ -16,7 +15,6 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
 import ModelAuthDropdown from './model-auth-dropdown'
 import SystemQuotaCard from './system-quota-card'
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
@@ -37,7 +35,6 @@ const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
   const { t } = useTranslation()
-  const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
@@ -56,10 +53,6 @@ const CredentialPanel = ({
           if (method === ConfigurationMethodEnum.predefinedModel)
             provider.supported_model_types.forEach(modelType => updateModelList(modelType))
         })
-        eventEmitter?.emit({
-          type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-          payload: provider.provider,
-        } as { type: string, payload: string })
       },
       onError: () => {
         Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })

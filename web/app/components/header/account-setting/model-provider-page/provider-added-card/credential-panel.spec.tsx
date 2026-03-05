@@ -321,7 +321,7 @@ describe('CredentialPanel', () => {
         )
         expect(mockUpdateModelProviders).toHaveBeenCalled()
         expect(mockUpdateModelList).toHaveBeenCalledWith('llm')
-        expect(mockEventEmitter.emit).toHaveBeenCalled()
+        expect(mockEventEmitter.emit).not.toHaveBeenCalled()
       })
     })
   })
