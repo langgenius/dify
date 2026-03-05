@@ -268,29 +268,44 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
-        dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+        existing_member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
             role=TenantAccountRole.NORMAL,
             tenant=tenant,
         )
-        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([member.id])
-        rollback_called = {"called": False}
+        replacement_member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
+        DatasetPermissionService.update_partial_member_list(
+            tenant.id,
+            dataset.id,
+            DatasetPermissionTestDataFactory.create_user_list_mock([existing_member.id]),
+        )
+        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([replacement_member.id])
+        rollback_called = {"count": 0}
+        original_rollback = db.session.rollback
 
-        # Act & Assert
+        # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
 
             def _raise_commit():
                 raise Exception("Database connection error")
 
-            def _mark_rollback():
-                rollback_called["called"] = True
+            def _rollback_and_mark():
+                rollback_called["count"] += 1
+                original_rollback()
 
             mp.setattr("services.dataset_service.db.session.commit", _raise_commit)
-            mp.setattr("services.dataset_service.db.session.rollback", _mark_rollback)
+            mp.setattr("services.dataset_service.db.session.rollback", _rollback_and_mark)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, user_list)
 
-        assert rollback_called["called"] is True
+        # Assert
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
+        assert rollback_called["count"] == 1
+        assert result == [existing_member.id]
+        assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 1
 
 
 class TestDatasetPermissionServiceClearPartialMemberList:
@@ -353,23 +368,29 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
         users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
-        rollback_called = {"called": False}
+        rollback_called = {"count": 0}
+        original_rollback = db.session.rollback
 
-        # Act & Assert
+        # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
 
             def _raise_commit():
                 raise Exception("Database connection error")
 
-            def _mark_rollback():
-                rollback_called["called"] = True
+            def _rollback_and_mark():
+                rollback_called["count"] += 1
+                original_rollback()
 
             mp.setattr("services.dataset_service.db.session.commit", _raise_commit)
-            mp.setattr("services.dataset_service.db.session.rollback", _mark_rollback)
+            mp.setattr("services.dataset_service.db.session.rollback", _rollback_and_mark)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.clear_partial_member_list(dataset.id)
 
-        assert rollback_called["called"] is True
+        # Assert
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
+        assert rollback_called["count"] == 1
+        assert set(result) == {member_1.id, member_2.id}
+        assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 2
 
 
 class TestDatasetServiceCheckDatasetPermission:
