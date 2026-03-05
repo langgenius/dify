@@ -1,7 +1,7 @@
 import type { DefaultModelResponse } from '../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ModelTypeEnum } from '../declarations'
 import SystemModel from './index'
 
@@ -43,11 +43,15 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: () => ({
+      notify: mockNotify,
+    }),
+  }
+})
 
 vi.mock('../hooks', () => ({
   useModelList: () => ({

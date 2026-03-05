@@ -5,7 +5,7 @@ import type {
   ModelProvider,
 } from '../../declarations'
 import { act, renderHook } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../declarations'
 import { useAuth } from './use-auth'
 
@@ -22,9 +22,13 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: () => ({ notify: mockNotify }),
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelModalHandler: () => mockOpenModelModal,

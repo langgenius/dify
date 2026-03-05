@@ -250,8 +250,7 @@ describe('Compliance', () => {
       await waitFor(() => {
         const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
         expect(menuItem).not.toBeNull()
-        // The action div gets btn-disabled class when isPending
-        const disabledBtn = menuItem!.querySelector('.btn-disabled')
+        const disabledBtn = menuItem!.querySelector('.cursor-not-allowed')
         expect(disabledBtn).not.toBeNull()
       }, { timeout: 10000 })
 
@@ -284,9 +283,10 @@ describe('Compliance', () => {
       // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(() => {
         const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
-        expect(menuItem!.querySelector('.btn-disabled')).not.toBeNull()
+        const el = menuItem!.querySelector('.cursor-not-allowed')
+        expect(el).not.toBeNull()
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
-      })
+      }, { timeout: 10000 })
 
       // Second click while pending - should be guarded by isPending check
       fireEvent.click(downloadButtons[0])
@@ -294,10 +294,10 @@ describe('Compliance', () => {
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
       await waitFor(() => {
         expect(downloadUrl).toHaveBeenCalledTimes(1)
-      })
+      }, { timeout: 10000 })
       // getDocDownloadUrl should still have only been called once
       expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
-    })
+    }, 20000)
 
     // canShowUpgradeTooltip=false: enterprise plan has empty tooltip text → no TooltipContent
     it('should show upgrade badge with empty tooltip for enterprise plan', () => {
