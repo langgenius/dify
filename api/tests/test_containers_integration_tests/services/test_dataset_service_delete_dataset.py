@@ -3,8 +3,6 @@
 from unittest.mock import patch
 from uuid import uuid4
 
-import pytest
-
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from services.dataset_service import DatasetService
@@ -145,7 +143,7 @@ class TestDatasetServiceDeleteDataset:
         )
 
     def test_delete_empty_dataset_success(self, db_session_with_containers):
-        """Delete an empty dataset without scheduling cleanup when doc_form and indexing_technique are both absent."""
+        """Delete an empty dataset without scheduling cleanup when both gating fields are absent."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -173,7 +171,7 @@ class TestDatasetServiceDeleteDataset:
         clean_dataset_delay.assert_not_called()
 
     def test_delete_dataset_with_partial_none_values(self, db_session_with_containers):
-        """Delete a dataset without scheduling cleanup when indexing_technique is missing but doc_form still resolves."""
+        """Delete a dataset without cleanup when indexing_technique is missing but doc_form resolves."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
@@ -201,7 +199,7 @@ class TestDatasetServiceDeleteDataset:
         clean_dataset_delay.assert_not_called()
 
     def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, db_session_with_containers):
-        """Delete a dataset without scheduling cleanup when indexing exists but doc_form resolves to None."""
+        """Delete a dataset without cleanup when indexing exists but doc_form resolves to None."""
         # Arrange
         owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
