@@ -1,5 +1,5 @@
 import type { Credential } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
@@ -67,7 +67,7 @@ describe('Item Component', () => {
     it('should render selected icon when showSelectedIcon is true and credential is selected', () => {
       const credential = createCredential({ id: 'selected-id' })
 
-      render(
+      const { container } = render(
         <Item
           credential={credential}
           showSelectedIcon={true}
@@ -75,53 +75,64 @@ describe('Item Component', () => {
         />,
       )
 
-      // RiCheckLine should be rendered
-      expect(document.querySelector('.text-text-accent')).toBeInTheDocument()
+      const svgs = container.querySelectorAll('svg')
+      expect(svgs.length).toBeGreaterThan(0)
     })
 
     it('should not render selected icon when credential is not selected', () => {
       const credential = createCredential({ id: 'not-selected-id' })
 
-      render(
+      const { container: selectedContainer } = render(
+        <Item
+          credential={createCredential({ id: 'sel-id' })}
+          showSelectedIcon={true}
+          selectedCredentialId="sel-id"
+        />,
+      )
+      const selectedSvgCount = selectedContainer.querySelectorAll('svg').length
+
+      cleanup()
+
+      const { container: unselectedContainer } = render(
         <Item
           credential={credential}
           showSelectedIcon={true}
           selectedCredentialId="other-id"
         />,
       )
+      const unselectedSvgCount = unselectedContainer.querySelectorAll('svg').length
 
-      // Check icon should not be visible
-      expect(document.querySelector('.text-text-accent')).not.toBeInTheDocument()
+      expect(unselectedSvgCount).toBeLessThan(selectedSvgCount)
     })
 
-    it('should render with gray indicator when not_allowed_to_use is true', () => {
+    it('should render with disabled appearance when not_allowed_to_use is true', () => {
       const credential = createCredential({ not_allowed_to_use: true })
 
       const { container } = render(<Item credential={credential} />)
 
-      // The item should have tooltip wrapper with data-state attribute for unavailable credential
-      const tooltipTrigger = container.querySelector('[data-state]')
-      expect(tooltipTrigger).toBeInTheDocument()
-      // The item should have disabled styles
-      expect(container.querySelector('.cursor-not-allowed')).toBeInTheDocument()
+      expect(container.querySelector('[data-state]')).toBeInTheDocument()
     })
 
-    it('should apply disabled styles when disabled is true', () => {
+    it('should not call onItemClick when disabled is true', () => {
+      const onItemClick = vi.fn()
       const credential = createCredential()
 
-      const { container } = render(<Item credential={credential} disabled={true} />)
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} disabled={true} />)
 
-      const itemDiv = container.querySelector('.cursor-not-allowed')
-      expect(itemDiv).toBeInTheDocument()
+      fireEvent.click(container.firstElementChild!)
+
+      expect(onItemClick).not.toHaveBeenCalled()
     })
 
-    it('should apply disabled styles when not_allowed_to_use is true', () => {
+    it('should not call onItemClick when not_allowed_to_use is true', () => {
+      const onItemClick = vi.fn()
       const credential = createCredential({ not_allowed_to_use: true })
 
-      const { container } = render(<Item credential={credential} />)
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
-      const itemDiv = container.querySelector('.cursor-not-allowed')
-      expect(itemDiv).toBeInTheDocument()
+      fireEvent.click(container.firstElementChild!)
+
+      expect(onItemClick).not.toHaveBeenCalled()
     })
   })
 
@@ -135,8 +146,7 @@ describe('Item Component', () => {
         <Item credential={credential} onItemClick={onItemClick} />,
       )
 
-      const itemDiv = container.querySelector('.group')
-      fireEvent.click(itemDiv!)
+      fireEvent.click(container.firstElementChild!)
 
       expect(onItemClick).toHaveBeenCalledWith('click-test-id')
     })
@@ -149,49 +159,22 @@ describe('Item Component', () => {
         <Item credential={credential} onItemClick={onItemClick} />,
       )
 
-      const itemDiv = container.querySelector('.group')
-      fireEvent.click(itemDiv!)
+      fireEvent.click(container.firstElementChild!)
 
       expect(onItemClick).toHaveBeenCalledWith('')
-    })
-
-    it('should not call onItemClick when disabled', () => {
-      const onItemClick = vi.fn()
-      const credential = createCredential()
-
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} disabled={true} />,
-      )
-
-      const itemDiv = container.querySelector('.group')
-      fireEvent.click(itemDiv!)
-
-      expect(onItemClick).not.toHaveBeenCalled()
-    })
-
-    it('should not call onItemClick when not_allowed_to_use is true', () => {
-      const onItemClick = vi.fn()
-      const credential = createCredential({ not_allowed_to_use: true })
-
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
-
-      const itemDiv = container.querySelector('.group')
-      fireEvent.click(itemDiv!)
-
-      expect(onItemClick).not.toHaveBeenCalled()
     })
   })
 
   // ==================== Rename Mode Tests ====================
   describe('Rename Mode', () => {
-    it('should enter rename mode when rename button is clicked', () => {
-      const credential = createCredential()
+    const renderWithRenameEnabled = (overrides: Record<string, unknown> = {}) => {
+      const onRename = vi.fn()
+      const credential = createCredential({ name: 'Original Name', ...overrides })
 
-      const { container } = render(
+      const result = render(
         <Item
           credential={credential}
+          onRename={onRename}
           disableRename={false}
           disableEdit={true}
           disableDelete={true}
@@ -199,224 +182,67 @@ describe('Item Component', () => {
         />,
       )
 
-      // Since buttons are hidden initially, we need to find the ActionButton
-      // In the actual implementation, they are rendered but hidden
-      const actionButtons = container.querySelectorAll('button')
-      const renameBtn = Array.from(actionButtons).find(btn =>
-        btn.querySelector('.ri-edit-line') || btn.innerHTML.includes('RiEditLine'),
-      )
-
-      if (renameBtn) {
-        fireEvent.click(renameBtn)
-        // Should show input for rename
-        expect(screen.getByRole('textbox')).toBeInTheDocument()
+      const enterRenameMode = () => {
+        const firstButton = result.container.querySelectorAll('button')[0] as HTMLElement
+        fireEvent.click(firstButton)
       }
+
+      return { ...result, onRename, enterRenameMode }
+    }
+
+    it('should enter rename mode when rename button is clicked', () => {
+      const { enterRenameMode } = renderWithRenameEnabled()
+
+      enterRenameMode()
+
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should show save and cancel buttons in rename mode', () => {
-      const onRename = vi.fn()
-      const credential = createCredential({ name: 'Original Name' })
+      const { enterRenameMode } = renderWithRenameEnabled()
 
-      const { container } = render(
-        <Item
-          credential={credential}
-          onRename={onRename}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
+      enterRenameMode()
 
-      // Find and click rename button to enter rename mode
-      const actionButtons = container.querySelectorAll('button')
-      // Find the rename action button by looking for RiEditLine icon
-      actionButtons.forEach((btn) => {
-        if (btn.querySelector('svg')) {
-          fireEvent.click(btn)
-        }
-      })
-
-      // If we're in rename mode, there should be save/cancel buttons
-      const buttons = screen.queryAllByRole('button')
-      if (buttons.length >= 2) {
-        expect(screen.getByText('common.operation.save')).toBeInTheDocument()
-        expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      }
+      expect(screen.getByText('common.operation.save')).toBeInTheDocument()
+      expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
     })
 
     it('should call onRename with new name when save is clicked', () => {
-      const onRename = vi.fn()
-      const credential = createCredential({ id: 'rename-test-id', name: 'Original' })
+      const { enterRenameMode, onRename } = renderWithRenameEnabled({ id: 'rename-test-id' })
 
-      const { container } = render(
-        <Item
-          credential={credential}
-          onRename={onRename}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
+      enterRenameMode()
 
-      // Trigger rename mode by clicking the rename button
-      const editIcon = container.querySelector('svg.ri-edit-line')
-      if (editIcon) {
-        fireEvent.click(editIcon.closest('button')!)
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'New Name' } })
+      fireEvent.click(screen.getByText('common.operation.save'))
 
-        // Now in rename mode, change input and save
-        const input = screen.getByRole('textbox')
-        fireEvent.change(input, { target: { value: 'New Name' } })
-
-        // Click save
-        const saveButton = screen.getByText('common.operation.save')
-        fireEvent.click(saveButton)
-
-        expect(onRename).toHaveBeenCalledWith({
-          credential_id: 'rename-test-id',
-          name: 'New Name',
-        })
-      }
-    })
-
-    it('should call onRename and exit rename mode when save button is clicked', () => {
-      const onRename = vi.fn()
-      const credential = createCredential({ id: 'rename-save-test', name: 'Original Name' })
-
-      const { container } = render(
-        <Item
-          credential={credential}
-          onRename={onRename}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
-
-      // Find and click rename button to enter rename mode
-      // The button contains RiEditLine svg
-      const allButtons = Array.from(container.querySelectorAll('button'))
-      let renameButton: Element | null = null
-      for (const btn of allButtons) {
-        if (btn.querySelector('svg')) {
-          renameButton = btn
-          break
-        }
-      }
-
-      if (renameButton) {
-        fireEvent.click(renameButton)
-
-        // Should be in rename mode now
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          expect(input).toHaveValue('Original Name')
-
-          // Change the value
-          fireEvent.change(input, { target: { value: 'Updated Name' } })
-          expect(input).toHaveValue('Updated Name')
-
-          // Click save button
-          const saveButton = screen.getByText('common.operation.save')
-          fireEvent.click(saveButton)
-
-          // Verify onRename was called with correct parameters
-          expect(onRename).toHaveBeenCalledTimes(1)
-          expect(onRename).toHaveBeenCalledWith({
-            credential_id: 'rename-save-test',
-            name: 'Updated Name',
-          })
-
-          // Should exit rename mode - input should be gone
-          expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-        }
-      }
+      expect(onRename).toHaveBeenCalledWith({
+        credential_id: 'rename-test-id',
+        name: 'New Name',
+      })
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
     it('should exit rename mode when cancel is clicked', () => {
-      const credential = createCredential({ name: 'Original' })
+      const { enterRenameMode } = renderWithRenameEnabled()
 
-      const { container } = render(
-        <Item
-          credential={credential}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
+      enterRenameMode()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
 
-      // Enter rename mode
-      const editIcon = container.querySelector('svg')?.closest('button')
-      if (editIcon) {
-        fireEvent.click(editIcon)
+      fireEvent.click(screen.getByText('common.operation.cancel'))
 
-        // If in rename mode, cancel button should exist
-        const cancelButton = screen.queryByText('common.operation.cancel')
-        if (cancelButton) {
-          fireEvent.click(cancelButton)
-          // Should exit rename mode - input should be gone
-          expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-        }
-      }
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
-    it('should update rename value when input changes', () => {
-      const credential = createCredential({ name: 'Original' })
+    it('should update input value when typing', () => {
+      const { enterRenameMode } = renderWithRenameEnabled()
 
-      const { container } = render(
-        <Item
-          credential={credential}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
+      enterRenameMode()
 
-      // We need to get into rename mode first
-      // The rename button appears on hover in the actions area
-      const allButtons = container.querySelectorAll('button')
-      if (allButtons.length > 0) {
-        fireEvent.click(allButtons[0])
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'Updated Value' } })
 
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          fireEvent.change(input, { target: { value: 'Updated Value' } })
-          expect(input).toHaveValue('Updated Value')
-        }
-      }
-    })
-
-    it('should stop propagation when clicking input in rename mode', () => {
-      const onItemClick = vi.fn()
-      const credential = createCredential()
-
-      const { container } = render(
-        <Item
-          credential={credential}
-          onItemClick={onItemClick}
-          disableRename={false}
-          disableEdit={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
-
-      // Enter rename mode and click on input
-      const allButtons = container.querySelectorAll('button')
-      if (allButtons.length > 0) {
-        fireEvent.click(allButtons[0])
-
-        const input = screen.queryByRole('textbox')
-        if (input) {
-          fireEvent.click(input)
-          // onItemClick should not be called when clicking the input
-          expect(onItemClick).not.toHaveBeenCalled()
-        }
-      }
+      expect(input).toHaveValue('Updated Value')
     })
   })
 
@@ -437,12 +263,9 @@ describe('Item Component', () => {
         />,
       )
 
-      // Find set default button
-      const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
-      if (setDefaultButton) {
-        fireEvent.click(setDefaultButton)
-        expect(onSetDefault).toHaveBeenCalledWith('test-credential-id')
-      }
+      const setDefaultButton = screen.getByText('plugin.auth.setDefault')
+      fireEvent.click(setDefaultButton)
+      expect(onSetDefault).toHaveBeenCalledWith('test-credential-id')
     })
 
     it('should not show set default button when credential is already default', () => {
@@ -517,16 +340,13 @@ describe('Item Component', () => {
         />,
       )
 
-      // Find the edit button (RiEqualizer2Line icon)
-      const editButton = container.querySelector('svg')?.closest('button')
-      if (editButton) {
-        fireEvent.click(editButton)
-        expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
-          api_key: 'secret',
-          __name__: 'Edit Test',
-          __credential_id__: 'edit-test-id',
-        })
-      }
+      const editButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      fireEvent.click(editButton)
+      expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
+        api_key: 'secret',
+        __name__: 'Edit Test',
+        __credential_id__: 'edit-test-id',
+      })
     })
 
     it('should not show edit button for OAuth credentials', () => {
@@ -584,12 +404,9 @@ describe('Item Component', () => {
         />,
       )
 
-      // Find delete button (RiDeleteBinLine icon)
-      const deleteButton = container.querySelector('svg')?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(onDelete).toHaveBeenCalledWith('delete-test-id')
-      }
+      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      fireEvent.click(deleteButton)
+      expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
 
     it('should not show delete button when disableDelete is true', () => {
@@ -704,44 +521,15 @@ describe('Item Component', () => {
         />,
       )
 
-      // Find delete button and click
-      const deleteButton = container.querySelector('svg')?.closest('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        // onDelete should be called but not onItemClick (due to stopPropagation)
-        expect(onDelete).toHaveBeenCalled()
-        // Note: onItemClick might still be called due to event bubbling in test environment
-      }
-    })
-
-    it('should disable action buttons when disabled prop is true', () => {
-      const onSetDefault = vi.fn()
-      const credential = createCredential({ is_default: false })
-
-      render(
-        <Item
-          credential={credential}
-          onSetDefault={onSetDefault}
-          disabled={true}
-          disableSetDefault={false}
-          disableRename={true}
-          disableEdit={true}
-          disableDelete={true}
-        />,
-      )
-
-      // Set default button should be disabled
-      const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
-      if (setDefaultButton) {
-        const button = setDefaultButton.closest('button')
-        expect(button).toBeDisabled()
-      }
+      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      fireEvent.click(deleteButton)
+      expect(onDelete).toHaveBeenCalled()
     })
   })
 
   // ==================== showAction Logic Tests ====================
   describe('Show Action Logic', () => {
-    it('should not show action area when all actions are disabled', () => {
+    it('should not render action buttons when all actions are disabled', () => {
       const credential = createCredential()
 
       const { container } = render(
@@ -754,12 +542,10 @@ describe('Item Component', () => {
         />,
       )
 
-      // Should not have action area with hover:flex
-      const actionArea = container.querySelector('.group-hover\\:flex')
-      expect(actionArea).not.toBeInTheDocument()
+      expect(container.querySelectorAll('button').length).toBe(0)
     })
 
-    it('should show action area when at least one action is enabled', () => {
+    it('should render action buttons when at least one action is enabled', () => {
       const credential = createCredential()
 
       const { container } = render(
@@ -772,38 +558,33 @@ describe('Item Component', () => {
         />,
       )
 
-      // Should have action area
-      const actionArea = container.querySelector('.group-hover\\:flex')
-      expect(actionArea).toBeInTheDocument()
+      expect(container.querySelectorAll('button').length).toBeGreaterThan(0)
     })
   })
 
-  // ==================== Edge Cases ====================
   describe('Edge Cases', () => {
     it('should handle credential with empty name', () => {
       const credential = createCredential({ name: '' })
 
-      render(<Item credential={credential} />)
-
-      // Should render without crashing
-      expect(document.querySelector('.group')).toBeInTheDocument()
+      expect(() => {
+        render(<Item credential={credential} />)
+      }).not.toThrow()
     })
 
     it('should handle credential with undefined credentials object', () => {
       const credential = createCredential({ credentials: undefined })
 
-      render(
-        <Item
-          credential={credential}
-          disableEdit={false}
-          disableRename={true}
-          disableDelete={true}
-          disableSetDefault={true}
-        />,
-      )
-
-      // Should render without crashing
-      expect(document.querySelector('.group')).toBeInTheDocument()
+      expect(() => {
+        render(
+          <Item
+            credential={credential}
+            disableEdit={false}
+            disableRename={true}
+            disableDelete={true}
+            disableSetDefault={true}
+          />,
+        )
+      }).not.toThrow()
     })
 
     it('should handle all optional callbacks being undefined', () => {
@@ -814,13 +595,13 @@ describe('Item Component', () => {
       }).not.toThrow()
     })
 
-    it('should properly display long credential names with truncation', () => {
+    it('should display long credential names with title attribute', () => {
       const longName = 'A'.repeat(100)
       const credential = createCredential({ name: longName })
 
       const { container } = render(<Item credential={credential} />)
 
-      const nameElement = container.querySelector('.truncate')
+      const nameElement = container.querySelector('[title]')
       expect(nameElement).toBeInTheDocument()
       expect(nameElement?.getAttribute('title')).toBe(longName)
     })

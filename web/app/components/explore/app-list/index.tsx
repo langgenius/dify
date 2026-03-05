@@ -2,12 +2,12 @@
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext, useContextSelector } from 'use-context-selector'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -16,13 +16,14 @@ import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import ExploreContext from '@/context/explore-context'
+import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
 } from '@/models/app'
 import { fetchAppDetail } from '@/service/explore'
+import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
 import TryApp from '../try-app'
@@ -36,9 +37,12 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { systemFeatures } = useGlobalPublicStore()
-  const { hasEditPermission } = useContext(ExploreContext)
+  const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
+  const userAccount = membersData?.accounts?.find(account => account.id === userProfile.id)
+  const hasEditPermission = !!userAccount && userAccount.role !== 'normal'
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -85,8 +89,8 @@ const Apps = ({
     )
   }, [searchKeywords, filteredList])
 
-  const [currApp, setCurrApp] = React.useState<App | null>(null)
-  const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const [currApp, setCurrApp] = useState<App | null>(null)
+  const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const {
     handleImportDSL,
@@ -96,16 +100,18 @@ const Apps = ({
   } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
-  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
+  const isShowTryAppPanel = !!currentTryApp
   const hideTryAppPanel = useCallback(() => {
-    setShowTryAppPanel(false)
-  }, [setShowTryAppPanel])
-  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
+    setCurrentTryApp(undefined)
+  }, [])
+  const handleTryApp = useCallback((params: TryAppSelection) => {
+    setCurrentTryApp(params)
+  }, [])
   const handleShowFromTryApp = useCallback(() => {
-    setCurrApp(appParams?.app || null)
+    setCurrApp(currentTryApp?.app || null)
     setIsShowCreateModal(true)
-  }, [appParams?.app])
+  }, [currentTryApp?.app])
 
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
@@ -175,7 +181,7 @@ const Apps = ({
           )}
           >
             <div className="flex items-center">
-              <div className="system-xl-semibold grow truncate text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              <div className="grow truncate text-text-primary system-xl-semibold">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
               {hasFilterCondition && (
                 <>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
@@ -216,13 +222,13 @@ const Apps = ({
             {searchFilteredList.map(app => (
               <AppCard
                 key={app.app_id}
-                isExplore
                 app={app}
                 canCreate={hasEditPermission}
                 onCreate={() => {
                   setCurrApp(app)
                   setIsShowCreateModal(true)
                 }}
+                onTry={handleTryApp}
               />
             ))}
           </nav>
@@ -255,9 +261,9 @@ const Apps = ({
 
       {isShowTryAppPanel && (
         <TryApp
-          appId={appParams?.appId || ''}
-          app={appParams?.app}
-          category={appParams?.app?.category}
+          appId={currentTryApp?.appId || ''}
+          app={currentTryApp?.app}
+          category={currentTryApp?.app?.category}
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />

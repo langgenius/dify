@@ -2,16 +2,16 @@ import time
 import uuid
 from uuid import uuid4
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables import ArrayStringVariable
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode
-from core.workflow.nodes.variable_assigner.v2.enums import InputType, Operation
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.graph import Graph
+from dify_graph.nodes.variable_assigner.v2 import VariableAssignerNode
+from dify_graph.nodes.variable_assigner.v2.enums import InputType, Operation
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import ArrayStringVariable
 
 DEFAULT_NODE_ID = "node_id"
 
@@ -85,13 +85,17 @@ def test_remove_first_from_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -169,13 +173,17 @@ def test_remove_last_from_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -250,13 +258,17 @@ def test_remove_first_from_empty_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -331,13 +343,17 @@ def test_remove_last_from_empty_array():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
 
@@ -404,13 +420,17 @@ def test_node_factory_creates_variable_assigner_node():
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
         workflow_id="1",
         graph_config=graph_config,
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.DEBUGGER,
+            }
+        },
         call_depth=0,
     )
     variable_pool = VariablePool(

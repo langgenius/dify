@@ -2,9 +2,11 @@ import dataclasses
 
 from pydantic import BaseModel
 
-from core.file import File, FileTransferMethod, FileType
 from core.helper import encrypter
-from core.variables.segments import (
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -20,8 +22,8 @@ from core.variables.segments import (
     StringSegment,
     get_segment_discriminator,
 )
-from core.variables.types import SegmentType
-from core.variables.variables import (
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.variables import (
     ArrayAnyVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
@@ -36,8 +38,6 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
 
 
 def test_segment_group_to_text():

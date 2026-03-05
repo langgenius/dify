@@ -1,6 +1,6 @@
 'use client'
 import type { Collection } from './types'
-import { useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -18,25 +18,22 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
-import { ToolTypeEnum } from '../workflow/block-selector/types'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
+import { getToolType } from './utils'
 
-const getToolType = (type: string) => {
-  switch (type) {
-    case 'builtin':
-      return ToolTypeEnum.BuiltIn
-    case 'api':
-      return ToolTypeEnum.Custom
-    case 'workflow':
-      return ToolTypeEnum.Workflow
-    case 'mcp':
-      return ToolTypeEnum.MCP
-    default:
-      return ToolTypeEnum.BuiltIn
-  }
+const TOOL_PROVIDER_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as const
+type ToolProviderCategory = typeof TOOL_PROVIDER_CATEGORY_VALUES[number]
+const toolProviderCategorySet = new Set<string>(TOOL_PROVIDER_CATEGORY_VALUES)
+
+const isToolProviderCategory = (value: string): value is ToolProviderCategory => {
+  return toolProviderCategorySet.has(value)
 }
+
+const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_PROVIDER_CATEGORY_VALUES)
+  .withDefault('builtin')
+
 const ProviderList = () => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
@@ -45,9 +42,7 @@ const ProviderList = () => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: 'builtin',
-  })
+  const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -138,6 +133,8 @@ const ProviderList = () => {
             <TabSliderNew
               value={activeTab}
               onChange={(state) => {
+                if (!isToolProviderCategory(state))
+                  return
                 setActiveTab(state)
                 if (state !== activeTab)
                   setCurrentProviderId(undefined)

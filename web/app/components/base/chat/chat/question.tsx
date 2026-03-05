@@ -4,7 +4,6 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
-import { RiClipboardLine, RiEditLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -16,7 +15,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
-import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
@@ -58,6 +56,8 @@ const Question: FC<QuestionProps> = ({
   const [editedContent, setEditedContent] = useState(content)
   const [contentWidth, setContentWidth] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
+  const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleEdit = useCallback(() => {
     setIsEditing(true)
@@ -65,14 +65,61 @@ const Question: FC<QuestionProps> = ({
   }, [content])
 
   const handleResend = useCallback(() => {
+    if (compositionEndTimerRef.current) {
+      clearTimeout(compositionEndTimerRef.current)
+      compositionEndTimerRef.current = null
+    }
+    isComposingRef.current = false
     setIsEditing(false)
     onRegenerate?.(item, { message: editedContent, files: message_files })
   }, [editedContent, message_files, item, onRegenerate])
 
   const handleCancelEditing = useCallback(() => {
+    if (compositionEndTimerRef.current) {
+      clearTimeout(compositionEndTimerRef.current)
+      compositionEndTimerRef.current = null
+    }
+    isComposingRef.current = false
     setIsEditing(false)
     setEditedContent(content)
   }, [content])
+
+  const handleEditInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey)
+      return
+
+    if (e.nativeEvent.isComposing)
+      return
+
+    if (isComposingRef.current) {
+      e.preventDefault()
+      return
+    }
+
+    e.preventDefault()
+    handleResend()
+  }, [handleResend])
+
+  const clearCompositionEndTimer = useCallback(() => {
+    if (!compositionEndTimerRef.current)
+      return
+
+    clearTimeout(compositionEndTimerRef.current)
+    compositionEndTimerRef.current = null
+  }, [])
+
+  const handleCompositionStart = useCallback(() => {
+    clearCompositionEndTimer()
+    isComposingRef.current = true
+  }, [clearCompositionEndTimer])
+
+  const handleCompositionEnd = useCallback(() => {
+    clearCompositionEndTimer()
+    compositionEndTimerRef.current = setTimeout(() => {
+      isComposingRef.current = false
+      compositionEndTimerRef.current = null
+    }, 50)
+  }, [clearCompositionEndTimer])
 
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev') {
@@ -102,37 +149,51 @@ const Question: FC<QuestionProps> = ({
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      clearCompositionEndTimer()
+    }
+  }, [clearCompositionEndTimer])
+
   return (
     <div className="mb-2 flex justify-end last:mb-0">
       <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
+            data-testid="action-container"
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
-            }}
+            <ActionButton
+              data-testid="copy-btn"
+              onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              }}
             >
-              <RiClipboardLine className="h-4 w-4" />
+              <div className="i-ri-clipboard-line h-4 w-4" />
             </ActionButton>
             {enableEdit && (
-              <ActionButton onClick={handleEdit}>
-                <RiEditLine className="h-4 w-4" />
+              <ActionButton data-testid="edit-btn" onClick={handleEdit}>
+                <div className="i-ri-edit-line h-4 w-4" />
               </ActionButton>
             )}
           </div>
         </div>
         <div
           ref={contentRef}
-          className="w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary"
-          style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
+          data-testid="question-content"
+          className={cn(
+            'w-full px-4 py-3 text-sm',
+            !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary',
+            isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
+          )}
+          style={(!isEditing && theme?.chatBubbleColorStyle) ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
             !!message_files?.length && (
               <FileList
-                className="mb-2"
+                className={cn(isEditing ? 'mb-3' : 'mb-2')}
                 files={message_files}
                 showDeleteAction={false}
                 showDownloadAction={true}
@@ -142,25 +203,24 @@ const Question: FC<QuestionProps> = ({
           {!isEditing
             ? <Markdown content={content} />
             : (
-                <div className="
-                flex flex-col gap-2 rounded-xl
-                border border-components-chat-input-border bg-components-panel-bg-blur p-[9px] shadow-md
-              "
-                >
-                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
+                <div className="flex flex-col gap-4">
+                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
                     <Textarea
                       className={cn(
-                        'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}
                       value={editedContent}
                       onChange={e => setEditedContent(e.target.value)}
+                      onKeyDown={handleEditInputKeyDown}
+                      onCompositionStart={handleCompositionStart}
+                      onCompositionEnd={handleCompositionEnd}
                     />
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button variant="primary" onClick={handleResend}>{t('chat.resend', { ns: 'common' })}</Button>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button className="min-w-24" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}
@@ -181,7 +241,7 @@ const Question: FC<QuestionProps> = ({
           {
             questionIcon || (
               <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-                <User className="h-full w-full" />
+                <div className="i-custom-public-avatar-user h-full w-full" />
               </div>
             )
           }

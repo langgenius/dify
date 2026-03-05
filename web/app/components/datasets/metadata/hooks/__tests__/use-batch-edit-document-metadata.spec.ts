@@ -22,6 +22,7 @@ type MetadataItemWithEdit = {
   type: DataType
   value: string | number | null
   isMultipleValue?: boolean
+  isUpdated?: boolean
   updateType?: UpdateType
 }
 
@@ -612,6 +613,91 @@ describe('useBatchEditDocumentMetadata', () => {
           ]),
         }),
       )
+    })
+  })
+
+  describe('toCleanMetadataItem sanitization', () => {
+    it('should strip extra fields (isMultipleValue, updateType, isUpdated) from metadata items sent to backend', async () => {
+      const docListSingleDoc: DocListItem[] = [
+        {
+          id: 'doc-1',
+          doc_metadata: [
+            { id: '1', name: 'field_one', type: DataType.string, value: 'Old Value' },
+          ],
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...defaultProps,
+          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+        }),
+      )
+
+      const editedList: MetadataItemWithEdit[] = [
+        {
+          id: '1',
+          name: 'field_one',
+          type: DataType.string,
+          value: 'New Value',
+          isMultipleValue: true,
+          isUpdated: true,
+          updateType: UpdateType.changeValue,
+        },
+      ]
+
+      await act(async () => {
+        await result.current.handleSave(editedList, [], false)
+      })
+
+      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const sentItem = callArgs.metadata_list[0].metadata_list[0]
+
+      // Only id, name, type, value should be present
+      expect(Object.keys(sentItem).sort()).toEqual(['id', 'name', 'type', 'value'].sort())
+      expect(sentItem).not.toHaveProperty('isMultipleValue')
+      expect(sentItem).not.toHaveProperty('updateType')
+      expect(sentItem).not.toHaveProperty('isUpdated')
+    })
+
+    it('should coerce undefined value to null in metadata items sent to backend', async () => {
+      const docListSingleDoc: DocListItem[] = [
+        {
+          id: 'doc-1',
+          doc_metadata: [
+            { id: '1', name: 'field_one', type: DataType.string, value: 'Value' },
+          ],
+        },
+      ]
+
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...defaultProps,
+          docList: docListSingleDoc as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+        }),
+      )
+
+      // Pass an item with value explicitly set to undefined (via cast)
+      const editedList: MetadataItemWithEdit[] = [
+        {
+          id: '1',
+          name: 'field_one',
+          type: DataType.string,
+          value: undefined as unknown as null,
+          updateType: UpdateType.changeValue,
+        },
+      ]
+
+      await act(async () => {
+        await result.current.handleSave(editedList, [], false)
+      })
+
+      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const sentItem = callArgs.metadata_list[0].metadata_list[0]
+
+      // value should be null, not undefined
+      expect(sentItem.value).toBeNull()
+      expect(sentItem.value).not.toBeUndefined()
     })
   })
 

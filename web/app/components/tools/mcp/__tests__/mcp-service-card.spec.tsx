@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unnecessary-use-prefix */
 import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
@@ -9,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import MCPServiceCard from '../mcp-service-card'
 
-// Mock MCPServerModal
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   default: ({ show, onHide }: { show: boolean, onHide: () => void }) => {
     if (!show)
@@ -22,21 +20,6 @@ vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   },
 }))
 
-// Mock Confirm
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel }: { isShow: boolean, onConfirm: () => void, onCancel: () => void }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-        <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
-      </div>
-    )
-  },
-}))
-
-// Mutable mock handlers for hook
 const mockHandleStatusChange = vi.fn().mockResolvedValue({ activated: true })
 const mockHandleServerModalHide = vi.fn().mockReturnValue({ shouldDeactivate: false })
 const mockHandleGenCode = vi.fn()
@@ -44,7 +27,6 @@ const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockOpenServerModal = vi.fn()
 
-// Type for mock hook state
 type MockHookState = {
   genLoading: boolean
   isLoading: boolean
@@ -68,8 +50,7 @@ type MockHookState = {
   latestParams: Array<unknown>
 }
 
-// Default hook state factory - creates fresh state for each test
-const createDefaultHookState = (): MockHookState => ({
+const createDefaultHookState = (overrides: Partial<MockHookState> = {}): MockHookState => ({
   genLoading: false,
   isLoading: false,
   serverPublished: true,
@@ -90,12 +71,11 @@ const createDefaultHookState = (): MockHookState => ({
   showConfirmDelete: false,
   showMCPServerModal: false,
   latestParams: [],
+  ...overrides,
 })
 
-// Mutable hook state - modify this in tests to change component behavior
 let mockHookState = createDefaultHookState()
 
-// Mock the hook - uses mockHookState which can be modified per test
 vi.mock('../hooks/use-mcp-service-card', () => ({
   useMCPServiceCardState: () => ({
     ...mockHookState,
@@ -111,11 +91,7 @@ vi.mock('../hooks/use-mcp-service-card', () => ({
 describe('MCPServiceCard', () => {
   const createWrapper = () => {
     const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+      defaultOptions: { queries: { retry: false } },
     })
     return ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
@@ -129,10 +105,7 @@ describe('MCPServiceCard', () => {
   } as AppDetailResponse & Partial<AppSSO>)
 
   beforeEach(() => {
-    // Reset hook state to defaults before each test
     mockHookState = createDefaultHookState()
-
-    // Reset all mock function call history
     mockHandleStatusChange.mockClear().mockResolvedValue({ activated: true })
     mockHandleServerModalHide.mockClear().mockReturnValue({ shouldDeactivate: false })
     mockHandleGenCode.mockClear()
@@ -142,300 +115,142 @@ describe('MCPServiceCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should render title, status indicator, and switch', () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render the MCP icon', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // The Mcp icon should be present in the component
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render status indicator', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Status indicator shows running or disable
       expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
-    })
-
-    it('should render switch toggle', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
-    it('should render in minimal or full state based on server status', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should render edit button in full state', () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // Component renders either in minimal or full state
+      const editBtn = screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })
+      expect(editBtn).toBeInTheDocument()
+    })
+
+    it('should return null when isLoading is true', () => {
+      mockHookState = createDefaultHookState({ isLoading: true })
+
+      const { container } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('should render content when isLoading is false', () => {
+      mockHookState = createDefaultHookState({ isLoading: false })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render edit button', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Edit or add description button
-      const editOrAddButton = screen.queryByText('tools.mcp.server.edit') || screen.queryByText('tools.mcp.server.addDescription')
-      expect(editOrAddButton).toBeInTheDocument()
-    })
-  })
-
-  describe('Status Indicator', () => {
-    it('should show running status when server is activated', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // The status text should be present
-      expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Server URL Display', () => {
-    it('should display title in both minimal and full state', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Title should always be displayed
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-  })
-
-  describe('Trigger Mode Disabled', () => {
-    it('should apply opacity when triggerModeDisabled is true', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard appInfo={appInfo} triggerModeDisabled={true} />,
-        { wrapper: createWrapper() },
-      )
-
-      // Component should have reduced opacity class
-      const container = document.querySelector('.opacity-60')
-      expect(container).toBeInTheDocument()
-    })
-
-    it('should not apply opacity when triggerModeDisabled is false', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard appInfo={appInfo} triggerModeDisabled={false} />,
-        { wrapper: createWrapper() },
-      )
-
-      // Component should not have reduced opacity class on the main content
-      const opacityElements = document.querySelectorAll('.opacity-60')
-      // The opacity-60 should not be present when not disabled
-      expect(opacityElements.length).toBe(0)
-    })
-
-    it('should render overlay when triggerModeDisabled is true', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard appInfo={appInfo} triggerModeDisabled={true} />,
-        { wrapper: createWrapper() },
-      )
-
-      // Overlay should have cursor-not-allowed
-      const overlay = document.querySelector('.cursor-not-allowed')
-      expect(overlay).toBeInTheDocument()
     })
   })
 
   describe('Different App Modes', () => {
-    it('should render for chat app', () => {
-      const appInfo = createMockAppInfo(AppModeEnum.CHAT)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it.each([
+      AppModeEnum.CHAT,
+      AppModeEnum.WORKFLOW,
+      AppModeEnum.ADVANCED_CHAT,
+      AppModeEnum.COMPLETION,
+      AppModeEnum.AGENT_CHAT,
+    ])('should render for %s app mode', (mode) => {
+      render(<MCPServiceCard appInfo={createMockAppInfo(mode)} />, { wrapper: createWrapper() })
 
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render for workflow app', () => {
-      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render for advanced chat app', () => {
-      const appInfo = createMockAppInfo(AppModeEnum.ADVANCED_CHAT)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render for completion app', () => {
-      const appInfo = createMockAppInfo(AppModeEnum.COMPLETION)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should render for agent chat app', () => {
-      const appInfo = createMockAppInfo(AppModeEnum.AGENT_CHAT)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
   })
 
-  describe('User Interactions', () => {
-    it('should toggle switch', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+  describe('Trigger Mode Disabled', () => {
+    it('should show cursor-not-allowed overlay when triggerModeDisabled is true', () => {
+      const { container } = render(
+        <MCPServiceCard appInfo={createMockAppInfo()} triggerModeDisabled={true} />,
+        { wrapper: createWrapper() },
+      )
 
-      const switchElement = screen.getByRole('switch')
-      fireEvent.click(switchElement)
+      const overlay = container.querySelector('.cursor-not-allowed[aria-hidden="true"]')
+      expect(overlay).toBeInTheDocument()
+    })
 
-      // Switch should be interactive
+    it('should not show cursor-not-allowed overlay when triggerModeDisabled is false', () => {
+      const { container } = render(
+        <MCPServiceCard appInfo={createMockAppInfo()} triggerModeDisabled={false} />,
+        { wrapper: createWrapper() },
+      )
+
+      const overlay = container.querySelector('.cursor-not-allowed[aria-hidden="true"]')
+      expect(overlay).toBeNull()
+    })
+  })
+
+  describe('Switch Toggle', () => {
+    it('should call handleStatusChange with false when turning off an active server', async () => {
+      mockHookState = createDefaultHookState({ serverActivated: true })
+      mockHandleStatusChange.mockResolvedValue({ activated: false })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByRole('switch'))
+
       await waitFor(() => {
-        expect(switchElement).toBeInTheDocument()
+        expect(mockHandleStatusChange).toHaveBeenCalledWith(false)
       })
     })
 
-    it('should have switch button available', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should call handleStatusChange with true when turning on an inactive server', async () => {
+      mockHookState = createDefaultHookState({ serverActivated: false })
+      mockHandleStatusChange.mockResolvedValue({ activated: true })
 
-      // The switch is a button role element
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByRole('switch'))
+
+      await waitFor(() => {
+        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
+      })
+    })
+
+    it('should show disabled styling when toggleDisabled is true', () => {
+      mockHookState = createDefaultHookState({ toggleDisabled: true })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should accept triggerModeMessage prop', () => {
-      const appInfo = createMockAppInfo()
-      const message = 'Custom trigger mode message'
-      render(
-        <MCPServiceCard
-          appInfo={appInfo}
-          triggerModeDisabled={true}
-          triggerModeMessage={message}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should handle empty triggerModeMessage', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard
-          appInfo={appInfo}
-          triggerModeDisabled={true}
-          triggerModeMessage=""
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should handle ReactNode as triggerModeMessage', () => {
-      const appInfo = createMockAppInfo()
-      const message = <span data-testid="custom-message">Custom message</span>
-      render(
-        <MCPServiceCard
-          appInfo={appInfo}
-          triggerModeDisabled={true}
-          triggerModeMessage={message}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle minimal app info', () => {
-      const minimalAppInfo = {
-        id: 'minimal-app',
-        name: 'Minimal',
-        mode: AppModeEnum.CHAT,
-        api_base_url: 'https://api.example.com/v1',
-      } as AppDetailResponse & Partial<AppSSO>
-
-      render(<MCPServiceCard appInfo={minimalAppInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should handle app info with special characters in name', () => {
-      const appInfo = {
-        id: 'app-special',
-        name: 'Test App <script>alert("xss")</script>',
-        mode: AppModeEnum.CHAT,
-        api_base_url: 'https://api.example.com/v1',
-      } as AppDetailResponse & Partial<AppSSO>
-
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(switchElement.className).toContain('!cursor-not-allowed')
+      expect(switchElement.className).toContain('!opacity-50')
     })
   })
 
   describe('Server Not Published', () => {
     beforeEach(() => {
-      // Modify hookState to simulate unpublished server
-      mockHookState = {
-        ...createDefaultHookState(),
+      mockHookState = createDefaultHookState({
         serverPublished: false,
         serverActivated: false,
         serverURL: '***********',
         detail: undefined,
         isMinimalState: true,
-      }
+      })
     })
 
-    it('should show add description button when server is not published', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should render in minimal state without edit button', () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      const buttons = screen.queryAllByRole('button')
-      const addDescButton = buttons.find(btn =>
-        btn.textContent?.includes('tools.mcp.server.addDescription'),
-      )
-      expect(addDescButton || screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should show masked URL when server is not published', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // In minimal/unpublished state, the URL should be masked or not shown
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /tools\.mcp\.server\.edit/i })).not.toBeInTheDocument()
     })
 
     it('should open modal when enabling unpublished server', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      mockHandleStatusChange.mockResolvedValue({ activated: false })
 
-      const switchElement = screen.getByRole('switch')
-      fireEvent.click(switchElement)
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByRole('switch'))
 
       await waitFor(() => {
-        const modal = screen.queryByTestId('mcp-server-modal')
-        if (modal)
-          expect(modal).toBeInTheDocument()
+        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
       })
     })
   })
 
   describe('Inactive Server', () => {
     beforeEach(() => {
-      // Modify hookState to simulate inactive server
-      mockHookState = {
-        ...createDefaultHookState(),
+      mockHookState = createDefaultHookState({
         serverActivated: false,
         detail: {
           id: 'server-123',
@@ -444,423 +259,36 @@ describe('MCPServiceCard', () => {
           description: 'Test server',
           parameters: {},
         },
-      }
+      })
     })
 
-    it('should show disabled status when server is inactive', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should show disabled status indicator', () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
     })
 
-    it('should toggle switch when server is inactive', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+    it('should allow toggling switch when server is inactive but published', async () => {
+      mockHandleStatusChange.mockResolvedValue({ activated: true })
 
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeInTheDocument()
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByRole('switch'))
 
-      fireEvent.click(switchElement)
-
-      // Switch should be interactive when server is inactive but published
       await waitFor(() => {
-        expect(switchElement).toBeInTheDocument()
+        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
       })
-    })
-  })
-
-  describe('Non-Manager User', () => {
-    beforeEach(() => {
-      // Modify hookState to simulate non-manager user
-      mockHookState = {
-        ...createDefaultHookState(),
-        isCurrentWorkspaceManager: false,
-      }
-    })
-
-    it('should not show regenerate button for non-manager', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Regenerate button should not be visible
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-  })
-
-  describe('Non-Editor User', () => {
-    it('should show disabled styling for non-editor switch', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        toggleDisabled: true,
-      }
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-      // Switch uses CSS classes for disabled state, not disabled attribute
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
     })
   })
 
   describe('Confirm Regenerate Dialog', () => {
-    it('should open confirm dialog and regenerate on confirm', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Find and click regenerate button
-      const regenerateButtons = document.querySelectorAll('.cursor-pointer')
-      const regenerateBtn = Array.from(regenerateButtons).find(btn =>
-        btn.querySelector('svg.h-4.w-4'),
-      )
-
-      if (regenerateBtn) {
-        fireEvent.click(regenerateBtn)
-
-        await waitFor(() => {
-          const confirmDialog = screen.queryByTestId('confirm-dialog')
-          if (confirmDialog) {
-            expect(confirmDialog).toBeInTheDocument()
-            const confirmBtn = screen.getByTestId('confirm-btn')
-            fireEvent.click(confirmBtn)
-          }
-        })
-      }
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should close confirm dialog on cancel', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Find and click regenerate button
-      const regenerateButtons = document.querySelectorAll('.cursor-pointer')
-      const regenerateBtn = Array.from(regenerateButtons).find(btn =>
-        btn.querySelector('svg.h-4.w-4'),
-      )
-
-      if (regenerateBtn) {
-        fireEvent.click(regenerateBtn)
-
-        await waitFor(() => {
-          const confirmDialog = screen.queryByTestId('confirm-dialog')
-          if (confirmDialog) {
-            expect(confirmDialog).toBeInTheDocument()
-            const cancelBtn = screen.getByTestId('cancel-btn')
-            fireEvent.click(cancelBtn)
-          }
-        })
-      }
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-  })
-
-  describe('MCP Server Modal', () => {
-    it('should open and close server modal', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Find edit button
-      const buttons = screen.queryAllByRole('button')
-      const editButton = buttons.find(btn =>
-        btn.textContent?.includes('tools.mcp.server.edit')
-        || btn.textContent?.includes('tools.mcp.server.addDescription'),
-      )
-
-      if (editButton) {
-        fireEvent.click(editButton)
-
-        await waitFor(() => {
-          const modal = screen.queryByTestId('mcp-server-modal')
-          if (modal) {
-            expect(modal).toBeInTheDocument()
-            const closeBtn = screen.getByTestId('close-modal-btn')
-            fireEvent.click(closeBtn)
-          }
-        })
-      }
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should deactivate switch when modal closes without previous activation', async () => {
-      // Simulate unpublished server state
-      mockHookState = {
-        ...createDefaultHookState(),
-        serverPublished: false,
-        serverActivated: false,
-        detail: undefined,
-        showMCPServerModal: true,
-      }
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Modal should be visible
-      const modal = screen.getByTestId('mcp-server-modal')
-      expect(modal).toBeInTheDocument()
-
-      const closeBtn = screen.getByTestId('close-modal-btn')
-      fireEvent.click(closeBtn)
-
-      await waitFor(() => {
-        expect(mockHandleServerModalHide).toHaveBeenCalled()
-      })
-
-      // Switch should be off after closing modal without activation
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeInTheDocument()
-    })
-  })
-
-  describe('Unpublished App', () => {
-    it('should show minimal state for unpublished app', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        appUnpublished: true,
-        isMinimalState: true,
-      }
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should show disabled styling for unpublished app switch', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        appUnpublished: true,
-        toggleDisabled: true,
-      }
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-      // Switch uses CSS classes for disabled state
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
-    })
-  })
-
-  describe('Workflow App Without Start Node', () => {
-    it('should show minimal state for workflow without start node', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        missingStartNode: true,
-        isMinimalState: true,
-      }
-
-      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-
-    it('should show disabled styling for workflow without start node', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        missingStartNode: true,
-        toggleDisabled: true,
-      }
-
-      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-      // Switch uses CSS classes for disabled state
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
-    })
-  })
-
-  describe('Loading State', () => {
-    it('should return null when isLoading is true', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        isLoading: true,
-      }
-
-      const appInfo = createMockAppInfo()
-      const { container } = render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Component returns null when loading
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('should render content when isLoading is false', () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        isLoading: false,
-      }
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-    })
-  })
-
-  describe('TriggerModeOverlay', () => {
-    it('should show overlay without tooltip when triggerModeMessage is empty', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard appInfo={appInfo} triggerModeDisabled={true} triggerModeMessage="" />,
-        { wrapper: createWrapper() },
-      )
-
-      const overlay = document.querySelector('.cursor-not-allowed')
-      expect(overlay).toBeInTheDocument()
-    })
-
-    it('should show overlay with tooltip when triggerModeMessage is provided', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard appInfo={appInfo} triggerModeDisabled={true} triggerModeMessage="Custom message" />,
-        { wrapper: createWrapper() },
-      )
-
-      const overlay = document.querySelector('.cursor-not-allowed')
-      expect(overlay).toBeInTheDocument()
-    })
-  })
-
-  describe('onChangeStatus Handler', () => {
-    it('should call handleStatusChange with false when turning off', async () => {
-      // Start with server activated
-      mockHookState = {
-        ...createDefaultHookState(),
-        serverActivated: true,
-      }
-      mockHandleStatusChange.mockResolvedValue({ activated: false })
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-
-      // Click to turn off - this will trigger onChangeStatus(false)
-      fireEvent.click(switchElement)
-
-      await waitFor(() => {
-        expect(mockHandleStatusChange).toHaveBeenCalledWith(false)
-      })
-    })
-
-    it('should call handleStatusChange with true when turning on', async () => {
-      // Start with server deactivated
-      mockHookState = {
-        ...createDefaultHookState(),
-        serverActivated: false,
-      }
-      mockHandleStatusChange.mockResolvedValue({ activated: true })
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-
-      // Click to turn on - this will trigger onChangeStatus(true)
-      fireEvent.click(switchElement)
-
-      await waitFor(() => {
-        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
-      })
-    })
-
-    it('should set local activated to false when handleStatusChange returns activated: false and state is true', async () => {
-      // Simulate unpublished server scenario where enabling opens modal
-      mockHookState = {
-        ...createDefaultHookState(),
-        serverActivated: false,
-        serverPublished: false,
-      }
-      // Handler returns activated: false (modal opened instead)
-      mockHandleStatusChange.mockResolvedValue({ activated: false })
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-
-      // Click to turn on
-      fireEvent.click(switchElement)
-
-      await waitFor(() => {
-        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
-      })
-
-      // The local state should be set to false because result.activated is false
-      expect(switchElement).toBeInTheDocument()
-    })
-  })
-
-  describe('onServerModalHide Handler', () => {
-    it('should deactivate when handleServerModalHide returns shouldDeactivate: true', async () => {
-      // Set up to show modal
-      mockHookState = {
-        ...createDefaultHookState(),
-        showMCPServerModal: true,
-        serverActivated: false, // Server was not activated
-      }
-      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: true })
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Close the modal
-      const closeBtn = screen.getByTestId('close-modal-btn')
-      fireEvent.click(closeBtn)
-
-      await waitFor(() => {
-        expect(mockHandleServerModalHide).toHaveBeenCalled()
-      })
-    })
-
-    it('should not deactivate when handleServerModalHide returns shouldDeactivate: false', async () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        showMCPServerModal: true,
-        serverActivated: true, // Server was already activated
-      }
-      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: false })
-
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // Close the modal
-      const closeBtn = screen.getByTestId('close-modal-btn')
-      fireEvent.click(closeBtn)
-
-      await waitFor(() => {
-        expect(mockHandleServerModalHide).toHaveBeenCalled()
-      })
-    })
-  })
-
-  describe('onConfirmRegenerate Handler', () => {
     it('should call handleGenCode and closeConfirmDelete when confirm is clicked', async () => {
-      // Set up to show confirm dialog
-      mockHookState = {
-        ...createDefaultHookState(),
-        showConfirmDelete: true,
-      }
+      mockHookState = createDefaultHookState({ showConfirmDelete: true })
 
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // Confirm dialog should be visible
-      const confirmDialog = screen.getByTestId('confirm-dialog')
-      expect(confirmDialog).toBeInTheDocument()
+      expect(screen.getByText('appOverview.overview.appInfo.regenerate')).toBeInTheDocument()
 
-      // Click confirm button
-      const confirmBtn = screen.getByTestId('confirm-btn')
-      fireEvent.click(confirmBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockHandleGenCode).toHaveBeenCalled()
@@ -869,173 +297,142 @@ describe('MCPServiceCard', () => {
     })
 
     it('should call closeConfirmDelete when cancel is clicked', async () => {
-      mockHookState = {
-        ...createDefaultHookState(),
-        showConfirmDelete: true,
-      }
+      mockHookState = createDefaultHookState({ showConfirmDelete: true })
 
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // Click cancel button
-      const cancelBtn = screen.getByTestId('cancel-btn')
-      fireEvent.click(cancelBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(mockCloseConfirmDelete).toHaveBeenCalled()
+        expect(mockHandleGenCode).not.toHaveBeenCalled()
       })
     })
   })
 
-  describe('getTooltipContent Function', () => {
-    it('should show publish tip when app is unpublished', () => {
-      // Modify hookState to simulate unpublished app
-      mockHookState = {
-        ...createDefaultHookState(),
-        appUnpublished: true,
-        toggleDisabled: true,
-        isMinimalState: true,
-      }
+  describe('MCP Server Modal', () => {
+    it('should render modal when showMCPServerModal is true', () => {
+      mockHookState = createDefaultHookState({ showMCPServerModal: true })
 
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // Tooltip should contain publish tip
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(screen.getByTestId('mcp-server-modal')).toBeInTheDocument()
     })
 
-    it('should show missing start node tooltip for workflow without start node', () => {
-      // Modify hookState to simulate missing start node
-      mockHookState = {
-        ...createDefaultHookState(),
-        missingStartNode: true,
-        toggleDisabled: true,
-        isMinimalState: true,
-      }
+    it('should call handleServerModalHide when modal is closed', async () => {
+      mockHookState = createDefaultHookState({
+        showMCPServerModal: true,
+        serverActivated: false,
+      })
 
-      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // The tooltip with learn more link should be available
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('close-modal-btn'))
+
+      await waitFor(() => {
+        expect(mockHandleServerModalHide).toHaveBeenCalled()
+      })
     })
 
-    it('should return triggerModeMessage when trigger mode is disabled', () => {
-      const appInfo = createMockAppInfo()
-      render(
-        <MCPServiceCard
-          appInfo={appInfo}
-          triggerModeDisabled={true}
-          triggerModeMessage="Test trigger message"
-        />,
-        { wrapper: createWrapper() },
-      )
+    it('should open modal via edit button click', async () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      const editBtn = screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })
+      fireEvent.click(editBtn)
+
+      expect(mockOpenServerModal).toHaveBeenCalled()
     })
   })
 
-  describe('State Synchronization', () => {
-    it('should sync activated state when serverActivated changes', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+  describe('Unpublished App', () => {
+    it('should show minimal state and disabled switch', () => {
+      mockHookState = createDefaultHookState({
+        appUnpublished: true,
+        isMinimalState: true,
+        toggleDisabled: true,
+      })
 
-      // Initial state
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement.className).toContain('!cursor-not-allowed')
+      expect(switchElement.className).toContain('!opacity-50')
+    })
+  })
+
+  describe('Workflow Without Start Node', () => {
+    it('should show minimal state with disabled switch', () => {
+      mockHookState = createDefaultHookState({
+        missingStartNode: true,
+        isMinimalState: true,
+        toggleDisabled: true,
+      })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo(AppModeEnum.WORKFLOW)} />, { wrapper: createWrapper() })
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement.className).toContain('!cursor-not-allowed')
+      expect(switchElement.className).toContain('!opacity-50')
+    })
+  })
+
+  describe('onChangeStatus edge case', () => {
+    it('should clear pending status when handleStatusChange returns activated: false for an enable action', async () => {
+      mockHookState = createDefaultHookState({
+        serverActivated: false,
+        serverPublished: false,
+      })
+      mockHandleStatusChange.mockResolvedValue({ activated: false })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByRole('switch'))
+
+      await waitFor(() => {
+        expect(mockHandleStatusChange).toHaveBeenCalledWith(true)
+      })
+
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
   })
 
-  describe('Accessibility', () => {
-    it('should have accessible switch', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeInTheDocument()
-    })
-
-    it('should have accessible interactive elements', () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
-
-      // The switch element with button type is an interactive element
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeInTheDocument()
-      expect(switchElement).toHaveAttribute('type', 'button')
-    })
-  })
-
-  describe('Server URL Regeneration', () => {
-    it('should open confirm dialog when regenerate is clicked', async () => {
-      // Mock to show regenerate button
-      vi.doMock('@/service/use-tools', async () => {
-        return {
-          useUpdateMCPServer: () => ({
-            mutateAsync: vi.fn().mockResolvedValue({}),
-          }),
-          useRefreshMCPServerCode: () => ({
-            mutateAsync: vi.fn().mockResolvedValue({}),
-            isPending: false,
-          }),
-          useMCPServerDetail: () => ({
-            data: {
-              id: 'server-123',
-              status: 'active',
-              server_code: 'abc123',
-              description: 'Test server',
-              parameters: {},
-            },
-          }),
-          useInvalidateMCPServerDetail: () => vi.fn(),
-        }
+  describe('onServerModalHide', () => {
+    it('should call handleServerModalHide with shouldDeactivate: true', async () => {
+      mockHookState = createDefaultHookState({
+        showMCPServerModal: true,
+        serverActivated: false,
       })
+      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: true })
 
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByTestId('close-modal-btn'))
 
-      // Find the regenerate button and click it
-      const regenerateButtons = document.querySelectorAll('.cursor-pointer')
-      const regenerateBtn = Array.from(regenerateButtons).find(btn =>
-        btn.querySelector('svg'),
-      )
-      if (regenerateBtn) {
-        fireEvent.click(regenerateBtn)
+      await waitFor(() => {
+        expect(mockHandleServerModalHide).toHaveBeenCalled()
+      })
+    })
 
-        // Wait for confirm dialog to appear
-        await waitFor(() => {
-          const confirmTitle = screen.queryByText('appOverview.overview.appInfo.regenerate')
-          if (confirmTitle)
-            expect(confirmTitle).toBeInTheDocument()
-        }, { timeout: 100 })
-      }
+    it('should call handleServerModalHide with shouldDeactivate: false', async () => {
+      mockHookState = createDefaultHookState({
+        showMCPServerModal: true,
+        serverActivated: true,
+      })
+      mockHandleServerModalHide.mockReturnValue({ shouldDeactivate: false })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      fireEvent.click(screen.getByTestId('close-modal-btn'))
+
+      await waitFor(() => {
+        expect(mockHandleServerModalHide).toHaveBeenCalled()
+      })
     })
   })
 
-  describe('Edit Button', () => {
-    it('should open MCP server modal when edit button is clicked', async () => {
-      const appInfo = createMockAppInfo()
-      render(<MCPServiceCard appInfo={appInfo} />, { wrapper: createWrapper() })
+  describe('Accessibility', () => {
+    it('should have an accessible switch with button type', () => {
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      // Find button with edit text - use queryAllByRole since buttons may not exist
-      const buttons = screen.queryAllByRole('button')
-      const editButton = buttons.find(btn =>
-        btn.textContent?.includes('tools.mcp.server.edit')
-        || btn.textContent?.includes('tools.mcp.server.addDescription'),
-      )
-
-      if (editButton) {
-        fireEvent.click(editButton)
-
-        // Modal should open - check for any modal indicator
-        await waitFor(() => {
-          // If modal opens, we should see modal content
-          expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-        })
-      }
-      else {
-        // In minimal state, no edit button is shown - this is expected behavior
-        expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
-      }
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('type', 'button')
     })
   })
 })
