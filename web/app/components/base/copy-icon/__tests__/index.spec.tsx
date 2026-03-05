@@ -25,12 +25,6 @@ describe('copy icon component', () => {
     expect(icon).toBeInTheDocument()
   })
 
-  it('shows copy icon initially', () => {
-    render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = screen.getByTestId('copy-icon')
-    expect(icon).toBeInTheDocument()
-  })
-
   it('shows copy check icon when copied', () => {
     copied = true
     render(<CopyIcon content="this is some test content for the copy icon component" />)

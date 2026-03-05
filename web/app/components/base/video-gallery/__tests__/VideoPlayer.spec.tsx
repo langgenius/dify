@@ -7,6 +7,20 @@ describe('VideoPlayer', () => {
   const mockSrc = 'video.mp4'
   const mockSrcs = ['video1.mp4', 'video2.mp4']
 
+  const mockBoundingRect = (element: Element) => {
+    vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      width: 100,
+      top: 0,
+      right: 100,
+      bottom: 10,
+      height: 10,
+      x: 0,
+      y: 0,
+      toJSON: () => { },
+    } as DOMRect)
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
@@ -180,17 +194,7 @@ describe('VideoPlayer', () => {
       const progressBar = screen.getByTestId('video-progress-bar')
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
-      vi.spyOn(progressBar, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(progressBar)
 
       // Hover
       fireEvent.mouseMove(progressBar, { clientX: 50 })
@@ -220,17 +224,7 @@ describe('VideoPlayer', () => {
       const volumeSlider = screen.getByTestId('video-volume-slider')
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
-      vi.spyOn(volumeSlider, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(volumeSlider)
 
       // Click
       fireEvent.click(volumeSlider, { clientX: 50 })
@@ -313,17 +307,7 @@ describe('VideoPlayer', () => {
       render(<VideoPlayer src={mockSrc} />)
       const progressBar = screen.getByTestId('video-progress-bar')
 
-      vi.spyOn(progressBar, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(progressBar)
 
       // Start dragging
       fireEvent.mouseDown(progressBar, { clientX: 50 })
@@ -341,17 +325,7 @@ describe('VideoPlayer', () => {
       const progressBar = screen.getByTestId('video-progress-bar')
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
-      vi.spyOn(progressBar, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(progressBar)
 
       // Click far beyond the bar (clientX > rect.width) — pos > 1, newTime > duration
       fireEvent.click(progressBar, { clientX: 200 })
@@ -368,7 +342,7 @@ describe('VideoPlayer', () => {
       render(<VideoPlayer />)
       const video = screen.getByTestId('video-element') as HTMLVideoElement
       expect(video).toBeInTheDocument()
-      expect(video.src).toBeFalsy()
+      expect(video.getAttribute('src')).toBeNull()
       expect(video.querySelectorAll('source')).toHaveLength(0)
     })
 
@@ -385,6 +359,8 @@ describe('VideoPlayer', () => {
 
       // mouseEnter should show controls again
       fireEvent.mouseEnter(container)
+      const controls = screen.getByTestId('video-controls')
+      expect(controls).toBeInTheDocument()
 
       vi.useRealTimers()
     })
@@ -394,17 +370,7 @@ describe('VideoPlayer', () => {
       const volumeSlider = screen.getByTestId('video-volume-slider')
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
-      vi.spyOn(volumeSlider, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(volumeSlider)
 
       // MouseDown starts the inline drag handler and sets initial volume
       fireEvent.mouseDown(volumeSlider, { clientX: 30 })
@@ -427,17 +393,7 @@ describe('VideoPlayer', () => {
       const volumeSlider = screen.getByTestId('video-volume-slider')
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
-      vi.spyOn(volumeSlider, 'getBoundingClientRect').mockReturnValue({
-        left: 0,
-        width: 100,
-        top: 0,
-        right: 100,
-        bottom: 10,
-        height: 10,
-        x: 0,
-        y: 0,
-        toJSON: () => { },
-      } as DOMRect)
+      mockBoundingRect(volumeSlider)
 
       // Click beyond slider range — should clamp to 1
       fireEvent.click(volumeSlider, { clientX: 200 })

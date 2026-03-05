@@ -107,11 +107,14 @@ describe('ShareQRCode', () => {
         return origQuerySelector(sel)
       }) as typeof panel.querySelector
 
-      const downloadBtn = screen.getByText('appOverview.overview.appInfo.qrcode.download')
-      await user.click(downloadBtn)
-
-      expect(downloadUrl).not.toHaveBeenCalled()
-      panel.querySelector = origQuerySelector
+      try {
+        const downloadBtn = screen.getByText('appOverview.overview.appInfo.qrcode.download')
+        await user.click(downloadBtn)
+        expect(downloadUrl).not.toHaveBeenCalled()
+      }
+      finally {
+        panel.querySelector = origQuerySelector
+      }
     })
 
     it('does not close when clicking inside the qrcode ref area', async () => {

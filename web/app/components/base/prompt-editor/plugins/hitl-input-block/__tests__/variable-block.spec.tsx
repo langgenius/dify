@@ -189,6 +189,42 @@ describe('HITLInputVariableBlockComponent', () => {
       expect(hasErrorIcon(container)).toBe(false)
     })
 
+    it('should validate env variable when matching entry exists in multi-element array', () => {
+      const { container } = renderVariableBlock({
+        variables: ['env', 'api_key'],
+        workflowNodesMap: {},
+        environmentVariables: [
+          { variable: 'env.other_key', type: 'string' } as Var,
+          { variable: 'env.api_key', type: 'string' } as Var,
+        ],
+      })
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should validate conversation variable when matching entry exists in multi-element array', () => {
+      const { container } = renderVariableBlock({
+        variables: ['conversation', 'session_id'],
+        workflowNodesMap: {},
+        conversationVariables: [
+          { variable: 'conversation.other', type: 'string' } as Var,
+          { variable: 'conversation.session_id', type: 'string' } as Var,
+        ],
+      })
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should validate rag variable when matching entry exists in multi-element array', () => {
+      const { container } = renderVariableBlock({
+        variables: ['rag', 'node-rag', 'chunk'],
+        workflowNodesMap: createWorkflowNodesMap(),
+        ragVariables: [
+          { variable: 'rag.node-rag.other', type: 'string', isRagVariable: true } as Var,
+          { variable: 'rag.node-rag.chunk', type: 'string', isRagVariable: true } as Var,
+        ],
+      })
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
     it('should handle undefined indices in variables array gracefully', () => {
       // Testing the `variables?.[1] ?? ''` fallback logic
       const { container: envContainer } = renderVariableBlock({
@@ -233,15 +269,13 @@ describe('HITLInputVariableBlockComponent', () => {
       expect(hasErrorIcon(container)).toBe(true)
     })
 
-    it('should handle isExceptionVariable logic correctly', () => {
+    it('should apply exception styling for recognized exception variables', () => {
       renderVariableBlock({
-        // For a knowledge retrieval node, 'chunk' is considered an exception array we can't select
-        // Wait, isExceptionVariable(varName, node?.type)
-        // Let me just provide a known exception variable name like "error"
-        variables: ['node-1', 'error'],
+        variables: ['node-1', 'error_message'],
         workflowNodesMap: createWorkflowNodesMap(),
       })
-      expect(screen.getByText('error')).toBeInTheDocument()
+      expect(screen.getByText('error_message')).toBeInTheDocument()
+      expect(screen.getByTestId('exception-variable')).toBeInTheDocument()
     })
   })
 

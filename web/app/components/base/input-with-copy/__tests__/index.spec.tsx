@@ -188,11 +188,9 @@ describe('InputWithCopy component', () => {
     const mockOnChange = vi.fn()
     render(<InputWithCopy value="test value" onChange={mockOnChange} />)
 
-    const copyButton = screen.getByRole('button')
-    // The reset is on the parent div wrapping the tooltip/button
-    const wrapper = copyButton.closest('div.absolute')
+    const wrapper = screen.getByTestId('copy-button-wrapper')
     expect(wrapper).toBeInTheDocument()
-    fireEvent.mouseLeave(wrapper!)
+    fireEvent.mouseLeave(wrapper)
 
     expect(mockReset).toHaveBeenCalled()
   })

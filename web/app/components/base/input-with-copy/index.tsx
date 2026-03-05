@@ -62,6 +62,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
         <div
           className="absolute right-2 top-1/2 -translate-y-1/2"
           onMouseLeave={reset}
+          data-testid="copy-button-wrapper"
         >
           <Tooltip
             popupContent={safeTooltipText}
