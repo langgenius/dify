@@ -1,5 +1,6 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { useTranslation } from 'react-i18next'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { PreferredProviderTypeEnum } from '../../declarations'
 
@@ -30,7 +31,20 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
           <span className="truncate text-text-secondary system-sm-medium">
             {t('modelProvider.card.usagePriority', { ns: 'common' })}
           </span>
-          <span className="i-ri-question-line h-3.5 w-3.5 shrink-0 text-text-quaternary" />
+          <Tooltip>
+            <TooltipTrigger
+              aria-label={t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
+              delay={0}
+              render={(
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                </span>
+              )}
+            />
+            <TooltipContent>
+              {t('modelProvider.card.usagePriorityTip', { ns: 'common' })}
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {options.map(option => (

@@ -4672,9 +4672,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

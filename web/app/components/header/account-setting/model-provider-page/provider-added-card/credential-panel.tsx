@@ -4,6 +4,7 @@ import type {
 } from '../declarations'
 import type { CardVariant } from './use-credential-panel-state'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
 import Toast from '@/app/components/base/toast'
@@ -41,10 +42,11 @@ const CredentialPanel = ({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const state = useCredentialPanelState(provider)
+  const providerName = provider.provider
   const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
     input: {
       params: {
-        provider: provider.provider,
+        provider: providerName,
       },
     },
   })
@@ -72,7 +74,7 @@ const CredentialPanel = ({
 
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
     changePriority({
-      params: { provider: provider.provider },
+      params: { provider: providerName },
       body: { preferred_provider_type: key },
     })
   }
@@ -156,4 +158,4 @@ function StatusLabel({ variant, credentialName }: {
   )
 }
 
-export default CredentialPanel
+export default memo(CredentialPanel)
