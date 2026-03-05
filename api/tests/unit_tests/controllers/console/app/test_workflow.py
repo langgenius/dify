@@ -9,8 +9,8 @@ from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from core.workflow.file.enums import FileTransferMethod, FileType
-from core.workflow.file.models import File
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
 
 
 def _unwrap(func):
