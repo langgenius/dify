@@ -2,8 +2,8 @@ import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkDirective from 'remark-directive'
 import { visit } from 'unist-util-visit'
-import { WithIconItem, WithIconList } from './directive-components'
-import { directivePropsSchemas } from './directive-props-schema'
+import { WithIconItem, WithIconList } from './markdown-with-directive-components'
+import { directivePropsSchemas } from './markdown-with-directive-schema'
 
 type DirectiveNode = {
   type?: string
@@ -177,11 +177,11 @@ const directiveComponents = {
   withiconitem: WithIconItem,
 } as unknown as Components
 
-type DirectiveMarkdownRendererProps = {
+type MarkdownWithDirectiveProps = {
   markdown: string
 }
 
-export function DirectiveMarkdownRenderer({ markdown }: DirectiveMarkdownRendererProps) {
+export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) {
   const normalizedMarkdown = normalizeDirectiveAttributeBlocks(markdown)
 
   return (

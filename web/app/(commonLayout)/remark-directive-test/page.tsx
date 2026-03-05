@@ -1,5 +1,5 @@
 'use client'
-import { DirectiveMarkdownRenderer } from './directive-markdown-renderer'
+import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
 
 const markdown = `
 We’re speaking with technical teams to better understand:
@@ -29,8 +29,8 @@ export default function RemarkDirectiveTestPage() {
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
         remark-directive test page
       </h1>
-      <div>
-        <DirectiveMarkdownRenderer markdown={markdown} />
+      <div className="markdown-body">
+        <MarkdownWithDirective markdown={markdown} />
       </div>
     </main>
   )

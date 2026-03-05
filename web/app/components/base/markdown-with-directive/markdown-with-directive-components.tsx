@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { WithIconItemDirectiveProps, WithIconListDirectiveProps } from './directive-props-schema'
+import type { WithIconItemDirectiveProps, WithIconListDirectiveProps } from './markdown-with-directive-schema'
 
 type WithIconListProps = WithIconListDirectiveProps & {
   children?: ReactNode
