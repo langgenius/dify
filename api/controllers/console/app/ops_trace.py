@@ -1,6 +1,7 @@
 from typing import Any
 
 from flask import request
+from flask_login import current_user
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
@@ -77,7 +78,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.create_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                account_id=current_user.id,
             )
             if not result:
                 raise TracingConfigIsExist()
@@ -102,7 +106,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.update_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                account_id=current_user.id,
             )
             if not result:
                 raise TracingConfigNotExist()
@@ -124,7 +131,9 @@ class TraceAppConfigApi(Resource):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
+            result = OpsService.delete_tracing_app_config(
+                app_id=app_id, tracing_provider=args.tracing_provider, account_id=current_user.id
+            )
             if not result:
                 raise TracingConfigNotExist()
             return {"result": "success"}, 204

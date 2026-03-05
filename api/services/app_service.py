@@ -14,7 +14,7 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelTy
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
@@ -339,6 +339,8 @@ class AppService:
         """
         db.session.delete(app)
         db.session.commit()
+
+        app_was_deleted.send(app)
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:

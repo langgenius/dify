@@ -15,16 +15,23 @@ class TraceContextFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        # Get trace context from OpenTelemetry
-        trace_id, span_id = self._get_otel_context()
+        # Preserve explicit trace_id set by the caller (e.g. emit_metric_only_event)
+        existing_trace_id = getattr(record, "trace_id", "")
+        if not existing_trace_id:
+            # Get trace context from OpenTelemetry
+            trace_id, span_id = self._get_otel_context()
 
-        # Set trace_id (fallback to ContextVar if no OTEL context)
-        if trace_id:
-            record.trace_id = trace_id
+            # Set trace_id (fallback to ContextVar if no OTEL context)
+            if trace_id:
+                record.trace_id = trace_id
+            else:
+                record.trace_id = get_trace_id()
+
+            record.span_id = span_id or ""
         else:
-            record.trace_id = get_trace_id()
-
-        record.span_id = span_id or ""
+            # Keep existing trace_id; only fill span_id if missing
+            if not getattr(record, "span_id", ""):
+                record.span_id = ""
 
         # For backward compatibility, also set req_id
         record.req_id = get_request_id()
@@ -55,9 +62,12 @@ class IdentityContextFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         identity = self._extract_identity()
-        record.tenant_id = identity.get("tenant_id", "")
-        record.user_id = identity.get("user_id", "")
-        record.user_type = identity.get("user_type", "")
+        if not getattr(record, "tenant_id", ""):
+            record.tenant_id = identity.get("tenant_id", "")
+        if not getattr(record, "user_id", ""):
+            record.user_id = identity.get("user_id", "")
+        if not getattr(record, "user_type", ""):
+            record.user_type = identity.get("user_type", "")
         return True
 
     def _extract_identity(self) -> dict[str, str]:

@@ -60,7 +60,9 @@ class ToolNode(Node[ToolNodeData]):
         tool_info = {
             "provider_type": self.node_data.provider_type.value,
             "provider_id": self.node_data.provider_id,
+            "tool_name": self.node_data.tool_name,
             "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
+            "credential_id": self.node_data.credential_id,
         }
 
         # get tool runtime
@@ -104,6 +106,20 @@ class ToolNode(Node[ToolNodeData]):
         )
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+
+        from core.tools.workflow_as_tool.tool import WorkflowTool
+
+        if isinstance(tool_runtime, WorkflowTool):
+            workflow_run_id_var = self.graph_runtime_state.variable_pool.get(
+                ["sys", SystemVariableKey.WORKFLOW_EXECUTION_ID]
+            )
+            tool_runtime.parent_trace_context = {
+                "trace_id": str(workflow_run_id_var.text) if workflow_run_id_var else "",
+                "parent_node_execution_id": self.execution_id,
+                "parent_workflow_run_id": str(workflow_run_id_var.text) if workflow_run_id_var else "",
+                "parent_app_id": self.app_id,
+                "parent_conversation_id": conversation_id.text if conversation_id else None,
+            }
 
         try:
             message_stream = ToolEngine.generic_invoke(
@@ -431,6 +447,8 @@ class ToolNode(Node[ToolNodeData]):
         }
         if isinstance(usage.total_tokens, int) and usage.total_tokens > 0:
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS] = usage.prompt_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS] = usage.completion_tokens
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
             metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
 

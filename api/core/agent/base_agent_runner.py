@@ -79,7 +79,7 @@ class BaseAgentRunner(AppRunner):
         self.model_instance = model_instance
 
         # init callback
-        self.agent_callback = DifyAgentCallbackHandler()
+        self.agent_callback = DifyAgentCallbackHandler(tenant_id=tenant_id)
         # init dataset tools
         hit_callback = DatasetIndexToolCallbackHandler(
             queue_manager=queue_manager,
