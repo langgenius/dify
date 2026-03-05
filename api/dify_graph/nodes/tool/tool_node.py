@@ -18,7 +18,13 @@ from dify_graph.enums import (
 )
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from dify_graph.node_events import (
+    NodeEventBase,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.variables.segments import ArrayAnySegment, ArrayFileSegment
@@ -370,6 +376,12 @@ class ToolNode(Node[ToolNodeData]):
                 if not isinstance(message.meta["file"], File):
                     raise ToolNodeError(f"Expected File object but got {type(message.meta['file']).__name__}")
                 files.append(message.meta["file"])
+            elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES:
+                assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=message.message.retriever_resources,
+                    context=message.message.context,
+                )
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
                 if message.message.metadata:
