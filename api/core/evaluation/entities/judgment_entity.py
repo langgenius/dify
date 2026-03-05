@@ -1,40 +1,112 @@
 """Judgment condition entities for evaluation metric assessment.
 
+Key concepts:
+  - **value_source**: Where the comparison target comes from.
+    - "constant": a literal value supplied by the user (e.g. threshold "0.8").
+    - "variable": a named field from the evaluation target's runtime data
+      (inputs, actual_output, expected_output). The ``value`` field holds the
+      variable key; the actual comparison value is resolved at evaluation time.
+  - **condition_type**: Determines operator semantics and type coercion.
+    - "string": string operators (contains, is, start with, …).
+    - "number": numeric operators (>, <, =, ≠, ≥, ≤).
+    - "datetime": temporal operators (before, after).
+
 Typical usage:
     judgment_config = JudgmentConfig(
         logical_operator="and",
         conditions=[
-            JudgmentCondition(metric_name="faithfulness", comparison_operator=">", value="0.8"),
-            JudgmentCondition(metric_name="answer_relevancy", comparison_operator="≥", value="0.7"),
+            JudgmentCondition(
+                metric_name="faithfulness",
+                comparison_operator=">",
+                value="0.8",
+                condition_type="number",
+            ),
+            JudgmentCondition(
+                metric_name="output",
+                comparison_operator="contains",
+                value="expected_output",
+                value_source="variable",
+                condition_type="string",
+            ),
         ],
     )
 """
 
 from collections.abc import Sequence
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from core.workflow.utils.condition.entities import SupportedComparisonOperator
+
+class JudgmentValueSource(StrEnum):
+    """Where the comparison target value comes from."""
+
+    CONSTANT = "constant"
+    VARIABLE = "variable"
+
+
+class JudgmentConditionType(StrEnum):
+    """Category of the condition, controls operator semantics and type coercion."""
+
+    STRING = "string"
+    NUMBER = "number"
+    DATETIME = "datetime"
+
+
+# Supported comparison operators for judgment conditions.
+JudgmentComparisonOperator = Literal[
+    # string
+    "contains",
+    "not contains",
+    "start with",
+    "end with",
+    "is",
+    "is not",
+    "empty",
+    "not empty",
+    "in",
+    "not in",
+    # number
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    # datetime
+    "before",
+    "after",
+    # universal
+    "null",
+    "not null",
+]
 
 
 class JudgmentCondition(BaseModel):
     """A single judgment condition that checks one metric value.
 
     Attributes:
-        metric_name: The name of the evaluation metric to check
-            (must match an EvaluationMetric.name in the results).
-        comparison_operator: The comparison operator to apply
-            (reuses the same operator set as workflow condition branches).
-        value: The expected/threshold value to compare against.
-            For numeric operators (>, <, =, etc.), this should be a numeric string.
-            For string operators (contains, is, etc.), this should be a string.
+        metric_name: The name of the evaluation metric to check (left side).
+            Must match an EvaluationMetric.name in the results.
+        comparison_operator: The comparison operator to apply.
+        value: The comparison target (right side).
+            - When value_source is "constant": the literal threshold/expected value.
+            - When value_source is "variable": the variable key name to look up
+              from the evaluation target's runtime data.
             For unary operators (empty, null, etc.), this can be None.
+        value_source: Where the comparison value comes from.
+            "constant" (default) for user-supplied literals,
+            "variable" for references to evaluation target data.
+        condition_type: Controls type coercion and which operators are valid.
+            "string" (default), "number", or "datetime".
     """
 
     metric_name: str
-    comparison_operator: SupportedComparisonOperator
+    comparison_operator: JudgmentComparisonOperator
     value: str | Sequence[str] | None = None
+    value_source: JudgmentValueSource = JudgmentValueSource.CONSTANT
+    condition_type: JudgmentConditionType = JudgmentConditionType.STRING
 
 
 class JudgmentConfig(BaseModel):
@@ -56,7 +128,7 @@ class JudgmentConditionResult(BaseModel):
     Attributes:
         metric_name: Which metric was checked.
         comparison_operator: The operator that was applied.
-        expected_value: The threshold/expected value from the condition config.
+        expected_value: The resolved comparison value (after variable resolution).
         actual_value: The actual metric value that was evaluated.
         passed: Whether this individual condition passed.
         error: Error message if the condition evaluation failed.

@@ -25,14 +25,6 @@ class EvaluationFrameworkConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
             case EvaluationFrameworkEnum.DEEPEVAL:
                 raise NotImplementedError("DeepEval adapter is not yet implemented.")
-            case EvaluationFrameworkEnum.CUSTOMIZED:
-                from core.evaluation.entities.config_entity import CustomizedEvaluatorConfig
-                from core.evaluation.frameworks.customized.customized_evaluator import CustomizedEvaluator
-
-                return {
-                    "config_class": CustomizedEvaluatorConfig,
-                    "evaluator_class": CustomizedEvaluator,
-                }
             case _:
                 raise ValueError(f"Unknown evaluation framework: {framework}")
 
