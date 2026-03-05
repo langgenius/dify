@@ -81,6 +81,57 @@ def test_check_moderation_returns_true_when_model_accepts_text(mocker: MockerFix
     )
 
 
+def test_check_moderation_returns_true_when_text_is_empty(mocker: MockerFixture) -> None:
+    openai_provider = "langgenius/openai/openai"
+    hosting_openai = SimpleNamespace(enabled=True, credentials={"api_key": "k"})
+    mocker.patch(
+        "core.helper.moderation.hosting_configuration",
+        SimpleNamespace(
+            moderation_config=SimpleNamespace(enabled=True, providers={"openai"}),
+            provider_map={openai_provider: hosting_openai},
+        ),
+    )
+    factory_mock = mocker.patch("core.helper.moderation.ModelProviderFactory")
+    choice_mock = mocker.patch("core.helper.moderation.secrets.choice")
+
+    assert (
+        check_moderation(
+            "tenant-1",
+            cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+            "",
+        )
+        is True
+    )
+    factory_mock.assert_not_called()
+    choice_mock.assert_not_called()
+
+
+def test_check_moderation_returns_false_when_model_rejects_text(mocker: MockerFixture) -> None:
+    openai_provider = "langgenius/openai/openai"
+    hosting_openai = SimpleNamespace(enabled=True, credentials={"api_key": "k"})
+    mocker.patch(
+        "core.helper.moderation.hosting_configuration",
+        SimpleNamespace(
+            moderation_config=SimpleNamespace(enabled=True, providers={"openai"}),
+            provider_map={openai_provider: hosting_openai},
+        ),
+    )
+    mocker.patch("core.helper.moderation.secrets.choice", return_value="chunk")
+
+    moderation_model = SimpleNamespace(invoke=lambda **_invoke_kwargs: False)
+    factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: moderation_model)
+    mocker.patch("core.helper.moderation.ModelProviderFactory", return_value=factory)
+
+    assert (
+        check_moderation(
+            "tenant-1",
+            cast(ModelConfigWithCredentialsEntity, _build_model_config()),
+            "abc",
+        )
+        is False
+    )
+
+
 def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: MockerFixture) -> None:
     openai_provider = "langgenius/openai/openai"
     hosting_openai = SimpleNamespace(enabled=True, credentials={"api_key": "k"})

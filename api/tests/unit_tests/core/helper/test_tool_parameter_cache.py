@@ -38,6 +38,21 @@ def test_tool_parameter_cache_get_returns_none_for_invalid_json(mocker: MockerFi
     assert cache.get() is None
 
 
+def test_tool_parameter_cache_get_returns_none_when_key_is_missing(mocker: MockerFixture) -> None:
+    redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
+    cache = ToolParameterCache(
+        tenant_id="tenant",
+        provider="provider",
+        tool_name="tool",
+        cache_type=ToolParameterCacheType.PARAMETER,
+        identity_id="identity",
+    )
+
+    redis_client_mock.get.return_value = None
+
+    assert cache.get() is None
+
+
 def test_tool_parameter_cache_set_and_delete(mocker: MockerFixture) -> None:
     redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
     cache = ToolParameterCache(
