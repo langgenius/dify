@@ -35,16 +35,34 @@ def create_flask_app_with_configs() -> DifyApp:
         RecyclableContextVar.increment_thread_recycles()
 
         # Enterprise license validation for API endpoints (both console and webapp)
-        # When license expires, ONLY allow features API - everything else is blocked
+        # When license expires, block all API access except bootstrap endpoints needed
+        # for the frontend to load the license expiration page without infinite reloads.
         if dify_config.ENTERPRISE_ENABLED:
             is_console_api = request.path.startswith("/console/api")
             is_webapp_api = request.path.startswith("/api") and not is_console_api
 
             if is_console_api or is_webapp_api:
-                # Only exempt features endpoints - block everything else including auth
-                # Admin can access through admin dashboard (separate service)
                 if is_console_api:
-                    is_exempt = request.path.startswith("/console/api/features")
+                    # Console bootstrap APIs exempt from license check:
+                    # - system-features: license status for expiry UI (GlobalPublicStoreProvider)
+                    # - setup: install/setup status check (AppInitializer)
+                    # - features: billing/plan features (ProviderContextProvider)
+                    # - account/profile: login check + user profile (AppContextProvider, useIsLogin)
+                    # - workspaces/current: workspace + model providers (AppContextProvider)
+                    # - version: version check (AppContextProvider)
+                    # - activate/check: invitation link validation (signin page)
+                    # Without these exemptions, the signin page triggers location.reload()
+                    # on unauthorized_and_force_logout, causing an infinite loop.
+                    console_exempt_prefixes = (
+                        "/console/api/system-features",
+                        "/console/api/setup",
+                        "/console/api/features",
+                        "/console/api/account/profile",
+                        "/console/api/workspaces/current",
+                        "/console/api/version",
+                        "/console/api/activate/check",
+                    )
+                    is_exempt = any(request.path.startswith(p) for p in console_exempt_prefixes)
                 else:  # webapp API
                     is_exempt = request.path.startswith("/api/system-features")
 
@@ -53,17 +71,20 @@ def create_flask_app_with_configs() -> DifyApp:
                         # Check license status with caching (10 min TTL)
                         license_status = EnterpriseService.get_cached_license_status()
                         if license_status in ["inactive", "expired", "lost"]:
-                            # Raise UnauthorizedAndForceLogout to trigger frontend reload and logout
-                            # Frontend checks code === 'unauthorized_and_force_logout' and calls location.reload()
+                            # Cookie clearing is handled by register_external_error_handlers
+                            # in libs/external_api.py which detects the error code and calls
+                            # build_force_logout_cookie_headers(). Frontend then checks
+                            # code === 'unauthorized_and_force_logout' and calls location.reload().
                             raise UnauthorizedAndForceLogout(
-                                f"Enterprise license is {license_status}. Please contact your administrator."
+                                f"Enterprise license is {license_status}. "
+                                "Please contact your administrator."
                             )
                     except UnauthorizedAndForceLogout:
-                        # Re-raise to let Flask error handler convert to proper JSON response
                         raise
                     except Exception:
-                        # If license check fails, log but don't block the request
-                        # This prevents service disruption if enterprise API is temporarily unavailable
+                        # If license check fails, log but don't block the request.
+                        # This prevents service disruption if enterprise API is temporarily
+                        # unavailable.
                         logger.exception("Failed to check enterprise license status")
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
