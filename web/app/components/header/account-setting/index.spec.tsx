@@ -7,6 +7,8 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ACCOUNT_SETTING_TAB } from './constants'
 import AccountSetting from './index'
 
+const mockResetModelProviderListExpanded = vi.fn()
+
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
   return {
@@ -47,8 +49,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
   useUpdateDefaultModel: vi.fn(() => ({ trigger: vi.fn() })),
   useUpdateModelList: vi.fn(() => vi.fn()),
+  useInvalidateDefaultModel: vi.fn(() => vi.fn()),
   useModelList: vi.fn(() => ({ data: [], isLoading: false })),
   useSystemDefaultModelAndModelList: vi.fn(() => [null, vi.fn()]),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
+  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('@/service/use-datasource', () => ({
@@ -272,8 +279,10 @@ describe('AccountSetting', () => {
           <AccountSetting onCancel={mockOnCancel} />
         </QueryClientProvider>,
       )
-      const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      const closeIcon = document.querySelector('.i-ri-close-line')
+      const closeButton = closeIcon?.closest('button')
+      expect(closeButton).not.toBeNull()
+      fireEvent.click(closeButton!)
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()

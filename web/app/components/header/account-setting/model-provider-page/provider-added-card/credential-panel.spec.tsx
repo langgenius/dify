@@ -35,7 +35,9 @@ vi.mock('@/app/components/base/toast', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     modelProviders: {
-      models: { key: () => ['console', 'modelProviders', 'models'] },
+      models: {
+        queryKey: ({ input }: { input: { params: { provider: string } } }) => ['console', 'modelProviders', 'models', input.params.provider],
+      },
       changePreferredProviderType: {
         mutationOptions: (opts: Record<string, unknown>) => ({
           mutationFn: (...args: unknown[]) => {

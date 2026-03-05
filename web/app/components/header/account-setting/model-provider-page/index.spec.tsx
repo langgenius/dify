@@ -8,7 +8,6 @@ import {
 import ModelProviderPage from './index'
 
 let mockEnableMarketplace = true
-const mockResetModelProviderListExpanded = vi.fn()
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -66,10 +65,6 @@ const mockDefaultModels: Record<string, { data: unknown, isLoading: boolean }> =
 
 vi.mock('./hooks', () => ({
   useDefaultModel: (type: string) => mockDefaultModels[type] ?? { data: null, isLoading: false },
-}))
-
-vi.mock('./atoms', () => ({
-  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('./install-from-marketplace', () => ({

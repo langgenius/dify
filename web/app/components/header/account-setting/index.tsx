@@ -1,6 +1,6 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -20,6 +20,7 @@ import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
+import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -41,13 +42,15 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = ACCOUNT_SETTING_TAB.MEMBERS,
+  activeTab,
   onTabChange,
 }: IAccountSettingProps) {
-  const [activeMenu, setActiveMenu] = useState<AccountSettingTab>(activeTab)
-  useEffect(() => {
-    setActiveMenu(activeTab)
-  }, [activeTab])
+  const resetModelProviderListExpanded = useResetModelProviderListExpanded()
+  const isControlledTab = activeTab !== undefined && !!onTabChange
+  const [uncontrolledActiveMenu, setUncontrolledActiveMenu] = useState<AccountSettingTab>(activeTab ?? ACCOUNT_SETTING_TAB.MEMBERS)
+  const activeMenu = isControlledTab
+    ? (activeTab ?? ACCOUNT_SETTING_TAB.MEMBERS)
+    : uncontrolledActiveMenu
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -148,10 +151,25 @@ export default function AccountSetting({
 
   const [searchValue, setSearchValue] = useState<string>('')
 
+  const handleTabChange = useCallback((tab: AccountSettingTab) => {
+    if (tab === ACCOUNT_SETTING_TAB.PROVIDER)
+      resetModelProviderListExpanded()
+
+    if (!isControlledTab)
+      setUncontrolledActiveMenu(tab)
+
+    onTabChange?.(tab)
+  }, [isControlledTab, onTabChange, resetModelProviderListExpanded])
+
+  const handleClose = useCallback(() => {
+    resetModelProviderListExpanded()
+    onCancel()
+  }, [onCancel, resetModelProviderListExpanded])
+
   return (
     <MenuDialog
       show
-      onClose={onCancel}
+      onClose={handleClose}
     >
       <div className="mx-auto flex h-[100vh] max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
@@ -174,8 +192,7 @@ export default function AccountSetting({
                           )}
                           title={item.name}
                           onClick={() => {
-                            setActiveMenu(item.key)
-                            onTabChange?.(item.key)
+                            handleTabChange(item.key)
                           }}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
@@ -195,7 +212,7 @@ export default function AccountSetting({
               variant="tertiary"
               size="large"
               className="px-2"
-              onClick={onCancel}
+              onClick={handleClose}
             >
               <span className="i-ri-close-line h-5 w-5" />
             </Button>

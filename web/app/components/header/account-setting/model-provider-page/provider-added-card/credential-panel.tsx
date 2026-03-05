@@ -41,13 +41,21 @@ const CredentialPanel = ({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const state = useCredentialPanelState(provider)
+  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    input: {
+      params: {
+        provider: provider.provider,
+      },
+    },
+  })
 
   const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
     consoleQuery.modelProviders.changePreferredProviderType.mutationOptions({
       onSuccess: () => {
         Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.modelProviders.models.key(),
+          queryKey: modelProviderModelListQueryKey,
+          exact: true,
           refetchType: 'none',
         })
         updateModelProviders()
