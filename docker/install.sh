@@ -39,6 +39,42 @@ CONFIGURE_EMAIL=false
 GITHUB_REPO="langgenius/dify"
 GITHUB_BRANCH="main"
 
+# ============================================
+# Early help check - do this before anything else
+# ============================================
+show_help() {
+    echo "Dify One-Click Installer"
+    echo ""
+    echo "Usage:"
+    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash"
+    echo "                                      # Interactive mode (recommended)"
+    echo ""
+    echo "  ./install.sh                    # Interactive configuration (if already have files)"
+    echo "  ./install.sh --yes              # Use all recommended defaults (quick)"
+    echo "  ./install.sh -y                  # Short form"
+    echo "  ./install.sh --help             # Show this help"
+    echo ""
+    echo "Curl one-liner examples:"
+    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash"
+    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash -s -- --yes"
+    echo ""
+    echo "What it does:"
+    echo "  - Shallow clones Dify repository if needed"
+    echo "  - Checks system requirements"
+    echo "  - Guides you through configuration"
+    echo "  - Generates secure secrets"
+    echo "  - Starts Dify services"
+    echo ""
+}
+
+# Check for help first
+for arg in "$@"; do
+    if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+        show_help
+        exit 0
+    fi
+done
+
 # Storage config variables (global scope)
 S3_BUCKET=""
 S3_REGION=""
@@ -89,6 +125,26 @@ print_error() { echo -e "${RED}✗${NC} $1"; }
 print_step() { echo -e "${PURPLE}➜${NC} $1"; }
 print_section() { echo ""; echo -e "${CYAN}─── $1 ─────────────────────────────────────────────${NC}"; echo ""; }
 
+# Check if a directory is safe to use (owned by current user or root)
+is_safe_directory() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        return 0  # Directory doesn't exist yet, will create safely
+    fi
+
+    local dir_owner
+    dir_owner="$(stat -c "%u" "$dir" 2>/dev/null || echo "")"
+    local current_uid
+    current_uid="$(id -u)"
+
+    # Safe if owned by current user or root
+    if [ "$dir_owner" = "$current_uid" ] || [ "$dir_owner" = "0" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
 # Check if we're running in the docker directory of a Dify repo,
 # or if we need to shallow clone the repository
 setup_working_directory() {
@@ -97,6 +153,10 @@ setup_working_directory() {
 
     # Check if we're already in a docker directory with required files
     if [ -f "${script_dir}/.env.example" ] && [ -f "${script_dir}/docker-compose.yaml" ]; then
+        if ! is_safe_directory "$script_dir"; then
+            print_error "Directory $script_dir is not owned by you or root. Aborting for security."
+            exit 1
+        fi
         cd "$script_dir"
         SCRIPT_DIR="$script_dir"
         return 0
@@ -104,13 +164,25 @@ setup_working_directory() {
 
     # Check if current directory has required files
     if [ -f ".env.example" ] && [ -f "docker-compose.yaml" ]; then
-        SCRIPT_DIR="$(pwd)"
+        local current_dir
+        current_dir="$(pwd)"
+        if ! is_safe_directory "$current_dir"; then
+            print_error "Directory $current_dir is not owned by you or root. Aborting for security."
+            exit 1
+        fi
+        SCRIPT_DIR="$current_dir"
         cd "$SCRIPT_DIR"
         return 0
     fi
 
     # Check if parent directory has a docker subdirectory with required files
     if [ -d "../docker" ] && [ -f "../docker/.env.example" ] && [ -f "../docker/docker-compose.yaml" ]; then
+        local parent_dir
+        parent_dir="$(cd .. && pwd)/docker"
+        if ! is_safe_directory "$parent_dir"; then
+            print_error "Directory $parent_dir is not owned by you or root. Aborting for security."
+            exit 1
+        fi
         cd "../docker"
         SCRIPT_DIR="$(pwd)"
         return 0
@@ -123,6 +195,10 @@ setup_working_directory() {
 
     # Check if dify directory already exists with a docker subdirectory
     if [ -d "$clone_dir" ] && [ -d "$clone_dir/docker" ] && [ -f "$clone_dir/docker/.env.example" ] && [ -f "$clone_dir/docker/docker-compose.yaml" ]; then
+        if ! is_safe_directory "$clone_dir"; then
+            print_error "Directory $clone_dir is not owned by you or root. Aborting for security."
+            exit 1
+        fi
         cd "$clone_dir/docker"
         SCRIPT_DIR="$(pwd)"
         print_ok "Using existing Dify installation in $SCRIPT_DIR"
@@ -131,6 +207,10 @@ setup_working_directory() {
 
     # Clone or pull the repository
     if [ -d "$clone_dir" ]; then
+        if ! is_safe_directory "$clone_dir"; then
+            print_error "Directory $clone_dir is not owned by you or root. Aborting for security."
+            exit 1
+        fi
         cd "$clone_dir"
         print_step "Updating Dify repository..."
         if git pull origin "$GITHUB_BRANCH" 2>/dev/null; then
@@ -148,6 +228,14 @@ setup_working_directory() {
         if ! command -v git &> /dev/null; then
             print_error "Git is not installed"
             echo "Please install Git first or clone the repository manually."
+            exit 1
+        fi
+
+        # Verify parent directory is safe before cloning
+        local parent_dir
+        parent_dir="$(pwd)"
+        if ! is_safe_directory "$parent_dir"; then
+            print_error "Current directory is not owned by you or root. Aborting for security."
             exit 1
         fi
 
@@ -290,54 +378,66 @@ ask_yes_no() {
     esac
 }
 
-# Help information
-show_help() {
-    echo "Dify One-Click Installer"
-    echo ""
-    echo "Usage:"
-    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash"
-    echo "                                      # Interactive mode (recommended)"
-    echo ""
-    echo "  ./install.sh                    # Interactive configuration (if already have files)"
-    echo "  ./install.sh --yes              # Use all recommended defaults (quick)"
-    echo "  ./install.sh -y                  # Short form"
-    echo "  ./install.sh --help             # Show this help"
-    echo ""
-    echo "Curl one-liner examples:"
-    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash"
-    echo "  curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash -s -- --yes"
-    echo ""
-    echo "What it does:"
-    echo "  - Shallow clones Dify repository if needed"
-    echo "  - Checks system requirements"
-    echo "  - Guides you through configuration"
-    echo "  - Generates secure secrets"
-    echo "  - Starts Dify services"
-    echo ""
-}
-
-# Secret generation
+# Secret generation - secure random generation with proper fallbacks
 generate_secret_key() {
+    # Try openssl first (most common)
     if command -v openssl &> /dev/null; then
         openssl rand -base64 42
-    elif command -v python3 &> /dev/null; then
-        python3 -c "import secrets; import base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-    else
-        # Fallback using /dev/urandom
-        head -c 64 /dev/urandom 2>/dev/null | base64 | head -c 64 || echo "$(date)$$RANDOM$RANDOM$RANDOM" | sha256sum | base64 | head -c 64
+        return
     fi
+
+    # Try Python with secrets module (secure)
+    if command -v python3 &> /dev/null; then
+        python3 -c "import secrets; import base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+        return
+    fi
+
+    # Try /dev/urandom (available on most Unix-like systems)
+    if [ -c /dev/urandom ]; then
+        # Use uuencode if available
+        if command -v uuencode &> /dev/null; then
+            head -c 48 /dev/urandom 2>/dev/null | uuencode -m - | tail -n +2 | tr -d '\n'
+            return
+        fi
+
+        # Use base64 if available
+        if command -v base64 &> /dev/null; then
+            head -c 48 /dev/urandom 2>/dev/null | base64 | tr -d '\n'
+            return
+        fi
+    fi
+
+    # Last resort: if we get here, we can't generate secure secrets
+    print_error "Cannot generate secure secrets: no secure random source found"
+    echo "Please install openssl or Python 3.6+ and try again."
+    exit 1
 }
 
 generate_password() {
     local length=${1:-16}
+
+    # Try openssl first
     if command -v openssl &> /dev/null; then
-        openssl rand -base64 "$length" | tr -d '/+=' | cut -c1-"$length"
-    elif command -v python3 &> /dev/null; then
-        python3 -c "import secrets; import string; print(''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range($length)))"
-    else
-        # Fallback using /dev/urandom
-        tr -dc 'a-zA-Z0-9' < /dev/urandom 2>/dev/null | head -c "$length" || echo "$(date)$$RANDOM" | tr -dc 'a-zA-Z0-9' | head -c "$length"
+        openssl rand -base64 "$((length * 2))" 2>/dev/null | tr -d '/+=' | cut -c1-"$length"
+        return
     fi
+
+    # Try Python with secrets module
+    if command -v python3 &> /dev/null; then
+        python3 -c "import secrets; import string; print(''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range($length)))"
+        return
+    fi
+
+    # Try /dev/urandom
+    if [ -c /dev/urandom ]; then
+        tr -dc 'a-zA-Z0-9' < /dev/urandom 2>/dev/null | head -c "$length"
+        return
+    fi
+
+    # Last resort
+    print_error "Cannot generate secure password: no secure random source found"
+    echo "Please install openssl or Python 3.6+ and try again."
+    exit 1
 }
 
 # Check if a port is in use
@@ -677,6 +777,8 @@ create_env_file() {
     if [ -f ".env" ]; then
         BACKUP_FILE=".env.backup-$(date +%Y%m%d-%H%M%S)"
         cp ".env" "$BACKUP_FILE"
+        # Also set restrictive permissions on backup
+        chmod 600 "$BACKUP_FILE" 2>/dev/null || true
         print_ok "Backed up existing .env to $BACKUP_FILE"
     fi
 
@@ -763,6 +865,8 @@ create_env_file() {
         update_env "MAIL_FROM_ADDRESS" "$SMTP_FROM" ".env"
     fi
 
+    # Set restrictive permissions on .env file (only owner can read/write)
+    chmod 600 ".env"
     print_ok "Created .env with your configuration"
     echo ""
 }
