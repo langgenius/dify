@@ -13,7 +13,8 @@ This test suite covers:
 import json
 from uuid import uuid4
 
-from extensions.ext_database import db
+from sqlalchemy.orm import Session
+
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -31,7 +32,9 @@ class DatasetRetrievalTestDataFactory:
     """Factory class for creating database-backed test data for dataset retrieval integration tests."""
 
     @staticmethod
-    def create_account_with_tenant(role: TenantAccountRole = TenantAccountRole.NORMAL) -> tuple[Account, Tenant]:
+    def create_account_with_tenant(
+        db_session_with_containers: Session, role: TenantAccountRole = TenantAccountRole.NORMAL
+    ) -> tuple[Account, Tenant]:
         """Create an account and tenant with the specified role."""
         account = Account(
             email=f"{uuid4()}@example.com",
@@ -43,8 +46,8 @@ class DatasetRetrievalTestDataFactory:
             name=f"tenant-{uuid4()}",
             status="normal",
         )
-        db.session.add_all([account, tenant])
-        db.session.flush()
+        db_session_with_containers.add_all([account, tenant])
+        db_session_with_containers.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -52,14 +55,16 @@ class DatasetRetrievalTestDataFactory:
             role=role,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         account.current_tenant = tenant
         return account, tenant
 
     @staticmethod
-    def create_account_in_tenant(tenant: Tenant, role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
+    def create_account_in_tenant(
+        db_session_with_containers: Session, tenant: Tenant, role: TenantAccountRole = TenantAccountRole.OWNER
+    ) -> Account:
         """Create an account and add it to an existing tenant."""
         account = Account(
             email=f"{uuid4()}@example.com",
@@ -67,8 +72,8 @@ class DatasetRetrievalTestDataFactory:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.flush()
+        db_session_with_containers.add(account)
+        db_session_with_containers.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -76,14 +81,15 @@ class DatasetRetrievalTestDataFactory:
             role=role,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         account.current_tenant = tenant
         return account
 
     @staticmethod
     def create_dataset(
+        db_session_with_containers: Session,
         tenant_id: str,
         created_by: str,
         name: str = "Test Dataset",
@@ -101,12 +107,14 @@ class DatasetRetrievalTestDataFactory:
             provider="vendor",
             retrieval_model={"top_k": 2},
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
         return dataset
 
     @staticmethod
-    def create_dataset_permission(dataset_id: str, tenant_id: str, account_id: str) -> DatasetPermission:
+    def create_dataset_permission(
+        db_session_with_containers: Session, dataset_id: str, tenant_id: str, account_id: str
+    ) -> DatasetPermission:
         """Create a dataset permission."""
         permission = DatasetPermission(
             dataset_id=dataset_id,
@@ -114,12 +122,14 @@ class DatasetRetrievalTestDataFactory:
             account_id=account_id,
             has_permission=True,
         )
-        db.session.add(permission)
-        db.session.commit()
+        db_session_with_containers.add(permission)
+        db_session_with_containers.commit()
         return permission
 
     @staticmethod
-    def create_process_rule(dataset_id: str, created_by: str, mode: str, rules: dict) -> DatasetProcessRule:
+    def create_process_rule(
+        db_session_with_containers: Session, dataset_id: str, created_by: str, mode: str, rules: dict
+    ) -> DatasetProcessRule:
         """Create a dataset process rule."""
         process_rule = DatasetProcessRule(
             dataset_id=dataset_id,
@@ -127,12 +137,14 @@ class DatasetRetrievalTestDataFactory:
             mode=mode,
             rules=json.dumps(rules),
         )
-        db.session.add(process_rule)
-        db.session.commit()
+        db_session_with_containers.add(process_rule)
+        db_session_with_containers.commit()
         return process_rule
 
     @staticmethod
-    def create_dataset_query(dataset_id: str, created_by: str, content: str) -> DatasetQuery:
+    def create_dataset_query(
+        db_session_with_containers: Session, dataset_id: str, created_by: str, content: str
+    ) -> DatasetQuery:
         """Create a dataset query."""
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
@@ -142,23 +154,23 @@ class DatasetRetrievalTestDataFactory:
             created_by_role="account",
             created_by=created_by,
         )
-        db.session.add(dataset_query)
-        db.session.commit()
+        db_session_with_containers.add(dataset_query)
+        db_session_with_containers.commit()
         return dataset_query
 
     @staticmethod
-    def create_app_dataset_join(dataset_id: str) -> AppDatasetJoin:
+    def create_app_dataset_join(db_session_with_containers: Session, dataset_id: str) -> AppDatasetJoin:
         """Create an app-dataset join."""
         join = AppDatasetJoin(
             app_id=str(uuid4()),
             dataset_id=dataset_id,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
         return join
 
     @staticmethod
-    def create_tag_binding(tenant_id: str, created_by: str, target_id: str) -> Tag:
+    def create_tag_binding(db_session_with_containers: Session, tenant_id: str, created_by: str, target_id: str) -> Tag:
         """Create a knowledge tag and bind it to the target dataset."""
         tag = Tag(
             tenant_id=tenant_id,
@@ -166,8 +178,8 @@ class DatasetRetrievalTestDataFactory:
             name=f"tag-{uuid4()}",
             created_by=created_by,
         )
-        db.session.add(tag)
-        db.session.flush()
+        db_session_with_containers.add(tag)
+        db_session_with_containers.flush()
 
         binding = TagBinding(
             tenant_id=tenant_id,
@@ -175,8 +187,8 @@ class DatasetRetrievalTestDataFactory:
             target_id=target_id,
             created_by=created_by,
         )
-        db.session.add(binding)
-        db.session.commit()
+        db_session_with_containers.add(binding)
+        db_session_with_containers.commit()
         return tag
 
 
@@ -195,15 +207,16 @@ class TestDatasetServiceGetDatasets:
 
     # ==================== Basic Retrieval Tests ====================
 
-    def test_get_datasets_basic_pagination(self, db_session_with_containers):
+    def test_get_datasets_basic_pagination(self, db_session_with_containers: Session):
         """Test basic pagination without user or filters."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         page = 1
         per_page = 20
 
         for i in range(5):
             DatasetRetrievalTestDataFactory.create_dataset(
+                db_session_with_containers,
                 tenant_id=tenant.id,
                 created_by=account.id,
                 name=f"Dataset {i}",
@@ -217,21 +230,23 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 5
         assert total == 5
 
-    def test_get_datasets_with_search(self, db_session_with_containers):
+    def test_get_datasets_with_search(self, db_session_with_containers: Session):
         """Test get_datasets with search keyword."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         page = 1
         per_page = 20
         search = "test"
 
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name="Test Dataset",
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             name="Another Dataset",
@@ -245,26 +260,32 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_with_tag_filtering(self, db_session_with_containers):
+    def test_get_datasets_with_tag_filtering(self, db_session_with_containers: Session):
         """Test get_datasets with tag_ids filtering."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         page = 1
         per_page = 20
 
         dataset_1 = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
         dataset_2 = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
 
-        tag_1 = DatasetRetrievalTestDataFactory.create_tag_binding(tenant.id, account.id, dataset_1.id)
-        tag_2 = DatasetRetrievalTestDataFactory.create_tag_binding(tenant.id, account.id, dataset_2.id)
+        tag_1 = DatasetRetrievalTestDataFactory.create_tag_binding(
+            db_session_with_containers, tenant.id, account.id, dataset_1.id
+        )
+        tag_2 = DatasetRetrievalTestDataFactory.create_tag_binding(
+            db_session_with_containers, tenant.id, account.id, dataset_2.id
+        )
         tag_ids = [tag_1.id, tag_2.id]
 
         # Act
@@ -274,16 +295,17 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 2
         assert total == 2
 
-    def test_get_datasets_with_empty_tag_ids(self, db_session_with_containers):
+    def test_get_datasets_with_empty_tag_ids(self, db_session_with_containers: Session):
         """Test get_datasets with empty tag_ids skips tag filtering and returns all matching datasets."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         page = 1
         per_page = 20
         tag_ids = []
 
         for i in range(3):
             DatasetRetrievalTestDataFactory.create_dataset(
+                db_session_with_containers,
                 tenant_id=tenant.id,
                 created_by=account.id,
                 name=f"dataset-{i}",
@@ -300,19 +322,21 @@ class TestDatasetServiceGetDatasets:
 
     # ==================== Permission-Based Filtering Tests ====================
 
-    def test_get_datasets_without_user_shows_only_all_team(self, db_session_with_containers):
+    def test_get_datasets_without_user_shows_only_all_team(self, db_session_with_containers: Session):
         """Test that without user, only ALL_TEAM datasets are shown."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         page = 1
         per_page = 20
 
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -325,15 +349,18 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_owner_with_include_all(self, db_session_with_containers):
+    def test_get_datasets_owner_with_include_all(self, db_session_with_containers: Session):
         """Test that OWNER with include_all=True sees all datasets."""
         # Arrange
-        owner, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        owner, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
+            db_session_with_containers, role=TenantAccountRole.OWNER
+        )
 
         for i, permission in enumerate(
             [DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM]
         ):
             DatasetRetrievalTestDataFactory.create_dataset(
+                db_session_with_containers,
                 tenant_id=tenant.id,
                 created_by=owner.id,
                 name=f"dataset-{i}",
@@ -353,12 +380,15 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 3
         assert total == 3
 
-    def test_get_datasets_normal_user_only_me_permission(self, db_session_with_containers):
+    def test_get_datasets_normal_user_only_me_permission(self, db_session_with_containers: Session):
         """Test that normal user sees ONLY_ME datasets they created."""
         # Arrange
-        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
+        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
+            db_session_with_containers, role=TenantAccountRole.NORMAL
+        )
 
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=user.id,
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -371,13 +401,18 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_normal_user_all_team_permission(self, db_session_with_containers):
+    def test_get_datasets_normal_user_all_team_permission(self, db_session_with_containers: Session):
         """Test that normal user sees ALL_TEAM datasets."""
         # Arrange
-        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
+        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
+            db_session_with_containers, role=TenantAccountRole.NORMAL
+        )
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(
+            db_session_with_containers, tenant, role=TenantAccountRole.OWNER
+        )
 
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
             permission=DatasetPermissionEnum.ALL_TEAM,
@@ -390,18 +425,25 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_normal_user_partial_team_with_permission(self, db_session_with_containers):
+    def test_get_datasets_normal_user_partial_team_with_permission(self, db_session_with_containers: Session):
         """Test that normal user sees PARTIAL_TEAM datasets they have permission for."""
         # Arrange
-        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
+        user, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
+            db_session_with_containers, role=TenantAccountRole.NORMAL
+        )
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(
+            db_session_with_containers, tenant, role=TenantAccountRole.OWNER
+        )
 
         dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
         )
-        DatasetRetrievalTestDataFactory.create_dataset_permission(dataset.id, tenant.id, user.id)
+        DatasetRetrievalTestDataFactory.create_dataset_permission(
+            db_session_with_containers, dataset.id, tenant.id, user.id
+        )
 
         # Act
         datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
@@ -410,20 +452,25 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_dataset_operator_with_permissions(self, db_session_with_containers):
+    def test_get_datasets_dataset_operator_with_permissions(self, db_session_with_containers: Session):
         """Test that DATASET_OPERATOR only sees datasets they have explicit permission for."""
         # Arrange
         operator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
-            role=TenantAccountRole.DATASET_OPERATOR
+            db_session_with_containers, role=TenantAccountRole.DATASET_OPERATOR
         )
-        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(
+            db_session_with_containers, tenant, role=TenantAccountRole.OWNER
+        )
 
         dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
             permission=DatasetPermissionEnum.ONLY_ME,
         )
-        DatasetRetrievalTestDataFactory.create_dataset_permission(dataset.id, tenant.id, operator.id)
+        DatasetRetrievalTestDataFactory.create_dataset_permission(
+            db_session_with_containers, dataset.id, tenant.id, operator.id
+        )
 
         # Act
         datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=operator)
@@ -432,14 +479,17 @@ class TestDatasetServiceGetDatasets:
         assert len(datasets) == 1
         assert total == 1
 
-    def test_get_datasets_dataset_operator_without_permissions(self, db_session_with_containers):
+    def test_get_datasets_dataset_operator_without_permissions(self, db_session_with_containers: Session):
         """Test that DATASET_OPERATOR without permissions returns empty result."""
         # Arrange
         operator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(
-            role=TenantAccountRole.DATASET_OPERATOR
+            db_session_with_containers, role=TenantAccountRole.DATASET_OPERATOR
         )
-        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(tenant, role=TenantAccountRole.OWNER)
+        owner = DatasetRetrievalTestDataFactory.create_account_in_tenant(
+            db_session_with_containers, tenant, role=TenantAccountRole.OWNER
+        )
         DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
             permission=DatasetPermissionEnum.ALL_TEAM,
@@ -456,11 +506,13 @@ class TestDatasetServiceGetDatasets:
 class TestDatasetServiceGetDataset:
     """Comprehensive integration tests for DatasetService.get_dataset method."""
 
-    def test_get_dataset_success(self, db_session_with_containers):
+    def test_get_dataset_success(self, db_session_with_containers: Session):
         """Test successful retrieval of a single dataset."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
 
         # Act
         result = DatasetService.get_dataset(dataset.id)
@@ -469,7 +521,7 @@ class TestDatasetServiceGetDataset:
         assert result is not None
         assert result.id == dataset.id
 
-    def test_get_dataset_not_found(self, db_session_with_containers):
+    def test_get_dataset_not_found(self, db_session_with_containers: Session):
         """Test retrieval when dataset doesn't exist."""
         # Arrange
         dataset_id = str(uuid4())
@@ -484,12 +536,15 @@ class TestDatasetServiceGetDataset:
 class TestDatasetServiceGetDatasetsByIds:
     """Comprehensive integration tests for DatasetService.get_datasets_by_ids method."""
 
-    def test_get_datasets_by_ids_success(self, db_session_with_containers):
+    def test_get_datasets_by_ids_success(self, db_session_with_containers: Session):
         """Test successful bulk retrieval of datasets by IDs."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         datasets = [
-            DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id) for _ in range(3)
+            DatasetRetrievalTestDataFactory.create_dataset(
+                db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+            )
+            for _ in range(3)
         ]
         dataset_ids = [dataset.id for dataset in datasets]
 
@@ -501,7 +556,7 @@ class TestDatasetServiceGetDatasetsByIds:
         assert total == 3
         assert all(dataset.id in dataset_ids for dataset in result_datasets)
 
-    def test_get_datasets_by_ids_empty_list(self, db_session_with_containers):
+    def test_get_datasets_by_ids_empty_list(self, db_session_with_containers: Session):
         """Test get_datasets_by_ids with empty list returns empty result."""
         # Arrange
         tenant_id = str(uuid4())
@@ -514,7 +569,7 @@ class TestDatasetServiceGetDatasetsByIds:
         assert datasets == []
         assert total == 0
 
-    def test_get_datasets_by_ids_none_list(self, db_session_with_containers):
+    def test_get_datasets_by_ids_none_list(self, db_session_with_containers: Session):
         """Test get_datasets_by_ids with None returns empty result."""
         # Arrange
         tenant_id = str(uuid4())
@@ -530,17 +585,20 @@ class TestDatasetServiceGetDatasetsByIds:
 class TestDatasetServiceGetProcessRules:
     """Comprehensive integration tests for DatasetService.get_process_rules method."""
 
-    def test_get_process_rules_with_existing_rule(self, db_session_with_containers):
+    def test_get_process_rules_with_existing_rule(self, db_session_with_containers: Session):
         """Test retrieval of process rules when rule exists."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
 
         rules_data = {
             "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
             "segmentation": {"delimiter": "\n", "max_tokens": 500},
         }
         DatasetRetrievalTestDataFactory.create_process_rule(
+            db_session_with_containers,
             dataset_id=dataset.id,
             created_by=account.id,
             mode="custom",
@@ -554,11 +612,13 @@ class TestDatasetServiceGetProcessRules:
         assert result["mode"] == "custom"
         assert result["rules"] == rules_data
 
-    def test_get_process_rules_without_existing_rule(self, db_session_with_containers):
+    def test_get_process_rules_without_existing_rule(self, db_session_with_containers: Session):
         """Test retrieval of process rules when no rule exists (returns defaults)."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
 
         # Act
         result = DatasetService.get_process_rules(dataset.id)
@@ -572,16 +632,19 @@ class TestDatasetServiceGetProcessRules:
 class TestDatasetServiceGetDatasetQueries:
     """Comprehensive integration tests for DatasetService.get_dataset_queries method."""
 
-    def test_get_dataset_queries_success(self, db_session_with_containers):
+    def test_get_dataset_queries_success(self, db_session_with_containers: Session):
         """Test successful retrieval of dataset queries."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
         page = 1
         per_page = 20
 
         for i in range(3):
             DatasetRetrievalTestDataFactory.create_dataset_query(
+                db_session_with_containers,
                 dataset_id=dataset.id,
                 created_by=account.id,
                 content=f"query-{i}",
@@ -595,11 +658,13 @@ class TestDatasetServiceGetDatasetQueries:
         assert total == 3
         assert all(query.dataset_id == dataset.id for query in queries)
 
-    def test_get_dataset_queries_empty_result(self, db_session_with_containers):
+    def test_get_dataset_queries_empty_result(self, db_session_with_containers: Session):
         """Test retrieval when no queries exist."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
         page = 1
         per_page = 20
 
@@ -614,14 +679,16 @@ class TestDatasetServiceGetDatasetQueries:
 class TestDatasetServiceGetRelatedApps:
     """Comprehensive integration tests for DatasetService.get_related_apps method."""
 
-    def test_get_related_apps_success(self, db_session_with_containers):
+    def test_get_related_apps_success(self, db_session_with_containers: Session):
         """Test successful retrieval of related apps."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
 
         for _ in range(2):
-            DatasetRetrievalTestDataFactory.create_app_dataset_join(dataset.id)
+            DatasetRetrievalTestDataFactory.create_app_dataset_join(db_session_with_containers, dataset.id)
 
         # Act
         result = DatasetService.get_related_apps(dataset.id)
@@ -630,11 +697,13 @@ class TestDatasetServiceGetRelatedApps:
         assert len(result) == 2
         assert all(join.dataset_id == dataset.id for join in result)
 
-    def test_get_related_apps_empty_result(self, db_session_with_containers):
+    def test_get_related_apps_empty_result(self, db_session_with_containers: Session):
         """Test retrieval when no related apps exist."""
         # Arrange
-        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant()
-        dataset = DatasetRetrievalTestDataFactory.create_dataset(tenant_id=tenant.id, created_by=account.id)
+        account, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers, tenant_id=tenant.id, created_by=account.id
+        )
 
         # Act
         result = DatasetService.get_related_apps(dataset.id)
