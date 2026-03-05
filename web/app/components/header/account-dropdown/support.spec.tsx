@@ -11,6 +11,10 @@ const { mockZendeskKey } = vi.hoisted(() => ({
   mockZendeskKey: { value: 'test-key' },
 }))
 
+const { mockSupportEmailKey } = vi.hoisted(() => ({
+  mockSupportEmailKey: { value: '' },
+}))
+
 vi.mock('@/context/app-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/app-context')>()
   return {
@@ -33,6 +37,7 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     IS_CE_EDITION: false,
     get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
+    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value },
   }
 })
 
@@ -125,7 +130,7 @@ describe('Support', () => {
     })
   })
 
-  describe('Plan-based Channels', () => {
+  describe('Dedicated Channels', () => {
     it('should show "Contact Us" when ZENDESK_WIDGET_KEY is present', () => {
       // Act
       renderSupport()
@@ -165,6 +170,27 @@ describe('Support', () => {
       // Assert
       expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
       expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
+    })
+
+    it('should show email support if specified in the config', () => {
+      // Arrange
+      mockZendeskKey.value = ''
+      mockSupportEmailKey.value = 'support@example.com'
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.sandbox,
+        },
+      })
+
+      // Act
+      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.emailSupport')).toBeInTheDocument()
+      expect(screen.getByText('common.userProfile.emailSupport')?.closest('a')?.getAttribute('href')).toMatch(new RegExp(`^mailto:${mockSupportEmailKey.value}`))
     })
   })
 
