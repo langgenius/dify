@@ -78,12 +78,14 @@ curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.
 ```
 
 The installer will automatically:
+
 - Create a `dify/docker` directory for you
 - Download all required configuration files
 - Guide you through configuration options
 - Start Dify services
 
 The installer will guide you through configuration options including:
+
 - Deployment type (private/local or public/domain)
 - Database selection (PostgreSQL or MySQL)
 - Vector database selection (Weaviate, Qdrant, Milvus, Chroma, pgvector)
@@ -92,6 +94,7 @@ The installer will guide you through configuration options including:
 - Email service configuration
 
 **Quick mode** (use all defaults, no questions):
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash -s -- --yes
 ```

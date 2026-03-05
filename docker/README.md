@@ -15,6 +15,7 @@ curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.
 ```
 
 The installer will:
+
 - Automatically create a `dify/docker` directory
 - Download all required files (`.env.example`, `docker-compose.yaml`, etc.)
 - Check system prerequisites (Docker, Docker Compose, CPU, RAM)
@@ -25,6 +26,7 @@ The installer will:
 - Show you how to access Dify
 
 **Quick mode** (skip questions, use all defaults):
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/langgenius/dify/main/docker/install.sh | bash -s -- --yes
 ```
@@ -47,7 +49,7 @@ cd dify/docker
 
 Run `./install.sh --help` for more options.
 
----
+______________________________________________________________________
 
 ### What's Updated
 
