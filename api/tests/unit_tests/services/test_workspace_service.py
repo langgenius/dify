@@ -1,52 +1,7 @@
-"""
-Comprehensive unit tests for WorkspaceService.
-
-This test suite provides complete coverage of workspace/tenant information
-retrieval operations in Dify, following TDD principles with the
-Arrange-Act-Assert (AAA) pattern.
-
-WorkspaceService is responsible for building a rich tenant info dictionary
-that is returned to the API consumer. It aggregates data from multiple
-sources:
-  - The Tenant model (id, name, plan, status, created_at)
-  - TenantAccountJoin (the current user's role in the workspace)
-  - FeatureService (feature flags, e.g. can_replace_logo, billing info)
-  - CreditPoolService (credit pool quotas — CLOUD edition only)
-  - TenantService (role-based checks, e.g. OWNER/ADMIN)
-
-## Test Coverage
-
-### 1. None Tenant Handling
-   - Returns None when tenant is None/falsy
-
-### 2. Basic Tenant Info
-   - Returns expected base dictionary fields
-   - Raises AssertionError when TenantAccountJoin is missing
-
-### 3. Logo Customisation
-   - Adds `custom_config` when can_replace_logo and OWNER/ADMIN
-   - Skips `custom_config` when can_replace_logo is False
-   - Skips `custom_config` when user is not OWNER/ADMIN
-   - Correctly constructs replace_webapp_logo URL
-   - Returns None for replace_webapp_logo when key is absent
-
-### 4. Cloud Features (EDITION == "CLOUD")
-   - Adds next_credit_reset_date from feature
-   - Uses paid pool when plan is not SANDBOX and pool not full
-   - Uses trial pool when in SANDBOX plan
-   - Uses trial pool when paid pool is None
-   - Uses trial pool when paid pool is full (quota_limit <= quota_used)
-   - Handles infinite paid pool (quota_limit == -1)
-   - Skips trial credits when trial pool is None
-
-### 5. Non-Cloud Edition
-   - Does NOT add next_credit_reset_date or credit fields
-"""
-
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
