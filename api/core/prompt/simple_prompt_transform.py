@@ -121,12 +121,15 @@ class SimplePromptTransform(PromptTransform):
 
         for v in special_variable_keys:
             # support #context#, #query# and #histories#
-            if v == "#context#":
-                variables["#context#"] = context or ""
-            elif v == "#query#":
-                variables["#query#"] = query or ""
-            elif v == "#histories#":
-                variables["#histories#"] = histories or ""
+            match v:
+                case "#context#":
+                    variables["#context#"] = context or ""
+                case "#query#":
+                    variables["#query#"] = query or ""
+                case "#histories#":
+                    variables["#histories#"] = histories or ""
+                case _:
+                    pass
 
         prompt_template = prompt_template_config["prompt_template"]
         if not isinstance(prompt_template, PromptTemplateParser):

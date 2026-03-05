@@ -294,27 +294,30 @@ class DatasetDocumentListApi(Resource):
         else:
             sort_logic = asc
 
-        if sort == "hit_count":
-            sub_query = (
-                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
-                .group_by(DocumentSegment.document_id)
-                .subquery()
-            )
+        match sort:
+            case "hit_count":
+                sub_query = (
+                    sa.select(
+                        DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count")
+                    )
+                    .group_by(DocumentSegment.document_id)
+                    .subquery()
+                )
 
-            query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
-                sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
-                sort_logic(Document.position),
-            )
-        elif sort == "created_at":
-            query = query.order_by(
-                sort_logic(Document.created_at),
-                sort_logic(Document.position),
-            )
-        else:
-            query = query.order_by(
-                desc(Document.created_at),
-                desc(Document.position),
-            )
+                query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
+                    sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
+                    sort_logic(Document.position),
+                )
+            case "created_at":
+                query = query.order_by(
+                    sort_logic(Document.created_at),
+                    sort_logic(Document.position),
+                )
+            case _:
+                query = query.order_by(
+                    desc(Document.created_at),
+                    desc(Document.position),
+                )
 
         paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
