@@ -46,12 +46,22 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       window.open(url, '_blank')
     }
     else if (url.startsWith('data:image')) {
-      // Base64 image - sanitize to prevent XSS
-      // Only allow valid image data URLs
+      // Base64 image - safe way to open with XSS protection
       const validDataUrlPattern = /^data:image\/(?:png|jpeg|gif|jpg|webp);base64,[a-zA-Z0-9+/=]+$/
       if (validDataUrlPattern.test(url)) {
         const win = window.open()
-        win?.document.write(`<img src="${url}" alt="${title}" />`)
+        if (win) {
+          win.document.write('<!DOCTYPE html>')
+          win.document.write('<html>')
+          win.document.write('<head>')
+          win.document.write(`<title>${title}</title>`)
+          win.document.write('</head>')
+          win.document.write('<body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;">')
+          win.document.write(`<img src="${url}" alt="${title}" style="max-width:90%;max-height:90%;" />`)
+          win.document.write('</body>')
+          win.document.write('</html>')
+          win.document.close()
+        }
       }
       else {
         Toast.notify({
