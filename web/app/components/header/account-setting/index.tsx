@@ -27,9 +27,9 @@ const iconClassName = `
 `
 
 type IAccountSettingProps = {
-  onCancel: () => void
-  activeTab?: AccountSettingTab
-  onTabChange?: (tab: AccountSettingTab) => void
+  onCancelAction: () => void
+  activeTab: AccountSettingTab
+  onTabChangeAction: (tab: AccountSettingTab) => void
 }
 
 type GroupItem = {
@@ -41,16 +41,12 @@ type GroupItem = {
 }
 
 export default function AccountSetting({
-  onCancel,
+  onCancelAction,
   activeTab,
-  onTabChange,
+  onTabChangeAction,
 }: IAccountSettingProps) {
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
-  const isControlledTab = activeTab !== undefined && !!onTabChange
-  const [uncontrolledActiveMenu, setUncontrolledActiveMenu] = useState<AccountSettingTab>(activeTab ?? ACCOUNT_SETTING_TAB.MEMBERS)
-  const activeMenu = isControlledTab
-    ? (activeTab ?? ACCOUNT_SETTING_TAB.MEMBERS)
-    : uncontrolledActiveMenu
+  const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -155,16 +151,13 @@ export default function AccountSetting({
     if (tab === ACCOUNT_SETTING_TAB.PROVIDER)
       resetModelProviderListExpanded()
 
-    if (!isControlledTab)
-      setUncontrolledActiveMenu(tab)
-
-    onTabChange?.(tab)
-  }, [isControlledTab, onTabChange, resetModelProviderListExpanded])
+    onTabChangeAction(tab)
+  }, [onTabChangeAction, resetModelProviderListExpanded])
 
   const handleClose = useCallback(() => {
     resetModelProviderListExpanded()
-    onCancel()
-  }, [onCancel, resetModelProviderListExpanded])
+    onCancelAction()
+  }, [onCancelAction, resetModelProviderListExpanded])
 
   return (
     <MenuDialog
@@ -184,12 +177,14 @@ export default function AccountSetting({
                   <div>
                     {
                       menuItem.items.map(item => (
-                        <div
+                        <button
+                          type="button"
                           key={item.key}
                           className={cn(
-                            'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
+                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
                             activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium',
                           )}
+                          aria-label={item.name}
                           title={item.name}
                           onClick={() => {
                             handleTabChange(item.key)
@@ -197,7 +192,7 @@ export default function AccountSetting({
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className="truncate">{item.name}</div>}
-                        </div>
+                        </button>
                       ))
                     }
                   </div>
@@ -212,6 +207,7 @@ export default function AccountSetting({
               variant="tertiary"
               size="large"
               className="px-2"
+              aria-label={t('operation.close', { ns: 'common' })}
               onClick={handleClose}
             >
               <span className="i-ri-close-line h-5 w-5" />

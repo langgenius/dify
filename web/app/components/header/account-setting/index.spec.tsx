@@ -1,6 +1,8 @@
+import type { AccountSettingTab } from './constants'
 import type { AppContextValue } from '@/context/app-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -112,6 +114,38 @@ const baseAppContextValue: AppContextValue = {
 describe('AccountSetting', () => {
   const mockOnCancel = vi.fn()
   const mockOnTabChange = vi.fn()
+  const renderAccountSetting = (props?: {
+    initialTab?: AccountSettingTab
+    onCancel?: () => void
+    onTabChange?: (tab: AccountSettingTab) => void
+  }) => {
+    const {
+      initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
+      onCancel = mockOnCancel,
+      onTabChange = mockOnTabChange,
+    } = props ?? {}
+
+    const StatefulAccountSetting = () => {
+      const [activeTab, setActiveTab] = useState<AccountSettingTab>(initialTab)
+
+      return (
+        <AccountSetting
+          onCancelAction={onCancel}
+          activeTab={activeTab}
+          onTabChangeAction={(tab) => {
+            setActiveTab(tab)
+            onTabChange(tab)
+          }}
+        />
+      )
+    }
+
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <StatefulAccountSetting />
+      </QueryClientProvider>,
+    )
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -127,11 +161,7 @@ describe('AccountSetting', () => {
   describe('Rendering', () => {
     it('should render the sidebar with correct menu items', () => {
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
 
       // Assert
       expect(screen.getByText('common.userProfile.settings')).toBeInTheDocument()
@@ -144,13 +174,9 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(0)
     })
 
-    it('should respect the activeTab prop', () => {
+    it('should respect the initial tab', () => {
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} activeTab={ACCOUNT_SETTING_TAB.DATA_SOURCE} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.DATA_SOURCE })
 
       // Assert
       // Check that the active item title is Data Source
@@ -164,11 +190,7 @@ describe('AccountSetting', () => {
       vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
 
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
 
       // Assert
       // On mobile, the labels should not be rendered as per the implementation
@@ -183,11 +205,7 @@ describe('AccountSetting', () => {
       })
 
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
 
       // Assert
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
@@ -204,11 +222,7 @@ describe('AccountSetting', () => {
       })
 
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
 
       // Assert
       expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
@@ -219,11 +233,7 @@ describe('AccountSetting', () => {
   describe('Tab Navigation', () => {
     it('should change active tab when clicking on menu item', () => {
       // Arrange
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} onTabChange={mockOnTabChange} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting({ onTabChange: mockOnTabChange })
 
       // Act
       fireEvent.click(screen.getByText('common.settings.provider'))
@@ -236,11 +246,7 @@ describe('AccountSetting', () => {
 
     it('should navigate through various tabs and show correct details', () => {
       // Act & Assert
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
 
       // Billing
       fireEvent.click(screen.getByText('common.settings.billing'))
@@ -274,11 +280,7 @@ describe('AccountSetting', () => {
   describe('Interactions', () => {
     it('should call onCancel when clicking close button', () => {
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
       const closeIcon = document.querySelector('.i-ri-close-line')
       const closeButton = closeIcon?.closest('button')
       expect(closeButton).not.toBeNull()
@@ -290,11 +292,7 @@ describe('AccountSetting', () => {
 
     it('should call onCancel when pressing Escape key', () => {
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
       fireEvent.keyDown(document, { key: 'Escape' })
 
       // Assert
@@ -303,12 +301,7 @@ describe('AccountSetting', () => {
 
     it('should update search value in provider tab', () => {
       // Arrange
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
-      fireEvent.click(screen.getByText('common.settings.provider'))
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
 
       // Act
       const input = screen.getByRole('textbox')
@@ -321,11 +314,7 @@ describe('AccountSetting', () => {
 
     it('should handle scroll event in panel', () => {
       // Act
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AccountSetting onCancel={mockOnCancel} />
-        </QueryClientProvider>,
-      )
+      renderAccountSetting()
       const scrollContainer = screen.getByRole('dialog').querySelector('.overflow-y-auto')
 
       // Assert

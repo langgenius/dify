@@ -125,9 +125,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         showCollapsedSection && (
           <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
-              <div
+              <button
+                type="button"
                 data-testid="show-models-button"
-                className="flex h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover"
+                className="flex h-6 items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover"
+                aria-label={t('modelProvider.showModels', { ns: 'common' })}
                 onClick={handleOpenModelList}
               >
                 {
@@ -141,7 +143,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                     <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
                   )
                 }
-              </div>
+              </button>
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
