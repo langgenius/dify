@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import defaultdict, deque
+from typing import Any, cast
 
 import pytest
 
@@ -92,7 +93,7 @@ def _patch_get_channel_streams(monkeypatch):
     from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
     fake = _FakeStreams()
-    chan = StreamsBroadcastChannel(fake, retention_seconds=60)
+    chan = StreamsBroadcastChannel(cast(Any, fake), retention_seconds=60)
 
     def _get_channel():
         return chan
@@ -112,7 +113,7 @@ def _patch_get_channel_pubsub(monkeypatch):
 
     store: dict[str, deque[bytes]] = defaultdict(deque)
     client = _FakeRedisClient(store)
-    chan = RedisBroadcastChannel(client)
+    chan = RedisBroadcastChannel(cast(Any, client))
 
     def _get_channel():
         return chan
