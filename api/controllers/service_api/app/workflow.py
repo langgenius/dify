@@ -133,7 +133,7 @@ class WorkflowRunDetailApi(Resource):
             run_id=workflow_run_id,
         )
         if not workflow_run:
-            raise NotFound(f"{workflow_run_id} not found")
+            raise NotFound("Workflow run not found.")
         return workflow_run
 
 
