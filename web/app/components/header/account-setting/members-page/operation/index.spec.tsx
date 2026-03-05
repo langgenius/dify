@@ -2,7 +2,7 @@ import type { Member } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Operation from './index'
 
 const mockUpdateMemberRole = vi.fn()

@@ -53,6 +53,12 @@ let mockCredentialData: CredentialData | undefined = {
   current_credential_name: 'Default',
 }
 
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
+}))
+
 vi.mock('@/service/use-models', () => ({
   useGetModelCredential: () => ({
     isLoading: false,

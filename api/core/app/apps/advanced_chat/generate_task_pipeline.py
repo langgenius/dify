@@ -735,7 +735,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _load_human_input_form_id(self, *, node_id: str) -> str | None:
         form_repository = HumanInputFormRepositoryImpl(
-            session_factory=db.engine,
             tenant_id=self._workflow_tenant_id,
         )
         form = form_repository.get_form(self._workflow_run_id, node_id)

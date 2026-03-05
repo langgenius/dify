@@ -43,6 +43,12 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
+}))
+
 vi.mock('../hooks', () => ({
   useModelList: () => ({
     data: [],

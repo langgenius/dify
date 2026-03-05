@@ -22,6 +22,10 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({ notify: mockNotify }),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelModalHandler: () => mockOpenModelModal,
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),

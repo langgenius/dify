@@ -22,7 +22,7 @@ import {
   FileContextProvider,
   useFileStore,
 } from '@/app/components/base/file-uploader/store'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'

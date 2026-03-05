@@ -121,10 +121,6 @@ a {
   outline: none;
 }
 
-button:focus-within {
-  outline: none;
-}
-
 /* @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
