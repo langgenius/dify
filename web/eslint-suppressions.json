@@ -2891,11 +2891,6 @@
       "count": 1
     }
   },
-  "app/components/base/toast/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    }
-  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
