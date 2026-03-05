@@ -13,6 +13,14 @@ const _dirname = typeof __dirname !== 'undefined'
   ? __dirname
   : path.dirname(fileURLToPath(import.meta.url))
 
+const disableSVGOptimize = process.env.TAILWIND_MODE === 'ESLINT'
+const svgOptimizeConfig = {
+  cleanupSVG: !disableSVGOptimize,
+  deOptimisePaths: !disableSVGOptimize,
+  runSVGO: !disableSVGOptimize,
+  parseColors: !disableSVGOptimize,
+}
+
 const config = {
   theme: {
     typography,
@@ -167,11 +175,13 @@ const config = {
           source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
           prefix: 'custom-public',
           ignoreImportErrors: true,
+          ...svgOptimizeConfig,
         }),
         ...importSvgCollections({
           source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
           prefix: 'custom-vender',
           ignoreImportErrors: true,
+          ...svgOptimizeConfig,
         }),
       },
       extraProperties: {

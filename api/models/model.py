@@ -19,9 +19,9 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.workflow.file import helpers as file_helpers
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
@@ -711,6 +711,18 @@ class Conversation(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="conversation_pkey"),
         sa.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
+        sa.Index(
+            "conversation_app_created_at_idx",
+            "app_id",
+            sa.text("created_at DESC"),
+            postgresql_where=sa.text("is_deleted IS false"),
+        ),
+        sa.Index(
+            "conversation_app_updated_at_idx",
+            "app_id",
+            sa.text("updated_at DESC"),
+            postgresql_where=sa.text("is_deleted IS false"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
