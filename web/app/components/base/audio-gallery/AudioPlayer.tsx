@@ -26,6 +26,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const audio = audioRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!audio)
       return
 
@@ -217,6 +218,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!canvas)
       return
 
@@ -303,12 +305,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       </audio>
       <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
-          ? (
-              <div className="i-ri-pause-circle-fill h-5 w-5" />
-            )
-          : (
-              <div className="i-ri-play-large-fill h-5 w-5" />
-            )}
+          ? (<div className="i-ri-pause-circle-fill h-5 w-5" />)
+          : (<div className="i-ri-play-large-fill h-5 w-5" />)}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">

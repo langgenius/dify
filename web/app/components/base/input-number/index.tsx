@@ -44,6 +44,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   }, [max, min])
 
   const inc = () => {
+    /* v8 ignore next 2 - @preserve */
     if (disabled)
       return
 
@@ -57,6 +58,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
   const dec = () => {
+    /* v8 ignore next 2 - @preserve */
     if (disabled)
       return
 

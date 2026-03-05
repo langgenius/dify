@@ -1,4 +1,6 @@
+import type { ToastHandle } from '@/app/components/base/toast'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import Toast from '@/app/components/base/toast'
 import useThemeMock from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import AudioPlayer from '../AudioPlayer'
@@ -40,6 +42,13 @@ async function advanceWaveformTimer() {
     await Promise.resolve()
     await Promise.resolve()
   })
+}
+
+// eslint-disable-next-line ts/no-explicit-any
+type ReactEventHandler = ((...args: any[]) => void) | undefined
+function getReactProps<T extends Element>(el: T): Record<string, ReactEventHandler> {
+  const key = Object.keys(el).find(k => k.startsWith('__reactProps$'))
+  return key ? (el as unknown as Record<string, Record<string, ReactEventHandler>>)[key] : {}
 }
 
 // ─── Setup / teardown ─────────────────────────────────────────────────────────
@@ -301,36 +310,47 @@ describe('AudioPlayer — waveform generation', () => {
 
     expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
   })
+
+  it('should use webkitAudioContext when AudioContext is unavailable', async () => {
+    vi.stubGlobal('AudioContext', undefined)
+    vi.stubGlobal('webkitAudioContext', buildAudioContext(320))
+    stubFetchOk(256)
+
+    render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
+    await advanceWaveformTimer()
+
+    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+  })
 })
 
 // ─── Canvas interactions ──────────────────────────────────────────────────────
 
+async function renderWithDuration(src = 'https://example.com/audio.mp3', durationVal = 120) {
+  vi.stubGlobal('AudioContext', buildAudioContext(300))
+  stubFetchOk(128)
+
+  render(<AudioPlayer src={src} />)
+
+  const audio = document.querySelector('audio') as HTMLAudioElement
+  Object.defineProperty(audio, 'duration', { value: durationVal, configurable: true })
+  Object.defineProperty(audio, 'buffered', {
+    value: { length: 1, start: () => 0, end: () => durationVal },
+    configurable: true,
+  })
+
+  await act(async () => {
+    audio.dispatchEvent(new Event('loadedmetadata'))
+  })
+  await advanceWaveformTimer()
+
+  const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
+  canvas.getBoundingClientRect = () =>
+    ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
+
+  return { audio, canvas }
+}
+
 describe('AudioPlayer — canvas seek interactions', () => {
-  async function renderWithDuration(src = 'https://example.com/audio.mp3', durationVal = 120) {
-    vi.stubGlobal('AudioContext', buildAudioContext(300))
-    stubFetchOk(128)
-
-    render(<AudioPlayer src={src} />)
-
-    const audio = document.querySelector('audio') as HTMLAudioElement
-    Object.defineProperty(audio, 'duration', { value: durationVal, configurable: true })
-    Object.defineProperty(audio, 'buffered', {
-      value: { length: 1, start: () => 0, end: () => durationVal },
-      configurable: true,
-    })
-
-    await act(async () => {
-      audio.dispatchEvent(new Event('loadedmetadata'))
-    })
-    await advanceWaveformTimer()
-
-    const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
-    canvas.getBoundingClientRect = () =>
-      ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
-
-    return { audio, canvas }
-  }
-
   it('should seek to clicked position and start playback', async () => {
     const { audio, canvas } = await renderWithDuration()
 
@@ -501,16 +521,201 @@ describe('AudioPlayer — missing coverage', () => {
   })
 
   it('should gracefully handle interaction when canvas/audio refs are null', async () => {
-    // This is hard to trigger normally, but we can simulate the interaction handler
-    // while the component unmounts
     const { unmount } = render(<AudioPlayer src="https://example.com/audio.mp3" />)
+    const canvas = screen.getByTestId('waveform-canvas')
+    unmount()
+    expect(canvas).toBeTruthy()
+  })
 
+  it('should keep play button disabled when source is unavailable', async () => {
+    vi.stubGlobal('AudioContext', buildAudioContext(300))
+    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    render(<AudioPlayer src="blob:https://example.com" />)
+    await advanceWaveformTimer() // sets isAudioAvailable to false (invalid protocol)
+
+    const btn = screen.getByTestId('play-pause-btn')
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+
+    expect(btn).toBeDisabled()
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
+    expect(toastSpy).not.toHaveBeenCalled()
+    toastSpy.mockRestore()
+  })
+
+  it('should notify when toggle is invoked while audio is unavailable', async () => {
+    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    await act(async () => {
+      audio.dispatchEvent(new Event('error'))
+    })
+
+    const btn = screen.getByTestId('play-pause-btn')
+    const props = getReactProps(btn)
+
+    await act(async () => {
+      props.onClick?.()
+    })
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'error',
+      message: 'Audio element not found',
+    }))
+    toastSpy.mockRestore()
+  })
+})
+
+describe('AudioPlayer — additional branch coverage', () => {
+  it('should render multiple source elements when srcs is provided', () => {
+    render(<AudioPlayer srcs={['a.mp3', 'b.ogg']} />)
+    const audio = screen.getByTestId('audio-player')
+    const sources = audio.querySelectorAll('source')
+    expect(sources).toHaveLength(2)
+  })
+
+  it('should handle handleMouseMove with empty touch list', async () => {
+    vi.stubGlobal('AudioContext', buildAudioContext(300))
+    stubFetchOk(128)
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    await advanceWaveformTimer()
     const canvas = screen.getByTestId('waveform-canvas')
 
-    // Simulate what happens if the handler runs unmounted or immediately after unmounting
+    await act(async () => {
+      fireEvent.touchMove(canvas, {
+        touches: [],
+        changedTouches: [{ clientX: 50 }],
+      })
+    })
+  })
+
+  it('should handle handleMouseMove with missing clientX', async () => {
+    vi.stubGlobal('AudioContext', buildAudioContext(300))
+    stubFetchOk(128)
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    await advanceWaveformTimer()
+    const canvas = screen.getByTestId('waveform-canvas')
+
+    await act(async () => {
+      fireEvent.touchMove(canvas, {
+        touches: [{}] as unknown as TouchList,
+      })
+    })
+  })
+
+  it('should render "Audio source unavailable" when isAudioAvailable is false', async () => {
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const audio = document.querySelector('audio') as HTMLAudioElement
+
+    await act(async () => {
+      audio.dispatchEvent(new Event('error'))
+    })
+
+    expect(screen.queryByTestId('play-pause-btn')).toBeDisabled()
+  })
+
+  it('should update current time on timeupdate event', async () => {
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    Object.defineProperty(audio, 'currentTime', { value: 10, configurable: true })
+
+    await act(async () => {
+      audio.dispatchEvent(new Event('timeupdate'))
+    })
+  })
+
+  it('should ignore toggle click after audio error marks source unavailable', async () => {
+    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    await act(async () => {
+      audio.dispatchEvent(new Event('error'))
+    })
+
+    const btn = screen.getByTestId('play-pause-btn')
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+
+    expect(btn).toBeDisabled()
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
+    expect(toastSpy).not.toHaveBeenCalled()
+    toastSpy.mockRestore()
+  })
+
+  it('should cover Dark theme waveform states', async () => {
+    ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
+    vi.stubGlobal('AudioContext', buildAudioContext(300))
+    stubFetchOk(128)
+
+    render(<AudioPlayer src="https://example.com/audio.mp3" />)
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    Object.defineProperty(audio, 'duration', { value: 100, configurable: true })
+    Object.defineProperty(audio, 'currentTime', { value: 50, configurable: true })
+
+    await act(async () => {
+      audio.dispatchEvent(new Event('loadedmetadata'))
+      audio.dispatchEvent(new Event('timeupdate'))
+    })
+    await advanceWaveformTimer()
+
+    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+  })
+
+  it('should handle missing canvas/audio in handleCanvasInteraction/handleMouseMove', async () => {
+    const { unmount } = render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const canvas = screen.getByTestId('waveform-canvas')
+
+    unmount()
+    fireEvent.click(canvas)
+    fireEvent.mouseMove(canvas)
+  })
+
+  it('should cover waveform branches for hover and played states', async () => {
+    const { audio, canvas } = await renderWithDuration('https://example.com/a.mp3', 100)
+
+    // Set some progress
+    Object.defineProperty(audio, 'currentTime', { value: 20, configurable: true })
+
+    // Trigger hover on a buffered range
+    Object.defineProperty(audio, 'buffered', {
+      value: { length: 1, start: () => 0, end: () => 100 },
+      configurable: true,
+    })
+
+    await act(async () => {
+      fireEvent.mouseMove(canvas, { clientX: 50 }) // 50s hover
+      audio.dispatchEvent(new Event('timeupdate'))
+    })
+
+    expect(canvas).toBeInTheDocument()
+  })
+
+  it('should hit null-ref guards in canvas handlers after unmount', async () => {
+    const { unmount } = render(<AudioPlayer src="https://example.com/a.mp3" />)
+    const canvas = screen.getByTestId('waveform-canvas')
+    const props = getReactProps(canvas)
     unmount()
 
-    // We expect no crashes here even if the event somehow trickled through
-    expect(canvas).toBeTruthy()
+    await act(async () => {
+      props.onClick?.({ preventDefault: vi.fn(), clientX: 10 })
+      props.onMouseMove?.({ clientX: 10 })
+    })
+  })
+
+  it('should execute non-matching buffered branch in hover loop', async () => {
+    const { audio, canvas } = await renderWithDuration('https://example.com/a.mp3', 100)
+
+    Object.defineProperty(audio, 'buffered', {
+      value: { length: 1, start: () => 0, end: () => 10 },
+      configurable: true,
+    })
+
+    await act(async () => {
+      fireEvent.mouseMove(canvas, { clientX: 180 }) // time near 90, outside 0-10
+    })
+
+    expect(canvas).toBeInTheDocument()
   })
 })

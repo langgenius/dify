@@ -167,6 +167,30 @@ describe('InputNumber Component', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('keeps increment guard when disabled even if button is force-clickable', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} disabled value={5} />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+
+    // Remove native disabled to force event dispatch and hit component-level guard.
+    incrementBtn.removeAttribute('disabled')
+    fireEvent.click(incrementBtn)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps decrement guard when disabled even if button is force-clickable', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} disabled value={5} />)
+    const decrementBtn = screen.getByRole('button', { name: /decrement/i })
+
+    // Remove native disabled to force event dispatch and hit component-level guard.
+    decrementBtn.removeAttribute('disabled')
+    fireEvent.click(decrementBtn)
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('applies large-size classes for control buttons', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} size="large" />)

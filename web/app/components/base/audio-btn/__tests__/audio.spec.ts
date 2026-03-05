@@ -285,11 +285,21 @@ describe('AudioPlayer', () => {
       audio.emit('play')
       audio.emit('ended')
       audio.emit('error')
+      audio.emit('paused')
+      audio.emit('loaded')
+      audio.emit('timeupdate')
+      audio.emit('loadeddate')
+      audio.emit('canplay')
 
       expect(player.callback).toBe(callback)
       expect(callback).toHaveBeenCalledWith('play')
       expect(callback).toHaveBeenCalledWith('ended')
       expect(callback).toHaveBeenCalledWith('error')
+      expect(callback).toHaveBeenCalledWith('paused')
+      expect(callback).toHaveBeenCalledWith('loaded')
+      expect(callback).toHaveBeenCalledWith('timeupdate')
+      expect(callback).toHaveBeenCalledWith('loadeddate')
+      expect(callback).toHaveBeenCalledWith('canplay')
     })
 
     it('should initialize source buffer only once when sourceopen fires multiple times', () => {
@@ -307,7 +317,10 @@ describe('AudioPlayer', () => {
   describe('playback control', () => {
     it('should request streaming audio when playAudio is called before loading', async () => {
       mockTextToAudioStream.mockResolvedValue(
-        makeAudioResponse(200, [{ value: new Uint8Array([1, 2, 3]), done: true }]),
+        makeAudioResponse(200, [
+          { value: new Uint8Array([4, 5]), done: false },
+          { value: new Uint8Array([1, 2, 3]), done: true },
+        ]),
       )
 
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
