@@ -188,31 +188,26 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             else:
                 conversation.updated_at = naive_utc_now()
 
-            message = Message(
+        if not conversation:
+            conversation = Conversation(
                 app_id=app_config.app_id,
                 model_provider=model_provider,
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-                conversation_id=conversation.id,
-                inputs=application_generate_entity.inputs,
-                query=application_generate_entity.query,
-                message="",
-                message_tokens=0,
-                message_unit_price=0,
-                message_price_unit=0,
-                answer="",
-                answer_tokens=0,
-                answer_unit_price=0,
-                answer_price_unit=0,
-                parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
-                provider_response_latency=0,
-                total_price=0,
-                currency="USD",
+                mode=app_config.app_mode.value,
+                name=conversation_name,
+                summary=None,
+                _inputs=inputs_payload,
+                introduction=introduction,
+                system_instruction="",
+                system_instruction_tokens=0,
+                status="normal",
                 invoke_from=application_generate_entity.invoke_from.value,
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
-                app_mode=app_config.app_mode,
+                read_at=None,
+                read_account_id=None,
             )
 
             db.session.add(message)
