@@ -1,6 +1,5 @@
 import type { ModelProvider } from '../declarations'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { IS_CLOUD_EDITION } from '@/config'
 import {
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
@@ -74,7 +73,7 @@ export function useCredentialPanelState(provider: ModelProvider): CredentialPane
   const customConfig = provider.custom_configuration
   const preferredType = provider.preferred_provider_type
 
-  const supportsCredits = systemConfig.enabled && IS_CLOUD_EDITION
+  const supportsCredits = systemConfig.enabled
   const isCustomConfigured = customConfig.status === CustomConfigurationStatusEnum.active
 
   const priority: UsagePriority = !supportsCredits
