@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 
-from core.workflow.context.execution_context import (
+from dify_graph.context.execution_context import (
     AppContext,
     ExecutionContext,
     ExecutionContextBuilder,
@@ -286,7 +286,7 @@ class TestCaptureCurrentContext:
 
     def test_capture_current_context_returns_context(self):
         """Test that capture_current_context returns a valid context."""
-        from core.workflow.context.execution_context import capture_current_context
+        from dify_graph.context.execution_context import capture_current_context
 
         result = capture_current_context()
 
@@ -303,7 +303,7 @@ class TestCaptureCurrentContext:
         test_var = contextvars.ContextVar("capture_test_var")
         test_var.set("test_value_123")
 
-        from core.workflow.context.execution_context import capture_current_context
+        from dify_graph.context.execution_context import capture_current_context
 
         result = capture_current_context()
 
@@ -313,12 +313,12 @@ class TestCaptureCurrentContext:
 
 class TestTenantScopedContextRegistry:
     def setup_method(self):
-        from core.workflow.context import reset_context_provider
+        from dify_graph.context import reset_context_provider
 
         reset_context_provider()
 
     def teardown_method(self):
-        from core.workflow.context import reset_context_provider
+        from dify_graph.context import reset_context_provider
 
         reset_context_provider()
 
@@ -333,7 +333,7 @@ class TestTenantScopedContextRegistry:
         assert read_context("workflow.sandbox", tenant_id="t2").base_url == "http://t2"
 
     def test_missing_provider_raises_keyerror(self):
-        from core.workflow.context import ContextProviderNotFoundError
+        from dify_graph.context import ContextProviderNotFoundError
 
         with pytest.raises(ContextProviderNotFoundError):
             read_context("missing", tenant_id="unknown")

@@ -152,7 +152,7 @@ class RedisSubscriptionBase(Subscription):
         """Iterator for consuming messages from the subscription."""
         while not self._closed.is_set():
             try:
-                item = self._queue.get(timeout=0.1)
+                item = self._queue.get(timeout=1)
             except queue.Empty:
                 continue
 

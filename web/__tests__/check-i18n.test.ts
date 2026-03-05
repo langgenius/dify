@@ -588,7 +588,7 @@ export default translation
           const trimmedKeyLine = keyLine.trim()
 
           // If key line ends with ":" (not complete value), it's likely multiline
-          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !/:\s*['"`]/.exec(trimmedKeyLine)) {
             // Find the value lines that belong to this key
             let currentLine = targetLineIndex + 1
             let foundValue = false
@@ -604,7 +604,7 @@ export default translation
               }
 
               // Check if this line starts a new key (indicates end of current value)
-              if (trimmed.match(/^\w+\s*:/))
+              if (/^\w+\s*:/.exec(trimmed))
                 break
 
               // Check if this line is part of the value

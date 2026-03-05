@@ -33,7 +33,7 @@ Then, configure the environment variables. Create a file named `.env.local` in t
 cp .env.example .env.local
 ```
 
-```
+```txt
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 # The deployment edition, SELF_HOSTED
@@ -88,8 +88,6 @@ If you want to customize the host and port:
 ```bash
 pnpm run start --port=3001 --host=0.0.0.0
 ```
-
-If you want to customize the number of instances launched by PM2, you can configure `PM2_INSTANCES` in `docker-compose.yaml` or `Dockerfile`.
 
 ## Storybook
 
