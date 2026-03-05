@@ -35,13 +35,13 @@ class DatasetPermissionTestDataFactory:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
-
         if tenant is None:
             tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
-            db.session.add(tenant)
-            db.session.commit()
+            db.session.add_all([account, tenant])
+        else:
+            db.session.add(account)
+
+        db.session.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -97,7 +97,7 @@ class DatasetPermissionTestDataFactory:
         return permission
 
     @staticmethod
-    def create_user_list_mock(user_ids: list[str]) -> list[dict[str, str]]:
+    def build_user_list_payload(user_ids: list[str]) -> list[dict[str, str]]:
         """Build the request payload shape used by partial-member list updates."""
         return [{"user_id": user_id} for user_id in user_ids]
 
@@ -192,7 +192,7 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
             tenant=tenant,
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
+        user_list = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
 
         # Act
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, user_list)
@@ -225,10 +225,10 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
-        old_users = DatasetPermissionTestDataFactory.create_user_list_mock([old_member_1.id, old_member_2.id])
+        old_users = DatasetPermissionTestDataFactory.build_user_list_payload([old_member_1.id, old_member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, old_users)
 
-        new_users = DatasetPermissionTestDataFactory.create_user_list_mock([new_member_1.id, new_member_2.id])
+        new_users = DatasetPermissionTestDataFactory.build_user_list_payload([new_member_1.id, new_member_2.id])
 
         # Act
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, new_users)
@@ -252,7 +252,7 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
             tenant=tenant,
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
+        users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
 
         # Act
@@ -280,9 +280,9 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         DatasetPermissionService.update_partial_member_list(
             tenant.id,
             dataset.id,
-            DatasetPermissionTestDataFactory.create_user_list_mock([existing_member.id]),
+            DatasetPermissionTestDataFactory.build_user_list_payload([existing_member.id]),
         )
-        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([replacement_member.id])
+        user_list = DatasetPermissionTestDataFactory.build_user_list_payload([replacement_member.id])
         rollback_called = {"count": 0}
         original_rollback = db.session.rollback
 
@@ -326,7 +326,7 @@ class TestDatasetPermissionServiceClearPartialMemberList:
             tenant=tenant,
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
+        users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
 
         # Act
@@ -366,7 +366,7 @@ class TestDatasetPermissionServiceClearPartialMemberList:
             tenant=tenant,
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
+        users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
         rollback_called = {"count": 0}
         original_rollback = db.session.rollback
