@@ -74,6 +74,16 @@ from tasks.mail_reset_password_task import (
 logger = logging.getLogger(__name__)
 
 
+def _try_join_enterprise_default_workspace(account_id: str) -> None:
+    """Best-effort join to enterprise default workspace."""
+    if not dify_config.ENTERPRISE_ENABLED:
+        return
+
+    from services.enterprise.enterprise_service import try_join_default_workspace
+
+    try_join_default_workspace(account_id)
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
@@ -287,13 +297,14 @@ class AccountService:
             email=email, name=name, interface_language=interface_language, password=password
         )
 
-        TenantService.create_owner_tenant_if_not_exist(account=account)
+        try:
+            TenantService.create_owner_tenant_if_not_exist(account=account)
+        except Exception:
+            # Enterprise-only side-effect should run independently from personal workspace creation.
+            _try_join_enterprise_default_workspace(str(account.id))
+            raise
 
-        # Enterprise-only: best-effort add the account to the default workspace (does not switch current workspace).
-        if dify_config.ENTERPRISE_ENABLED:
-            from services.enterprise.enterprise_service import try_join_default_workspace
-
-            try_join_default_workspace(str(account.id))
+        _try_join_enterprise_default_workspace(str(account.id))
 
         return account
 
@@ -1367,18 +1378,18 @@ class RegisterService:
                 and create_workspace_required
                 and FeatureService.get_system_features().license.workspaces.is_available()
             ):
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
+                try:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
+                except Exception:
+                    _try_join_enterprise_default_workspace(str(account.id))
+                    raise
 
             db.session.commit()
 
-            # Enterprise-only: best-effort add the account to the default workspace (does not switch current workspace).
-            if dify_config.ENTERPRISE_ENABLED:
-                from services.enterprise.enterprise_service import try_join_default_workspace
-
-                try_join_default_workspace(str(account.id))
+            _try_join_enterprise_default_workspace(str(account.id))
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             logger.exception("Register failed")
