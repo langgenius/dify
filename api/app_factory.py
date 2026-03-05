@@ -34,47 +34,42 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        # Enterprise license validation for console API endpoints
-        if dify_config.ENTERPRISE_ENABLED and request.path.startswith("/console/api"):
-            # Skip license check for auth-related endpoints and system endpoints
-            exempt_paths = [
-                "/console/api/login",
-                "/console/api/logout",
-                "/console/api/oauth",
-                "/console/api/setup",
-                "/console/api/init",
-                "/console/api/forgot-password",
-                "/console/api/email-code-login",
-                "/console/api/activation",
-                "/console/api/data-source-oauth",
-                "/console/api/features",  # Allow fetching features to show license status
-            ]
+        # Enterprise license validation for API endpoints (both console and webapp)
+        # When license expires, ONLY allow features API - everything else is blocked
+        if dify_config.ENTERPRISE_ENABLED:
+            is_console_api = request.path.startswith("/console/api")
+            is_webapp_api = request.path.startswith("/api") and not is_console_api
 
-            # Check if current path is exempt
-            is_exempt = any(request.path.startswith(path) for path in exempt_paths)
+            if is_console_api or is_webapp_api:
+                # Only exempt features endpoints - block everything else including auth
+                # Admin can access through admin dashboard (separate service)
+                if is_console_api:
+                    is_exempt = request.path.startswith("/console/api/features")
+                else:  # webapp API
+                    is_exempt = request.path.startswith("/api/system-features")
 
-            if not is_exempt:
-                try:
-                    # Check license status
-                    system_features = FeatureService.get_system_features(is_authenticated=True)
-                    if system_features.license.status in [
-                        LicenseStatus.INACTIVE,
-                        LicenseStatus.EXPIRED,
-                        LicenseStatus.LOST,
-                    ]:
-                        # Raise UnauthorizedAndForceLogout to trigger frontend reload and logout
-                        # Frontend checks code === 'unauthorized_and_force_logout' and calls location.reload()
-                        raise UnauthorizedAndForceLogout(
-                            f"Enterprise license is {system_features.license.status.value}. "
-                            "Please contact your administrator."
-                        )
-                except UnauthorizedAndForceLogout:
-                    # Re-raise to let Flask error handler convert to proper JSON response
-                    raise
-                except Exception:
-                    # If license check fails, log but don't block the request
-                    # This prevents service disruption if enterprise API is temporarily unavailable
-                    logger.exception("Failed to check enterprise license status")
+                if not is_exempt:
+                    try:
+                        # Check license status
+                        system_features = FeatureService.get_system_features(is_authenticated=True)
+                        if system_features.license.status in [
+                            LicenseStatus.INACTIVE,
+                            LicenseStatus.EXPIRED,
+                            LicenseStatus.LOST,
+                        ]:
+                            # Raise UnauthorizedAndForceLogout to trigger frontend reload and logout
+                            # Frontend checks code === 'unauthorized_and_force_logout' and calls location.reload()
+                            raise UnauthorizedAndForceLogout(
+                                f"Enterprise license is {system_features.license.status.value}. "
+                                "Please contact your administrator."
+                            )
+                    except UnauthorizedAndForceLogout:
+                        # Re-raise to let Flask error handler convert to proper JSON response
+                        raise
+                    except Exception:
+                        # If license check fails, log but don't block the request
+                        # This prevents service disruption if enterprise API is temporarily unavailable
+                        logger.exception("Failed to check enterprise license status")
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
