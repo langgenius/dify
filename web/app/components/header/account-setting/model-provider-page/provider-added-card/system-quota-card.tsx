@@ -40,12 +40,12 @@ const SystemQuotaCard = ({
   )
 }
 
-const Label = ({ children }: { children: ReactNode }) => {
+const Label = ({ children, className }: { children: ReactNode, className?: string }) => {
   const variant = useContext(VariantContext)
   return (
     <div className={cn(
-      'relative z-[1] truncate px-1.5 pt-1 system-xs-medium',
-      labelVariants[variant],
+      'relative z-[1] flex items-center gap-1 truncate px-1.5 pt-1 system-xs-medium',
+      className ?? labelVariants[variant],
     )}
     >
       {children}

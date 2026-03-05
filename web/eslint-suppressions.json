@@ -4857,11 +4857,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/credential-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-list-item.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -6340,11 +6335,6 @@
     }
   },
   "app/components/workflow-app/store/workflow/workflow-slice.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/__tests__/trigger-status-sync.test.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -8360,11 +8350,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/tool/__tests__/output-schema-utils.test.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/tool/components/copy-id.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -8487,11 +8472,6 @@
   "app/components/workflow/nodes/trigger-plugin/use-config.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/trigger-plugin/utils/__tests__/form-helpers.test.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/trigger-plugin/utils/form-helpers.ts": {
