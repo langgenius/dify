@@ -99,7 +99,7 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
 
 class ProviderNotSupportTextToSpeechError(BaseHTTPException):
     error_code = "provider_not_support_text_to_speech"
-    description = "Provider not support text to speech."
+    description = "Provider does not support text-to-speech functionality."
     code = 400
 
 
