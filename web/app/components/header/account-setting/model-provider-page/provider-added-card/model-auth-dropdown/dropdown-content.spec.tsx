@@ -5,7 +5,7 @@ import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../
 import DropdownContent from './dropdown-content'
 
 const mockHandleOpenModal = vi.fn()
-const mockHandleActiveCredential = vi.fn()
+const mockActivate = vi.fn()
 const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
@@ -15,12 +15,19 @@ vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
 }))
 
+vi.mock('./use-activate-credential', () => ({
+  useActivateCredential: () => ({
+    selectedCredentialId: 'cred-1',
+    isActivating: false,
+    activate: mockActivate,
+  }),
+}))
+
 vi.mock('../../model-auth/hooks', () => ({
   useAuth: () => ({
     openConfirmDelete: mockOpenConfirmDelete,
     closeConfirmDelete: mockCloseConfirmDelete,
     doingAction: false,
-    handleActiveCredential: mockHandleActiveCredential,
     handleConfirmDelete: mockHandleConfirmDelete,
     deleteCredentialId: mockDeleteCredentialId,
     handleOpenModal: mockHandleOpenModal,
@@ -300,7 +307,7 @@ describe('DropdownContent', () => {
       expect(screen.getByText(/noApiKeysDescription/)).toBeInTheDocument()
     })
 
-    it('should call handleActiveCredential and close on credential item click', () => {
+    it('should call activate without closing on credential item click', () => {
       render(
         <DropdownContent
           provider={createProvider()}
@@ -311,12 +318,12 @@ describe('DropdownContent', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('click-cred-1'))
+      fireEvent.click(screen.getByTestId('click-cred-2'))
 
-      expect(mockHandleActiveCredential).toHaveBeenCalledWith(
-        expect.objectContaining({ credential_id: 'cred-1' }),
+      expect(mockActivate).toHaveBeenCalledWith(
+        expect.objectContaining({ credential_id: 'cred-2' }),
       )
-      expect(onClose).toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
     })
 
     it('should call handleOpenModal and close on edit credential', () => {

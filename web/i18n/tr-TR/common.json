@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Bu model kaldırıldı. Lütfen bir model ekleyin veya başka bir model seçin.",
   "modelProvider.setupModelFirst": "Lütfen önce modelinizi ayarlayın",
   "modelProvider.showModels": "Modelleri Göster",
-  "modelProvider.showModelsNum": "{{num}} Modeli Göster",
   "modelProvider.showMoreModelProvider": "Daha fazla model sağlayıcı göster",
   "modelProvider.speechToTextModel.key": "Konuşmadan Metne Modeli",
   "modelProvider.speechToTextModel.tip": "Konuşmada konuşmadan metne giriş için varsayılan modeli ayarlayın.",

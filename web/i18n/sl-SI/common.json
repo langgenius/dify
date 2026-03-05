@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Ta model je bil odstranjen. Prosimo, dodajte model ali izberite drugega.",
   "modelProvider.setupModelFirst": "Najprej nastavite svoj model",
   "modelProvider.showModels": "Prikaži modele",
-  "modelProvider.showModelsNum": "Prikaži {{num}} modelov",
   "modelProvider.showMoreModelProvider": "Prikaži več ponudnikov modelov",
   "modelProvider.speechToTextModel.key": "Model za pretvorbo govora v besedilo",
   "modelProvider.speechToTextModel.tip": "Nastavite privzeti model za vnos govora v besedilo v pogovoru.",

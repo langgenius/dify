@@ -34,6 +34,13 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { isCurrentWorkspaceManager } = useAppContext()
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
+  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    input: {
+      params: {
+        provider: provider.provider,
+      },
+    },
+  })
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
@@ -42,12 +49,13 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
 
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.modelProviders.models.key(),
+      queryKey: modelProviderModelListQueryKey,
+      exact: true,
       refetchType: 'none',
     })
     updateModelList(model.model_type)
     onChange?.(provider.provider)
-  }, [model.model, model.model_type, onChange, provider.provider, queryClient, updateModelList])
+  }, [model.model, model.model_type, modelProviderModelListQueryKey, onChange, provider.provider, queryClient, updateModelList])
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
 
@@ -66,7 +74,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         modelName={model.model}
       />
       <ModelName
-        className="system-md-regular grow text-text-secondary"
+        className="grow text-text-secondary system-md-regular"
         modelItem={model}
         showModelType
         showMode

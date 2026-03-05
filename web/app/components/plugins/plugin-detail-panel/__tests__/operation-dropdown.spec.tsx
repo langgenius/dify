@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
-import { cloneElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { cloneElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource } from '../../types'
 import OperationDropdown from '../operation-dropdown'

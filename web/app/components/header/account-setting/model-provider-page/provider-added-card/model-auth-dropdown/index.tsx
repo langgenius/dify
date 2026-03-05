@@ -39,7 +39,12 @@ function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key:
   return { text, variant: 'secondary' as const }
 }
 
-function ModelAuthDropdown({ provider, state, isChangingPriority, onChangePriority }: ModelAuthDropdownProps) {
+function ModelAuthDropdown({
+  provider,
+  state,
+  isChangingPriority,
+  onChangePriority,
+}: ModelAuthDropdownProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 

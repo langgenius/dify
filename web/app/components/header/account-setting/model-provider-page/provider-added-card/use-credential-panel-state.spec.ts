@@ -104,7 +104,7 @@ describe('useCredentialPanelState', () => {
       expect(result.current.priority).toBe('apiKey')
     })
 
-    it('should return api-unavailable when API key unauthorized', () => {
+    it('should return credits-fallback when API key unauthorized and credits available', () => {
       const provider = createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -117,10 +117,10 @@ describe('useCredentialPanelState', () => {
 
       const { result } = renderHook(() => useCredentialPanelState(provider))
 
-      expect(result.current.variant).toBe('api-required-configure')
+      expect(result.current.variant).toBe('credits-fallback')
     })
 
-    it('should return api-required-add when no credentials exist', () => {
+    it('should return credits-fallback when no credentials and credits available', () => {
       const provider = createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -131,7 +131,41 @@ describe('useCredentialPanelState', () => {
 
       const { result } = renderHook(() => useCredentialPanelState(provider))
 
-      expect(result.current.variant).toBe('api-required-add')
+      expect(result.current.variant).toBe('credits-fallback')
+    })
+
+    it('should return no-usage when no credentials and credits exhausted', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      })
+
+      const { result } = renderHook(() => useCredentialPanelState(provider))
+
+      expect(result.current.variant).toBe('no-usage')
+    })
+
+    it('should return api-unavailable when credential with name unauthorized and credits exhausted', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      })
+
+      const { result } = renderHook(() => useCredentialPanelState(provider))
+
+      expect(result.current.variant).toBe('api-unavailable')
     })
   })
 

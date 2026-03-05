@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "このモデルは削除されました。別のモデルを追加するか、別のモデルを選択してください。",
   "modelProvider.setupModelFirst": "まずモデルをセットアップしてください",
   "modelProvider.showModels": "モデルの表示",
-  "modelProvider.showModelsNum": "{{num}}のモデルを表示",
   "modelProvider.showMoreModelProvider": "より多くのモデルプロバイダを表示",
   "modelProvider.speechToTextModel.key": "音声-to-テキストモデル",
   "modelProvider.speechToTextModel.tip": "会話での音声-to-テキスト入力に使用するデフォルトモデルを設定します。",

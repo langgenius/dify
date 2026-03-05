@@ -8,6 +8,7 @@ type ApiKeySectionProps = {
   provider: ModelProvider
   credentials: Credential[]
   selectedCredentialId: string | undefined
+  isActivating?: boolean
   onItemClick: (credential: Credential, model?: CustomModel) => void
   onEdit: (credential?: Credential) => void
   onDelete: (credential?: Credential) => void
@@ -18,6 +19,7 @@ function ApiKeySection({
   provider,
   credentials,
   selectedCredentialId,
+  isActivating,
   onItemClick,
   onEdit,
   onDelete,
@@ -62,6 +64,7 @@ function ApiKeySection({
             <CredentialItem
               key={credential.credential_id}
               credential={credential}
+              disabled={isActivating}
               showSelectedIcon
               selectedCredentialId={selectedCredentialId}
               onItemClick={onItemClick}

@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Este modelo foi removido. Adicione um modelo ou selecione outro modelo.",
   "modelProvider.setupModelFirst": "Por favor, configure seu modelo primeiro",
   "modelProvider.showModels": "Mostrar Modelos",
-  "modelProvider.showModelsNum": "Mostrar {{num}} Modelos",
   "modelProvider.showMoreModelProvider": "Mostrar mais provedor de modelo",
   "modelProvider.speechToTextModel.key": "Modelo de Fala para Texto",
   "modelProvider.speechToTextModel.tip": "Defina o modelo padrão para entrada de fala para texto na conversa.",

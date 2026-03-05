@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "該模型已被刪除。請添模型或選擇其他模型。",
   "modelProvider.setupModelFirst": "請先設定您的模型",
   "modelProvider.showModels": "顯示模型",
-  "modelProvider.showModelsNum": "顯示 {{num}} 個模型",
   "modelProvider.showMoreModelProvider": "顯示更多模型提供商",
   "modelProvider.speechToTextModel.key": "語音轉文字模型",
   "modelProvider.speechToTextModel.tip": "設定對話中語音轉文字輸入的預設使用模型。",

@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Model ini telah dihapus. Silakan tambahkan model atau pilih model lain.",
   "modelProvider.setupModelFirst": "Silakan atur model Anda terlebih dahulu",
   "modelProvider.showModels": "Tampilkan Model",
-  "modelProvider.showModelsNum": "Tampilkan {{num}} Model",
   "modelProvider.showMoreModelProvider": "Tampilkan lebih banyak penyedia model",
   "modelProvider.speechToTextModel.key": "Model Ucapan-ke-Teks",
   "modelProvider.speechToTextModel.tip": "Atur model default untuk input ucapan-ke-teks dalam percakapan.",

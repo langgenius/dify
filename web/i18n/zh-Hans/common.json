@@ -428,7 +428,6 @@
   "modelProvider.selector.tip": "该模型已被删除。请添模型或选择其他模型。",
   "modelProvider.setupModelFirst": "请先设置您的模型",
   "modelProvider.showModels": "显示模型",
-  "modelProvider.showModelsNum": "显示 {{num}} 个模型",
   "modelProvider.showMoreModelProvider": "显示更多模型提供商",
   "modelProvider.speechToTextModel.key": "语音转文本模型",
   "modelProvider.speechToTextModel.tip": "设置对话中语音转文字输入的默认使用模型。",

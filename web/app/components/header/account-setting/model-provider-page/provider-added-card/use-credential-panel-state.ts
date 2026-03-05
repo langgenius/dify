@@ -9,6 +9,7 @@ export type UsagePriority = 'credits' | 'apiKey' | 'apiKeyOnly'
 
 export type CardVariant
   = | 'credits-active'
+    | 'credits-fallback'
     | 'credits-exhausted'
     | 'no-usage'
     | 'api-fallback'
@@ -56,6 +57,13 @@ function deriveVariant(
 
   if (hasCredential && authorized)
     return 'api-active'
+
+  if (priority === 'apiKey' && !isExhausted)
+    return 'credits-fallback'
+
+  if (priority === 'apiKey' && !hasCredential)
+    return 'no-usage'
+
   if (hasCredential && !authorized)
     return credentialName ? 'api-unavailable' : 'api-required-configure'
   return 'api-required-add'

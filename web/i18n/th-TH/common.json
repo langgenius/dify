@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "รุ่นนี้ถูกลบออกแล้ว โปรดเพิ่มรุ่นหรือเลือกรุ่นอื่น",
   "modelProvider.setupModelFirst": "โปรดตั้งค่าโมเดลของคุณก่อน",
   "modelProvider.showModels": "แสดงโมเดล",
-  "modelProvider.showModelsNum": "แสดง {{num}} โมเดล",
   "modelProvider.showMoreModelProvider": "แสดงผู้ให้บริการรุ่นเพิ่มเติม",
   "modelProvider.speechToTextModel.key": "โมเดลคําพูดเป็นข้อความ",
   "modelProvider.speechToTextModel.tip": "ตั้งค่าโมเดลเริ่มต้นสําหรับการป้อนข้อมูลคําพูดเป็นข้อความในการสนทนา",

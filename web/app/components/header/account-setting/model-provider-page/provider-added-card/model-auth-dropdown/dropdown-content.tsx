@@ -17,6 +17,7 @@ import ApiKeySection from './api-key-section'
 import CreditsExhaustedAlert from './credits-exhausted-alert'
 import CreditsFallbackAlert from './credits-fallback-alert'
 import UsagePrioritySection from './usage-priority-section'
+import { useActivateCredential } from './use-activate-credential'
 
 const EMPTY_CREDENTIALS: Credential[] = []
 
@@ -36,25 +37,18 @@ function DropdownContent({
   onClose,
 }: DropdownContentProps) {
   const { t } = useTranslation()
-  const {
-    current_credential_id,
-    available_credentials,
-  } = provider.custom_configuration
+  const { available_credentials } = provider.custom_configuration
 
   const {
     openConfirmDelete,
     closeConfirmDelete,
     doingAction,
-    handleActiveCredential,
     handleConfirmDelete,
     deleteCredentialId,
     handleOpenModal,
   } = useAuth(provider, ConfigurationMethodEnum.predefinedModel)
 
-  const handleItemClick = useCallback((credential: Credential) => {
-    handleActiveCredential(credential)
-    onClose()
-  }, [handleActiveCredential, onClose])
+  const { selectedCredentialId, isActivating, activate } = useActivateCredential(provider)
 
   const handleEdit = useCallback((credential?: Credential) => {
     handleOpenModal(credential)
@@ -98,8 +92,9 @@ function DropdownContent({
         <ApiKeySection
           provider={provider}
           credentials={available_credentials ?? EMPTY_CREDENTIALS}
-          selectedCredentialId={current_credential_id}
-          onItemClick={handleItemClick}
+          selectedCredentialId={selectedCredentialId}
+          isActivating={isActivating}
+          onItemClick={activate}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onAdd={handleAdd}

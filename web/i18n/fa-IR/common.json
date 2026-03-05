@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "این مدل حذف شده است. لطفاً یک مدل اضافه کنید یا مدل دیگری را انتخاب کنید.",
   "modelProvider.setupModelFirst": "لطفاً ابتدا مدل خود را تنظیم کنید",
   "modelProvider.showModels": "نمایش مدل‌ها",
-  "modelProvider.showModelsNum": "نمایش {{num}} مدل",
   "modelProvider.showMoreModelProvider": "نمایش ارائه‌دهندگان مدل بیشتر",
   "modelProvider.speechToTextModel.key": "مدل تبدیل گفتار به متن",
   "modelProvider.speechToTextModel.tip": "مدل پیش‌فرض را برای ورودی گفتار به متن در مکالمه تنظیم کنید.",

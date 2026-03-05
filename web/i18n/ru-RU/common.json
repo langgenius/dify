@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Эта модель была удалена. Пожалуйста, добавьте модель или выберите другую модель.",
   "modelProvider.setupModelFirst": "Пожалуйста, сначала настройте свою модель",
   "modelProvider.showModels": "Показать модели",
-  "modelProvider.showModelsNum": "Показать {{num}} моделей",
   "modelProvider.showMoreModelProvider": "Показать больше поставщиков моделей",
   "modelProvider.speechToTextModel.key": "Модель преобразования речи в текст",
   "modelProvider.speechToTextModel.tip": "Установите модель по умолчанию для ввода речи в текст в разговоре.",

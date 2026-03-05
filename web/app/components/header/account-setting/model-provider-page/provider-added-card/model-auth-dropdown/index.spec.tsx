@@ -9,10 +9,17 @@ vi.mock('../../model-auth/hooks', () => ({
     openConfirmDelete: vi.fn(),
     closeConfirmDelete: vi.fn(),
     doingAction: false,
-    handleActiveCredential: vi.fn(),
     handleConfirmDelete: vi.fn(),
     deleteCredentialId: null,
     handleOpenModal: vi.fn(),
+  }),
+}))
+
+vi.mock('./use-activate-credential', () => ({
+  useActivateCredential: () => ({
+    selectedCredentialId: undefined,
+    isActivating: false,
+    activate: vi.fn(),
   }),
 }))
 
