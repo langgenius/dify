@@ -33,5 +33,5 @@ def upgrade():
 
 def downgrade():
     with op.batch_alter_table('conversations', schema=None) as batch_op:
-        batch_op.drop_index('conversation_app_updated_at_idx', postgresql_where=sa.text('is_deleted IS false'))
-        batch_op.drop_index('conversation_app_created_at_idx', postgresql_where=sa.text('is_deleted IS false'))
+        batch_op.drop_index('conversation_app_updated_at_idx')
+        batch_op.drop_index('conversation_app_created_at_idx')
