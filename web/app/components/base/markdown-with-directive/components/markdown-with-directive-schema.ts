@@ -7,7 +7,10 @@ export const withIconCardListPropsSchema = z.object(commonSchema).strict()
 
 export const withIconCardItemPropsSchema = z.object({
   ...commonSchema,
-  icon: z.string().trim(),
+  icon: z.string().trim().url().refine(
+    value => /^https?:\/\//i.test(value),
+    'icon must be a http/https URL',
+  ),
 }).strict()
 
 export const directivePropsSchemas = {

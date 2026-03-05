@@ -1,4 +1,5 @@
 import type { Components } from 'react-markdown'
+import DOMPurify from 'dompurify'
 import ReactMarkdown from 'react-markdown'
 import remarkDirective from 'remark-directive'
 import { visit } from 'unist-util-visit'
@@ -169,11 +170,27 @@ type MarkdownWithDirectiveProps = {
   markdown: string
 }
 
+function sanitizeMarkdownInput(markdown: string): string {
+  if (!markdown)
+    return ''
+
+  if (typeof DOMPurify.sanitize === 'function') {
+    return DOMPurify.sanitize(markdown, {
+      ALLOWED_ATTR: [],
+      ALLOWED_TAGS: [],
+    })
+  }
+
+  return markdown
+}
+
 export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) {
-  const normalizedMarkdown = normalizeDirectiveAttributeBlocks(markdown)
+  const sanitizedMarkdown = sanitizeMarkdownInput(markdown)
+  const normalizedMarkdown = normalizeDirectiveAttributeBlocks(sanitizedMarkdown)
 
   return (
     <ReactMarkdown
+      skipHtml
       remarkPlugins={[remarkDirective, directivePlugin]}
       components={directiveComponents}
     >
