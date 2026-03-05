@@ -160,6 +160,8 @@ if (import.meta.hot) {
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
+  const isStorybook = process.env.STORYBOOK === 'true'
+    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
     plugins: isTest
@@ -176,14 +178,19 @@ export default defineConfig(({ mode }) => {
             },
           } as Plugin,
         ]
-      : [
-          Inspect(),
-          createCodeInspectorPlugin(),
-          createForceInspectorClientInjectionPlugin(),
-          react(),
-          vinext(),
-          customI18nHmrPlugin(),
-        ],
+      : isStorybook
+        ? [
+            tsconfigPaths(),
+            react(),
+          ]
+        : [
+            Inspect(),
+            createCodeInspectorPlugin(),
+            createForceInspectorClientInjectionPlugin(),
+            react(),
+            vinext(),
+            customI18nHmrPlugin(),
+          ],
     resolve: {
       alias: {
         '~@': __dirname,
@@ -191,7 +198,7 @@ export default defineConfig(({ mode }) => {
     },
 
     // vinext related config
-    ...(!isTest
+    ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
