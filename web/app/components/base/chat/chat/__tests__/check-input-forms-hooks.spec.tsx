@@ -5,12 +5,8 @@ import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({ notify: mockNotify }),
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
 }))
 
 describe('useCheckInputsForms', () => {
@@ -30,10 +26,12 @@ describe('useCheckInputsForms', () => {
     const isValid = result.current.checkInputsForm({}, inputsForm as InputForm[])
 
     expect(isValid).toBe(false)
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'errorMessage.valueOfVarRequired',
-    }))
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: expect.stringContaining('appDebug.errorMessage.valueOfVarRequired'),
+      }),
+    )
   })
 
   it('should ignore missing but not required inputs', () => {
@@ -56,7 +54,7 @@ describe('useCheckInputsForms', () => {
     expect(isValid).toBeUndefined()
     expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
       type: 'info',
-      message: 'errorMessage.waitForFileUpload',
+      message: 'appDebug.errorMessage.waitForFileUpload',
     }))
   })
 
@@ -71,7 +69,7 @@ describe('useCheckInputsForms', () => {
     expect(isValid).toBeUndefined()
     expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
       type: 'info',
-      message: 'errorMessage.waitForFileUpload',
+      message: 'appDebug.errorMessage.waitForFileUpload',
     }))
   })
 
@@ -103,7 +101,7 @@ describe('useCheckInputsForms', () => {
     expect(mockNotify).toHaveBeenCalledTimes(1)
     expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
       type: 'error',
-      message: 'errorMessage.valueOfVarRequired',
+      message: expect.stringContaining('appDebug.errorMessage.valueOfVarRequired'),
     }))
   })
 
@@ -124,7 +122,7 @@ describe('useCheckInputsForms', () => {
     expect(mockNotify).toHaveBeenCalledTimes(1)
     expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
       type: 'info',
-      message: 'errorMessage.waitForFileUpload',
+      message: 'appDebug.errorMessage.waitForFileUpload',
     }))
   })
 })
