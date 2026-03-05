@@ -1,7 +1,7 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogModal from '../index'
 

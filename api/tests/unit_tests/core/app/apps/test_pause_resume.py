@@ -13,7 +13,6 @@ from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities import GraphInitParams
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
@@ -34,6 +33,7 @@ from dify_graph.nodes.end.entities import EndNodeData
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
     ops_stub = ModuleType("core.ops.ops_trace_manager")
@@ -142,11 +142,11 @@ def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
 
 def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> Graph:
     graph_config = _build_graph_config(pause_on=pause_on)
-    params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from="account",
         invoke_from="service-api",

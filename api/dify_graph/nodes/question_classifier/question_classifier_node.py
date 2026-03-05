@@ -86,9 +86,10 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self._memory = memory
 
         if llm_file_saver is None:
+            dify_ctx = self.require_dify_context()
             llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -160,7 +161,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
-                user_id=self.user_id,
+                user_id=self.require_dify_context().user_id,
                 structured_output_enabled=False,
                 structured_output=None,
                 file_saver=self._llm_file_saver,
