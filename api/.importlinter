@@ -105,7 +105,6 @@ ignore_imports =
     dify_graph.nodes.agent.agent_node -> core.model_manager
     dify_graph.nodes.agent.agent_node -> core.provider_manager
     dify_graph.nodes.agent.agent_node -> core.tools.tool_manager
-    dify_graph.nodes.document_extractor.node -> core.helper.ssrf_proxy
     dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
     dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.llm_utils -> core.model_manager
