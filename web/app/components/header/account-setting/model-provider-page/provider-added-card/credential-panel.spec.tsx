@@ -147,7 +147,7 @@ describe('CredentialPanel', () => {
       expect(screen.getByText(/noAvailableUsage/)).toBeInTheDocument()
     })
 
-    it('should show "API key required" for api-required-add variant (custom priority, no credentials)', () => {
+    it('should show "AI credits in use" with warning for credits-fallback (custom priority, no credentials, credits available)', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -155,10 +155,10 @@ describe('CredentialPanel', () => {
           available_credentials: [],
         },
       }))
-      expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
+      expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
 
-    it('should show "API key required" for api-required-configure variant (custom priority, credential exists but name missing)', () => {
+    it('should show "AI credits in use" with warning for credits-fallback (custom priority, credential unauthorized, credits available)', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -168,7 +168,18 @@ describe('CredentialPanel', () => {
           available_credentials: [{ credential_id: 'cred-1' }],
         },
       }))
-      expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
+      expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
+    })
+
+    it('should show warning icon for credits-fallback variant', () => {
+      const { container } = renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      }))
+      expect(container.querySelector('.i-ri-error-warning-fill')).toBeTruthy()
     })
   })
 
@@ -201,7 +212,8 @@ describe('CredentialPanel', () => {
       expect(container.querySelector('.i-ri-error-warning-fill')).toBeNull()
     })
 
-    it('should show red indicator and "Unavailable" for api-unavailable', () => {
+    it('should show red indicator and "Unavailable" for api-unavailable (exhausted + named unauthorized key)', () => {
+      mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -243,6 +255,7 @@ describe('CredentialPanel', () => {
     })
 
     it('should apply destructive container for api-unavailable variant', () => {
+      mockTrialCredits.isExhausted = true
       const { container } = renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -356,7 +369,7 @@ describe('CredentialPanel', () => {
       expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-active')
     })
 
-    it('should pass api-required-add variant for custom priority with no credentials', () => {
+    it('should pass credits-fallback variant for custom priority with no credentials and credits available', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -364,10 +377,10 @@ describe('CredentialPanel', () => {
           available_credentials: [],
         },
       }))
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-required-add')
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'credits-fallback')
     })
 
-    it('should pass api-unavailable variant for custom priority with named but unauthorized key', () => {
+    it('should pass credits-fallback variant for custom priority with named unauthorized key and credits available', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -377,7 +390,7 @@ describe('CredentialPanel', () => {
           available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
         },
       }))
-      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-unavailable')
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'credits-fallback')
     })
 
     it('should pass no-usage variant when exhausted + credential but unauthorized', () => {

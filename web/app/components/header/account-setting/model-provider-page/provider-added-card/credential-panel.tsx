@@ -25,6 +25,7 @@ type CredentialPanelProps = {
 
 const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
   'credits-active',
+  'credits-fallback',
   'credits-exhausted',
   'no-usage',
   'api-required-add',
@@ -70,10 +71,11 @@ const CredentialPanel = ({
   const { variant, credentialName } = state
   const isDestructive = isDestructiveVariant(variant)
   const isTextLabel = TEXT_LABEL_VARIANTS.has(variant)
+  const needsGap = !isTextLabel || variant === 'credits-fallback'
 
   return (
     <SystemQuotaCard variant={isDestructive ? 'destructive' : 'default'}>
-      <SystemQuotaCard.Label className={isTextLabel ? undefined : 'gap-1'}>
+      <SystemQuotaCard.Label className={needsGap ? 'gap-1' : undefined}>
         {isTextLabel
           ? <TextLabel variant={variant} />
           : <StatusLabel variant={variant} credentialName={credentialName} />}
@@ -92,6 +94,7 @@ const CredentialPanel = ({
 
 const TEXT_LABEL_KEYS = {
   'credits-active': 'modelProvider.card.aiCreditsInUse',
+  'credits-fallback': 'modelProvider.card.aiCreditsInUse',
   'credits-exhausted': 'modelProvider.card.quotaExhausted',
   'no-usage': 'modelProvider.card.noAvailableUsage',
   'api-required-add': 'modelProvider.card.apiKeyRequired',
@@ -104,9 +107,14 @@ function TextLabel({ variant }: { variant: CardVariant }) {
   const labelKey = TEXT_LABEL_KEYS[variant as keyof typeof TEXT_LABEL_KEYS]
 
   return (
-    <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
-      {t(labelKey, { ns: 'common' })}
-    </span>
+    <>
+      <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
+        {t(labelKey, { ns: 'common' })}
+      </span>
+      {variant === 'credits-fallback' && (
+        <span className="i-ri-error-warning-fill h-3 w-3 shrink-0 text-text-warning" />
+      )}
+    </>
   )
 }
 
