@@ -733,3 +733,563 @@ def test_create_or_update_pipeline_creates_draft_when_missing(mocker) -> None:
     service._create_or_update_pipeline(pipeline=pipeline, data=data, account=account)
 
     assert pipeline.workflow_id == "wf-new"
+
+
+def test_import_rag_pipeline_url_size_exceeds_limit(mocker) -> None:
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"x" * (10 * 1024 * 1024 + 1)
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.ssrf_proxy.get", return_value=response)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-url",
+        yaml_url="https://example.com/pipeline.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "10MB" in result.error
+
+
+def test_import_rag_pipeline_fails_when_rag_pipeline_data_missing() -> None:
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="version: 0.1.0\nkind: rag_pipeline\nworkflow: {}",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Missing rag_pipeline data" in result.error
+
+
+def test_import_rag_pipeline_fails_when_pipeline_id_not_found() -> None:
+    session = cast(MagicMock, Mock())
+    session.scalar.return_value = None
+    service = RagPipelineDslService(session=cast(Session, session))
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="version: 0.1.0\nkind: rag_pipeline\nrag_pipeline: {name: x}\nworkflow: {}",
+        pipeline_id="missing-pipeline",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Pipeline not found" in result.error
+
+
+def test_import_rag_pipeline_fails_for_non_string_version_type() -> None:
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="version: 1\nkind: rag_pipeline\nrag_pipeline: {name: x}\nworkflow: {}",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Invalid version type" in result.error
+
+
+def test_append_workflow_export_data_raises_when_draft_workflow_missing() -> None:
+    service = RagPipelineDslService(session=Mock())
+    service._session.query.return_value.where.return_value.first.return_value = None
+
+    with pytest.raises(ValueError, match="Missing draft workflow configuration"):
+        service._append_workflow_export_data(export_data={}, pipeline=Mock(tenant_id="t1"), include_secret=False)
+
+
+def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_true(mocker) -> None:
+    service = RagPipelineDslService(session=Mock())
+    workflow = Mock()
+    workflow.graph_dict = {"nodes": []}
+    workflow.to_dict.return_value = {
+        "graph": {
+            "nodes": [
+                {"data": {"type": NodeType.TOOL, "credential_id": "tool-secret"}},
+                {
+                    "data": {
+                        "type": NodeType.AGENT,
+                        "agent_parameters": {"tools": {"value": [{"credential_id": "agent-secret"}]}},
+                    }
+                },
+            ]
+        }
+    }
+    service._session.query.return_value.where.return_value.first.return_value = workflow
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        return_value=[],
+    )
+
+    export_data: dict[str, object] = {}
+    service._append_workflow_export_data(export_data=export_data, pipeline=Mock(tenant_id="t1"), include_secret=True)
+
+    nodes = export_data["workflow"]["graph"]["nodes"]
+    assert nodes[0]["data"]["credential_id"] == "tool-secret"
+    assert nodes[1]["data"]["agent_parameters"]["tools"]["value"][0]["credential_id"] == "agent-secret"
+
+
+def test_extract_dependencies_from_workflow_graph_skips_local_file_datasource(mocker) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DatasourceNodeData.model_validate",
+        return_value=Mock(provider_type="local_file", plugin_id="plugin-x"),
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph({"nodes": [{"data": {"type": NodeType.DATASOURCE}}]})
+
+    assert result == []
+
+
+def test_extract_dependencies_from_workflow_graph_knowledge_index_reranking(mocker) -> None:
+    analyze = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        side_effect=lambda provider: f"dep:{provider}",
+    )
+    knowledge = Mock()
+    knowledge.indexing_technique = "high_quality"
+    knowledge.embedding_model_provider = "embed-provider"
+    knowledge.retrieval_model.reranking_mode = "reranking_model"
+    knowledge.retrieval_model.reranking_enable = True
+    knowledge.retrieval_model.reranking_model.reranking_provider_name = "rerank-provider"
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate",
+        return_value=knowledge,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_INDEX}}]}
+    )
+
+    assert result == ["dep:embed-provider", "dep:rerank-provider"]
+    assert analyze.call_count == 2
+
+
+def test_extract_dependencies_from_workflow_graph_multiple_retrieval_weighted_score(mocker) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        return_value="dep:weighted",
+    )
+    retrieval = Mock()
+    retrieval.retrieval_mode = "multiple"
+    retrieval.multiple_retrieval_config.reranking_mode = "weighted_score"
+    retrieval.multiple_retrieval_config.weights.vector_setting.embedding_provider_name = "emb-provider"
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == ["dep:weighted"]
+
+
+def test_extract_dependencies_from_workflow_graph_multiple_retrieval_reranking_model(mocker) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        return_value="dep:rerank",
+    )
+    retrieval = Mock()
+    retrieval.retrieval_mode = "multiple"
+    retrieval.multiple_retrieval_config.reranking_mode = "reranking_model"
+    retrieval.multiple_retrieval_config.reranking_model.provider = "rerank-provider"
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == ["dep:rerank"]
+
+
+def test_extract_dependencies_from_model_config_includes_dataset_reranking_and_tools(mocker) -> None:
+    model_analyze = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        side_effect=["dep:model", "dep:rerank"],
+    )
+    tool_analyze = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_tool_dependency",
+        return_value="dep:tool",
+    )
+    config = {
+        "model": {"provider": "openai"},
+        "dataset_configs": {
+            "datasets": {
+                "datasets": [
+                    {
+                        "reranking_model": {
+                            "reranking_provider_name": {"provider": "cohere"},
+                        }
+                    }
+                ]
+            }
+        },
+        "agent_mode": {"tools": [{"provider_id": "google"}]},
+    }
+
+    deps = RagPipelineDslService._extract_dependencies_from_model_config(config)
+
+    assert deps == ["dep:model", "dep:rerank", "dep:tool"]
+    assert model_analyze.call_count == 2
+    tool_analyze.assert_called_once_with("google")
+
+
+def test_check_version_compatibility_hits_major_older_branch(mocker) -> None:
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.CURRENT_DSL_VERSION", "1.0.0")
+
+    status = _check_version_compatibility("0.9.0")
+
+    assert status == ImportStatus.PENDING
+
+
+def test_import_rag_pipeline_sets_default_version_and_kind(mocker) -> None:
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    account = Mock(current_tenant_id="t1")
+    pipeline = Mock(id="p1", name="P", description="D", is_published=False)
+    mocker.patch.object(service, "_create_or_update_pipeline", return_value=pipeline)
+    config = Mock()
+    config.indexing_technique = "economy"
+    config.keyword_number = 2
+    config.retrieval_model.model_dump.return_value = {}
+    config.summary_index_setting = None
+    config.chunk_structure = "text_model"
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate",
+        return_value=config,
+    )
+    dataset = Mock(id="d1")
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset)
+    session.query.return_value.filter_by.return_value.all.return_value = []
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.generate_incremental_name", return_value="P")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-content",
+        yaml_content="rag_pipeline: {name: x}\nworkflow: {graph: {nodes: [{data: {type: knowledge-index}}]}}",
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    assert result.imported_dsl_version == "0.1.0"
+
+
+def test_import_rag_pipeline_creates_pending_for_dependencies(mocker) -> None:
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    account = Mock(current_tenant_id="t1")
+    setex = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
+    yaml_content = """
+version: 1.0.0
+kind: rag_pipeline
+rag_pipeline: {name: x}
+dependencies:
+  - type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/example:0.1.0
+workflow: {graph: {nodes: []}}
+"""
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content=yaml_content)
+
+    assert result.status == ImportStatus.PENDING
+    setex.assert_called_once()
+
+
+def test_confirm_import_returns_failed_when_pending_pipeline_missing(mocker) -> None:
+    from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
+
+    pending = RagPipelinePendingData(import_mode="yaml-content", yaml_content="version: 0.1.0", pipeline_id="p1")
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.redis_client.get", return_value=pending.model_dump_json()
+    )
+    service = RagPipelineDslService(session=Mock())
+    service._session.scalar.return_value = None
+    mocker.patch.object(RagPipelineDslService, "_create_or_update_pipeline", side_effect=ValueError("pipeline missing"))
+
+    result = service.confirm_import(import_id="imp-1", account=Mock(current_tenant_id="t1"))
+
+    assert result.status == ImportStatus.FAILED
+
+
+def test_append_workflow_export_data_skips_empty_node_data(mocker) -> None:
+    service = RagPipelineDslService(session=Mock())
+    workflow = Mock()
+    workflow.graph_dict = {"nodes": []}
+    workflow.to_dict.return_value = {"graph": {"nodes": [{"data": {}}, {}]}}
+    service._session.query.return_value.where.return_value.first.return_value = workflow
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        return_value=[],
+    )
+    export_data = {}
+
+    service._append_workflow_export_data(export_data=export_data, pipeline=Mock(tenant_id="t1"), include_secret=False)
+
+    assert "workflow" in export_data
+
+
+def test_extract_dependencies_from_workflow_graph_multiple_config_none(mocker) -> None:
+    retrieval = Mock()
+    retrieval.retrieval_mode = "multiple"
+    retrieval.multiple_retrieval_config = None
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == []
+
+
+def test_extract_dependencies_from_workflow_graph_single_config_none(mocker) -> None:
+    retrieval = Mock()
+    retrieval.retrieval_mode = "single"
+    retrieval.single_retrieval_config = None
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == []
+
+
+def test_create_or_update_pipeline_raises_when_workflow_missing() -> None:
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1", id="u1")
+
+    with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
+        service._create_or_update_pipeline(pipeline=None, data={"rag_pipeline": {"name": "x"}}, account=account)
+
+
+def test_import_rag_pipeline_with_pipeline_id_uses_existing_dataset(mocker) -> None:
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    existing_dataset = Mock(id="d1", chunk_structure="text_model")
+    existing_pipeline = Mock(id="p1", name="P", description="D", is_published=False)
+    existing_pipeline.retrieve_dataset.return_value = existing_dataset
+    session.scalar.return_value = existing_pipeline
+    mocker.patch.object(service, "_create_or_update_pipeline", return_value=existing_pipeline)
+    config = Mock()
+    config.indexing_technique = "economy"
+    config.keyword_number = 3
+    config.chunk_structure = "text_model"
+    config.summary_index_setting = {"enabled": True}
+    config.retrieval_model.model_dump.return_value = {"top_k": 3}
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate", return_value=config
+    )
+
+    yaml_content = (
+        "version: 0.1.0\n"
+        "kind: rag_pipeline\n"
+        "rag_pipeline: {name: x}\n"
+        "workflow: {graph: {nodes: [{data: {type: knowledge-index}}]}}"
+    )
+
+    result = service.import_rag_pipeline(
+        account=Mock(id="u1", current_tenant_id="t1"),
+        import_mode="yaml-content",
+        yaml_content=yaml_content,
+        pipeline_id="p1",
+    )
+
+    assert result.status == ImportStatus.COMPLETED
+    assert result.dataset_id == "d1"
+
+
+def test_import_rag_pipeline_raises_for_chunk_structure_mismatch_on_published(mocker) -> None:
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    existing_dataset = Mock(id="d1", chunk_structure="hierarchical_model")
+    existing_pipeline = Mock(id="p1", name="P", description="D", is_published=True)
+    existing_pipeline.retrieve_dataset.return_value = existing_dataset
+    session.scalar.return_value = existing_pipeline
+    mocker.patch.object(service, "_create_or_update_pipeline", return_value=existing_pipeline)
+    config = Mock()
+    config.chunk_structure = "text_model"
+    config.indexing_technique = "economy"
+    config.keyword_number = 3
+    config.summary_index_setting = None
+    config.retrieval_model.model_dump.return_value = {}
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate", return_value=config
+    )
+
+    yaml_content = (
+        "version: 0.1.0\n"
+        "kind: rag_pipeline\n"
+        "rag_pipeline: {name: x}\n"
+        "workflow: {graph: {nodes: [{data: {type: knowledge-index}}]}}"
+    )
+
+    result = service.import_rag_pipeline(
+        account=Mock(id="u1", current_tenant_id="t1"),
+        import_mode="yaml-content",
+        yaml_content=yaml_content,
+        pipeline_id="p1",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Chunk structure is not compatible" in result.error
+
+
+def test_import_rag_pipeline_fails_when_no_knowledge_index_node(mocker) -> None:
+    service = RagPipelineDslService(session=Mock())
+    pipeline = Mock(id="p1", name="P", description="D", is_published=False)
+    mocker.patch.object(service, "_create_or_update_pipeline", return_value=pipeline)
+
+    yaml_content = (
+        "version: 0.1.0\n"
+        "kind: rag_pipeline\n"
+        "rag_pipeline: {name: x}\n"
+        "workflow: {graph: {nodes: [{data: {type: start}}]}}"
+    )
+
+    result = service.import_rag_pipeline(
+        account=Mock(id="u1", current_tenant_id="t1"),
+        import_mode="yaml-content",
+        yaml_content=yaml_content,
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "Knowledge Index node" in result.error
+
+
+def test_confirm_import_fails_when_no_knowledge_index_node(mocker) -> None:
+    from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
+
+    yaml_content = (
+        "version: 0.1.0\n"
+        "kind: rag_pipeline\n"
+        "rag_pipeline: {name: x}\n"
+        "workflow: {graph: {nodes: [{data: {type: start}}]}}"
+    )
+
+    pending = RagPipelinePendingData(
+        import_mode="yaml-content",
+        yaml_content=yaml_content,
+        pipeline_id=None,
+    )
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.redis_client.get", return_value=pending.model_dump_json()
+    )
+    service = RagPipelineDslService(session=Mock())
+    pipeline = Mock(id="p1", name="P", description="D")
+    pipeline.retrieve_dataset.return_value = None
+    mocker.patch.object(service, "_create_or_update_pipeline", return_value=pipeline)
+
+    result = service.confirm_import(import_id="imp-1", account=Mock(id="u1", current_tenant_id="t1"))
+
+    assert result.status == ImportStatus.FAILED
+    assert "Knowledge Index node" in result.error
+
+
+def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker) -> None:
+    from core.plugin.entities.plugin import PluginDependency
+
+    session = cast(MagicMock, Mock())
+    service = RagPipelineDslService(session=cast(Session, session))
+    account = Mock(id="u1", current_tenant_id="t1")
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.current_user", SimpleNamespace(id="u1"))
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Workflow", return_value=Mock(id="wf-1"))
+    pipeline_cls = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Pipeline")
+    pipeline = pipeline_cls.return_value
+    pipeline.tenant_id = "t1"
+    pipeline.id = "p1"
+    session.query.return_value.where.return_value.first.return_value = None
+    setex = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
+    dependency = PluginDependency(
+        type=PluginDependency.Type.Marketplace,
+        value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/example:0.1.0"),
+    )
+
+    service._create_or_update_pipeline(
+        pipeline=None,
+        data={"rag_pipeline": {"name": "x"}, "workflow": {"graph": {"nodes": []}}},
+        account=account,
+        dependencies=[dependency],
+    )
+
+    setex.assert_called_once()
+
+
+def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedding_provider(mocker) -> None:
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        return_value="dep",
+    )
+    knowledge = Mock()
+    knowledge.indexing_technique = "high_quality"
+    knowledge.embedding_model_provider = None
+    knowledge.retrieval_model.reranking_mode = "reranking_model"
+    knowledge.retrieval_model.reranking_enable = False
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeConfiguration.model_validate", return_value=knowledge
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_INDEX}}]}
+    )
+
+    assert result == []
+
+
+def test_extract_dependencies_from_workflow_graph_multiple_reranking_without_model(mocker) -> None:
+    retrieval = Mock()
+    retrieval.retrieval_mode = "multiple"
+    retrieval.multiple_retrieval_config.reranking_mode = "reranking_model"
+    retrieval.multiple_retrieval_config.reranking_model = None
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == []
+
+
+def test_extract_dependencies_from_workflow_graph_multiple_weighted_without_weights(mocker) -> None:
+    retrieval = Mock()
+    retrieval.retrieval_mode = "multiple"
+    retrieval.multiple_retrieval_config.reranking_mode = "weighted_score"
+    retrieval.multiple_retrieval_config.weights = None
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.KnowledgeRetrievalNodeData.model_validate",
+        return_value=retrieval,
+    )
+    service = RagPipelineDslService(session=Mock())
+
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+    )
+
+    assert result == []

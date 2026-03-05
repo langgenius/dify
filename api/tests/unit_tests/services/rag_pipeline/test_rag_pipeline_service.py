@@ -1385,3 +1385,932 @@ def test_set_datasource_variables_raises_when_node_id_missing(mocker, rag_pipeli
 
     with pytest.raises(ValueError, match="Node id is required"):
         rag_pipeline_service.set_datasource_variables(pipeline, {"start_node_id": ""}, SimpleNamespace(id="u1"))
+
+
+def test_get_default_block_configs_skips_empty_configs(mocker, rag_pipeline_service) -> None:
+    from dify_graph.enums import NodeType
+
+    http_node = mocker.Mock()
+    http_node.get_default_config.return_value = {"type": "http-request"}
+    empty_node = mocker.Mock()
+    empty_node.get_default_config.return_value = None
+
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
+        {
+            NodeType.HTTP_REQUEST: {"1": http_node},
+            NodeType.START: {"1": empty_node},
+        },
+    )
+    mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
+
+    result = rag_pipeline_service.get_default_block_configs()
+
+    assert result == [{"type": "http-request"}]
+    http_node.get_default_config.assert_called_once()
+    empty_node.get_default_config.assert_called_once()
+
+
+def test_run_datasource_workflow_node_returns_error_when_node_missing(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(graph_dict={"nodes": []})
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    events = list(
+        rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=pipeline,
+            node_id="missing-node",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_document",
+            is_published=True,
+        )
+    )
+
+    assert len(events) == 1
+    assert "Datasource node data not found" in events[0]["error"]
+
+
+def test_run_datasource_workflow_node_online_document_exception(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "plugin_id": "plugin-1",
+                        "provider_name": "provider-1",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    runtime = mocker.Mock()
+
+    def _raise_document_generator(*args, **kwargs):
+        raise RuntimeError("doc failed")
+        yield  # pragma: no cover
+
+    runtime.get_online_document_pages.side_effect = _raise_document_generator
+    runtime.datasource_provider_type.return_value = "online_document"
+
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    events = list(
+        rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=pipeline,
+            node_id="node-1",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_document",
+            is_published=True,
+        )
+    )
+
+    assert len(events) == 2
+    assert events[0]["event"] == "datasource_processing"
+    assert "doc failed" in events[1]["error"]
+
+
+def test_run_datasource_node_preview_raises_for_stream_non_string(mocker, rag_pipeline_service) -> None:
+    from core.datasource.entities.datasource_entities import DatasourceMessage
+
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "plugin_id": "plugin-1",
+                        "provider_name": "provider-1",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    runtime = mocker.Mock()
+
+    def _bad_stream_generator(*args, **kwargs):
+        yield DatasourceMessage(
+            type=DatasourceMessage.MessageType.VARIABLE,
+            message=DatasourceMessage.VariableMessage(variable_name="content", variable_value=1, stream=True),
+        )
+
+    runtime.get_online_document_page_content.side_effect = _bad_stream_generator
+    runtime.datasource_provider_type.return_value = "online_document"
+
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    with pytest.raises(RuntimeError, match="must be a string"):
+        rag_pipeline_service.run_datasource_node_preview(
+            pipeline=pipeline,
+            node_id="node-1",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_document",
+            is_published=True,
+        )
+
+
+def test_get_first_step_parameters_returns_empty_when_no_rag_variables(mocker, rag_pipeline_service) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "literal"}}}}]},
+        rag_pipeline_variables=[],
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    result = rag_pipeline_service.get_first_step_parameters(SimpleNamespace(), "node-1")
+
+    assert result == []
+
+
+def test_get_second_step_parameters_filters_first_step_variables(mocker, rag_pipeline_service) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "datasource_parameters": {
+                            "workspace": {"value": "{{#start.workspace#}}"},
+                            "bucket": {"value": ["input", "bucket"]},
+                        }
+                    },
+                }
+            ]
+        },
+        rag_pipeline_variables=[
+            {"variable": "workspace", "belong_to_node_id": "shared"},
+            {"variable": "bucket", "belong_to_node_id": "shared"},
+            {"variable": "keep", "belong_to_node_id": "shared"},
+            {"variable": "other-node", "belong_to_node_id": "node-x"},
+        ],
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    result = rag_pipeline_service.get_second_step_parameters(SimpleNamespace(), "node-1")
+
+    assert result == [{"variable": "keep", "belong_to_node_id": "shared"}]
+
+
+def test_retry_error_document_raises_when_execution_log_not_found(mocker, rag_pipeline_service) -> None:
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = None
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Document pipeline execution log not found"):
+        rag_pipeline_service.retry_error_document(
+            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
+        )
+
+
+def test_get_datasource_plugins_raises_when_workflow_not_found(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=None)
+
+    with pytest.raises(ValueError, match="Pipeline or workflow not found"):
+        rag_pipeline_service.get_datasource_plugins("t1", "d1", True)
+
+
+def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeline_service) -> None:
+    node_instance = SimpleNamespace(
+        workflow_id="wf-1",
+        node_type="start",
+        title="Start",
+        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
+        error_strategy=None,
+    )
+
+    def _event_generator():
+        yield object()
+
+    with pytest.raises(ValueError, match="Node run failed with no run result"):
+        rag_pipeline_service._handle_node_run_result(
+            getter=lambda: (node_instance, _event_generator()),
+            start_at=time.perf_counter(),
+            tenant_id="t1",
+            node_id="node-1",
+        )
+
+
+def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from dify_graph.enums import WorkflowNodeExecutionStatus
+    from dify_graph.graph_events import NodeRunFailedEvent
+    from dify_graph.node_events.base import NodeRunResult
+
+    class FakeVariablePool:
+        def __init__(self):
+            self._values = {
+                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
+                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
+            }
+
+        def get(self, path):
+            return self._values.get(tuple(path))
+
+    node_instance = SimpleNamespace(
+        workflow_id="wf-1",
+        node_type="start",
+        title="Start",
+        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
+        error_strategy=None,
+    )
+    run_result = NodeRunResult(
+        status=WorkflowNodeExecutionStatus.FAILED,
+        error="boom",
+        error_type="runtime",
+        inputs={},
+        outputs={},
+    )
+
+    def _event_generator():
+        yield NodeRunFailedEvent(
+            id="evt-1",
+            start_at=time.time(),
+            node_id="node-1",
+            node_type="start",
+            node_run_result=run_result,
+            error="boom",
+            route_node_id=None,
+        )
+
+    document = SimpleNamespace(indexing_status="waiting", error=None)
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = document
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    add_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.add")
+    commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
+
+    result = rag_pipeline_service._handle_node_run_result(
+        getter=lambda: (node_instance, _event_generator()),
+        start_at=time.perf_counter(),
+        tenant_id="t1",
+        node_id="node-1",
+    )
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert document.indexing_status == "error"
+    assert document.error == "boom"
+    add_mock.assert_called_once_with(document)
+    commit_mock.assert_called_once()
+
+
+def test_run_datasource_node_preview_raises_for_unsupported_provider(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "plugin_id": "plugin-1",
+                        "provider_name": "provider-1",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+    runtime.datasource_provider_type.return_value = "unsupported"
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    with pytest.raises(RuntimeError, match="Unsupported datasource provider"):
+        rag_pipeline_service.run_datasource_node_preview(
+            pipeline=pipeline,
+            node_id="node-1",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="website_crawl",
+            is_published=True,
+        )
+
+
+def test_publish_customized_pipeline_template_raises_for_missing_pipeline(mocker, rag_pipeline_service) -> None:
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = None
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+
+
+def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id=None)
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = pipeline
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Pipeline workflow not found"):
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {"name": "template-name"})
+
+
+def test_get_pipeline_raises_when_dataset_missing(mocker, rag_pipeline_service) -> None:
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = None
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Dataset not found"):
+        rag_pipeline_service.get_pipeline("t1", "d1")
+
+
+def test_get_pipeline_raises_when_pipeline_missing(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, None]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        rag_pipeline_service.get_pipeline("t1", "d1")
+
+
+def test_init_uses_default_sessionmaker_when_none(mocker) -> None:
+    default_session_maker = mocker.Mock()
+    mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker", return_value=default_session_maker)
+    mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=mocker.Mock()))
+    create_exec_repo = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository"
+    )
+    create_run_repo = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository"
+    )
+
+    RagPipelineService(session_maker=None)
+
+    create_exec_repo.assert_called_once_with(default_session_maker)
+    create_run_repo.assert_called_once_with(default_session_maker)
+
+
+def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker) -> None:
+    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    retrieval = mocker.Mock()
+    retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
+    factory = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
+    factory.get_pipeline_template_factory.return_value.return_value = retrieval
+    builtin = factory.get_built_in_pipeline_template_retrieval.return_value
+
+    result = RagPipelineService.get_pipeline_templates(type="built-in", language="en-US")
+
+    assert result == {"pipeline_templates": []}
+    builtin.fetch_pipeline_templates_from_builtin.assert_not_called()
+
+
+def test_update_customized_pipeline_template_commits_when_name_empty(mocker) -> None:
+    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
+    query = mocker.Mock()
+    query.where.return_value.first.return_value = template
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    commit = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
+    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
+
+    info = PipelineTemplateInfoEntity(name="", description="updated", icon_info=IconInfo(icon="i"))
+    result = RagPipelineService.update_customized_pipeline_template("tpl-1", info)
+
+    assert result.description == "updated"
+    commit.assert_called_once()
+
+
+def test_get_all_published_workflow_without_filters_has_no_more(rag_pipeline_service) -> None:
+    session = SimpleNamespace(scalars=lambda stmt: SimpleNamespace(all=lambda: ["wf1"]))
+    pipeline = SimpleNamespace(id="p1", workflow_id="wf-live")
+
+    workflows, has_more = rag_pipeline_service.get_all_published_workflow(
+        session=session,
+        pipeline=pipeline,
+        page=1,
+        limit=2,
+        user_id=None,
+        named_only=False,
+    )
+
+    assert workflows == ["wf1"]
+    assert has_more is False
+
+
+def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(mocker, rag_pipeline_service) -> None:
+    draft = SimpleNamespace(
+        type="workflow",
+        graph={"nodes": [{"data": {"type": "start"}}]},
+        features={},
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    session = mocker.Mock()
+    session.scalar.return_value = draft
+    published = SimpleNamespace(graph_dict={"nodes": [{"data": {"type": "start"}}]})
+    mocker.patch("services.rag_pipeline.rag_pipeline.select")
+    mocker.patch("services.rag_pipeline.rag_pipeline.Workflow.new", return_value=published)
+
+    result = rag_pipeline_service.publish_workflow(
+        session=session,
+        pipeline=SimpleNamespace(id="p1", tenant_id="t1", is_published=False, retrieve_dataset=lambda session: None),
+        account=SimpleNamespace(id="u1"),
+    )
+
+    assert result is published
+
+
+def test_get_default_block_config_returns_none_when_default_empty(mocker, rag_pipeline_service) -> None:
+    from dify_graph.enums import NodeType
+
+    node_cls = mocker.Mock()
+    node_cls.get_default_config.return_value = None
+    mocker.patch("services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING", {NodeType.START: {"1": node_cls}})
+    mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
+
+    assert rag_pipeline_service.get_default_block_config("start") is None
+
+
+def test_run_datasource_workflow_node_handles_variable_parameter_types(mocker, rag_pipeline_service) -> None:
+    from core.datasource.entities.datasource_entities import DatasourceProviderType
+
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "crawl",
+                        "datasource_parameters": {
+                            "a": {"value": None},
+                            "b": {"value": "literal"},
+                            "c": {"value": ["input", "k"]},
+                        },
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+
+    def crawl_gen(**kwargs):
+        yield SimpleNamespace(result=SimpleNamespace(status="completed", total=1, completed=1, web_info_list=[]))
+
+    runtime.get_website_crawl.side_effect = crawl_gen
+    runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    events = list(
+        rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            node_id="node-1",
+            user_inputs={"k": "mapped"},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="website_crawl",
+            is_published=True,
+        )
+    )
+
+    assert events
+    assert events[0]["data"] == []
+
+
+def test_run_datasource_workflow_node_online_drive_branch(mocker, rag_pipeline_service) -> None:
+    from core.datasource.entities.datasource_entities import DatasourceProviderType
+
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "drive",
+                        "datasource_parameters": {},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+
+    def drive_gen(**kwargs):
+        yield SimpleNamespace(result={"items": [1]})
+
+    runtime.online_drive_browse_files.side_effect = drive_gen
+    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    events = list(
+        rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            node_id="node-1",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_drive",
+            is_published=True,
+        )
+    )
+
+    assert len(events) == 2
+    assert events[1]["data"] == {"items": [1]}
+
+
+def test_run_datasource_node_preview_not_published_uses_draft(mocker, rag_pipeline_service) -> None:
+    from core.datasource.entities.datasource_entities import DatasourceMessage
+
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "n1",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {"workspace_id": {"value": "w"}},
+                    },
+                }
+            ]
+        }
+    )
+    get_draft = mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+
+    def doc_gen(**kwargs):
+        yield DatasourceMessage(
+            type=DatasourceMessage.MessageType.VARIABLE,
+            message=DatasourceMessage.VariableMessage(variable_name="x", variable_value="v", stream=False),
+        )
+
+    runtime.get_online_document_page_content.side_effect = doc_gen
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    result = rag_pipeline_service.run_datasource_node_preview(
+        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        node_id="n1",
+        user_inputs={},
+        account=SimpleNamespace(id="u1"),
+        datasource_type="online_document",
+        is_published=False,
+    )
+
+    assert result == {"x": "v"}
+    get_draft.assert_called_once()
+
+
+def test_run_free_workflow_node_delegates_to_handle_result(mocker, rag_pipeline_service) -> None:
+    expected = SimpleNamespace(id="exec-1")
+    handle = mocker.patch.object(rag_pipeline_service, "_handle_node_run_result", return_value=expected)
+
+    result = rag_pipeline_service.run_free_workflow_node(
+        node_data={"type": "start"},
+        tenant_id="t1",
+        user_id="u1",
+        node_id="n1",
+        user_inputs={},
+    )
+
+    assert result is expected
+    handle.assert_called_once()
+
+
+def test_publish_customized_pipeline_template_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id="wf-1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [pipeline, None]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Workflow not found"):
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+
+
+def test_publish_customized_pipeline_template_raises_when_dataset_missing(mocker, rag_pipeline_service) -> None:
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id="wf-1")
+    workflow = SimpleNamespace(id="wf-1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [pipeline, workflow]
+    mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
+    mock_db.engine = mocker.Mock()
+    mock_db.session.query.return_value = query
+    session_ctx = mocker.MagicMock()
+    session_ctx.__enter__.return_value = SimpleNamespace()
+    session_ctx.__exit__.return_value = False
+    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
+    pipeline.retrieve_dataset = lambda session: None
+
+    with pytest.raises(ValueError, match="Dataset not found"):
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+
+
+def test_get_recommended_plugins_skips_manifest_when_missing(mocker, rag_pipeline_service) -> None:
+    plugin = SimpleNamespace(plugin_id="plugin-a")
+    query = mocker.Mock()
+    query.where.return_value = query
+    query.order_by.return_value.all.return_value = [plugin]
+    mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
+    mock_db.session.query.return_value = query
+    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
+    mocker.patch("services.rag_pipeline.rag_pipeline.BuiltinToolManageService.list_builtin_tools", return_value=[])
+    mocker.patch("services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids", return_value=[])
+
+    result = rag_pipeline_service.get_recommended_plugins("all")
+
+    assert result["installed_recommended_plugins"] == []
+    assert result["uninstalled_recommended_plugins"] == []
+
+
+def test_retry_error_document_raises_when_pipeline_missing(mocker, rag_pipeline_service) -> None:
+    exec_log = SimpleNamespace(pipeline_id="p1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [exec_log, None]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        rag_pipeline_service.retry_error_document(
+            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
+        )
+
+
+def test_retry_error_document_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
+    exec_log = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [exec_log, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=None)
+
+    with pytest.raises(ValueError, match="Workflow not found"):
+        rag_pipeline_service.retry_error_document(
+            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
+        )
+
+
+def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "n1", "data": {"type": "start"}}]}, rag_pipeline_variables=[]
+    )
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+
+    assert rag_pipeline_service.get_datasource_plugins("t1", "d1", True) == []
+
+
+def test_publish_workflow_raises_when_knowledge_index_dataset_missing(mocker, rag_pipeline_service) -> None:
+    draft = SimpleNamespace(
+        type="workflow",
+        graph={"nodes": [{"data": {"type": "knowledge-index"}}]},
+        features={},
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    session = mocker.Mock()
+    session.scalar.return_value = draft
+    mocker.patch("services.rag_pipeline.rag_pipeline.select")
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.Workflow.new",
+        return_value=SimpleNamespace(graph_dict={"nodes": [{"data": {"type": "knowledge-index"}}]}),
+    )
+    mocker.patch("services.rag_pipeline.rag_pipeline.KnowledgeConfiguration.model_validate", return_value=mocker.Mock())
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1", is_published=False, retrieve_dataset=lambda session: None)
+
+    with pytest.raises(ValueError, match="Dataset not found"):
+        rag_pipeline_service.publish_workflow(session=session, pipeline=pipeline, account=SimpleNamespace(id="u1"))
+
+
+def test_run_datasource_node_preview_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=None)
+
+    with pytest.raises(RuntimeError, match="Workflow not initialized"):
+        rag_pipeline_service.run_datasource_node_preview(
+            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            node_id="n1",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_document",
+            is_published=True,
+        )
+
+
+def test_run_datasource_node_preview_raises_when_node_missing(mocker, rag_pipeline_service) -> None:
+    mocker.patch.object(
+        rag_pipeline_service, "get_published_workflow", return_value=SimpleNamespace(graph_dict={"nodes": []})
+    )
+
+    with pytest.raises(RuntimeError, match="Datasource node data not found"):
+        rag_pipeline_service.run_datasource_node_preview(
+            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            node_id="missing",
+            user_inputs={},
+            account=SimpleNamespace(id="u1"),
+            datasource_type="online_document",
+            is_published=True,
+        )
+
+
+def test_run_datasource_node_preview_keeps_existing_user_input(mocker, rag_pipeline_service) -> None:
+    from core.datasource.entities.datasource_entities import DatasourceMessage
+
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "n1",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {"workspace_id": {"value": "default"}},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+
+    def gen(**kwargs):
+        request = kwargs["datasource_parameters"]
+        assert request.workspace_id == "existing"
+        yield DatasourceMessage(
+            type=DatasourceMessage.MessageType.VARIABLE,
+            message=DatasourceMessage.VariableMessage(variable_name="ok", variable_value="1", stream=False),
+        )
+
+    runtime.get_online_document_page_content.side_effect = gen
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    result = rag_pipeline_service.run_datasource_node_preview(
+        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        node_id="n1",
+        user_inputs={"workspace_id": "existing"},
+        account=SimpleNamespace(id="u1"),
+        datasource_type="online_document",
+        is_published=True,
+    )
+    assert result == {"ok": "1"}
+
+
+def test_run_datasource_node_preview_ignores_non_variable_messages(mocker, rag_pipeline_service) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "n1",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "doc",
+                        "datasource_parameters": {},
+                    },
+                }
+            ]
+        }
+    )
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    runtime = mocker.Mock()
+
+    def gen(**kwargs):
+        yield SimpleNamespace(type="log", message=None)
+
+    runtime.get_online_document_page_content.side_effect = gen
+    mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.get_datasource_credentials", return_value=None
+    )
+
+    result = rag_pipeline_service.run_datasource_node_preview(
+        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        node_id="n1",
+        user_inputs={},
+        account=SimpleNamespace(id="u1"),
+        datasource_type="online_document",
+        is_published=True,
+    )
+    assert result == {}
+
+
+def test_set_datasource_variables_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
+    mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=None)
+
+    with pytest.raises(ValueError, match="Workflow not initialized"):
+        rag_pipeline_service.set_datasource_variables(
+            SimpleNamespace(id="p1", tenant_id="t1"),
+            {"start_node_id": "n1"},
+            SimpleNamespace(id="u1"),
+        )
+
+
+def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "n1", "data": {"type": "datasource", "datasource_parameters": {}}}]},
+        rag_pipeline_variables=[{"variable": "v1", "belong_to_node_id": "shared"}],
+    )
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=workflow)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials", return_value=[]
+    )
+
+    result = rag_pipeline_service.get_datasource_plugins("t1", "d1", False)
+
+    assert len(result) == 1
+
+
+def test_get_datasource_plugins_extracts_user_inputs_and_credentials(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "n1",
+                    "data": {
+                        "type": "datasource",
+                        "plugin_id": "plugin-1",
+                        "provider_name": "provider",
+                        "provider_type": "online_document",
+                        "title": "Datasource",
+                        "datasource_parameters": {
+                            "a": {"value": "{{#start.v1#}}"},
+                            "b": {"value": ["x", "v2"]},
+                        },
+                    },
+                }
+            ]
+        },
+        rag_pipeline_variables=[
+            {"variable": "v1", "belong_to_node_id": "shared"},
+            {"variable": "v2", "belong_to_node_id": "shared"},
+            {"variable": "v3", "belong_to_node_id": "shared"},
+        ],
+    )
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+    mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.DatasourceProviderService.list_datasource_credentials",
+        return_value=[{"id": "c1", "name": "Cred", "type": "api", "is_default": True}],
+    )
+
+    result = rag_pipeline_service.get_datasource_plugins("t1", "d1", True)
+
+    assert len(result) == 1
+    assert len(result[0]["user_input_variables"]) == 2
+    assert result[0]["credentials"][0]["id"] == "c1"
+
+
+def test_get_pipeline_returns_pipeline_when_found(mocker, rag_pipeline_service) -> None:
+    dataset = SimpleNamespace(pipeline_id="p1")
+    pipeline = SimpleNamespace(id="p1")
+    query = mocker.Mock()
+    query.where.return_value.first.side_effect = [dataset, pipeline]
+    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.query", return_value=query)
+
+    result = rag_pipeline_service.get_pipeline("t1", "d1")
+
+    assert result is pipeline
