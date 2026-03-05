@@ -243,7 +243,7 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "uglify-js": "3.19.3",
-    "vinext": "https://pkg.pr.new/hyoban/vinext@a30ba79",
+    "vinext": "https://pkg.pr.new/hyoban/vinext@556a6d6",
     "vite": "8.0.0-beta.16",
     "vite-plugin-inspect": "11.3.3",
     "vite-tsconfig-paths": "6.1.1",
