@@ -8,7 +8,7 @@ type WithIconListProps = WithIconCardListProps & {
 
 function WithIconList({ children, className }: WithIconListProps) {
   return (
-    <div className={cn('space-y-2 p-4', className)}>
+    <div className={cn('space-y-1', className)}>
       {children}
     </div>
   )

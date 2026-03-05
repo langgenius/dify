@@ -10,8 +10,8 @@ We’re speaking with technical teams to better understand:
 
 ::::withIconCardList
 
-:::withIconCardItem {icon="https://assets.dify.ai/images/dify-swag.png"}
-Dify swag
+:::withIconCardItem {icon="https://assets.dify.ai/images/gift-card.png"}
+$100 Amazon gift card
 :::
 
 :::withIconCardItem {icon="https://assets.dify.ai/images/dify-swag.png"}
