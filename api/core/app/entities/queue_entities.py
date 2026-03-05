@@ -188,9 +188,11 @@ class ChunkType(StrEnum):
     TEXT = "text"  # Normal text streaming
     TOOL_CALL = "tool_call"  # Tool call arguments streaming
     TOOL_RESULT = "tool_result"  # Tool execution result
-    THOUGHT = "thought"  # Agent thinking process (ReAct)
-    THOUGHT_START = "thought_start"  # Agent thought start
-    THOUGHT_END = "thought_end"  # Agent thought end
+    THOUGHT = "thought"  # Model thinking process
+    THOUGHT_START = "thought_start"  # Model thought start
+    THOUGHT_END = "thought_end"  # Model thought end
+    MODEL_START = "model_start"  # Model turn started with identity info
+    MODEL_END = "model_end"  # Model turn completed with metrics
 
 
 class QueueTextChunkEvent(AppQueueEvent):
@@ -208,6 +210,8 @@ class QueueTextChunkEvent(AppQueueEvent):
     """loop id if node is in loop"""
     in_parent_node_id: str | None = None
     """parent node id if this is an extractor node event"""
+    node_id: str | None = None
+    """workflow node id that produced this chunk"""
 
     # Extended fields for Agent/Tool streaming
     chunk_type: ChunkType = ChunkType.TEXT
@@ -218,6 +222,15 @@ class QueueTextChunkEvent(AppQueueEvent):
     """structured tool call info"""
     tool_result: ToolResult | None = None
     """structured tool result info"""
+
+    # Model identity (when chunk_type == MODEL_START)
+    model_provider: str | None = None
+    model_name: str | None = None
+    model_icon: str | dict | None = None
+    model_icon_dark: str | dict | None = None
+    # Model metrics (when chunk_type == MODEL_END)
+    model_usage: dict | None = None
+    model_duration: float | None = None
 
 
 class QueueAgentMessageEvent(AppQueueEvent):

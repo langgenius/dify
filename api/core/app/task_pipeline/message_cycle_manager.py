@@ -255,26 +255,21 @@ class MessageCycleManager:
         tool_icon: str | dict | None = None,
         tool_icon_dark: str | dict | None = None,
         event_type: StreamEvent | None = None,
+        node_id: str | None = None,
+        model_provider: str | None = None,
+        model_name: str | None = None,
+        model_icon: str | dict | None = None,
+        model_icon_dark: str | dict | None = None,
+        model_usage: dict | None = None,
+        model_duration: float | None = None,
     ) -> MessageStreamResponse:
-        """
-        Message to stream response.
-        :param answer: answer
-        :param message_id: message id
-        :param from_variable_selector: from variable selector
-        :param chunk_type: type of the chunk (text, function_call, tool_result, thought)
-        :param tool_call_id: unique identifier for this tool call
-        :param tool_name: name of the tool being called
-        :param tool_arguments: accumulated tool arguments JSON
-        :param tool_files: file IDs produced by tool
-        :param tool_error: error message if tool failed
-        :return:
-        """
         response = MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
             event=event_type or StreamEvent.MESSAGE,
+            node_id=node_id,
         )
 
         if chunk_type:
@@ -301,6 +296,22 @@ class MessageCycleManager:
                     "tool_elapsed_time": tool_elapsed_time,
                     "tool_icon": tool_icon,
                     "tool_icon_dark": tool_icon_dark,
+                }
+            )
+        elif chunk_type == "model_start":
+            response = response.model_copy(
+                update={
+                    "model_provider": model_provider,
+                    "model_name": model_name,
+                    "model_icon": model_icon,
+                    "model_icon_dark": model_icon_dark,
+                }
+            )
+        elif chunk_type == "model_end":
+            response = response.model_copy(
+                update={
+                    "model_usage": model_usage,
+                    "model_duration": model_duration,
                 }
             )
 

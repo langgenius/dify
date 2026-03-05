@@ -591,6 +591,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_elapsed_time=tool_elapsed_time,
             tool_icon=tool_icon,
             tool_icon_dark=tool_icon_dark,
+            node_id=event.node_id,
+            model_provider=event.model_provider,
+            model_name=event.model_name,
+            model_icon=event.model_icon,
+            model_icon_dark=event.model_icon_dark,
+            model_usage=event.model_usage,
+            model_duration=event.model_duration,
         )
 
     def _handle_iteration_start_event(

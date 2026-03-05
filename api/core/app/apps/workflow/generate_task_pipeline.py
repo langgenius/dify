@@ -551,6 +551,13 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_elapsed_time=tool_elapsed_time,
             tool_icon=tool_icon,
             tool_icon_dark=tool_icon_dark,
+            node_id=event.node_id,
+            model_provider=event.model_provider,
+            model_name=event.model_name,
+            model_icon=event.model_icon,
+            model_icon_dark=event.model_icon_dark,
+            model_usage=event.model_usage,
+            model_duration=event.model_duration,
         )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
@@ -748,12 +755,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_elapsed_time: float | None = None,
         tool_icon: str | dict | None = None,
         tool_icon_dark: str | dict | None = None,
+        node_id: str | None = None,
+        model_provider: str | None = None,
+        model_name: str | None = None,
+        model_icon: str | dict | None = None,
+        model_icon_dark: str | dict | None = None,
+        model_usage: dict | None = None,
+        model_duration: float | None = None,
     ) -> TextChunkStreamResponse:
-        """
-        Handle completed event.
-        :param text: text
-        :return:
-        """
         from core.app.entities.task_entities import ChunkType as ResponseChunkType
 
         response_chunk_type = ResponseChunkType(chunk_type.value) if chunk_type else ResponseChunkType.TEXT
@@ -762,6 +771,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             text=text,
             from_variable_selector=from_variable_selector,
             chunk_type=response_chunk_type,
+            node_id=node_id,
         )
 
         if response_chunk_type == ResponseChunkType.TOOL_CALL:
@@ -785,6 +795,22 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     "tool_elapsed_time": tool_elapsed_time,
                     "tool_icon": tool_icon,
                     "tool_icon_dark": tool_icon_dark,
+                }
+            )
+        elif response_chunk_type == ResponseChunkType.MODEL_START:
+            data = data.model_copy(
+                update={
+                    "model_provider": model_provider,
+                    "model_name": model_name,
+                    "model_icon": model_icon,
+                    "model_icon_dark": model_icon_dark,
+                }
+            )
+        elif response_chunk_type == ResponseChunkType.MODEL_END:
+            data = data.model_copy(
+                update={
+                    "model_usage": model_usage,
+                    "model_duration": model_duration,
                 }
             )
 

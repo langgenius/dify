@@ -118,10 +118,12 @@ class MessageStreamResponse(StreamResponse):
     id: str
     answer: str
     from_variable_selector: list[str] | None = None
+    node_id: str | None = None
+    """workflow node id that produced this chunk"""
 
     # Extended fields for Agent/Tool streaming (imported at runtime to avoid circular import)
     chunk_type: str | None = None
-    """type of the chunk: text, tool_call, tool_result, thought"""
+    """type of the chunk: text, tool_call, tool_result, thought, model_start, model_end"""
 
     # Tool call fields (when chunk_type == "tool_call")
     tool_call_id: str | None = None
@@ -142,6 +144,15 @@ class MessageStreamResponse(StreamResponse):
     """icon of the tool"""
     tool_icon_dark: str | dict | None = None
     """dark theme icon of the tool"""
+
+    # Model identity fields (when chunk_type == "model_start")
+    model_provider: str | None = None
+    model_name: str | None = None
+    model_icon: str | dict | None = None
+    model_icon_dark: str | dict | None = None
+    # Model metrics fields (when chunk_type == "model_end")
+    model_usage: dict | None = None
+    model_duration: float | None = None
 
     def model_dump(self, *args, **kwargs) -> dict[str, object]:
         kwargs.setdefault("exclude_none", True)
@@ -716,6 +727,8 @@ class ChunkType(StrEnum):
     THOUGHT = "thought"  # Agent thinking process (ReAct)
     THOUGHT_START = "thought_start"  # Agent thought start
     THOUGHT_END = "thought_end"  # Agent thought end
+    MODEL_START = "model_start"  # Model turn started with identity info
+    MODEL_END = "model_end"  # Model turn completed with metrics
 
 
 class TextChunkStreamResponse(StreamResponse):
@@ -730,6 +743,8 @@ class TextChunkStreamResponse(StreamResponse):
 
         text: str
         from_variable_selector: list[str] | None = None
+        node_id: str | None = None
+        """workflow node id that produced this chunk"""
 
         # Extended fields for Agent/Tool streaming
         chunk_type: ChunkType = ChunkType.TEXT
@@ -752,6 +767,15 @@ class TextChunkStreamResponse(StreamResponse):
         # Tool elapsed time fields (when chunk_type == TOOL_RESULT)
         tool_elapsed_time: float | None = None
         """elapsed time spent executing the tool"""
+
+        # Model identity fields (when chunk_type == MODEL_START)
+        model_provider: str | None = None
+        model_name: str | None = None
+        model_icon: str | dict | None = None
+        model_icon_dark: str | dict | None = None
+        # Model metrics fields (when chunk_type == MODEL_END)
+        model_usage: dict | None = None
+        model_duration: float | None = None
 
         def model_dump(self, *args, **kwargs) -> dict[str, object]:
             kwargs.setdefault("exclude_none", True)

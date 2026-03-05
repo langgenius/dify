@@ -274,6 +274,7 @@ class TraceState(BaseModel):
     tool_trace_map: dict[str, LLMTraceSegment] = Field(default_factory=dict)
     tool_call_index_map: dict[str, int] = Field(default_factory=dict)
     model_segment_start_time: float | None = Field(default=None, description="Start time for current model segment")
+    model_start_emitted: bool = Field(default=False, description="Whether model_start has been emitted for this turn")
     pending_usage: LLMUsage | None = Field(default=None, description="Pending usage for current model segment")
 
 

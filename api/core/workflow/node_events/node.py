@@ -43,6 +43,8 @@ class ChunkType(StrEnum):
     THOUGHT = "thought"  # Agent thinking process (ReAct)
     THOUGHT_START = "thought_start"  # Agent thought start
     THOUGHT_END = "thought_end"  # Agent thought end
+    MODEL_START = "model_start"  # Model turn started with identity info
+    MODEL_END = "model_end"  # Model turn completed with metrics
 
 
 class StreamChunkEvent(NodeEventBase):
@@ -56,6 +58,14 @@ class StreamChunkEvent(NodeEventBase):
     chunk_type: ChunkType = Field(default=ChunkType.TEXT, description="type of the chunk")
     tool_call: ToolCall | None = Field(default=None, description="structured payload for tool_call chunks")
     tool_result: ToolResult | None = Field(default=None, description="structured payload for tool_result chunks")
+    # Model identity fields (when chunk_type == MODEL_START)
+    model_provider: str | None = Field(default=None, description="model provider identifier")
+    model_name: str | None = Field(default=None, description="model name")
+    model_icon: str | dict | None = Field(default=None, description="model provider icon")
+    model_icon_dark: str | dict | None = Field(default=None, description="model provider dark icon")
+    # Model metrics fields (when chunk_type == MODEL_END)
+    model_usage: LLMUsage | None = Field(default=None, description="per-turn token usage")
+    model_duration: float | None = Field(default=None, description="per-turn duration in seconds")
 
 
 class ToolCallChunkEvent(StreamChunkEvent):

@@ -28,6 +28,7 @@ class ToolResult(BaseModel):
     elapsed_time: float | None = Field(default=None, description="Elapsed seconds spent executing the tool")
     icon: str | dict[str, Any] | None = Field(default=None, description="Icon of the tool")
     icon_dark: str | dict[str, Any] | None = Field(default=None, description="Dark theme icon of the tool")
+    provider: str | None = Field(default=None, description="Tool provider identifier")
 
 
 class ToolCallResult(BaseModel):

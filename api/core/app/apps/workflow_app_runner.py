@@ -494,6 +494,13 @@ class WorkflowBasedAppRunner:
                     tool_call=event.tool_call,
                     tool_result=event.tool_result,
                     in_parent_node_id=event.in_parent_node_id,
+                    node_id=event.node_id,
+                    model_provider=event.model_provider,
+                    model_name=event.model_name,
+                    model_icon=event.model_icon,
+                    model_icon_dark=event.model_icon_dark,
+                    model_usage=event.model_usage,
+                    model_duration=event.model_duration,
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):
