@@ -5,6 +5,10 @@ import { useWorkflowInit } from '../use-workflow-init'
 
 const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
+const mockSetToolPublished = vi.fn()
+const mockSetPublishedAt = vi.fn()
+const mockSetLastPublishedHasUserInput = vi.fn()
+const mockSetFileUploadConfig = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockWorkflowStoreGetState = vi.fn()
 
@@ -64,7 +68,13 @@ const draftResponse = {
 describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkflowStoreGetState.mockReturnValue({ setDraftUpdatedAt: mockSetDraftUpdatedAt })
+    mockWorkflowStoreGetState.mockReturnValue({
+      setDraftUpdatedAt: mockSetDraftUpdatedAt,
+      setToolPublished: mockSetToolPublished,
+      setPublishedAt: mockSetPublishedAt,
+      setLastPublishedHasUserInput: mockSetLastPublishedHasUserInput,
+      setFileUploadConfig: mockSetFileUploadConfig,
+    })
     mockFetchWorkflowDraft
       .mockRejectedValueOnce(notExistError())
       .mockResolvedValueOnce(draftResponse)
