@@ -185,4 +185,4 @@ class AnnotationUpdateDeleteApi(Resource):
     def delete(self, app_model: App, annotation_id: str):
         """Delete an annotation."""
         AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
-        return {"result": "success"}, 204
+        return "", 204

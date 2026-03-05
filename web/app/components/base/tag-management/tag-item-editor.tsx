@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
