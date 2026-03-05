@@ -5,12 +5,16 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
+from extensions.ext_redis import redis_client
 from services.enterprise.base import EnterpriseRequest
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
 ALLOWED_ACCESS_MODES = ["public", "private", "private_all", "sso_verified"]
+# License status cache configuration
+LICENSE_STATUS_CACHE_KEY = "enterprise:license:status"
+LICENSE_STATUS_CACHE_TTL = 600  # 10 minutes
 
 
 class WebAppSettings(BaseModel):
@@ -224,3 +228,45 @@ class EnterpriseService:
 
             params = {"appId": app_id}
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)
+
+    @classmethod
+    def get_cached_license_status(cls):
+        """
+        Get enterprise license status with Redis caching to reduce HTTP calls.
+
+        Only caches valid statuses (active/expiring) since invalid statuses
+        should be re-checked every request — the admin may update the license
+        at any time.
+
+        Returns license status string or None if unavailable.
+        """
+        if not dify_config.ENTERPRISE_ENABLED:
+            return None
+
+        # Try cache first — only valid statuses are cached
+        try:
+            cached_status = redis_client.get(LICENSE_STATUS_CACHE_KEY)
+            if cached_status:
+                if isinstance(cached_status, bytes):
+                    cached_status = cached_status.decode("utf-8")
+                return cached_status
+        except Exception:
+            logger.debug("Failed to get license status from cache, calling enterprise API")
+
+        # Cache miss or failure — call enterprise API
+        try:
+            info = cls.get_info()
+            license_info = info.get("License")
+            if license_info:
+                status = license_info.get("status", "inactive")
+                # Only cache valid statuses so license updates are picked up immediately
+                if status in ("active", "expiring"):
+                    try:
+                        redis_client.setex(LICENSE_STATUS_CACHE_KEY, LICENSE_STATUS_CACHE_TTL, status)
+                    except Exception:
+                        logger.debug("Failed to cache license status")
+                return status
+        except Exception:
+            logger.exception("Failed to get enterprise license status")
+
+        return None
