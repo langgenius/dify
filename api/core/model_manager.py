@@ -133,7 +133,11 @@ class ModelInstance:
         model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
-        stream: bool,
+<<<<<<< HEAD
+        stream: bool = True,
+=======
+        stream: bool = True,
+>>>>>>> 59de475d6c (fix: syntax error in ModelInstance.invoke_llm overload)
         user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
