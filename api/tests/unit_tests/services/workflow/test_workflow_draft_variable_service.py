@@ -487,7 +487,9 @@ class TestModelToInsertionDict:
         is_default_value in the insertion dict entirely.
         """
         conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id="app-1", name="counter", value=StringSegment(value="0"),
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
         )
         # _new() should explicitly set these fields so they are not None
         assert conv_var.visible is not None
@@ -505,7 +507,9 @@ class TestModelToInsertionDict:
         """
         long_desc = "a" * 500
         conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id="app-1", name="counter", value=StringSegment(value="0"),
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
             description=long_desc,
         )
         d = _model_to_insertion_dict(conv_var)
