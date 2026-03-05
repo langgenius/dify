@@ -8,11 +8,12 @@ from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
 from types import MappingProxyType
-from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
+from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
 from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import (
     ErrorStrategy,
     NodeExecutionType,
@@ -65,8 +66,26 @@ from libs.datetime_utils import naive_utc_now
 from .entities import BaseNodeData, RetryConfig
 
 NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
+_MISSING_RUN_CONTEXT_VALUE = object()
 
 logger = logging.getLogger(__name__)
+
+
+class DifyRunContextProtocol(Protocol):
+    tenant_id: str
+    app_id: str
+    user_id: str
+    user_from: Any
+    invoke_from: Any
+
+
+class _MappingDifyRunContext:
+    def __init__(self, mapping: Mapping[str, Any]) -> None:
+        self.tenant_id = str(mapping["tenant_id"])
+        self.app_id = str(mapping["app_id"])
+        self.user_id = str(mapping["user_id"])
+        self.user_from = mapping["user_from"]
+        self.invoke_from = mapping["invoke_from"]
 
 
 class Node(Generic[NodeDataT]):
@@ -228,14 +247,10 @@ class Node(Generic[NodeDataT]):
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
+        self._run_context = MappingProxyType(dict(graph_init_params.run_context))
         self.id = id
-        self.tenant_id = graph_init_params.tenant_id
-        self.app_id = graph_init_params.app_id
         self.workflow_id = graph_init_params.workflow_id
         self.graph_config = graph_init_params.graph_config
-        self.user_id = graph_init_params.user_id
-        self.user_from = graph_init_params.user_from
-        self.invoke_from = graph_init_params.invoke_from
         self.workflow_call_depth = graph_init_params.call_depth
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
@@ -257,6 +272,38 @@ class Node(Generic[NodeDataT]):
     @property
     def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
+
+    @property
+    def run_context(self) -> Mapping[str, Any]:
+        return self._run_context
+
+    def get_run_context_value(self, key: str, default: Any = None) -> Any:
+        return self._run_context.get(key, default)
+
+    def require_run_context_value(self, key: str) -> Any:
+        value = self.get_run_context_value(key, _MISSING_RUN_CONTEXT_VALUE)
+        if value is _MISSING_RUN_CONTEXT_VALUE:
+            raise ValueError(f"run_context missing required key: {key}")
+        return value
+
+    def require_dify_context(self) -> DifyRunContextProtocol:
+        raw_ctx = self.require_run_context_value(DIFY_RUN_CONTEXT_KEY)
+        if raw_ctx is None:
+            raise ValueError(f"run_context missing required key: {DIFY_RUN_CONTEXT_KEY}")
+
+        if isinstance(raw_ctx, Mapping):
+            missing_keys = [
+                key for key in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from") if key not in raw_ctx
+            ]
+            if missing_keys:
+                raise ValueError(f"dify context missing required keys: {', '.join(missing_keys)}")
+            return _MappingDifyRunContext(raw_ctx)
+
+        for attr in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from"):
+            if not hasattr(raw_ctx, attr):
+                raise TypeError(f"invalid dify context object, missing attribute: {attr}")
+
+        return cast(DifyRunContextProtocol, raw_ctx)
 
     @property
     def execution_id(self) -> str:

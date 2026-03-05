@@ -210,6 +210,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         """
         Extract files from response by checking both Content-Type header and URL
         """
+        dify_ctx = self.require_dify_context()
         files: list[File] = []
         is_file = response.is_file
         content_type = response.content_type
@@ -234,8 +235,8 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
+            user_id=dify_ctx.user_id,
+            tenant_id=dify_ctx.tenant_id,
             conversation_id=None,
             file_binary=content,
             mimetype=mime_type,
@@ -247,7 +248,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         }
         file = file_factory.build_from_mapping(
             mapping=mapping,
-            tenant_id=self.tenant_id,
+            tenant_id=dify_ctx.tenant_id,
         )
         files.append(file)
 

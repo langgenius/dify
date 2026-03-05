@@ -104,6 +104,10 @@ vi.mock('@/service/use-apps', () => ({
     error: mockError,
     refetch: mockRefetch,
   }),
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/hooks/use-pay', () => ({
