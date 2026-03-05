@@ -19,6 +19,7 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.summary_index.summary_index import SummaryIndex
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, SystemVariableKey
@@ -34,6 +35,7 @@ from dify_graph.nodes.code.limits import CodeNodeLimits
 from dify_graph.nodes.datasource import DatasourceNode
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from dify_graph.nodes.llm.entities import ModelConfig
@@ -205,6 +207,15 @@ class DifyNodeFactory(NodeFactory):
                 file_manager=self._http_request_file_manager,
             )
 
+        if node_type == NodeType.HUMAN_INPUT:
+            return HumanInputNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                form_repository=HumanInputFormRepositoryImpl(tenant_id=self.graph_init_params.tenant_id),
+            )
+
         if node_type == NodeType.KNOWLEDGE_INDEX:
             return KnowledgeIndexNode(
                 id=node_id,
@@ -254,6 +265,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
