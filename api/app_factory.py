@@ -1,12 +1,13 @@
 import logging
 import time
 
-from flask import jsonify, request
+from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
 from services.feature_service import FeatureService, LicenseStatus
@@ -61,14 +62,15 @@ def create_flask_app_with_configs() -> DifyApp:
                         LicenseStatus.EXPIRED,
                         LicenseStatus.LOST,
                     ]:
-                        return jsonify({
-                            "code": "license_expired",
-                            "message": (
-                                f"Enterprise license is {system_features.license.status.value}. "
-                                "Please contact your administrator."
-                            ),
-                            "status": system_features.license.status.value,
-                        }), 403
+                        # Raise UnauthorizedAndForceLogout to trigger frontend reload and logout
+                        # Frontend checks code === 'unauthorized_and_force_logout' and calls location.reload()
+                        raise UnauthorizedAndForceLogout(
+                            f"Enterprise license is {system_features.license.status.value}. "
+                            "Please contact your administrator."
+                        )
+                except UnauthorizedAndForceLogout:
+                    # Re-raise to let Flask error handler convert to proper JSON response
+                    raise
                 except Exception:
                     # If license check fails, log but don't block the request
                     # This prevents service disruption if enterprise API is temporarily unavailable
