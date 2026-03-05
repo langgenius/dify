@@ -1,7 +1,7 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal, marshal_with
+from flask_restx import Resource, marshal
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -59,6 +59,7 @@ class CustomizedSnippetsApi(Resource):
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
+            is_published=query.is_published,
         )
 
         return {

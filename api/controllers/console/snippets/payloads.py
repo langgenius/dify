@@ -9,6 +9,7 @@ class SnippetListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=20, ge=1, le=100)
     keyword: str | None = None
+    is_published: bool | None = Field(default=None, description="Filter by published status")
 
 
 class IconInfo(BaseModel):

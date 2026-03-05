@@ -7,9 +7,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.variables.variables import VariableBase
 from core.workflow.enums import NodeType
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from core.workflow.variables.variables import VariableBase
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -48,6 +48,7 @@ class SnippetService:
         page: int = 1,
         limit: int = 20,
         keyword: str | None = None,
+        is_published: bool | None = None,
     ) -> tuple[Sequence[CustomizedSnippet], int, bool]:
         """
         Get paginated list of snippets with optional search.
@@ -56,6 +57,7 @@ class SnippetService:
         :param page: Page number (1-indexed)
         :param limit: Number of items per page
         :param keyword: Optional search keyword for name/description
+        :param is_published: Optional filter by published status (True/False/None for all)
         :return: Tuple of (snippets list, total count, has_more flag)
         """
         stmt = (
@@ -68,6 +70,9 @@ class SnippetService:
             stmt = stmt.where(
                 CustomizedSnippet.name.ilike(f"%{keyword}%") | CustomizedSnippet.description.ilike(f"%{keyword}%")
             )
+
+        if is_published is not None:
+            stmt = stmt.where(CustomizedSnippet.is_published == is_published)
 
         # Get total count
         count_stmt = select(func.count()).select_from(stmt.subquery())
