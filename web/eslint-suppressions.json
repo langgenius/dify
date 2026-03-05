@@ -301,9 +301,6 @@
     }
   },
   "app/account/oauth/authorize/layout.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4697,11 +4694,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
   "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -6468,11 +6460,6 @@
     }
   },
   "app/components/workflow-app/store/workflow/workflow-slice.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/__tests__/trigger-status-sync.test.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -8488,11 +8475,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/tool/__tests__/output-schema-utils.test.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/tool/components/copy-id.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -8615,11 +8597,6 @@
   "app/components/workflow/nodes/trigger-plugin/use-config.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/trigger-plugin/utils/__tests__/form-helpers.test.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/trigger-plugin/utils/form-helpers.ts": {
@@ -9594,14 +9571,6 @@
       "count": 5
     }
   },
-  "context/app-context.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "context/datasets-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -9760,17 +9729,6 @@
   "i18n/uk-UA/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "lib/utils.ts": {
-    "import/consistent-type-specifier-style": {
-      "count": 1
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    },
-    "style/quotes": {
-      "count": 2
     }
   },
   "models/common.ts": {
