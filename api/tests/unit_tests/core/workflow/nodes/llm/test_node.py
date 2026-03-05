@@ -24,8 +24,8 @@ from dify_graph.model_runtime.entities.message_entities import (
 )
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from dify_graph.nodes.llm import llm_utils
 from dify_graph.node_events.node import RunRetrieverResourceEvent
+from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
@@ -361,7 +361,7 @@ def test_fetch_context_disabled_returns_nothing(llm_node):
     llm_node.node_data.context.enabled = False
     llm_node.node_data.context.variable_selector = ["sys", "ctx"]
     # even if the variable exists, generator should be empty when disabled
-    llm_node.graph_runtime_state.variable_pool.add(["sys", "ctx"], ArrayAnySegment(value=[{"a":1}]))
+    llm_node.graph_runtime_state.variable_pool.add(["sys", "ctx"], ArrayAnySegment(value=[{"a": 1}]))
     assert list(llm_node._fetch_context(node_data=llm_node.node_data)) == []
 
 
