@@ -20,11 +20,11 @@ from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from core.helper import ssrf_proxy
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, file_manager
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment, FileSegment
 
@@ -58,6 +58,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         graph_runtime_state: "GraphRuntimeState",
         *,
         unstructured_api_config: UnstructuredApiConfig | None = None,
+        http_client: HttpClientProtocol,
     ) -> None:
         super().__init__(
             id=id,
@@ -66,6 +67,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self._unstructured_api_config = unstructured_api_config or UnstructuredApiConfig()
+        self._http_client = http_client
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
@@ -85,7 +87,9 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         try:
             if isinstance(value, list):
                 extracted_text_list = [
-                    _extract_text_from_file(file, unstructured_api_config=self._unstructured_api_config)
+                    _extract_text_from_file(
+                        self._http_client, file, unstructured_api_config=self._unstructured_api_config
+                    )
                     for file in value
                 ]
                 return NodeRunResult(
@@ -95,7 +99,9 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
                     outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
-                extracted_text = _extract_text_from_file(value, unstructured_api_config=self._unstructured_api_config)
+                extracted_text = _extract_text_from_file(
+                    self._http_client, value, unstructured_api_config=self._unstructured_api_config
+                )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
@@ -439,13 +445,13 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
 
 
-def _download_file_content(file: File) -> bytes:
+def _download_file_content(http_client: HttpClientProtocol, file: File) -> bytes:
     """Download the content of a file based on its transfer method."""
     try:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             if file.remote_url is None:
                 raise FileDownloadError("Missing URL for remote file")
-            response = ssrf_proxy.get(file.remote_url)
+            response = http_client.get(file.remote_url)
             response.raise_for_status()
             return response.content
         else:
@@ -454,8 +460,10 @@ def _download_file_content(file: File) -> bytes:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
 
-def _extract_text_from_file(file: File, *, unstructured_api_config: UnstructuredApiConfig) -> str:
-    file_content = _download_file_content(file)
+def _extract_text_from_file(
+    http_client: HttpClientProtocol, file: File, *, unstructured_api_config: UnstructuredApiConfig
+) -> str:
+    file_content = _download_file_content(http_client, file)
     if file.extension:
         extracted_text = _extract_text_by_file_extension(
             file_content=file_content,
