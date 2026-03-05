@@ -881,7 +881,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
             tenant_id=current_tenant_id,
             user_id=current_user.id,
             provider=provider,
-            id=args["id"],
+            id=payload.id,
             account=current_user,
         )
 
