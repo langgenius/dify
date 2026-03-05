@@ -2,7 +2,7 @@ import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkDirective from 'remark-directive'
 import { visit } from 'unist-util-visit'
-import { directivePropsSchemas } from './components/markdown-with-directive-schema'
+import { validateDirectiveProps } from './components/markdown-with-directive-schema'
 import WithIconCardItem from './components/with-icon-card-item'
 import WithIconCardList from './components/with-icon-card-list'
 
@@ -14,19 +14,6 @@ type DirectiveNode = {
     hName?: string
     hProperties?: Record<string, string>
   }
-}
-
-type DirectiveName = keyof typeof directivePropsSchemas
-
-function isDirectiveName(name: string): name is DirectiveName {
-  return Object.hasOwn(directivePropsSchemas, name)
-}
-
-function isValidDirectiveProps(name: string, attributes: Record<string, string>): boolean {
-  if (!isDirectiveName(name))
-    return false
-
-  return directivePropsSchemas[name].safeParse(attributes).success
 }
 
 type MdastRoot = {
@@ -103,7 +90,7 @@ function isValidDirectiveAst(tree: Parameters<typeof visit>[0]): boolean {
       }
 
       const attributes = normalizeDirectiveAttributes(directiveNode.attributes)
-      if (!isValidDirectiveProps(directiveName, attributes))
+      if (!validateDirectiveProps(directiveName, attributes))
         isValid = false
     },
   )
@@ -174,8 +161,8 @@ function directivePlugin() {
 }
 
 const directiveComponents = {
-  withIconCardList: WithIconCardList,
-  withIconCardItem: WithIconCardItem,
+  withiconcardlist: WithIconCardList,
+  withiconcarditem: WithIconCardItem,
 } as unknown as Components
 
 type MarkdownWithDirectiveProps = {

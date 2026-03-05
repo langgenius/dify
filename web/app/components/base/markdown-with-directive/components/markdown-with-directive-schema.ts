@@ -11,9 +11,41 @@ export const withIconCardItemPropsSchema = z.object({
 }).strict()
 
 export const directivePropsSchemas = {
-  withIconCardListPropsSchema,
-  withIconCardItemPropsSchema,
+  withiconcardlist: withIconCardListPropsSchema,
+  withiconcarditem: withIconCardItemPropsSchema,
 } as const
+
+export type DirectiveName = keyof typeof directivePropsSchemas
+
+function isDirectiveName(name: string): name is DirectiveName {
+  return Object.hasOwn(directivePropsSchemas, name)
+}
+
+export function validateDirectiveProps(name: string, attributes: Record<string, string>): boolean {
+  if (!isDirectiveName(name)) {
+    console.error('[markdown-with-directive] Unknown directive name.', {
+      attributes,
+      directive: name,
+    })
+    return false
+  }
+
+  const parsed = directivePropsSchemas[name].safeParse(attributes)
+  if (!parsed.success) {
+    console.error('[markdown-with-directive] Invalid directive props.', {
+      attributes,
+      directive: name,
+      issues: parsed.error.issues.map(issue => ({
+        code: issue.code,
+        message: issue.message,
+        path: issue.path.join('.'),
+      })),
+    })
+    return false
+  }
+
+  return true
+}
 
 export type WithIconCardListProps = z.infer<typeof withIconCardListPropsSchema>
 export type WithIconCardItemProps = z.infer<typeof withIconCardItemPropsSchema>
