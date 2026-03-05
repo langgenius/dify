@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Model za pretvorbo govora v besedilo",
   "modelProvider.speechToTextModel.tip": "Nastavite privzeti model za vnos govora v besedilo v pogovoru.",
   "modelProvider.systemModelSettings": "Nastavitve sistemskega modela",
-  "modelProvider.systemModelSettingsLink": "Zakaj je potrebno nastaviti sistemski model?",
   "modelProvider.systemReasoningModel.key": "Sistemski model za sklepanja",
   "modelProvider.systemReasoningModel.tip": "Nastavite privzeti model za sklepanja, ki se bo uporabljal za ustvarjanje aplikacij, kot tudi funkcije, kot so generiranje imen dialogov in predlaganje naslednjih vprašanj.",
   "modelProvider.toBeConfigured": "Za konfiguracijo",

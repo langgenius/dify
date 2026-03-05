@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Модель перетворення мовлення в текст",
   "modelProvider.speechToTextModel.tip": "Встановіть модель за замовчуванням для введення мовлення в текст під час розмови.",
   "modelProvider.systemModelSettings": "Налаштування системної моделі",
-  "modelProvider.systemModelSettingsLink": "Чому необхідно налаштовувати системну модель?",
   "modelProvider.systemReasoningModel.key": "Системна модель міркування",
   "modelProvider.systemReasoningModel.tip": "Встановіть модель висновку за замовчуванням, яка буде використовуватися для створення програм, а також для таких функцій, як генерація імені діалогу та пропозиція наступного питання також використовуватимуть модель висновку за замовчуванням.",
   "modelProvider.toBeConfigured": "Підлягає налаштуванню",

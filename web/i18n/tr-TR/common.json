@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Konuşmadan Metne Modeli",
   "modelProvider.speechToTextModel.tip": "Konuşmada konuşmadan metne giriş için varsayılan modeli ayarlayın.",
   "modelProvider.systemModelSettings": "Sistem Model Ayarları",
-  "modelProvider.systemModelSettingsLink": "Sistem modelini ayarlamak neden gereklidir?",
   "modelProvider.systemReasoningModel.key": "Sistem Çıkarım Modeli",
   "modelProvider.systemReasoningModel.tip": "Uygulamalar oluşturmak ve diyalog adı oluşturma ve sonraki soru önerisi gibi özelliklerin otomatikleştirilmesi için kullanılacak varsayılan çıkarım modelini ayarlayın.",
   "modelProvider.toBeConfigured": "Yapılandırılacak",

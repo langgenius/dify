@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "مدل تبدیل گفتار به متن",
   "modelProvider.speechToTextModel.tip": "مدل پیش‌فرض را برای ورودی گفتار به متن در مکالمه تنظیم کنید.",
   "modelProvider.systemModelSettings": "تنظیمات مدل سیستم",
-  "modelProvider.systemModelSettingsLink": "چرا تنظیم مدل سیستم ضروری است؟",
   "modelProvider.systemReasoningModel.key": "مدل استدلال سیستم",
   "modelProvider.systemReasoningModel.tip": "مدل استنتاج پیش‌فرض را برای ایجاد برنامه‌ها تنظیم کنید. ویژگی‌هایی مانند تولید نام گفتگو و پیشنهاد سوال بعدی نیز از مدل استنتاج پیش‌فرض استفاده خواهند کرد.",
   "modelProvider.toBeConfigured": "پیکربندی شود",
