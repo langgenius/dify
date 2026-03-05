@@ -4681,7 +4681,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {

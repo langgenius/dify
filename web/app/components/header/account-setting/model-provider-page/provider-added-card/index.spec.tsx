@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import type { ModelProvider } from '../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { useExpandModelProviderList } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import ProviderAddedCard from './index'
 
@@ -12,10 +14,6 @@ const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { prov
   queryFn: () => mockFetchModelProviderModels(input.params.provider),
   ...options,
 }))
-const mockEventEmitter = {
-  useSubscription: vi.fn(),
-  emit: vi.fn(),
-}
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -30,12 +28,6 @@ vi.mock('@/service/client', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-  }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: mockEventEmitter,
   }),
 }))
 
@@ -74,10 +66,27 @@ const createTestQueryClient = () => new QueryClient({
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createTestQueryClient()
+  const store = createStore()
   return render(
-    <QueryClientProvider client={queryClient}>
-      {node}
-    </QueryClientProvider>,
+    <JotaiProvider store={store}>
+      <QueryClientProvider client={queryClient}>
+        {node}
+      </QueryClientProvider>
+    </JotaiProvider>,
+  )
+}
+
+const ExternalExpandControls = () => {
+  const expandModelProviderList = useExpandModelProviderList()
+  return (
+    <>
+      <button type="button" data-testid="expand-other-provider" onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}>
+        expand other
+      </button>
+      <button type="button" data-testid="expand-current-provider" onClick={() => expandModelProviderList('langgenius/openai/openai')}>
+        expand current
+      </button>
+    </>
   )
 }
 
@@ -157,6 +166,27 @@ describe('ProviderAddedCard', () => {
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
   })
 
+  it('should only react to external expansion for the matching provider', async () => {
+    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    renderWithQueryClient(
+      <>
+        <ProviderAddedCard provider={mockProvider} />
+        <ExternalExpandControls />
+      </>,
+    )
+
+    fireEvent.click(screen.getByTestId('expand-other-provider'))
+    await waitFor(() => {
+      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(0)
+    })
+
+    fireEvent.click(screen.getByTestId('expand-current-provider'))
+    await waitFor(() => {
+      expect(mockFetchModelProviderModels).toHaveBeenCalledWith(mockProvider.provider)
+    })
+    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
+  })
+
   it('should render configure tip when provider is not in quota list and not configured', () => {
     const providerWithoutQuota = {
       ...mockProvider,
@@ -166,56 +196,19 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should refresh model list on event subscription', async () => {
-    let capturedHandler: (v: { type: string, payload: string } | null) => void = () => { }
-    mockEventEmitter.useSubscription.mockImplementation((handler: (v: unknown) => void) => {
-      capturedHandler = handler as (v: { type: string, payload: string } | null) => void
-    })
-    mockFetchModelProviderModels.mockResolvedValue({ data: [] })
-
-    renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-
-    expect(capturedHandler).toBeDefined()
-    act(() => {
-      capturedHandler({
-        type: 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST',
-        payload: mockProvider.provider,
-      })
-    })
-
-    await waitFor(() => {
-      expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
-    })
-
-    // Should ignore non-matching events
-    act(() => {
-      capturedHandler({ type: 'OTHER', payload: '' })
-      capturedHandler(null)
-    })
-    expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(1)
-  })
-
   it('should render custom model actions for workspace managers', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    const queryClient = createTestQueryClient()
-    const { rerender } = render(
-      <QueryClientProvider client={queryClient}>
-        <ProviderAddedCard provider={customConfigProvider} />
-      </QueryClientProvider>,
-    )
+    const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
     expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
 
+    unmount()
     mockIsCurrentWorkspaceManager = false
-    rerender(
-      <QueryClientProvider client={queryClient}>
-        <ProviderAddedCard provider={customConfigProvider} />
-      </QueryClientProvider>,
-    )
+    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 })

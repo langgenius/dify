@@ -4,10 +4,9 @@ import type {
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import type { EventEmitterValue } from '@/context/event-emitter'
 
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
@@ -15,10 +14,10 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
+import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
 import ProviderIcon from '../provider-icon'
@@ -29,22 +28,6 @@ import {
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
 import ProviderCardActions from './provider-card-actions'
-
-export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
-
-const isModelProviderCustomModelListUpdateEvent = (
-  value: EventEmitterValue,
-  providerName: string,
-): value is {
-  type: typeof UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST
-  payload: string
-} => {
-  return typeof value === 'object'
-    && value !== null
-    && value.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST
-    && typeof value.payload === 'string'
-    && value.payload === providerName
-}
 
 type ProviderAddedCardProps = {
   notConfigured?: boolean
@@ -57,10 +40,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   pluginDetail,
 }) => {
   const { t } = useTranslation()
-  const { eventEmitter } = useEventEmitterContextContext()
   const { refreshModelProviders } = useProviderContext()
-  const [collapsed, setCollapsed] = useState(true)
   const currentProviderName = provider.provider
+  const expanded = useModelProviderListExpanded(currentProviderName)
+  const setExpanded = useSetModelProviderListExpanded(currentProviderName)
   const supportsPredefinedModel = provider.configurate_methods.includes(ConfigurationMethodEnum.predefinedModel)
   const supportsCustomizableModel = provider.configurate_methods.includes(ConfigurationMethodEnum.customizableModel)
   const systemConfig = provider.system_configuration
@@ -71,12 +54,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     refetch: refetchModelList,
   } = useQuery(consoleQuery.modelProviders.models.queryOptions({
     input: { params: { provider: currentProviderName } },
-    enabled: !collapsed,
+    enabled: expanded,
     refetchOnWindowFocus: false,
     select: response => response.data,
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
-  const showCollapsedSection = collapsed || !hasFetchedModelList
+  const showCollapsedSection = !expanded || !hasFetchedModelList
   const { isCurrentWorkspaceManager } = useAppContext()
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = supportsPredefinedModel && isCurrentWorkspaceManager
@@ -86,32 +69,23 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     if (targetProviderName !== currentProviderName)
       return
 
-    if (collapsed)
-      setCollapsed(false)
+    if (!expanded)
+      setExpanded(true)
 
     refetchModelList().catch(() => {})
-  }, [collapsed, currentProviderName, refetchModelList])
+  }, [currentProviderName, expanded, refetchModelList, setExpanded])
 
   const handleOpenModelList = useCallback(() => {
     if (loading)
       return
 
-    if (collapsed) {
-      setCollapsed(false)
+    if (!expanded) {
+      setExpanded(true)
       return
     }
 
     refetchModelList().catch(() => {})
-  }, [collapsed, loading, refetchModelList])
-
-  const handleModelProviderCustomModelListUpdate = useCallback((value: EventEmitterValue) => {
-    if (!isModelProviderCustomModelListUpdateEvent(value, currentProviderName))
-      return
-
-    refreshModelList(currentProviderName)
-  }, [currentProviderName, refreshModelList])
-
-  eventEmitter?.useSubscription(handleModelProviderCustomModelListUpdate)
+  }, [expanded, loading, refetchModelList, setExpanded])
 
   return (
     <div
@@ -198,7 +172,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           <ModelList
             provider={provider}
             models={modelList}
-            onCollapse={() => setCollapsed(true)}
+            onCollapse={() => setExpanded(false)}
             onChange={refreshModelList}
           />
         )

@@ -3,13 +3,14 @@ import type {
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { useDebounce } from 'ahooks'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useCheckInstalled } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
+import { useResetModelProviderListExpanded } from './atoms'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -34,6 +35,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
+  const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
@@ -126,6 +128,11 @@ const ModelProviderPage = ({ searchText }: Props) => {
 
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
+
+  useEffect(() => {
+    resetModelProviderListExpanded()
+    return resetModelProviderListExpanded
+  }, [resetModelProviderListExpanded])
 
   return (
     <div className="relative -mt-2 pt-1">

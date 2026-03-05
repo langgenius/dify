@@ -9,6 +9,7 @@ import type {
 } from './declarations'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
+import { consoleQuery } from '@/service/client'
 import { fetchDefaultModal, fetchModelList, fetchModelProviderCredentials } from '@/service/common'
 import {
   ConfigurationMethodEnum,
@@ -37,7 +38,6 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 // Mock dependencies
 vi.mock('@tanstack/react-query', () => ({
@@ -79,14 +79,6 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: vi.fn(() => ({
-    eventEmitter: {
-      emit: vi.fn(),
-    },
-  })),
-}))
-
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(() => ({
     plugins: [],
@@ -100,12 +92,16 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   })),
 }))
 
+vi.mock('./atoms', () => ({
+  useExpandModelProviderList: vi.fn(() => vi.fn()),
+}))
+
 const { useQuery, useQueryClient } = await import('@tanstack/react-query')
 const { getPayUrl } = await import('@/service/common')
 const { useProviderContext } = await import('@/context/provider-context')
 const { useModalContextSelector } = await import('@/context/modal-context')
-const { useEventEmitterContextContext } = await import('@/context/event-emitter')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } = await import('@/app/components/plugins/marketplace/hooks')
+const { useExpandModelProviderList } = await import('./atoms')
 
 describe('hooks', () => {
   beforeEach(() => {
@@ -1200,39 +1196,52 @@ describe('hooks', () => {
 
     it('should refresh providers and model lists', () => {
       const invalidateQueries = vi.fn()
-      const emit = vi.fn()
 
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useEventEmitterContextContext as Mock).mockReturnValue({
-        eventEmitter: { emit },
-      })
 
       const provider = createMockProvider()
+      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+        input: {
+          params: {
+            provider: provider.provider,
+          },
+        },
+      })
       const { result } = renderHook(() => useRefreshModel())
 
       act(() => {
         result.current.handleRefreshModel(provider)
       })
 
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'none',
+      })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-providers'] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-list', ModelTypeEnum.textGeneration] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-list', ModelTypeEnum.textEmbedding] })
     })
 
-    it('should emit event when refreshModelList is true and custom config is active', () => {
+    it('should expand target provider list when refreshModelList is true and custom config is active', () => {
       const invalidateQueries = vi.fn()
-      const emit = vi.fn()
+      const expandModelProviderList = vi.fn()
 
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useEventEmitterContextContext as Mock).mockReturnValue({
-        eventEmitter: { emit },
-      })
+      ; (useExpandModelProviderList as Mock).mockReturnValue(expandModelProviderList)
 
       const provider = createMockProvider()
       const customFields: CustomConfigurationModelFixedFields = {
         __model_name: 'gpt-4',
         __model_type: ModelTypeEnum.textGeneration,
       }
+      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+        input: {
+          params: {
+            provider: provider.provider,
+          },
+        },
+      })
 
       const { result } = renderHook(() => useRefreshModel())
 
@@ -1240,23 +1249,30 @@ describe('hooks', () => {
         result.current.handleRefreshModel(provider, customFields, true)
       })
 
-      expect(emit).toHaveBeenCalledWith({
-        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: 'openai',
+      expect(expandModelProviderList).toHaveBeenCalledWith('openai')
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'active',
       })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-list', ModelTypeEnum.textGeneration] })
     })
 
-    it('should not emit event when custom config is not active', () => {
+    it('should not expand provider list when custom config is not active', () => {
       const invalidateQueries = vi.fn()
-      const emit = vi.fn()
+      const expandModelProviderList = vi.fn()
 
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useEventEmitterContextContext as Mock).mockReturnValue({
-        eventEmitter: { emit },
-      })
+      ; (useExpandModelProviderList as Mock).mockReturnValue(expandModelProviderList)
 
       const provider = { ...createMockProvider(), custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure } }
+      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+        input: {
+          params: {
+            provider: provider.provider,
+          },
+        },
+      })
 
       const { result } = renderHook(() => useRefreshModel())
 
@@ -1264,16 +1280,43 @@ describe('hooks', () => {
         result.current.handleRefreshModel(provider, undefined, true)
       })
 
-      expect(emit).not.toHaveBeenCalled()
+      expect(expandModelProviderList).not.toHaveBeenCalled()
+      expect(invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'active',
+      })
+    })
+
+    it('should refetch active model provider list when custom refresh callback is absent', () => {
+      const invalidateQueries = vi.fn()
+      ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
+
+      const provider = createMockProvider()
+      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+        input: {
+          params: {
+            provider: provider.provider,
+          },
+        },
+      })
+      const { result } = renderHook(() => useRefreshModel())
+
+      act(() => {
+        result.current.handleRefreshModel(provider, undefined, true)
+      })
+
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'active',
+      })
     })
 
     it('should handle provider with single model type', () => {
       const invalidateQueries = vi.fn()
 
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useEventEmitterContextContext as Mock).mockReturnValue({
-        eventEmitter: { emit: vi.fn() },
-      })
 
       const provider = {
         ...createMockProvider(),

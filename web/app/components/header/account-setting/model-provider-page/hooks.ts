@@ -21,7 +21,6 @@ import {
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -33,12 +32,12 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
+import { useExpandModelProviderList } from './atoms'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -323,7 +322,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
 }
 
 export const useRefreshModel = () => {
-  const { eventEmitter } = useEventEmitterContextContext()
+  const expandModelProviderList = useExpandModelProviderList()
   const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
@@ -332,8 +331,16 @@ export const useRefreshModel = () => {
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     refreshModelList?: boolean,
   ) => {
+    const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      input: {
+        params: {
+          provider: provider.provider,
+        },
+      },
+    })
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.modelProviders.models.key(),
+      queryKey: modelProviderModelListQueryKey,
+      exact: true,
       refetchType: 'none',
     })
 
@@ -344,15 +351,17 @@ export const useRefreshModel = () => {
     })
 
     if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-      eventEmitter?.emit({
-        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider.provider,
-      } as any)
+      expandModelProviderList(provider.provider)
+      queryClient.invalidateQueries({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'active',
+      })
 
       if (CustomConfigurationModelFixedFields?.__model_type)
         updateModelList(CustomConfigurationModelFixedFields.__model_type)
     }
-  }, [eventEmitter, queryClient, updateModelList, updateModelProviders])
+  }, [expandModelProviderList, queryClient, updateModelList, updateModelProviders])
 
   return {
     handleRefreshModel,
