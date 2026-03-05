@@ -3,7 +3,7 @@ import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
-const isDev = env.NODE_ENV === 'development'
+const isDev = process.env.NODE_ENV === 'development'
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
@@ -25,7 +25,6 @@ const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFI
 
 const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
-  serverExternalPackages: ['esbuild'],
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({

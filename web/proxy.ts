@@ -22,7 +22,7 @@ export function proxy(request: NextRequest) {
     },
   })
 
-  const isWhiteListEnabled = !!env.NEXT_PUBLIC_CSP_WHITELIST && env.NODE_ENV === 'production'
+  const isWhiteListEnabled = !!env.NEXT_PUBLIC_CSP_WHITELIST && process.env.NODE_ENV === 'production'
   if (!isWhiteListEnabled)
     return wrapResponseWithXFrameOptions(response, pathname)
 

@@ -1,7 +1,7 @@
 import type { Props } from './csv-uploader'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import CSVUploader from './csv-uploader'
 
 describe('CSVUploader', () => {

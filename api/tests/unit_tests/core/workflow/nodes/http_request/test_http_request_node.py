@@ -4,14 +4,16 @@ from typing import Any
 import httpx
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout, Response
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.tools.tool_file_manager import ToolFileManager
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.file.file_manager import file_manager
+from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from dify_graph.nodes.http_request.entities import HttpRequestNodeTimeout, Response
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=10,
@@ -96,11 +98,11 @@ def _build_http_node(
         ],
         "edges": [],
     }
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -116,6 +118,9 @@ def _build_http_node(
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
     )
 
 
@@ -156,7 +161,7 @@ def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyP
                 )
             )
 
-    monkeypatch.setattr("core.workflow.nodes.http_request.node.Executor", FakeExecutor)
+    monkeypatch.setattr("dify_graph.nodes.http_request.node.Executor", FakeExecutor)
 
     result = node._run()
 
