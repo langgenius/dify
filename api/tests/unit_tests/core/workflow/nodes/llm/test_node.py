@@ -5,14 +5,13 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import UserFrom
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.message_entities import (
@@ -41,6 +40,7 @@ from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class MockTokenBufferMemory:
@@ -76,11 +76,11 @@ def llm_node_data() -> LLMNodeData:
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    return build_test_graph_init_params(
         workflow_id="1",
         graph_config={},
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
