@@ -91,6 +91,7 @@ export default defineConfig(({ mode }) => {
       : [
           createCodeInspectorPlugin(),
           createForceInspectorClientInjectionPlugin(),
+          react(),
           vinext(),
         ],
     resolve: {
