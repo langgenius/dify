@@ -1,6 +1,7 @@
 import logging
 import time
 
+from flask import jsonify, request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
@@ -8,6 +9,7 @@ from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from services.feature_service import FeatureService, LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,47 @@ def create_flask_app_with_configs() -> DifyApp:
         # Initialize logging context for this request
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
+
+        # Enterprise license validation for console API endpoints
+        if dify_config.ENTERPRISE_ENABLED and request.path.startswith("/console/api"):
+            # Skip license check for auth-related endpoints and system endpoints
+            exempt_paths = [
+                "/console/api/login",
+                "/console/api/logout",
+                "/console/api/oauth",
+                "/console/api/setup",
+                "/console/api/init",
+                "/console/api/forgot-password",
+                "/console/api/email-code-login",
+                "/console/api/activation",
+                "/console/api/data-source-oauth",
+                "/console/api/features",  # Allow fetching features to show license status
+            ]
+
+            # Check if current path is exempt
+            is_exempt = any(request.path.startswith(path) for path in exempt_paths)
+
+            if not is_exempt:
+                try:
+                    # Check license status
+                    system_features = FeatureService.get_system_features(is_authenticated=True)
+                    if system_features.license.status in [
+                        LicenseStatus.INACTIVE,
+                        LicenseStatus.EXPIRED,
+                        LicenseStatus.LOST,
+                    ]:
+                        return jsonify({
+                            "code": "license_expired",
+                            "message": (
+                                f"Enterprise license is {system_features.license.status.value}. "
+                                "Please contact your administrator."
+                            ),
+                            "status": system_features.license.status.value,
+                        }), 403
+                except Exception:
+                    # If license check fails, log but don't block the request
+                    # This prevents service disruption if enterprise API is temporarily unavailable
+                    logger.exception("Failed to check enterprise license status")
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
