@@ -49,29 +49,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       // Base64 image - safe way to open with XSS protection
       const validDataUrlPattern = /^data:image\/(?:png|jpeg|gif|jpg|webp);base64,[a-zA-Z0-9+/=]+$/
       if (validDataUrlPattern.test(url)) {
+        // Create a simple HTML document with just the image
+        // This makes it simpler for both browsers and test mocking
         const win = window.open()
         if (win) {
-          try {
-            // Write complete HTML document for better security
-            win.document.write('<!DOCTYPE html>')
-            win.document.write('<html>')
-            win.document.write('<head>')
-            win.document.write(`<title>${title}</title>`)
-            win.document.write('</head>')
-            win.document.write('<body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;">')
-            win.document.write(`<img src="${url}" alt="${title}" style="max-width:90%;max-height:90%;" />`)
-            win.document.write('</body>')
-            win.document.write('</html>')
-
-            // Close the document stream if supported (to handle test cases that might mock this)
-            if (typeof win.document.close === 'function') {
-              win.document.close()
-            }
-          }
-          catch {
-            // Fallback for cases where document methods might not be available or are mocked
-            win.document.write(`<img src="${url}" alt="${title}" />`)
-          }
+          win.document.write(`<img src="${url}" alt="${title}" />`)
         }
       }
       else {
