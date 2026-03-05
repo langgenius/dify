@@ -4899,9 +4899,6 @@
   "app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/header/account-setting/model-provider-page/model-selector/popup.tsx": {
@@ -4978,9 +4975,6 @@
   "app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-icon/index.tsx": {
