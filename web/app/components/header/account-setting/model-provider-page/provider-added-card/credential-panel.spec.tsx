@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
+  CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
@@ -121,7 +122,7 @@ describe('CredentialPanel', () => {
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
 
-    it('should show "Credits exhausted" for credits-exhausted variant', () => {
+    it('should show "Credits exhausted" for credits-exhausted variant (no credentials)', () => {
       mockTrialCredits.isExhausted = true
       mockTrialCredits.credits = 0
       renderWithQueryClient(createProvider({
@@ -133,7 +134,7 @@ describe('CredentialPanel', () => {
       expect(screen.getByText(/quotaExhausted/)).toBeInTheDocument()
     })
 
-    it('should show "No available usage" for no-usage variant', () => {
+    it('should show "No available usage" for no-usage variant (exhausted + credential unauthorized)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider({
         custom_configuration: {
@@ -146,7 +147,7 @@ describe('CredentialPanel', () => {
       expect(screen.getByText(/noAvailableUsage/)).toBeInTheDocument()
     })
 
-    it('should show "API key required" for api-required-add variant', () => {
+    it('should show "API key required" for api-required-add variant (custom priority, no credentials)', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
@@ -156,21 +157,48 @@ describe('CredentialPanel', () => {
       }))
       expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
     })
+
+    it('should show "API key required" for api-required-configure variant (custom priority, credential exists but name missing)', () => {
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: undefined,
+          available_credentials: [{ credential_id: 'cred-1' }],
+        },
+      }))
+      expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
+    })
   })
 
   describe('Status label variants', () => {
-    it('should show green indicator and credential name for api-fallback', () => {
+    it('should show green indicator and credential name for api-fallback (exhausted + authorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider())
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
 
-    it('should show green indicator for api-active', () => {
+    it('should show warning icon for api-fallback variant', () => {
+      mockTrialCredits.isExhausted = true
+      const { container } = renderWithQueryClient(createProvider())
+      expect(container.querySelector('.i-ri-error-warning-fill')).toBeTruthy()
+    })
+
+    it('should show green indicator for api-active (custom priority + authorized)', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
       }))
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
+      expect(screen.getByText('test-credential')).toBeInTheDocument()
+    })
+
+    it('should NOT show warning icon for api-active variant', () => {
+      const { container } = renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+      }))
+      expect(container.querySelector('.i-ri-error-warning-fill')).toBeNull()
     })
 
     it('should show red indicator and "Unavailable" for api-unavailable', () => {
@@ -185,6 +213,7 @@ describe('CredentialPanel', () => {
       }))
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'red')
       expect(screen.getByText(/unavailable/i)).toBeInTheDocument()
+      expect(screen.getByText('Bad Key')).toBeInTheDocument()
     })
   })
 
@@ -200,14 +229,71 @@ describe('CredentialPanel', () => {
       expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
     })
 
+    it('should apply destructive container for no-usage variant', () => {
+      mockTrialCredits.isExhausted = true
+      const { container } = renderWithQueryClient(createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: undefined,
+          available_credentials: [{ credential_id: 'cred-1' }],
+        },
+      }))
+      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
+    })
+
+    it('should apply destructive container for api-unavailable variant', () => {
+      const { container } = renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      }))
+      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
+    })
+
     it('should apply default container for credits-active', () => {
+      const { container } = renderWithQueryClient(createProvider())
+      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
+    })
+
+    it('should apply default container for api-active', () => {
+      const { container } = renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+      }))
+      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
+    })
+
+    it('should apply default container for api-fallback', () => {
+      mockTrialCredits.isExhausted = true
       const { container } = renderWithQueryClient(createProvider())
       expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
     })
   })
 
+  describe('Text color', () => {
+    it('should use destructive text color for credits-exhausted label', () => {
+      mockTrialCredits.isExhausted = true
+      const { container } = renderWithQueryClient(createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      }))
+      expect(container.querySelector('.text-text-destructive')).toBeTruthy()
+    })
+
+    it('should use secondary text color for credits-active label', () => {
+      const { container } = renderWithQueryClient(createProvider())
+      expect(container.querySelector('.text-text-secondary')).toBeTruthy()
+    })
+  })
+
   describe('Priority change', () => {
-    it('should call mutation and trigger side effects on success', async () => {
+    it('should call mutation with correct params on priority change', async () => {
       renderWithQueryClient(createProvider())
 
       await act(async () => {
@@ -219,6 +305,14 @@ describe('CredentialPanel', () => {
           params: { provider: 'test-provider' },
           body: { preferred_provider_type: 'custom' },
         })
+      })
+    })
+
+    it('should show success toast and refresh data after successful mutation', async () => {
+      renderWithQueryClient(createProvider())
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('change-priority-btn'))
       })
 
       await waitFor(() => {
@@ -233,9 +327,92 @@ describe('CredentialPanel', () => {
   })
 
   describe('ModelAuthDropdown integration', () => {
-    it('should pass state variant to ModelAuthDropdown', () => {
+    it('should pass credits-active variant to dropdown when credits available', () => {
       renderWithQueryClient(createProvider())
       expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'credits-active')
+    })
+
+    it('should pass api-fallback variant to dropdown when exhausted with valid key', () => {
+      mockTrialCredits.isExhausted = true
+      renderWithQueryClient(createProvider())
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-fallback')
+    })
+
+    it('should pass credits-exhausted variant when exhausted with no credentials', () => {
+      mockTrialCredits.isExhausted = true
+      renderWithQueryClient(createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'credits-exhausted')
+    })
+
+    it('should pass api-active variant for custom priority with authorized key', () => {
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-active')
+    })
+
+    it('should pass api-required-add variant for custom priority with no credentials', () => {
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-required-add')
+    })
+
+    it('should pass api-unavailable variant for custom priority with named but unauthorized key', () => {
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-unavailable')
+    })
+
+    it('should pass no-usage variant when exhausted + credential but unauthorized', () => {
+      mockTrialCredits.isExhausted = true
+      renderWithQueryClient(createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: undefined,
+          available_credentials: [{ credential_id: 'cred-1' }],
+        },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'no-usage')
+    })
+  })
+
+  describe('apiKeyOnly priority (system disabled)', () => {
+    it('should derive api-required-add when system config disabled and no credentials', () => {
+      renderWithQueryClient(createProvider({
+        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          available_credentials: [],
+        },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-required-add')
+      expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
+    })
+
+    it('should derive api-active when system config disabled but has authorized key', () => {
+      renderWithQueryClient(createProvider({
+        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+      }))
+      expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'api-active')
     })
   })
 })
