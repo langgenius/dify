@@ -2,15 +2,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.entities import GraphInitParams
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.nodes.template_transform.template_renderer import TemplateRenderError
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
 from dify_graph.runtime import GraphRuntimeState
-from models.enums import UserFrom
-from models.workflow import WorkflowType
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class TestTemplateTransformNode:
@@ -32,12 +30,11 @@ class TestTemplateTransformNode:
     @pytest.fixture
     def graph_init_params(self):
         """Create a mock GraphInitParams."""
-        return GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
-            workflow_type=WorkflowType.WORKFLOW,
+        return build_test_graph_init_params(
             workflow_id="test_workflow",
             graph_config={},
+            tenant_id="test_tenant",
+            app_id="test_app",
             user_id="test_user",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,

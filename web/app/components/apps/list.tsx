@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
-import { parseAsString, useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -16,7 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, AppModes } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -33,6 +33,18 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
+const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
+type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
+const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
+
+const isAppListCategory = (value: string): value is AppListCategory => {
+  return appListCategorySet.has(value)
+}
+
+const parseAsAppListCategory = parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
+  .withDefault('all')
+  .withOptions({ history: 'push' })
+
 type Props = {
   controlRefreshList?: number
 }
@@ -45,7 +57,7 @@ const List: FC<Props> = ({
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
     'category',
-    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+    parseAsAppListCategory,
   )
 
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
@@ -80,7 +92,7 @@ const List: FC<Props> = ({
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,
-    ...(activeTab !== 'all' ? { mode: activeTab as AppModeEnum } : {}),
+    ...(activeTab !== 'all' ? { mode: activeTab } : {}),
   }
 
   const {
@@ -186,7 +198,10 @@ const List: FC<Props> = ({
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
           <TabSliderNew
             value={activeTab}
-            onChange={setActiveTab}
+            onChange={(nextValue) => {
+              if (isAppListCategory(nextValue))
+                setActiveTab(nextValue)
+            }}
             options={options}
           />
           <div className="flex items-center gap-2">
