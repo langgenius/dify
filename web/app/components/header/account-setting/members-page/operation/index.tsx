@@ -3,13 +3,13 @@ import type { Member } from '@/models/common'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -62,13 +62,12 @@ const Operation = ({
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
-  const { notify } = useContext(ToastContext)
   const handleDeleteMemberOrCancelInvitation = async () => {
     setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 
@@ -82,7 +81,7 @@ const Operation = ({
         body: { role },
       })
       onOperate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 

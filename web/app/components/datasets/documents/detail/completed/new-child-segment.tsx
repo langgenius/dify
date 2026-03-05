@@ -4,11 +4,11 @@ import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useParams } from 'next/navigation'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
 import { useAddChildSegment } from '@/service/knowledge/use-segment'
 import { cn } from '@/utils/classnames'
@@ -35,7 +35,6 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   viewNewlyAddedChildChunk,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [content, setContent] = useState('')
   const { datasetId, documentId } = useParams<{ datasetId: string, documentId: string }>()
   const [loading, setLoading] = useState(false)
@@ -80,14 +79,14 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '' }
 
     if (!content.trim())
-      return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+      return Toast.notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
 
     params.content = content
 
     setLoading(true)
     await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
       onSuccess(res) {
-        notify({
+        Toast.notify({
           type: 'success',
           message: t('segment.childChunkAdded', { ns: 'datasetDocuments' }),
           className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}

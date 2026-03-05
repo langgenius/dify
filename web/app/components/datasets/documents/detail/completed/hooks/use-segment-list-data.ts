@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import {
@@ -75,7 +75,6 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
   } = options
 
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const pathname = usePathname()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
@@ -217,31 +216,31 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
 
     await operationApi({ datasetId, documentId, segmentIds: targetIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         updateSegmentsInCache(targetIds, seg => ({ ...seg, enabled: enable }))
         refreshChunkListWithStatusChanged()
       },
       onError: () => {
-        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       },
     })
-  }, [datasetId, documentId, selectedSegmentIds, disableSegment, enableSegment, t, notify, updateSegmentsInCache, refreshChunkListWithStatusChanged])
+  }, [datasetId, documentId, selectedSegmentIds, disableSegment, enableSegment, t, updateSegmentsInCache, refreshChunkListWithStatusChanged])
 
   const onDelete = useCallback(async (segId?: string) => {
     const targetIds = segId ? [segId] : selectedSegmentIds
 
     await deleteSegment({ datasetId, documentId, segmentIds: targetIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         resetList()
         if (!segId)
           clearSelection()
       },
       onError: () => {
-        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       },
     })
-  }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, clearSelection, t, notify])
+  }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, clearSelection, t])
 
   const handleUpdateSegment = useCallback(async (
     segmentId: string,
@@ -257,11 +256,11 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     // Validate and build params based on doc form
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
-        notify({ type: 'error', message: t('segment.questionEmpty', { ns: 'datasetDocuments' }) })
+        Toast.notify({ type: 'error', message: t('segment.questionEmpty', { ns: 'datasetDocuments' }) })
         return
       }
       if (!answer.trim()) {
-        notify({ type: 'error', message: t('segment.answerEmpty', { ns: 'datasetDocuments' }) })
+        Toast.notify({ type: 'error', message: t('segment.answerEmpty', { ns: 'datasetDocuments' }) })
         return
       }
       params.content = question
@@ -269,7 +268,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     }
     else {
       if (!question.trim()) {
-        notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+        Toast.notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
         return
       }
       params.content = question
@@ -281,7 +280,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     if (attachments.length) {
       const notAllUploaded = attachments.some(item => !item.uploadedId)
       if (notAllUploaded) {
-        notify({ type: 'error', message: t('segment.allFilesUploaded', { ns: 'datasetDocuments' }) })
+        Toast.notify({ type: 'error', message: t('segment.allFilesUploaded', { ns: 'datasetDocuments' }) })
         return
       }
       params.attachment_ids = attachments.map(item => item.uploadedId!)
@@ -295,7 +294,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
       onSuccess(res) {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         if (!needRegenerate)
           onCloseSegmentDetail()
 
@@ -320,7 +319,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
         eventEmitter?.emit('update-segment-done')
       },
     })
-  }, [datasetId, documentId, docForm, updateSegment, notify, eventEmitter, onCloseSegmentDetail, updateSegmentInCache, refreshChunkListDataWithDetailChanged, t])
+  }, [datasetId, documentId, docForm, updateSegment, eventEmitter, onCloseSegmentDetail, updateSegmentInCache, refreshChunkListDataWithDetailChanged, t])
 
   const viewNewlyAddedChunk = useCallback(() => {
     const totalPages = segmentListData?.total_pages || 0

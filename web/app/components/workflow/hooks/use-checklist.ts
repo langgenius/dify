@@ -22,7 +22,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -257,7 +257,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 export const useChecklistBeforePublish = () => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const { notify } = useToastContext()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
@@ -314,7 +313,7 @@ export const useChecklistBeforePublish = () => {
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
-      notify({ type: 'error', message: t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }) })
+      Toast.notify({ type: 'error', message: t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }) })
       return false
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
@@ -365,7 +364,7 @@ export const useChecklistBeforePublish = () => {
       const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
-        notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
+        Toast.notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
         return false
       }
 
@@ -378,12 +377,12 @@ export const useChecklistBeforePublish = () => {
           if (usedNode) {
             const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
             if (!usedVar) {
-              notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
+              Toast.notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
               return false
             }
           }
           else {
-            notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
+            Toast.notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
             return false
           }
         }
@@ -394,7 +393,7 @@ export const useChecklistBeforePublish = () => {
       const isUnconnected = !validNodes.find(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
-        notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
+        Toast.notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
         return false
       }
     }
@@ -402,7 +401,7 @@ export const useChecklistBeforePublish = () => {
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
       if (startNodesFiltered.length === 0) {
-        notify({ type: 'error', message: t('common.needStartNode', { ns: 'workflow' }) })
+        Toast.notify({ type: 'error', message: t('common.needStartNode', { ns: 'workflow' }) })
         return false
       }
     }
@@ -413,13 +412,13 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.find(node => node.data.type === type)) {
-        notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
+        Toast.notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, notify, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, strategyProviders])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, strategyProviders])
 
   return {
     handleCheckBeforePublish,
@@ -431,15 +430,13 @@ export const useWorkflowRunValidation = () => {
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const needWarningNodes = useChecklist(nodes, edges)
-  const { notify } = useToastContext()
-
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       return false
     }
     return true
-  }, [needWarningNodes, notify, t])
+  }, [needWarningNodes, t])
 
   return {
     validateBeforeRun,

@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
@@ -17,7 +17,6 @@ export const usePluginAuthAction = (
   onUpdate?: () => void,
 ) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const pendingOperationCredentialId = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
   const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)
@@ -48,7 +47,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -60,7 +59,7 @@ export const usePluginAuthAction = (
     finally {
       handleSetDoingAction(false)
     }
-  }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
     setEditValues(values)
@@ -75,7 +74,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -84,7 +83,7 @@ export const usePluginAuthAction = (
     finally {
       handleSetDoingAction(false)
     }
-  }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
     credential_id: string
@@ -95,7 +94,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -104,7 +103,7 @@ export const usePluginAuthAction = (
     finally {
       handleSetDoingAction(false)
     }
-  }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
+  }, [updatePluginCredential, t, handleSetDoingAction, onUpdate])
 
   return {
     doingAction,

@@ -16,7 +16,7 @@ import { BubbleTextMod } from '@/app/components/base/icons/src/vender/solid/comm
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -30,7 +30,6 @@ const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
 const CustomWebAppBrand = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { plan, enableBilling } = useProviderContext()
   const {
     currentWorkspace,
@@ -54,7 +53,7 @@ const CustomWebAppBrand = () => {
       return
 
     if (file.size > 5 * 1024 * 1024) {
-      notify({ type: 'error', message: t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }) })
+      Toast.notify({ type: 'error', message: t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }) })
       return
     }
 
@@ -69,7 +68,7 @@ const CustomWebAppBrand = () => {
       },
       onErrorCallback: (error?: any) => {
         const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
-        notify({ type: 'error', message: errorMessage })
+        Toast.notify({ type: 'error', message: errorMessage })
         setUploadProgress(-1)
       },
     }, false, '/workspaces/custom-config/webapp-logo/upload')

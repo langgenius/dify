@@ -17,7 +17,7 @@ import AppPublisher from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import {
   useChecklist,
@@ -87,7 +87,6 @@ const FeaturesTrigger = () => {
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { notify } = useToastContext()
   const startNodeIds = useMemo(
     () => nodes.filter(node => node.data.type === BlockEnum.Start).map(node => node.id),
     [nodes],
@@ -150,7 +149,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       throw new Error('Checklist has unresolved items')
     }
 
@@ -163,7 +162,7 @@ const FeaturesTrigger = () => {
       })
 
       if (res) {
-        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -175,7 +174,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

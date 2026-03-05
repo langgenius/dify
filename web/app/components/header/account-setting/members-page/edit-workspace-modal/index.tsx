@@ -2,11 +2,11 @@
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -19,7 +19,6 @@ const EditWorkspaceModal = ({
   onCancel,
 }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
 
@@ -31,11 +30,11 @@ const EditWorkspaceModal = ({
           name,
         },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       location.assign(`${location.origin}`)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
 

@@ -12,14 +12,13 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import Toast from '@/app/components/base/toast'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
@@ -71,7 +70,6 @@ export type AppCardProps = {
 
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
@@ -89,11 +87,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const onConfirmDelete = useCallback(async () => {
     try {
       await mutateDeleteApp(app.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      Toast.notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
       onPlanInfoChanged()
     }
     catch (e: any) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
       })
@@ -101,7 +99,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     finally {
       setShowConfirmDelete(false)
     }
-  }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, t])
+  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
   const onDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (isDeleting)
@@ -131,7 +129,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         max_active_requests,
       })
       setShowEditModal(false)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('editDone', { ns: 'app' }),
       })
@@ -139,12 +137,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         onRefresh()
     }
     catch (e: any) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: e.message || t('editFailed', { ns: 'app' }),
       })
     }
-  }, [app.id, notify, onRefresh, t])
+  }, [app.id, onRefresh, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -157,7 +155,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         mode: app.mode,
       })
       setShowDuplicateModal(false)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('newApp.appCreated', { ns: 'app' }),
       })
@@ -168,7 +166,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 
@@ -182,7 +180,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }
 
@@ -201,7 +199,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }
 

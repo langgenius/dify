@@ -4,10 +4,10 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import Button from '@/app/components/base/button'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { cn } from '@/utils/classnames'
 
 export type Props = {
@@ -20,7 +20,6 @@ const CSVUploader: FC<Props> = ({
   updateFile,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -50,7 +49,7 @@ const CSVUploader: FC<Props> = ({
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
+      Toast.notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     updateFile(files[0])

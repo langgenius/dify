@@ -7,10 +7,10 @@ import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { fetchAgentLogDetail } from '@/service/log'
 import { cn } from '@/utils/classnames'
 import ResultPanel from './result'
@@ -30,7 +30,6 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   log,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const appDetail = useAppStore(s => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)
@@ -57,12 +56,12 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
       setList(res.iterations)
     }
     catch (err) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: `${err}`,
       })
     }
-  }, [notify])
+  }, [])
 
   const getData = async (appID: string, conversationID: string, messageID: string) => {
     setLoading(true)

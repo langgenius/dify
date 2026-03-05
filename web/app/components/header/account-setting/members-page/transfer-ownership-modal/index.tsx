@@ -2,11 +2,11 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import {
   ownershipTransfer,
@@ -28,7 +28,6 @@ enum STEP {
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { currentWorkspace, userProfile } = useAppContext()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
@@ -58,7 +57,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
         setStepToken(res.data)
     }
     catch (error) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: `Error sending verification code: ${error ? (error as any).message : ''}`,
       })
@@ -76,14 +75,14 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
         callback?.()
       }
       else {
-        notify({
+        Toast.notify({
           type: 'error',
           message: 'Verifying email failed',
         })
       }
     }
     catch (error) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: `Error verifying email: ${error ? (error as any).message : ''}`,
       })
@@ -112,7 +111,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       globalThis.location.reload()
     }
     catch (error) {
-      notify({
+      Toast.notify({
         type: 'error',
         message: `Error ownership transfer: ${error ? (error as any).message : ''}`,
       })

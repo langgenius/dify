@@ -19,7 +19,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import Authorize from '../authorize'
@@ -75,7 +75,6 @@ const Authorized = ({
   notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -115,7 +114,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -126,7 +125,7 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
@@ -142,7 +141,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -151,7 +150,7 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
     credential_id: string
@@ -162,7 +161,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -171,7 +170,7 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
+  }, [updatePluginCredential, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
   const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
 
@@ -249,7 +248,7 @@ const Authorized = ({
                 !!oAuthCredentials.length && (
                   <div className="p-1">
                     <div className={cn(
-                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium',
                       showItemSelectedIcon && 'pl-7',
                     )}
                     >
@@ -279,7 +278,7 @@ const Authorized = ({
                 !!apiKeyCredentials.length && (
                   <div className="p-1">
                     <div className={cn(
-                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium',
                       showItemSelectedIcon && 'pl-7',
                     )}
                     >

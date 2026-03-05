@@ -2,7 +2,7 @@ import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { useCallback, useState } from 'react'
 import AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { cn } from '@/utils/classnames'
 
 type TagInputProps = {
@@ -29,7 +29,6 @@ const TagInput: FC<TagInputProps> = ({
   inputClassName,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
 
@@ -46,17 +45,17 @@ const TagInput: FC<TagInputProps> = ({
     const valueTrimmed = value.trim()
     if (!valueTrimmed) {
       if (required)
-        notify({ type: 'error', message: t('segment.keywordEmpty', { ns: 'datasetDocuments' }) })
+        Toast.notify({ type: 'error', message: t('segment.keywordEmpty', { ns: 'datasetDocuments' }) })
       return
     }
 
     if ((items.find(item => item === valueTrimmed))) {
-      notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
+      Toast.notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
       return
     }
 
     if (valueTrimmed.length > 20) {
-      notify({ type: 'error', message: t('segment.keywordError', { ns: 'datasetDocuments' }) })
+      Toast.notify({ type: 'error', message: t('segment.keywordError', { ns: 'datasetDocuments' }) })
       return
     }
 
@@ -64,7 +63,7 @@ const TagInput: FC<TagInputProps> = ({
     setTimeout(() => {
       setValue('')
     })
-  }, [items, onChange, notify, t, required])
+  }, [items, onChange, t, required])
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isSpecialMode && e.key === 'Enter')

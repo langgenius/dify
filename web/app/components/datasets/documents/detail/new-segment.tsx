@@ -5,11 +5,11 @@ import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useParams } from 'next/navigation'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
@@ -39,7 +39,6 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   viewNewlyAddedChunk,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [attachments, setAttachments] = useState<FileEntity[]>([])
@@ -61,7 +60,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       <Divider type="vertical" className="mx-1 h-3 bg-divider-regular" />
       <button
         type="button"
-        className="system-xs-semibold text-text-accent"
+        className="text-text-accent system-xs-semibold"
         onClick={() => {
           clearTimeout(refreshTimer.current)
           viewNewlyAddedChunk()
@@ -87,13 +86,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
-        return notify({
+        return Toast.notify({
           type: 'error',
           message: t('segment.questionEmpty', { ns: 'datasetDocuments' }),
         })
       }
       if (!answer.trim()) {
-        return notify({
+        return Toast.notify({
           type: 'error',
           message: t('segment.answerEmpty', { ns: 'datasetDocuments' }),
         })
@@ -104,7 +103,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     }
     else {
       if (!question.trim()) {
-        return notify({
+        return Toast.notify({
           type: 'error',
           message: t('segment.contentEmpty', { ns: 'datasetDocuments' }),
         })
@@ -122,7 +121,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setLoading(true)
     await addSegment({ datasetId, documentId, body: params }, {
       onSuccess() {
-        notify({
+        Toast.notify({
           type: 'success',
           message: t('segment.chunkAdded', { ns: 'datasetDocuments' }),
           className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
@@ -143,7 +142,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         setLoading(false)
       },
     })
-  }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, attachments, notify, t, appSidebarExpand, CustomButton, handleCancel, onSave])
+  }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, attachments, t, appSidebarExpand, CustomButton, handleCancel, onSave])
 
   const wordCountText = useMemo(() => {
     const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
@@ -158,13 +157,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}
       >
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">
+          <div className="text-text-primary system-xl-semibold">
             {t('segment.addChunk', { ns: 'datasetDocuments' })}
           </div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag label={t('segment.newChunk', { ns: 'datasetDocuments' })!} />
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
+            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">

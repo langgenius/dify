@@ -26,7 +26,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import {
   CUSTOM_NODE,
 } from '@/app/components/workflow/constants'
@@ -57,7 +57,6 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const workflowStore = useWorkflowStore()
@@ -236,7 +235,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -636,7 +635,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
   const handleSubmitHumanInputForm = async (formToken: string, formData: any) => {
     await submitHumanInputForm(formToken, formData)

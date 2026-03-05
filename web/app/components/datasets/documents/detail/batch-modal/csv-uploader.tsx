@@ -7,12 +7,12 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import Button from '@/app/components/base/button'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -29,7 +29,6 @@ const CSVUploader: FC<Props> = ({
   updateFile,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -76,7 +75,7 @@ const CSVUploader: FC<Props> = ({
       })
       .catch((e) => {
         const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
-        notify({ type: 'error', message: errorMessage })
+        Toast.notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
           progress: -2,
@@ -85,7 +84,7 @@ const CSVUploader: FC<Props> = ({
         return Promise.resolve({ ...errorFile })
       })
       .finally()
-  }, [notify, t, updateFile])
+  }, [t, updateFile])
 
   const uploadFile = useCallback(async (fileItem: FileItem) => {
     await fileUpload(fileItem)
@@ -128,7 +127,7 @@ const CSVUploader: FC<Props> = ({
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
+      Toast.notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     initialUpload(files[0])
@@ -159,14 +158,14 @@ const CSVUploader: FC<Props> = ({
     const ext = `.${getFileType(file)}`
     const isValidType = ext.toLowerCase() === '.csv'
     if (!isValidType)
-      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
+      Toast.notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
+      Toast.notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, notify, t])
+  }, [fileUploadConfig, t])
 
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFile = e.target.files?.[0]
@@ -204,7 +203,7 @@ const CSVUploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle  bg-components-panel-on-panel-item-bg-hover')}>
+          <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle bg-components-panel-on-panel-item-bg-hover')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-secondary">

@@ -1,14 +1,12 @@
 import type { InputForm } from './type'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 
 export const useCheckInputsForms = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
-
   const checkInputsForm = useCallback((inputs: Record<string, any>, inputsForm: InputForm[]) => {
     let hasEmptyInput = ''
     let fileIsUploading = false
@@ -36,17 +34,17 @@ export const useCheckInputsForms = () => {
     }
 
     if (hasEmptyInput) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
+      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return
     }
 
     return true
-  }, [notify, t])
+  }, [t])
 
   return {
     checkInputsForm,

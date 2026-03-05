@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
 import {
   addApiBasedExtension,
@@ -33,7 +33,6 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
-  const { notify } = useToastContext()
   const handleDataChange = (type: string, value: string) => {
     setLocaleData({ ...localeData, [type]: value })
   }
@@ -41,7 +40,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     setLoading(true)
 
     if (localeData && localeData.api_key && localeData.api_key?.length < 5) {
-      notify({ type: 'error', message: t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }) })
       setLoading(false)
       return
     }
@@ -63,7 +62,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           },
         })
 
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       }
 
       if (onSave)

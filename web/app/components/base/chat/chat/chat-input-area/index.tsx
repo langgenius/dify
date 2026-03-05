@@ -22,7 +22,7 @@ import {
   FileContextProvider,
   useFileStore,
 } from '@/app/components/base/file-uploader/store'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -63,7 +63,6 @@ const ChatInputArea = ({
   disabled,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const {
     wrapperRef,
     textareaRef,
@@ -98,18 +97,18 @@ const ChatInputArea = ({
 
   const handleSend = () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return
     }
 
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
       if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+        Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return
       }
       if (!query || !query.trim()) {
-        notify({ type: 'info', message: t('errorMessage.queryRequired', { ns: 'appAnnotation' }) })
+        Toast.notify({ type: 'info', message: t('errorMessage.queryRequired', { ns: 'appAnnotation' }) })
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
@@ -166,9 +165,9 @@ const ChatInputArea = ({
     (Recorder as any).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
-      notify({ type: 'error', message: t('voiceInput.notAllow', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('voiceInput.notAllow', { ns: 'common' }) })
     })
-  }, [t, notify])
+  }, [t])
 
   const operation = (
     <Operation

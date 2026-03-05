@@ -6,13 +6,13 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -39,7 +39,6 @@ export default function AccountPage() {
   const apps = appList?.data || []
   const { mutateUserProfile, userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
-  const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)
@@ -61,19 +60,19 @@ export default function AccountPage() {
     try {
       setEditing(true)
       await updateUserProfile({ url: 'account/name', body: { name: editName } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       mutateUserProfile()
       setEditNameModalVisible(false)
       setEditing(false)
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      Toast.notify({ type: 'error', message: (e as Error).message })
       setEditing(false)
     }
   }
 
   const showErrorMessage = (message: string) => {
-    notify({
+    Toast.notify({
       type: 'error',
       message,
     })
@@ -112,14 +111,14 @@ export default function AccountPage() {
           repeat_new_password: confirmPassword,
         },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       mutateUserProfile()
       setEditPasswordModalVisible(false)
       resetPasswordForm()
       setEditing(false)
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      Toast.notify({ type: 'error', message: (e as Error).message })
       setEditPasswordModalVisible(false)
       setEditing(false)
     }

@@ -15,7 +15,7 @@ import {
   useEffect,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
 
@@ -88,18 +88,16 @@ export const useLink = () => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const noteEditorStore = useNoteEditorStore()
-  const { notify } = useToastContext()
-
   const handleSaveLink = useCallback((url: string) => {
     if (url && !urlRegExp.test(url)) {
-      notify({ type: 'error', message: t('nodes.note.editor.invalidUrl', { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t('nodes.note.editor.invalidUrl', { ns: 'workflow' }) })
       return
     }
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, escape(url))
 
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
-  }, [editor, noteEditorStore, notify, t])
+  }, [editor, noteEditorStore, t])
 
   const handleUnlink = useCallback(() => {
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, null)

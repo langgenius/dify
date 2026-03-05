@@ -15,14 +15,13 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 
 const Tools = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const {
     externalDataToolsConfig,
@@ -48,7 +47,7 @@ const Tools = () => {
     const promptVariables = modelConfig?.configs?.prompt_variables || []
     for (let i = 0; i < promptVariables.length; i++) {
       if (promptVariables[i].key === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+        Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
         return false
       }
     }
@@ -66,7 +65,7 @@ const Tools = () => {
 
     for (let i = 0; i < existedExternalDataTools.length; i++) {
       if (existedExternalDataTools[i].variable === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }) })
+        Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }) })
         return false
       }
     }

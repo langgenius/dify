@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -40,7 +40,6 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
@@ -189,24 +188,24 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
 
     if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.condition', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'error', message: t('feature.moderation.modal.content.condition', { ns: 'appDebug' }) })
       return
     }
 
     if (localeData.type === 'keywords' && !localeData.config.keywords) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }) })
+      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }) })
       return
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          notify({
+          Toast.notify({
             type: 'error',
             message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
@@ -216,12 +215,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     }
 
     if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
       return
     }
 
     if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
       return
     }
 

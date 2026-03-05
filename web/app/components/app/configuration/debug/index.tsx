@@ -29,7 +29,7 @@ import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -139,22 +139,20 @@ const Debug: FC<IDebug> = ({
     setIsShowFormattingChangeConfirm(false)
     setFormattingChanged(false)
   }
-
-  const { notify } = useContext(ToastContext)
   const logError = useCallback((message: string) => {
-    notify({ type: 'error', message })
-  }, [notify])
+    Toast.notify({ type: 'error', message })
+  }, [])
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
+          Toast.notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
+          Toast.notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
       }
@@ -180,7 +178,7 @@ const Debug: FC<IDebug> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -194,7 +192,6 @@ const Debug: FC<IDebug> = ({
     modelConfig.configs.prompt_variables,
     t,
     logError,
-    notify,
     modelModeType,
   ])
 
@@ -205,7 +202,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 

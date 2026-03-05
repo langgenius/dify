@@ -5,8 +5,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '@/app/components/base/toast/context'
+
+import Toast from '@/app/components/base/toast'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -40,7 +40,6 @@ const isCompletedStatus = (status: DSLImportStatus): boolean =>
 
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -79,8 +78,8 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
 
   const notifyError = useCallback(() => {
     setLoading(false)
-    notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
-  }, [notify, t])
+    Toast.notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
+  }, [t])
 
   const updateWorkflow = useCallback(async (pipelineId: string) => {
     const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
@@ -113,7 +112,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     onImport?.()
 
     const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-    notify({
+    Toast.notify({
       type: isWarning ? 'warning' : 'success',
       message: t(isWarning ? 'common.importWarning' : 'common.importSuccess', { ns: 'workflow' }),
       children: isWarning && t('common.importWarningDetails', { ns: 'workflow' }),
@@ -122,7 +121,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     await handleCheckPluginDependencies(pipelineId, true)
     setLoading(false)
     onCancel()
-  }, [updateWorkflow, onImport, notify, t, handleCheckPluginDependencies, onCancel, notifyError])
+  }, [updateWorkflow, onImport, t, handleCheckPluginDependencies, onCancel, notifyError])
 
   const showVersionMismatch = useCallback((
     id: string,

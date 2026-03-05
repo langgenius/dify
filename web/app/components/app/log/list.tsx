@@ -31,7 +31,7 @@ import Drawer from '@/app/components/base/drawer'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
@@ -96,7 +96,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 
   if (statusCount.paused > 0) {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="yellow" />
         <span className="text-util-colors-warning-warning-600">Pending</span>
       </div>
@@ -104,7 +104,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else if (statusCount.partial_success + statusCount.failed === 0) {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="green" />
         <span className="text-util-colors-green-green-600">Success</span>
       </div>
@@ -112,7 +112,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else if (statusCount.failed === 0) {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="green" />
         <span className="text-util-colors-green-green-600">Partial Success</span>
       </div>
@@ -120,7 +120,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="red" />
         <span className="text-util-colors-red-red-600">
           {statusCount.failed}
@@ -223,7 +223,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -413,14 +412,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return item
       }))
 
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
-  }, [allChatItems, appDetail?.id, notify, t])
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -562,9 +561,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
         <div className="shrink-0">
-          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 text-text-primary system-xs-semibold-uppercase">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
           {isChatMode && (
-            <div className="system-2xs-regular-uppercase flex items-center text-text-secondary">
+            <div className="flex items-center text-text-secondary system-2xs-regular-uppercase">
               <Tooltip
                 popupContent={detail.id}
               >
@@ -574,7 +573,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="text-text-secondary system-2xs-regular-uppercase">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -600,7 +599,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="text-text-tertiary system-xs-semibold-uppercase">{t('table.header.output', { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -692,7 +691,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               </div>
               {hasMore && (
                 <div className="py-3 text-center">
-                  <div className="system-xs-regular text-text-tertiary">
+                  <div className="text-text-tertiary system-xs-regular">
                     {t('detail.loading', { ns: 'appLog' })}
                     ...
                   </div>
@@ -734,7 +733,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -744,11 +742,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -757,11 +755,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -783,7 +781,6 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -792,11 +789,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -804,11 +801,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -950,7 +947,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         )}
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
-        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -963,7 +960,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   return (
     <div className="relative mt-2 grow overflow-x-auto">
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-        <thead className="system-xs-medium-uppercase text-text-tertiary">
+        <thead className="text-text-tertiary system-xs-medium-uppercase">
           <tr>
             <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
@@ -976,7 +973,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
           </tr>
         </thead>
-        <tbody className="system-sm-regular text-text-secondary">
+        <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''

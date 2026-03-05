@@ -134,7 +134,6 @@ const Result: FC<IResultProps> = ({
     return abortCurrentRequest
   }, [controlStopResponding, resetRunState, setRespondingFalse])
 
-  const { notify } = Toast
   const isNoData = !completionRes
 
   const [messageId, setMessageId] = useState<string | null>(null)
@@ -148,7 +147,7 @@ const Result: FC<IResultProps> = ({
   }
 
   const logError = (message: string) => {
-    notify({ type: 'error', message })
+    Toast.notify({ type: 'error', message })
   }
 
   const handleStop = useCallback(async () => {
@@ -164,12 +163,12 @@ const Result: FC<IResultProps> = ({
     }
     catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      notify({ type: 'error', message })
+      Toast.notify({ type: 'error', message })
     }
     finally {
       setIsStopping(false)
     }
-  }, [appId, currentTaskId, appSourceType, isStopping, isWorkflow, notify])
+  }, [appId, currentTaskId, appSourceType, isStopping, isWorkflow])
 
   useEffect(() => {
     if (!onRunControlChange)
@@ -193,7 +192,7 @@ const Result: FC<IResultProps> = ({
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
       if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+        Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return false
       }
       return true
@@ -220,7 +219,7 @@ const Result: FC<IResultProps> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -228,7 +227,7 @@ const Result: FC<IResultProps> = ({
 
   const handleSend = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -434,7 +433,7 @@ const Result: FC<IResultProps> = ({
         },
         onWorkflowFinished: ({ data }) => {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+            Toast.notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           const workflowStatus = data.status as WorkflowRunningStatus | undefined
@@ -462,7 +461,7 @@ const Result: FC<IResultProps> = ({
             return
           }
           if (data.error) {
-            notify({ type: 'error', message: data.error })
+            Toast.notify({ type: 'error', message: data.error })
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.status = WorkflowRunningStatus.Failed
               markNodesStopped(draft.tracing)
@@ -572,7 +571,7 @@ const Result: FC<IResultProps> = ({
         setRespondingFalse()
         resetRunState()
         const message = error instanceof Error ? error.message : String(error)
-        notify({ type: 'error', message })
+        Toast.notify({ type: 'error', message })
       })
     }
     else {
@@ -586,7 +585,7 @@ const Result: FC<IResultProps> = ({
         },
         onCompleted: () => {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+            Toast.notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
@@ -601,7 +600,7 @@ const Result: FC<IResultProps> = ({
         },
         onError() {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+            Toast.notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()

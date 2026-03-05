@@ -2,7 +2,7 @@ import type { Form, ValidateValue } from '../key-validator/declarations'
 import type { PluginProvider } from '@/models/common'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import SerpapiLogo from '../../assets/serpapi.png'
 import KeyValidator from '../key-validator'
@@ -18,8 +18,6 @@ const SerpapiPlugin = ({
 }: SerpapiPluginProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { notify } = useToastContext()
-
   const forms: Form[] = [{
     key: 'api_key',
     title: t('plugin.serpapi.apiKey', { ns: 'common' }),
@@ -55,7 +53,7 @@ const SerpapiPlugin = ({
     })
 
     if (res.status === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate()
       return true
     }

@@ -12,7 +12,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
+import Toast from '@/app/components/base/toast'
 import {
   useModelModalHandler,
   useRefreshModel,
@@ -38,7 +38,6 @@ export const useAuth = (
     mode,
   } = extra
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const {
     getDeleteCredentialService,
     getActiveCredentialService,
@@ -86,7 +85,7 @@ export const useAuth = (
         model: model?.model,
         model_type: model?.model_type,
       })
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -95,7 +94,7 @@ export const useAuth = (
     finally {
       handleSetDoingAction(false)
     }
-  }, [getActiveCredentialService, notify, t, handleSetDoingAction])
+  }, [getActiveCredentialService, t, handleSetDoingAction])
   const handleConfirmDelete = useCallback(async () => {
     if (doingActionRef.current)
       return
@@ -121,7 +120,7 @@ export const useAuth = (
         }
         await deleteModelService(payload)
       }
-      notify({
+      Toast.notify({
         type: 'success',
         message: t('api.actionSuccess', { ns: 'common' }),
       })
@@ -132,7 +131,7 @@ export const useAuth = (
     finally {
       handleSetDoingAction(false)
     }
-  }, [notify, t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService])
+  }, [t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService])
   const handleSaveCredential = useCallback(async (payload: Record<string, any>) => {
     if (doingActionRef.current)
       return
@@ -146,14 +145,14 @@ export const useAuth = (
         res = await getAddCredentialService(!!isModelCredential)(payload as any)
 
       if (res.result === 'success') {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [notify, t, handleSetDoingAction, getEditCredentialService, getAddCredentialService])
+  }, [t, handleSetDoingAction, getEditCredentialService, getAddCredentialService])
   const handleOpenModal = useCallback((credential?: Credential, model?: CustomModel) => {
     handleOpenModelModal(
       provider,
