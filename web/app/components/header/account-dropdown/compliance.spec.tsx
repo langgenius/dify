@@ -281,8 +281,10 @@ describe('Compliance', () => {
       // First click starts download
       fireEvent.click(downloadButtons[0])
 
-      // Wait for mutation to start (isPending=true)
+      // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(() => {
+        const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
+        expect(menuItem!.querySelector('.btn-disabled')).not.toBeNull()
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
       })
 
