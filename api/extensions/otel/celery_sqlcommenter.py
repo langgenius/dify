@@ -18,6 +18,7 @@ from opentelemetry import context
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 logger = logging.getLogger(__name__)
+_TRACE_PROPAGATOR = TraceContextTextMapPropagator()
 
 _SQLCOMMENTER_CONTEXT_KEY = "SQLCOMMENTER_ORM_TAGS_AND_VALUES"
 _TOKEN_ATTR = "_dify_sqlcommenter_context_token"
@@ -63,7 +64,7 @@ def _get_celery_version() -> str:
 def _get_traceparent() -> str | None:
     """Extract traceparent from the current OpenTelemetry context."""
     carrier: dict[str, str] = {}
-    TraceContextTextMapPropagator().inject(carrier)
+    _TRACE_PROPAGATOR.inject(carrier)
     return carrier.get("traceparent")
 
 

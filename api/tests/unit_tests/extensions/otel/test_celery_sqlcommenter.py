@@ -110,48 +110,63 @@ class TestTaskPrerunPostrunHandlers:
     def test_prerun_sets_context_postrun_detaches(self):
         """task_prerun attaches SQLCOMMENTER context; task_postrun detaches it."""
         from extensions.otel.celery_sqlcommenter import (
+            _SQLCOMMENTER_CONTEXT_KEY,
+            _TOKEN_ATTR,
             _on_task_postrun,
             _on_task_prerun,
         )
 
-        task = MagicMock()
-        task.name = "tasks.async_workflow_tasks.execute_workflow_team"
-        task.request = MagicMock()
-        task.request.retries = 1
-        task.request.delivery_info = {"routing_key": "workflow_based_app_execution"}
+        clean_ctx = context.set_value(_SQLCOMMENTER_CONTEXT_KEY, None)
+        token = context.attach(clean_ctx)
+        try:
+            task = MagicMock()
+            task.name = "tasks.async_workflow_tasks.execute_workflow_team"
+            task.request = MagicMock()
+            task.request.retries = 1
+            task.request.delivery_info = {"routing_key": "workflow_based_app_execution"}
 
-        with patch(
-            "extensions.otel.celery_sqlcommenter._get_traceparent",
-            return_value="00-abc123-def456-00",
-        ):
-            _on_task_prerun(task=task)
+            with patch(
+                "extensions.otel.celery_sqlcommenter._get_traceparent",
+                return_value="00-abc123-def456-00",
+            ):
+                _on_task_prerun(task=task)
 
-        tags = context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
-        assert tags is not None
-        assert tags["framework"].startswith("celery:")
-        assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
-        assert tags["celery_retries"] == 1
-        assert tags["routing_key"] == "workflow_based_app_execution"
-        assert tags["traceparent"] == "00-abc123-def456-00"
+            tags = context.get_value(_SQLCOMMENTER_CONTEXT_KEY)
+            assert tags is not None
+            assert tags["framework"].startswith("celery:")
+            assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
+            assert tags["celery_retries"] == 1
+            assert tags["routing_key"] == "workflow_based_app_execution"
+            assert tags["traceparent"] == "00-abc123-def456-00"
+            assert hasattr(task, _TOKEN_ATTR)
 
-        _on_task_postrun(task=task)
+            _on_task_postrun(task=task)
 
-        tags_after = context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
-        assert tags_after is None or tags_after == {}
+            tags_after = context.get_value(_SQLCOMMENTER_CONTEXT_KEY)
+            assert tags_after is None
+            assert not hasattr(task, _TOKEN_ATTR)
+        finally:
+            context.detach(token)
 
     def test_prerun_skips_when_no_task(self):
         """prerun does nothing when task is missing from kwargs."""
-        from extensions.otel.celery_sqlcommenter import _on_task_prerun
+        from extensions.otel.celery_sqlcommenter import (
+            _SQLCOMMENTER_CONTEXT_KEY,
+            _on_task_prerun,
+        )
 
-        _on_task_prerun()
-        tags = context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
-        assert tags is None or tags == {}
+        clean_ctx = context.set_value(_SQLCOMMENTER_CONTEXT_KEY, None)
+        token = context.attach(clean_ctx)
+        try:
+            _on_task_prerun()
+            tags = context.get_value(_SQLCOMMENTER_CONTEXT_KEY)
+            assert tags is None
+        finally:
+            context.detach(token)
 
     def test_postrun_skips_when_no_token(self):
         """postrun does nothing when task has no token (e.g. prerun was skipped)."""
         from extensions.otel.celery_sqlcommenter import _on_task_postrun
 
         task = MagicMock()
-        # No _dify_sqlcommenter_context_token set
         _on_task_postrun(task=task)
-        # Should not raise
