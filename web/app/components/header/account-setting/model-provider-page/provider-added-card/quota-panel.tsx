@@ -145,7 +145,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                     <span>
                       {t('modelProvider.resetDate', {
                         ns: 'common',
-                        date: formatTime(nextCreditResetDate!, t('dateFormat', { ns: 'appLog' })),
+                        date: formatTime(nextCreditResetDate, t('dateFormat', { ns: 'appLog' })),
                         interpolation: { escapeValue: false },
                       })}
                     </span>
