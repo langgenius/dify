@@ -156,7 +156,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             summary_index_setting,
             doc_metadata=doc_metadata,
             metadata_binding_ids=metadata_binding_ids,
-            user_id=self.user_id,
+            user_id=self.require_dify_context().user_id,
         )
         self.summary_index_service.generate_and_vectorize_summary(
             dataset_id, document_id, is_preview, summary_index_setting

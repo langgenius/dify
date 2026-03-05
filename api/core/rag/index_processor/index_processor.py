@@ -212,6 +212,8 @@ class IndexProcessor:
         for metadata_id in unique_metadata_ids:
             if metadata_id in existing_binding_ids:
                 continue
+            if user_id is None:
+                continue
 
             binding = DatasetMetadataBinding(
                 tenant_id=dataset.tenant_id,

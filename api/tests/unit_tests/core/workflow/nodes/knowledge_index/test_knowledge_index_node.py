@@ -793,6 +793,6 @@ class TestInvokeKnowledgeIndex:
             summary_setting,
             doc_metadata=None,
             metadata_binding_ids=None,
-            user_id=mock_graph_init_params.user_id,
+            user_id=mock_graph_init_params.run_context["_dify"].user_id,
         )
         assert result == {"status": "indexed"}
