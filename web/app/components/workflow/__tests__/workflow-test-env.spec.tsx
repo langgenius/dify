@@ -84,20 +84,27 @@ describe('renderWorkflowComponent', () => {
 
   it('should throw when HooksStoreContext is not provided', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(() => {
-      renderWorkflowComponent(React.createElement(HooksStoreReader))
-    }).toThrow('Missing HooksStoreContext.Provider')
-    consoleSpy.mockRestore()
+    try {
+      expect(() => {
+        renderWorkflowComponent(React.createElement(HooksStoreReader))
+      }).toThrow('Missing HooksStoreContext.Provider')
+    }
+    finally {
+      consoleSpy.mockRestore()
+    }
   })
 
   it('should forward extra render options (container)', () => {
     const container = document.createElement('section')
     document.body.appendChild(container)
 
-    renderWorkflowComponent(React.createElement(StoreReader), { container })
-
-    expect(container.querySelector('[data-testid="store-reader"]')).toBeTruthy()
-    document.body.removeChild(container)
+    try {
+      renderWorkflowComponent(React.createElement(StoreReader), { container })
+      expect(container.querySelector('[data-testid="store-reader"]')).toBeTruthy()
+    }
+    finally {
+      document.body.removeChild(container)
+    }
   })
 })
 
