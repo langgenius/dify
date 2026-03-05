@@ -8,23 +8,24 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
+    UserFrom,
+    build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.enums import WorkflowType
-from core.workflow.graph import Graph
-from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import VariableLoader
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.enums import WorkflowType
+from dify_graph.graph import Graph
+from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import VariableLoader
+from dify_graph.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
-from models.enums import UserFrom
 from models.model import EndUser
 from models.workflow import Workflow
 
@@ -257,13 +258,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # init graph
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
