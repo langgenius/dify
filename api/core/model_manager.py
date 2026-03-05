@@ -135,9 +135,6 @@ class ModelInstance:
         stop: list[str] | None = None,
 <<<<<<< HEAD
         stream: bool = True,
-=======
-        stream: bool = True,
->>>>>>> 59de475d6c (fix: syntax error in ModelInstance.invoke_llm overload)
         user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
