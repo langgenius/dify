@@ -1,24 +1,20 @@
 'use client'
 
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode } from 'react'
+import type { PluginPageTab } from './context'
 import type { FilterState } from './filter-management'
-import { noop } from 'es-toolkit/function'
 import { parseAsStringEnum, useQueryState } from 'nuqs'
 import {
   useMemo,
   useRef,
   useState,
 } from 'react'
-import {
-  createContext,
-  useContextSelector,
-} from 'use-context-selector'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
-
-export type PluginPageTab = typeof PLUGIN_PAGE_TABS_MAP[keyof typeof PLUGIN_PAGE_TABS_MAP]
-  | (typeof PLUGIN_TYPE_SEARCH_MAP)[keyof typeof PLUGIN_TYPE_SEARCH_MAP]
+import {
+  PluginPageContext,
+} from './context'
 
 const PLUGIN_PAGE_TAB_VALUES: PluginPageTab[] = [
   PLUGIN_PAGE_TABS_MAP.plugins,
@@ -29,40 +25,8 @@ const PLUGIN_PAGE_TAB_VALUES: PluginPageTab[] = [
 const parseAsPluginPageTab = parseAsStringEnum<PluginPageTab>(PLUGIN_PAGE_TAB_VALUES)
   .withDefault(PLUGIN_PAGE_TABS_MAP.plugins)
 
-export type PluginPageContextValue = {
-  containerRef: RefObject<HTMLDivElement | null>
-  currentPluginID: string | undefined
-  setCurrentPluginID: (pluginID?: string) => void
-  filters: FilterState
-  setFilters: (filter: FilterState) => void
-  activeTab: PluginPageTab
-  setActiveTab: (tab: PluginPageTab) => void
-  options: Array<{ value: string, text: string }>
-}
-
-const emptyContainerRef: RefObject<HTMLDivElement | null> = { current: null }
-
-export const PluginPageContext = createContext<PluginPageContextValue>({
-  containerRef: emptyContainerRef,
-  currentPluginID: undefined,
-  setCurrentPluginID: noop,
-  filters: {
-    categories: [],
-    tags: [],
-    searchQuery: '',
-  },
-  setFilters: noop,
-  activeTab: PLUGIN_PAGE_TABS_MAP.plugins,
-  setActiveTab: noop,
-  options: [],
-})
-
 type PluginPageContextProviderProps = {
   children: ReactNode
-}
-
-export function usePluginPageContext(selector: (value: PluginPageContextValue) => any) {
-  return useContextSelector(PluginPageContext, selector)
 }
 
 export const PluginPageContextProvider = ({
