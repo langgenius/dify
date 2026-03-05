@@ -111,9 +111,18 @@ class TestDatasetPermissionServiceGetPartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
-        user_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        user_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
-        user_3, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
+        user_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        user_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        user_3, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
         expected_account_ids = [user_1.id, user_2.id, user_3.id]
@@ -133,7 +142,10 @@ class TestDatasetPermissionServiceGetPartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
-        user, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
+        user, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
         expected_account_ids = [user.id]
@@ -143,7 +155,7 @@ class TestDatasetPermissionServiceGetPartialMemberList:
         result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
 
         # Assert
-        assert result == expected_account_ids
+        assert set(result) == set(expected_account_ids)
         assert len(result) == 1
 
     def test_get_dataset_partial_member_list_empty(self, db_session_with_containers):
@@ -171,15 +183,23 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4()), str(uuid4())])
+        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
 
         # Act
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, user_list)
 
         # Assert
         result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
-        assert set(result) == {user["user_id"] for user in user_list}
+        assert set(result) == {member_1.id, member_2.id}
 
     def test_update_partial_member_list_replace_existing(self, db_session_with_containers):
         """
@@ -187,19 +207,35 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        old_member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        old_member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        new_member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        new_member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
-        old_users = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4()), str(uuid4())])
+        old_users = DatasetPermissionTestDataFactory.create_user_list_mock([old_member_1.id, old_member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, old_users)
 
-        new_users = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4()), str(uuid4())])
+        new_users = DatasetPermissionTestDataFactory.create_user_list_mock([new_member_1.id, new_member_2.id])
 
         # Act
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, new_users)
 
         # Assert
         result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
-        assert set(result) == {user["user_id"] for user in new_users}
+        assert set(result) == {new_member_1.id, new_member_2.id}
 
     def test_update_partial_member_list_empty_list(self, db_session_with_containers):
         """
@@ -207,8 +243,16 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        users = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4()), str(uuid4())])
+        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
 
         # Act
@@ -225,7 +269,11 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4())])
+        member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        user_list = DatasetPermissionTestDataFactory.create_user_list_mock([member.id])
         rollback_called = {"called": False}
 
         # Act & Assert
@@ -254,8 +302,16 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
-        users = DatasetPermissionTestDataFactory.create_user_list_mock([str(uuid4()), str(uuid4())])
+        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
         DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
 
         # Act
@@ -286,7 +342,17 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         """
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
+        member_2, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL,
+            tenant=tenant,
+        )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
+        users = DatasetPermissionTestDataFactory.create_user_list_mock([member_1.id, member_2.id])
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users)
         rollback_called = {"called": False}
 
         # Act & Assert
