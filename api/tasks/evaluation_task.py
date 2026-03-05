@@ -1,8 +1,6 @@
 import io
 import json
 import logging
-from configs import dify_config
-from models.model import UploadFile
 from typing import Any
 
 from celery import shared_task
@@ -10,6 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationItemResult,
@@ -23,6 +22,7 @@ from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluatio
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunStatus
+from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
         customized_metrics=run_data.customized_metrics,
         model_provider=run_data.evaluation_model_provider,
         model_name=run_data.evaluation_model,
+        judgment_config=run_data.judgment_config,
     )
 
     # Compute summary metrics
@@ -210,7 +211,13 @@ def _generate_result_xlsx(
                 input_keys.append(key)
 
     # Build headers
-    headers = ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + ["overall_score", "error"]
+    headers = (
+        ["index"]
+        + input_keys
+        + ["expected_output", "actual_output"]
+        + all_metric_names
+        + ["overall_score", "error"]
+    )
 
     # Write header row
     for col_idx, header in enumerate(headers, start=1):

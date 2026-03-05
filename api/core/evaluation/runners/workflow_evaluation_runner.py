@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -29,8 +30,8 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
     ) -> EvaluationItemResult:
         """Execute workflow and collect outputs."""
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-        from core.evaluation.runners import get_service_account_for_app
         from core.app.entities.app_invoke_entities import InvokeFrom
+        from core.evaluation.runners import get_service_account_for_app
         from services.workflow_service import WorkflowService
 
         app = self.session.query(App).filter_by(id=target_id).first()
@@ -68,7 +69,7 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -91,7 +92,7 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
             )
 
         evaluated = self.evaluation_instance.evaluate_workflow(
-            merged_items, metrics_config, model_provider, model_name, tenant_id
+            merged_items, default_metrics, model_provider, model_name, tenant_id
         )
 
         # Merge metrics back preserving metadata

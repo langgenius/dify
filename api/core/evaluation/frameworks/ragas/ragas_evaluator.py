@@ -42,51 +42,51 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metrics_config, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
+        return self._evaluate(items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
 
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         return self._evaluate(
-            items, metrics_config, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
+            items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
         )
 
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metrics_config, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
+        return self._evaluate(items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
 
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         return self._evaluate(
-            items, metrics_config, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
+            items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
         )
 
     def _evaluate(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -98,7 +98,12 @@ class RagasEvaluator(BaseEvaluationInstance):
         string similarity if RAGAS import fails.
         """
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        requested_metrics = metrics_config.get("metrics", self.get_supported_metrics(category))
+        # Extract metric names from default_metrics list; each item has a "metric" key.
+        requested_metrics = (
+            [m["metric"] for m in default_metrics if "metric" in m]
+            if default_metrics
+            else self.get_supported_metrics(category)
+        )
 
         try:
             return self._evaluate_with_ragas(items, requested_metrics, model_wrapper, category)
@@ -116,11 +121,6 @@ class RagasEvaluator(BaseEvaluationInstance):
         """Evaluate using RAGAS library."""
         from ragas import evaluate as ragas_evaluate
         from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
-        from ragas.llms import LangchainLLMWrapper
-        from ragas.metrics import (
-            Faithfulness,
-            ResponseRelevancy,
-        )
 
         # Build RAGAS dataset
         samples = []

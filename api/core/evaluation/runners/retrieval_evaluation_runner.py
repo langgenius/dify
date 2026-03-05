@@ -58,7 +58,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -80,7 +80,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
             )
 
         evaluated = self.evaluation_instance.evaluate_retrieval(
-            merged_items, metrics_config, model_provider, model_name, tenant_id
+            merged_items, default_metrics, model_provider, model_name, tenant_id
         )
 
         # Merge metrics back into original results (preserve actual_output and metadata)

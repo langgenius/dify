@@ -21,7 +21,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -33,7 +33,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -45,7 +45,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -57,7 +57,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -74,7 +74,7 @@ class BaseEvaluationInstance(ABC):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        customized_metrics: dict[str, Any],
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         """Evaluate using a published workflow as the evaluator.
@@ -86,8 +86,8 @@ class BaseEvaluationInstance(ABC):
         Args:
             items: Evaluation items with inputs, expected_output, context.
             results: Results from Phase 1 (with actual_output populated).
-            metrics_config: Must contain ``workflow_id`` pointing to a
-                published WORKFLOW-type App.
+            customized_metrics: Must contain ``evaluation_workflow_id``
+                pointing to a published WORKFLOW-type App.
             tenant_id: Tenant scope.
 
         Returns:
@@ -103,10 +103,10 @@ class BaseEvaluationInstance(ABC):
         from models.model import App
         from services.workflow_service import WorkflowService
 
-        workflow_id = metrics_config.get("workflow_id")
+        workflow_id = customized_metrics.get("evaluation_workflow_id")
         if not workflow_id:
             raise ValueError(
-                "metrics_config must contain 'workflow_id' for customized evaluator"
+                "customized_metrics must contain 'evaluation_workflow_id' for customized evaluator"
             )
 
         # Load the evaluator workflow resources using a dedicated session

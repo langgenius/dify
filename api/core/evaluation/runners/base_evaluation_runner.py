@@ -51,7 +51,7 @@ class BaseEvaluationRunner(ABC):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -66,9 +66,10 @@ class BaseEvaluationRunner(ABC):
         target_id: str,
         target_type: str,
         items: list[EvaluationItemInput],
-        metrics_config: dict,
-        model_provider: str,
-        model_name: str,
+        default_metrics: list[dict[str, Any]],
+        customized_metrics: dict[str, Any] | None = None,
+        model_provider: str = "",
+        model_name: str = "",
         judgment_config: JudgmentConfig | None = None,
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
@@ -106,13 +107,15 @@ class BaseEvaluationRunner(ABC):
 
         if successful_items and successful_results:
             try:
-                if _is_customized_evaluation(metrics_config):
+                if customized_metrics is not None:
+                    # Customized workflow evaluation — target-type agnostic
                     evaluated_results = self._evaluate_customized(
-                        successful_items, successful_results, metrics_config, tenant_id,
+                        successful_items, successful_results, customized_metrics, tenant_id,
                     )
                 else:
+                    # Framework-specific evaluation — delegate to subclass
                     evaluated_results = self.evaluate_metrics(
-                        successful_items, successful_results, metrics_config,
+                        successful_items, successful_results, default_metrics,
                         model_provider, model_name, tenant_id,
                     )
                 # Merge evaluated metrics back into results
@@ -153,12 +156,18 @@ class BaseEvaluationRunner(ABC):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        customized_metrics: dict[str, Any],
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        """Delegate to the instance's customized workflow evaluator."""
+        """Delegate to the instance's customized workflow evaluator.
+
+        Unlike the framework path (which merges ``actual_output`` into
+        ``context``), here we pass ``results`` directly — the instance's
+        ``evaluate_with_customized_workflow()`` reads ``actual_output``
+        from each ``EvaluationItemResult``.
+        """
         evaluated = self.evaluation_instance.evaluate_with_customized_workflow(
-            items, results, metrics_config, tenant_id,
+            items, results, customized_metrics, tenant_id,
         )
 
         # Merge metrics back preserving actual_output and metadata from Phase 1
@@ -179,7 +188,6 @@ class BaseEvaluationRunner(ABC):
             else:
                 final_results.append(result)
         return final_results
-
 
     @staticmethod
     def _apply_judgment(
@@ -225,8 +233,3 @@ class BaseEvaluationRunner(ABC):
                 result.model_copy(update={"judgment": judgment_result})
             )
         return judged_results
-
-
-def _is_customized_evaluation(metrics_config: dict[str, Any]) -> bool:
-    """Check if metrics_config indicates a customized workflow evaluation."""
-    return bool(metrics_config.get("workflow_id"))

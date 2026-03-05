@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Mapping, Union
+from collections.abc import Mapping
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
-from models.model import App, AppMode
+from models.model import App
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,8 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
     ) -> EvaluationItemResult:
         """Execute agent app and collect response with tool call information."""
         from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
-        from core.evaluation.runners import get_service_account_for_app
         from core.app.entities.app_invoke_entities import InvokeFrom
+        from core.evaluation.runners import get_service_account_for_app
 
         app = self.session.query(App).filter_by(id=target_id).first()
         if not app:
@@ -67,7 +68,7 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -90,7 +91,7 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
             )
 
         evaluated = self.evaluation_instance.evaluate_agent(
-            merged_items, metrics_config, model_provider, model_name, tenant_id
+            merged_items, default_metrics, model_provider, model_name, tenant_id
         )
 
         # Merge metrics back preserving metadata

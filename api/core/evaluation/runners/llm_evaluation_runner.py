@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Mapping, Union
+from collections.abc import Mapping
+from typing import Any, Union
 
 from sqlalchemy.orm import Session
 
@@ -30,8 +31,8 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         """Execute the App/Snippet with the given inputs and collect the response."""
         from core.app.apps.completion.app_generator import CompletionAppGenerator
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-        from core.evaluation.runners import get_service_account_for_app
         from core.app.entities.app_invoke_entities import InvokeFrom
+        from core.evaluation.runners import get_service_account_for_app
         from services.workflow_service import WorkflowService
 
         app = self.session.query(App).filter_by(id=target_id).first()
@@ -89,7 +90,7 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         self,
         items: list[EvaluationItemInput],
         results: list[EvaluationItemResult],
-        metrics_config: dict,
+        default_metrics: list[dict[str, Any]],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -98,7 +99,7 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         # Merge actual_output into items for evaluation
         merged_items = self._merge_results_into_items(items, results)
         return self.evaluation_instance.evaluate_llm(
-            merged_items, metrics_config, model_provider, model_name, tenant_id
+            merged_items, default_metrics, model_provider, model_name, tenant_id
         )
 
     @staticmethod
