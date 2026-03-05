@@ -255,6 +255,32 @@ def test_create_variable_message():
         assert message.message.stream is False
 
 
+def test_create_file_message_should_include_file_marker():
+    entity = ToolEntity(
+        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
+        parameters=[],
+        description=None,
+        has_runtime_parameters=False,
+    )
+    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
+    tool = WorkflowTool(
+        workflow_app_id="",
+        workflow_as_tool_id="",
+        version="1",
+        workflow_entities={},
+        workflow_call_depth=1,
+        entity=entity,
+        runtime=runtime,
+    )
+
+    file_obj = object()
+    message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
+
+    assert message.type == ToolInvokeMessage.MessageType.FILE
+    assert message.message.file_marker == "file_marker"
+    assert message.meta == {"file": file_obj}
+
+
 def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.MonkeyPatch):
     """Ensure worker context can resolve EndUser when Account is missing."""
 

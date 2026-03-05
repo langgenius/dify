@@ -14,15 +14,18 @@ const meta = {
     },
   },
   tags: ['autodocs'],
+  args: {
+    value: false,
+  },
   argTypes: {
     size: {
       control: 'select',
       options: ['xs', 'sm', 'md', 'lg', 'l'],
       description: 'Switch size',
     },
-    defaultValue: {
+    value: {
       control: 'boolean',
-      description: 'Default checked state',
+      description: 'Checked state (controlled)',
     },
     disabled: {
       control: 'boolean',
@@ -36,14 +39,14 @@ type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
 const SwitchDemo = (args: any) => {
-  const [enabled, setEnabled] = useState(args.defaultValue || false)
+  const [enabled, setEnabled] = useState(args.value ?? false)
 
   return (
     <div style={{ width: '300px' }}>
       <div className="flex items-center gap-3">
         <Switch
           {...args}
-          defaultValue={enabled}
+          value={enabled}
           onChange={(value) => {
             setEnabled(value)
             console.log('Switch toggled:', value)
@@ -62,7 +65,7 @@ export const Default: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: false,
   },
 }
@@ -72,7 +75,7 @@ export const DefaultOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: true,
+    value: true,
     disabled: false,
   },
 }
@@ -82,7 +85,7 @@ export const DisabledOff: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: true,
   },
 }
@@ -92,7 +95,7 @@ export const DisabledOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: true,
+    value: true,
     disabled: true,
   },
 }
@@ -111,31 +114,31 @@ const SizeComparisonDemo = () => {
     <div style={{ width: '400px' }} className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch size="xs" defaultValue={states.xs} onChange={v => setStates({ ...states, xs: v })} />
+          <Switch size="xs" value={states.xs} onChange={v => setStates({ ...states, xs: v })} />
           <span className="text-sm text-gray-700">Extra Small (xs)</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch size="sm" defaultValue={states.sm} onChange={v => setStates({ ...states, sm: v })} />
+          <Switch size="sm" value={states.sm} onChange={v => setStates({ ...states, sm: v })} />
           <span className="text-sm text-gray-700">Small (sm)</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch size="md" defaultValue={states.md} onChange={v => setStates({ ...states, md: v })} />
+          <Switch size="md" value={states.md} onChange={v => setStates({ ...states, md: v })} />
           <span className="text-sm text-gray-700">Medium (md)</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch size="l" defaultValue={states.l} onChange={v => setStates({ ...states, l: v })} />
+          <Switch size="l" value={states.l} onChange={v => setStates({ ...states, l: v })} />
           <span className="text-sm text-gray-700">Large (l)</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Switch size="lg" defaultValue={states.lg} onChange={v => setStates({ ...states, lg: v })} />
+          <Switch size="lg" value={states.lg} onChange={v => setStates({ ...states, lg: v })} />
           <span className="text-sm text-gray-700">Extra Large (lg)</span>
         </div>
       </div>
@@ -160,7 +163,7 @@ const WithLabelsDemo = () => {
         </div>
         <Switch
           size="md"
-          defaultValue={enabled}
+          value={enabled}
           onChange={setEnabled}
         />
       </div>
@@ -197,7 +200,7 @@ const SettingsPanelDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={settings.notifications}
+            value={settings.notifications}
             onChange={v => updateSetting('notifications', v)}
           />
         </div>
@@ -209,7 +212,7 @@ const SettingsPanelDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={settings.autoSave}
+            value={settings.autoSave}
             onChange={v => updateSetting('autoSave', v)}
           />
         </div>
@@ -221,7 +224,7 @@ const SettingsPanelDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={settings.darkMode}
+            value={settings.darkMode}
             onChange={v => updateSetting('darkMode', v)}
           />
         </div>
@@ -233,7 +236,7 @@ const SettingsPanelDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={settings.analytics}
+            value={settings.analytics}
             onChange={v => updateSetting('analytics', v)}
           />
         </div>
@@ -245,7 +248,7 @@ const SettingsPanelDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={settings.emailUpdates}
+            value={settings.emailUpdates}
             onChange={v => updateSetting('emailUpdates', v)}
           />
         </div>
@@ -279,7 +282,7 @@ const PrivacyControlsDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={privacy.profilePublic}
+            value={privacy.profilePublic}
             onChange={v => setPrivacy({ ...privacy, profilePublic: v })}
           />
         </div>
@@ -291,7 +294,7 @@ const PrivacyControlsDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={privacy.showEmail}
+            value={privacy.showEmail}
             onChange={v => setPrivacy({ ...privacy, showEmail: v })}
           />
         </div>
@@ -303,7 +306,7 @@ const PrivacyControlsDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={privacy.allowMessages}
+            value={privacy.allowMessages}
             onChange={v => setPrivacy({ ...privacy, allowMessages: v })}
           />
         </div>
@@ -315,7 +318,7 @@ const PrivacyControlsDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={privacy.shareActivity}
+            value={privacy.shareActivity}
             onChange={v => setPrivacy({ ...privacy, shareActivity: v })}
           />
         </div>
@@ -351,7 +354,7 @@ const FeatureTogglesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={features.betaFeatures}
+            value={features.betaFeatures}
             onChange={v => setFeatures({ ...features, betaFeatures: v })}
           />
         </div>
@@ -366,7 +369,7 @@ const FeatureTogglesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={features.experimentalUI}
+            value={features.experimentalUI}
             onChange={v => setFeatures({ ...features, experimentalUI: v })}
           />
         </div>
@@ -381,7 +384,7 @@ const FeatureTogglesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={features.advancedMode}
+            value={features.advancedMode}
             onChange={v => setFeatures({ ...features, advancedMode: v })}
           />
         </div>
@@ -396,7 +399,7 @@ const FeatureTogglesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={features.developerTools}
+            value={features.developerTools}
             onChange={v => setFeatures({ ...features, developerTools: v })}
           />
         </div>
@@ -440,7 +443,7 @@ const NotificationPreferencesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={notifications.email}
+            value={notifications.email}
             onChange={v => setNotifications({ ...notifications, email: v })}
           />
         </div>
@@ -455,7 +458,7 @@ const NotificationPreferencesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={notifications.push}
+            value={notifications.push}
             onChange={v => setNotifications({ ...notifications, push: v })}
           />
         </div>
@@ -470,7 +473,7 @@ const NotificationPreferencesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={notifications.sms}
+            value={notifications.sms}
             onChange={v => setNotifications({ ...notifications, sms: v })}
           />
         </div>
@@ -485,7 +488,7 @@ const NotificationPreferencesDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={notifications.desktop}
+            value={notifications.desktop}
             onChange={v => setNotifications({ ...notifications, desktop: v })}
           />
         </div>
@@ -523,7 +526,7 @@ const APIAccessControlDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={access.readAccess}
+            value={access.readAccess}
             onChange={v => setAccess({ ...access, readAccess: v })}
           />
         </div>
@@ -539,7 +542,7 @@ const APIAccessControlDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={access.writeAccess}
+            value={access.writeAccess}
             onChange={v => setAccess({ ...access, writeAccess: v })}
           />
         </div>
@@ -555,7 +558,7 @@ const APIAccessControlDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={access.deleteAccess}
+            value={access.deleteAccess}
             onChange={v => setAccess({ ...access, deleteAccess: v })}
           />
         </div>
@@ -571,7 +574,7 @@ const APIAccessControlDemo = () => {
           </div>
           <Switch
             size="md"
-            defaultValue={access.adminAccess}
+            value={access.adminAccess}
             onChange={v => setAccess({ ...access, adminAccess: v })}
           />
         </div>
@@ -609,7 +612,7 @@ const CompactListDemo = () => {
             <span className="text-sm text-gray-700">{item.name}</span>
             <Switch
               size="sm"
-              defaultValue={item.enabled}
+              value={item.enabled}
               onChange={() => toggleItem(item.id)}
             />
           </div>
@@ -628,7 +631,7 @@ export const Playground: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: false,
   },
 }

@@ -1,20 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
-import {
-  RiApps2Line,
-  RiDragDropLine,
-  RiExchange2Line,
-  RiFile4Line,
-  RiMessage3Line,
-  RiRobot3Line,
-} from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
-import {
-  useRouter,
-} from 'next/navigation'
-import { parseAsString, useQueryState } from 'nuqs'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -27,7 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, AppModes } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -37,22 +26,24 @@ import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
 
-// Define valid tabs at module scope to avoid re-creation on each render and stale closures
-const validTabs = new Set<string | AppModeEnum>([
-  'all',
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.CHAT,
-  AppModeEnum.AGENT_CHAT,
-  AppModeEnum.COMPLETION,
-])
-
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
+
+const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
+type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
+const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
+
+const isAppListCategory = (value: string): value is AppListCategory => {
+  return appListCategorySet.has(value)
+}
+
+const parseAsAppListCategory = parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
+  .withDefault('all')
+  .withOptions({ history: 'push' })
 
 type Props = {
   controlRefreshList?: number
@@ -62,12 +53,11 @@ const List: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
     'category',
-    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+    parseAsAppListCategory,
   )
 
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
@@ -102,7 +92,7 @@ const List: FC<Props> = ({
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,
-    ...(activeTab !== 'all' ? { mode: activeTab as AppModeEnum } : {}),
+    ...(activeTab !== 'all' ? { mode: activeTab } : {}),
   }
 
   const {
@@ -125,12 +115,12 @@ const List: FC<Props> = ({
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -139,11 +129,6 @@ const List: FC<Props> = ({
       refetch()
     }
   }, [refetch])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [router, isCurrentWorkspaceDatasetOperator])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -213,7 +198,10 @@ const List: FC<Props> = ({
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
           <TabSliderNew
             value={activeTab}
-            onChange={setActiveTab}
+            onChange={(nextValue) => {
+              if (isAppListCategory(nextValue))
+                setActiveTab(nextValue)
+            }}
             options={options}
           />
           <div className="flex items-center gap-2">
@@ -272,7 +260,7 @@ const List: FC<Props> = ({
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <RiDragDropLine className="h-4 w-4" />
+            <span className="i-ri-drag-drop-line h-4 w-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}

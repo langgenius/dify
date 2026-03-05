@@ -64,12 +64,12 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
         {expand && (
           <div className="flex flex-col gap-y-1 pb-0.5">
             <div
-              className="system-md-semibold truncate text-text-secondary"
+              className="truncate text-text-secondary system-md-semibold"
               title={dataset.name}
             >
               {dataset.name}
             </div>
-            <div className="system-2xs-medium-uppercase text-text-tertiary">
+            <div className="text-text-tertiary system-2xs-medium-uppercase">
               {isExternalProvider && t('externalTag', { ns: 'dataset' })}
               {!!(!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique) && (
                 <div className="flex items-center gap-x-2">
@@ -79,7 +79,7 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
               )}
             </div>
             {!!dataset.description && (
-              <p className="system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize">
+              <p className="line-clamp-3 text-text-tertiary system-xs-regular first-letter:capitalize">
                 {dataset.description}
               </p>
             )}
