@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
@@ -250,7 +250,7 @@ const ModelLoadBalancingModal = ({
                   modelName={model!.model}
                 />
                 <ModelName
-                  className="system-md-regular grow text-text-secondary"
+                  className="grow text-text-secondary system-md-regular"
                   modelItem={model!}
                   showModelType
                   showMode
