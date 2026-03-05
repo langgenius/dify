@@ -8,9 +8,10 @@ from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentRes
 
 class EvaluationCategory(StrEnum):
     LLM = "llm"
-    RETRIEVAL = "retrieval"
+    RETRIEVAL = "knowledge_retrieval"
     AGENT = "agent"
     WORKFLOW = "workflow"
+    RETRIEVAL_TEST = "retrieval_test"
 
 
 class EvaluationMetric(BaseModel):
@@ -42,6 +43,42 @@ class EvaluationItemResult(BaseModel):
         return sum(scores) / len(scores)
 
 
+class NodeInfo(BaseModel):
+    node_id: str
+    type: str
+    title: str
+
+
+class DefaultMetric(BaseModel):
+    metric: str
+    node_info_list: list[NodeInfo]
+
+
+class CustomizedMetricOutputField(BaseModel):
+    variable: str
+    value_type: str
+
+
+class CustomizedMetrics(BaseModel):
+    evaluation_workflow_id: str
+    input_fields: dict[str, str]
+    output_fields: list[CustomizedMetricOutputField]
+
+
+class EvaluationConfigData(BaseModel):
+    """Structured data for saving evaluation configuration."""
+    evaluation_model: str = ""
+    evaluation_model_provider: str = ""
+    default_metrics: list[DefaultMetric] = Field(default_factory=list)
+    customized_metrics: CustomizedMetrics | None = None
+    judgment_config: JudgmentConfig | None = None
+
+
+class EvaluationRunRequest(EvaluationConfigData):
+    """Request body for starting an evaluation run."""
+    file_id: str
+
+
 class EvaluationRunData(BaseModel):
     """Serializable data for Celery task."""
     evaluation_run_id: str
@@ -51,6 +88,7 @@ class EvaluationRunData(BaseModel):
     evaluation_category: EvaluationCategory
     evaluation_model_provider: str
     evaluation_model: str
-    metrics_config: dict[str, Any] = Field(default_factory=dict)
+    default_metrics: list[dict[str, Any]] = Field(default_factory=list)
+    customized_metrics: dict[str, Any] | None = None
     judgment_config: JudgmentConfig | None = None
     items: list[EvaluationItemInput]

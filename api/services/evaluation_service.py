@@ -10,9 +10,12 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
+    DefaultMetric,
     EvaluationCategory,
+    EvaluationConfigData,
     EvaluationItemInput,
     EvaluationRunData,
+    EvaluationRunRequest,
 )
 from core.evaluation.evaluation_manager import EvaluationManager
 from models.evaluation import (
@@ -222,7 +225,7 @@ class EvaluationService:
         target_type: str,
         target_id: str,
         account_id: str,
-        data: dict[str, Any],
+        data: EvaluationConfigData,
     ) -> EvaluationConfiguration:
         config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
         if config is None:
@@ -235,10 +238,15 @@ class EvaluationService:
             )
             session.add(config)
 
-        config.evaluation_model_provider = data.get("evaluation_model_provider")
-        config.evaluation_model = data.get("evaluation_model")
-        config.metrics_config = json.dumps(data.get("metrics_config", {}))
-        config.judgement_conditions = json.dumps(data.get("judgement_conditions", {}))
+        config.evaluation_model_provider = data.evaluation_model_provider
+        config.evaluation_model = data.evaluation_model
+        config.metrics_config = json.dumps({
+            "default_metrics": [m.model_dump() for m in data.default_metrics],
+            "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
+        })
+        config.judgement_conditions = json.dumps(
+            data.judgment_config.model_dump() if data.judgment_config else {}
+        )
         config.updated_by = account_id
         session.commit()
         session.refresh(config)
@@ -255,18 +263,30 @@ class EvaluationService:
         target_id: str,
         account_id: str,
         dataset_file_content: bytes,
-        evaluation_category: EvaluationCategory,
+        run_request: EvaluationRunRequest,
     ) -> EvaluationRun:
-        """Validate dataset, create run record, dispatch Celery task."""
+        """Validate dataset, create run record, dispatch Celery task.
+
+        Saves the provided parameters as the latest EvaluationConfiguration
+        before creating the run.
+        """
         # Check framework is configured
         evaluation_instance = EvaluationManager.get_evaluation_instance()
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
 
-        # Check evaluation config exists
-        config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
-        if config is None:
-            raise EvaluationNotFoundError("Evaluation configuration not found. Please configure evaluation first.")
+        # Derive evaluation_category from default_metrics node types
+        evaluation_category = cls._resolve_evaluation_category(run_request.default_metrics)
+
+        # Save as latest EvaluationConfiguration
+        config = cls.save_evaluation_config(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            account_id=account_id,
+            data=run_request,
+        )
 
         # Check concurrent run limit
         active_runs = (
@@ -308,9 +328,13 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             evaluation_category=evaluation_category,
-            evaluation_model_provider=config.evaluation_model_provider or "",
-            evaluation_model=config.evaluation_model or "",
-            metrics_config=config.metrics_config_dict,
+            evaluation_model_provider=run_request.evaluation_model_provider,
+            evaluation_model=run_request.evaluation_model,
+            default_metrics=[m.model_dump() for m in run_request.default_metrics],
+            customized_metrics=(
+                run_request.customized_metrics.model_dump() if run_request.customized_metrics else None
+            ),
+            judgment_config=run_request.judgment_config,
             items=items,
         )
 
@@ -405,6 +429,23 @@ class EvaluationService:
     @classmethod
     def get_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
         return EvaluationManager.get_supported_metrics(category)
+
+    # ---- Category Resolution ----
+
+    @classmethod
+    def _resolve_evaluation_category(cls, default_metrics: list[DefaultMetric]) -> EvaluationCategory:
+        """Derive evaluation category from default_metrics node_info types.
+
+        Uses the type of the first node_info found in default_metrics.
+        Falls back to LLM if no metrics are provided.
+        """
+        for metric in default_metrics:
+            for node_info in metric.node_info_list:
+                try:
+                    return EvaluationCategory(node_info.type)
+                except ValueError:
+                    continue
+        return EvaluationCategory.LLM
 
     # ---- Dataset Parsing ----
 
