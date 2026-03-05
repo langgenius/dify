@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
@@ -278,3 +279,30 @@ class TestGraphRuntimeState:
         assert restored_execution.started is True
 
         assert new_stub.state == "configured"
+
+    def test_dumps_and_loads_preserve_file_storage_key(self):
+        variable_pool = VariablePool()
+        variable_pool.add(
+            ("start", "input_file"),
+            File(
+                tenant_id="tenant-1",
+                type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                related_id="11111111-1111-1111-1111-111111111111",
+                filename="input.txt",
+                extension=".txt",
+                mime_type="text/plain",
+                size=10,
+                storage_key="upload_files/tenant-1/input.txt",
+            ),
+        )
+
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        snapshot = state.dumps()
+
+        restored = GraphRuntimeState.from_snapshot(snapshot)
+        restored_segment = restored.variable_pool.get(("start", "input_file"))
+
+        assert restored_segment is not None
+        assert isinstance(restored_segment.value, File)
+        assert restored_segment.value.storage_key == "upload_files/tenant-1/input.txt"

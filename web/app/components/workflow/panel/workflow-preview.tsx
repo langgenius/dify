@@ -12,6 +12,7 @@ import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
+  useRerunEditor,
   useWorkflowInteractions,
 } from '../hooks'
 import ResultPanel from '../run/result-panel'
@@ -29,6 +30,7 @@ import InputsPanel from './inputs-panel'
 const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
+  const { handleOpenRerunEditor } = useRerunEditor()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
   const showInputsPanel = useStore(s => s.showInputsPanel)
@@ -53,6 +55,11 @@ const WorkflowPreview = () => {
     if (isListening)
       switchTab('DETAIL')
   }, [isListening])
+
+  useEffect(() => {
+    if (workflowRunningData?.result?.status === WorkflowRunningStatus.Running && !showInputsPanel && !isListening)
+      switchTab('TRACING')
+  }, [workflowRunningData?.result?.status, showInputsPanel, isListening])
 
   useEffect(() => {
     const status = workflowRunningData?.result.status
@@ -247,6 +254,14 @@ const WorkflowPreview = () => {
             <TracingPanel
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
+              rerunEntryScope="workflow-editor"
+              sourceRunId={workflowRunningData?.result?.id}
+              sourceRunStatus={workflowRunningData?.result?.status}
+              onOpenRerunEditor={nodeInfo => handleOpenRerunEditor({
+                sourceRunId: workflowRunningData?.result?.id,
+                sourceRunStatus: workflowRunningData?.result?.status,
+                nodeInfo,
+              })}
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (

@@ -30,7 +30,9 @@ from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_engine.replay import ReplayExecutionStrategyConfig
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -263,6 +265,46 @@ class WorkflowAppGenerator(BaseAppGenerator):
             pause_state_config=pause_state_config,
         )
 
+    def rerun(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        application_generate_entity: WorkflowAppGenerateEntity,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        execution_graph_config: Mapping[str, Any],
+        graph_runtime_state: GraphRuntimeState,
+        rerun_metadata: WorkflowRunRerunMetadata,
+        root_node_id: str | None,
+        streaming: bool,
+        rerun_strategy_config: ReplayExecutionStrategyConfig | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        pause_state_config: PauseStateLayerConfig | None = None,
+    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+        """
+        Execute a workflow rerun with a pre-built runtime state and execution graph.
+        """
+        return self._generate(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            application_generate_entity=application_generate_entity,
+            invoke_from=application_generate_entity.invoke_from,
+            workflow_execution_repository=workflow_execution_repository,
+            workflow_node_execution_repository=workflow_node_execution_repository,
+            streaming=streaming,
+            root_node_id=root_node_id,
+            graph_engine_layers=graph_engine_layers,
+            graph_runtime_state=graph_runtime_state,
+            pause_state_config=pause_state_config,
+            execution_graph_config=execution_graph_config,
+            skip_validation=True,
+            rerun_metadata=rerun_metadata,
+            rerun_strategy_config=rerun_strategy_config,
+        )
+
     def _generate(
         self,
         *,
@@ -279,6 +321,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
+        execution_graph_config: Mapping[str, Any] | None = None,
+        skip_validation: bool = False,
+        rerun_metadata: WorkflowRunRerunMetadata | None = None,
+        rerun_strategy_config: ReplayExecutionStrategyConfig | None = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -330,6 +376,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "workflow_node_execution_repository": workflow_node_execution_repository,
                 "graph_engine_layers": tuple(graph_layers),
                 "graph_runtime_state": graph_runtime_state,
+                "execution_graph_config": execution_graph_config,
+                "skip_validation": skip_validation,
+                "rerun_metadata": rerun_metadata,
+                "rerun_strategy_config": rerun_strategy_config,
             },
         )
 
@@ -528,6 +578,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        execution_graph_config: Mapping[str, Any] | None = None,
+        skip_validation: bool = False,
+        rerun_metadata: WorkflowRunRerunMetadata | None = None,
+        rerun_strategy_config: ReplayExecutionStrategyConfig | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -574,6 +628,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
+                execution_graph_config=execution_graph_config,
+                skip_validation=skip_validation,
+                rerun_metadata=rerun_metadata,
+                rerun_strategy_config=rerun_strategy_config,
             )
 
             try:

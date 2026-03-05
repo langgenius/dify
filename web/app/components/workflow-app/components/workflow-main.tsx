@@ -60,6 +60,7 @@ const WorkflowMain = ({
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,
     handleRun,
+    handleRerun,
     handleStopRun,
   } = useWorkflowRun()
   const {
@@ -108,6 +109,7 @@ const WorkflowMain = ({
       handleLoadBackupDraft,
       handleRestoreFromPublishedWorkflow,
       handleRun,
+      handleRerun,
       handleStopRun,
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
@@ -145,6 +147,7 @@ const WorkflowMain = ({
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,
     handleRun,
+    handleRerun,
     handleStopRun,
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,

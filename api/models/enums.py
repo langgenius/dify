@@ -11,6 +11,7 @@ class CreatorUserRole(StrEnum):
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"  # webapp / service api
+    RERUN = "rerun"
     RAG_PIPELINE_RUN = "rag-pipeline-run"
     RAG_PIPELINE_DEBUGGING = "rag-pipeline-debugging"
     WEBHOOK = "webhook"

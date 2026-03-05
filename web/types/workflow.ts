@@ -67,6 +67,11 @@ export type NodeTracing = {
     total_tokens: number
     total_price: number
     currency: string
+    execution_mode?: 'real' | 'replay'
+    source_workflow_run_id?: string
+    source_node_execution_id?: string
+    edge_source_handle?: string
+    strategy_reason?: string
     iteration_id?: string
     iteration_index?: number
     loop_id?: string
@@ -397,6 +402,16 @@ export type WorkflowRunHistory = {
     name: string
     email: string
   }
+  rerun_from_workflow_run_id?: string
+  rerun_from_node_id?: string
+  rerun_from_node_title?: string
+  rerun_chain_root_workflow_run_id?: string
+  rerun_kind?: string
+  rerun_source_workflow_run?: {
+    id: string
+    status?: string
+    finished_at?: number
+  } | null
 }
 export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]

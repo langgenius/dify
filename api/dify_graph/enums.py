@@ -252,6 +252,11 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node
+    EXECUTION_MODE = "execution_mode"  # node execution mode during rerun(real/replay)
+    SOURCE_WORKFLOW_RUN_ID = "source_workflow_run_id"  # baseline workflow run id when replayed
+    SOURCE_NODE_EXECUTION_ID = "source_node_execution_id"  # baseline node execution id when replayed
+    EDGE_SOURCE_HANDLE = "edge_source_handle"  # selected branch source handle for branch nodes
+    STRATEGY_REASON = "strategy_reason"  # fallback reason when replay degrades to real
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

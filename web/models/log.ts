@@ -219,6 +219,7 @@ export enum WorkflowRunTriggeredFrom {
   WEBHOOK = 'webhook',
   SCHEDULE = 'schedule',
   PLUGIN = 'plugin',
+  RERUN = 'rerun',
 }
 
 export type TriggerMetadata = {
@@ -240,7 +241,7 @@ export type WorkflowLogDetails = {
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -296,7 +297,7 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {
@@ -312,6 +313,26 @@ export type WorkflowRunDetailResponse = {
   created_at: number
   finished_at: number
   exceptions_count?: number
+  rerun_from_workflow_run_id?: string
+  rerun_from_node_id?: string
+  rerun_from_node_title?: string
+  rerun_chain_root_workflow_run_id?: string
+  rerun_kind?: string
+  rerun_overrides?: Array<{
+    selector: string[]
+    value: unknown
+  }>
+  rerun_scope?: {
+    target_node_id?: string
+    ancestor_node_ids?: string[]
+    rerun_node_ids?: string[]
+    overrideable_node_ids?: string[]
+  }
+  rerun_source_workflow_run?: {
+    id: string
+    status?: string
+    finished_at?: number
+  } | null
 }
 
 export type AgentLogMeta = {

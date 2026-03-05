@@ -1,9 +1,11 @@
 import type { FC } from 'react'
-import type { NodeProps } from '../types'
+import type { RerunVariableMeta } from '../store/workflow/panel-slice'
+import type { EnvironmentVariable, NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import {
   RiCloseLine,
 } from '@remixicon/react'
+import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -13,11 +15,12 @@ import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
-
 import { useStore } from '../store'
+import { VarType } from '../types'
 import Empty from './empty'
 import Left from './left'
 import Listening from './listening'
+import { RERUN_MASK_PLACEHOLDER } from './rerun-adapter'
 import Right from './right'
 
 export type currentVarType = {
@@ -27,6 +30,33 @@ export type currentVarType = {
   isValueFetched?: boolean
   var: VarInInspect
   nodeData: NodeProps['data']
+  rerunMeta?: RerunVariableMeta
+  rerunOriginalValue?: unknown
+}
+
+export type selectedVarState = Pick<currentVarType, 'nodeId' | 'var'>
+  & Partial<Pick<currentVarType, 'nodeType' | 'title' | 'nodeData'>>
+
+const normalizeEnvVar = (varItem: VarInInspect | EnvironmentVariable): VarInInspect => {
+  if ('selector' in varItem)
+    return varItem as VarInInspect
+
+  return {
+    id: varItem.id,
+    type: VarInInspectType.environment,
+    name: varItem.name,
+    description: varItem.description || '',
+    selector: [VarInInspectType.environment, varItem.name],
+    value_type: varItem.value_type as VarInInspect['value_type'],
+    value: varItem.value,
+    edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: {
+      size_bytes: 0,
+      download_url: '',
+    },
+  }
 }
 
 const Panel: FC = () => {
@@ -34,6 +64,10 @@ const Panel: FC = () => {
 
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const variableInspectMode = useStore(s => s.variableInspectMode)
+  const setVariableInspectMode = useStore(s => s.setVariableInspectMode)
+  const rerunContext = useStore(s => s.rerunContext)
+  const clearRerunContext = useStore(s => s.clearRerunContext)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
   const isListening = useStore(s => s.isListening)
 
@@ -49,36 +83,94 @@ const Panel: FC = () => {
     fetchInspectVarValue,
   } = useCurrentVars()
 
+  const isRerunEditMode = variableInspectMode === 'rerun-edit'
+  const envVars = useMemo(() => (isRerunEditMode ? (rerunContext?.envVars || []) : environmentVariables), [isRerunEditMode, rerunContext?.envVars, environmentVariables])
+  const nodeVarGroups = useMemo(() => (isRerunEditMode ? (rerunContext?.nodeGroups || []) : nodesWithInspectVars), [isRerunEditMode, rerunContext?.nodeGroups, nodesWithInspectVars])
+  const conversationVarList = useMemo(() => (isRerunEditMode ? [] : conversationVars), [isRerunEditMode, conversationVars])
+  const systemVarList = useMemo(() => (isRerunEditMode ? [] : systemVars), [isRerunEditMode, systemVars])
+
+  const resolvedFocusNodeId = useMemo(() => {
+    if (currentFocusNodeId)
+      return currentFocusNodeId
+    if (nodeVarGroups.length > 0)
+      return nodeVarGroups[0].nodeId
+    if (envVars.length > 0)
+      return VarInInspectType.environment
+    if (conversationVarList.length > 0)
+      return VarInInspectType.conversation
+    if (systemVarList.length > 0)
+      return VarInInspectType.system
+    return ''
+  }, [currentFocusNodeId, nodeVarGroups, envVars, conversationVarList, systemVarList])
+
+  const resolvedVarId = useMemo(() => {
+    if (!resolvedFocusNodeId)
+      return ''
+
+    let candidateVarList: VarInInspect[] = []
+    if (resolvedFocusNodeId === VarInInspectType.environment)
+      candidateVarList = envVars.map(item => normalizeEnvVar(item))
+    else if (resolvedFocusNodeId === VarInInspectType.conversation)
+      candidateVarList = conversationVarList
+    else if (resolvedFocusNodeId === VarInInspectType.system)
+      candidateVarList = systemVarList
+    else
+      candidateVarList = nodeVarGroups.find(node => node.nodeId === resolvedFocusNodeId)?.vars || []
+
+    if (currentVarId && candidateVarList.some(item => item.id === currentVarId))
+      return currentVarId
+    return candidateVarList[0]?.id || ''
+  }, [resolvedFocusNodeId, envVars, conversationVarList, systemVarList, nodeVarGroups, currentVarId])
+
   const isEmpty = useMemo(() => {
-    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
+    const allVars = [...envVars, ...conversationVarList, ...systemVarList, ...nodeVarGroups]
     return allVars.length === 0
-  }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+  }, [envVars, conversationVarList, systemVarList, nodeVarGroups])
+
+  const toRerunDisplayVar = useCallback((varItem: VarInInspect) => {
+    if (!isRerunEditMode || !rerunContext)
+      return varItem
+
+    const meta = rerunContext.metaByVarId[varItem.id]
+    const currentValue = rerunContext.currentValueByVarId[varItem.id]
+    const originalValue = rerunContext.originalValueByVarId[varItem.id]
+    const edited = !isEqual(currentValue, originalValue)
+    const shouldShowMasked = !!meta?.masked && !edited
+    return {
+      ...varItem,
+      value: shouldShowMasked ? RERUN_MASK_PLACEHOLDER : currentValue,
+      edited,
+      value_type: shouldShowMasked ? VarType.secret : varItem.value_type,
+    }
+  }, [isRerunEditMode, rerunContext])
 
   const currentNodeInfo = useMemo(() => {
-    if (!currentFocusNodeId)
+    if (!resolvedFocusNodeId)
       return
-    if (currentFocusNodeId === VarInInspectType.environment) {
-      const currentVar = environmentVariables.find(v => v.id === currentVarId)
+    if (resolvedFocusNodeId === VarInInspectType.environment) {
+      const currentVar = envVars.find(v => v.id === resolvedVarId)
       const res = {
         nodeId: VarInInspectType.environment,
         title: VarInInspectType.environment,
         nodeType: VarInInspectType.environment,
       }
       if (currentVar) {
+        const normalizedEnvVar = normalizeEnvVar(currentVar)
+        const rerunVar = toRerunDisplayVar({
+          ...normalizedEnvVar,
+          ...(!isRerunEditMode && normalizedEnvVar.value_type === 'secret' ? { value: RERUN_MASK_PLACEHOLDER } : {}),
+        })
         return {
           ...res,
-          var: {
-            ...currentVar,
-            type: VarInInspectType.environment,
-            visible: true,
-            ...(currentVar.value_type === 'secret' ? { value: '******************' } : {}),
-          },
+          var: rerunVar,
+          rerunMeta: rerunContext?.metaByVarId[rerunVar.id],
+          rerunOriginalValue: rerunContext?.originalValueByVarId[rerunVar.id],
         }
       }
       return res
     }
-    if (currentFocusNodeId === VarInInspectType.conversation) {
-      const currentVar = conversationVars.find(v => v.id === currentVarId)
+    if (resolvedFocusNodeId === VarInInspectType.conversation) {
+      const currentVar = conversationVarList.find(v => v.id === resolvedVarId)
       const res = {
         nodeId: VarInInspectType.conversation,
         title: VarInInspectType.conversation,
@@ -95,8 +187,8 @@ const Panel: FC = () => {
       }
       return res
     }
-    if (currentFocusNodeId === VarInInspectType.system) {
-      const currentVar = systemVars.find(v => v.id === currentVarId)
+    if (resolvedFocusNodeId === VarInInspectType.system) {
+      const currentVar = systemVarList.find(v => v.id === resolvedVarId)
       const res = {
         nodeId: VarInInspectType.system,
         title: VarInInspectType.system,
@@ -113,10 +205,10 @@ const Panel: FC = () => {
       }
       return res
     }
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+    const targetNode = nodeVarGroups.find(node => node.nodeId === resolvedFocusNodeId)
     if (!targetNode)
       return
-    const currentVar = targetNode.vars.find(v => v.id === currentVarId)
+    const currentVar = targetNode.vars.find(v => v.id === resolvedVarId)
     return {
       nodeId: targetNode.nodeId,
       nodeType: targetNode.nodeType,
@@ -124,20 +216,38 @@ const Panel: FC = () => {
       isSingRunRunning: targetNode.isSingRunRunning,
       isValueFetched: targetNode.isValueFetched,
       nodeData: targetNode.nodePayload,
-      ...(currentVar ? { var: currentVar } : {}),
+      ...(currentVar
+        ? {
+            var: toRerunDisplayVar(currentVar),
+            rerunMeta: rerunContext?.metaByVarId[currentVar.id],
+            rerunOriginalValue: rerunContext?.originalValueByVarId[currentVar.id],
+          }
+        : {}),
     }
-  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+  }, [
+    resolvedFocusNodeId,
+    resolvedVarId,
+    envVars,
+    conversationVarList,
+    systemVarList,
+    nodeVarGroups,
+    isRerunEditMode,
+    rerunContext,
+    toRerunDisplayVar,
+  ])
 
   const isCurrentNodeVarValueFetching = useMemo(() => {
+    if (isRerunEditMode)
+      return !!rerunContext?.loading
     if (!currentNodeInfo)
       return false
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeInfo.nodeId)
+    const targetNode = nodeVarGroups.find(node => node.nodeId === currentNodeInfo.nodeId)
     if (!targetNode)
       return false
     return !targetNode.isValueFetched
-  }, [currentNodeInfo, nodesWithInspectVars])
+  }, [isRerunEditMode, rerunContext?.loading, currentNodeInfo, nodeVarGroups])
 
-  const handleNodeVarSelect = useCallback((node: currentVarType) => {
+  const handleNodeVarSelect = useCallback((node: selectedVarState) => {
     setCurrentFocusNodeId(node.nodeId)
     setCurrentVarId(node.var.id)
   }, [setCurrentFocusNodeId, setCurrentVarId])
@@ -149,20 +259,38 @@ const Panel: FC = () => {
     eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
   }, [eventEmitter])
 
-  useEffect(() => {
-    if (currentFocusNodeId && currentVarId && !isLoading) {
-      const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-      if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
+  const handleClose = useCallback(() => {
+    setShowVariableInspectPanel(false)
+    setCurrentFocusNodeId('')
+    setCurrentVarId('')
+    if (isRerunEditMode) {
+      setVariableInspectMode('cache')
+      clearRerunContext()
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
+  }, [setShowVariableInspectPanel, setCurrentFocusNodeId, setCurrentVarId, isRerunEditMode, setVariableInspectMode, clearRerunContext])
+
+  useEffect(() => {
+    if (!isRerunEditMode && resolvedFocusNodeId && resolvedVarId && !isLoading) {
+      const targetNode = nodeVarGroups.find(node => node.nodeId === resolvedFocusNodeId)
+      if (targetNode && !targetNode.isValueFetched)
+        fetchInspectVarValue([resolvedFocusNodeId], schemaTypeDefinitions!)
+    }
+  }, [
+    isRerunEditMode,
+    resolvedFocusNodeId,
+    resolvedVarId,
+    nodeVarGroups,
+    isLoading,
+    fetchInspectVarValue,
+    schemaTypeDefinitions,
+  ])
 
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <div className="text-text-primary system-sm-semibold-uppercase">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+          <ActionButton onClick={handleClose}>
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
@@ -175,12 +303,12 @@ const Panel: FC = () => {
     )
   }
 
-  if (isEmpty) {
+  if (isEmpty && !isRerunEditMode) {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <div className="text-text-primary system-sm-semibold-uppercase">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+          <ActionButton onClick={handleClose}>
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
@@ -213,7 +341,7 @@ const Panel: FC = () => {
       {/* right */}
       <div className="w-0 grow">
         <Right
-          nodeId={currentFocusNodeId!}
+          nodeId={resolvedFocusNodeId}
           isValueFetching={isCurrentNodeVarValueFetching}
           currentNodeVar={currentNodeInfo as currentVarType}
           handleOpenMenu={() => setShowLeftPanel(true)}

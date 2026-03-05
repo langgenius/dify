@@ -121,3 +121,9 @@ class NeedAddIdsError(BaseHTTPException):
     error_code = "need_add_ids"
     description = "Need to add ids."
     code = 400
+
+
+class UnsupportedTriggeredFrom(BaseHTTPException):
+    error_code = "unsupported_triggered_from"
+    description = "Advanced-chat does not support triggered_from=rerun."
+    code = 422
