@@ -6,7 +6,7 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import Datepicker from '@/app/components/datasets/metadata/base/date-picker'
 import { DataType } from '@/app/components/datasets/metadata/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -196,25 +196,37 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                           </div>
                           <div className="flex h-8 grow items-center gap-1 rounded-lg border border-components-panel-border bg-components-input-bg-normal">
                             <div className="ml-1 inline-flex shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
-                              <Tooltip
-                                popupContent={isVariable ? '' : t('nodes.common.valueType.variable', { ns: 'workflow' })}
-                              >
-                                <div
-                                  className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
-                                  onClick={() => !readonly && handleDocMetadataValueChange(index, [])}
-                                >
-                                  <div className="i-custom-vender-solid-development-variable-02 h-4 w-4" />
-                                </div>
+                              <Tooltip>
+                                <TooltipTrigger render={(
+                                  <div
+                                    className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
+                                    onClick={() => !readonly && handleDocMetadataValueChange(index, [])}
+                                  >
+                                    <div className="i-custom-vender-solid-development-variable-02 h-4 w-4" />
+                                  </div>
+                                )}
+                                />
+                                {!isVariable && (
+                                  <TooltipContent>
+                                    {t('nodes.common.valueType.variable', { ns: 'workflow' })}
+                                  </TooltipContent>
+                                )}
                               </Tooltip>
-                              <Tooltip
-                                popupContent={isVariable ? t('nodes.common.valueType.constant', { ns: 'workflow' }) : ''}
-                              >
-                                <div
-                                  className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', !isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
-                                  onClick={() => !readonly && handleDocMetadataValueChange(index, '')}
-                                >
-                                  <div className="i-ri-edit-line h-4 w-4" />
-                                </div>
+                              <Tooltip>
+                                <TooltipTrigger render={(
+                                  <div
+                                    className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', !isVariable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg', readonly && 'cursor-not-allowed opacity-50')}
+                                    onClick={() => !readonly && handleDocMetadataValueChange(index, '')}
+                                  >
+                                    <div className="i-ri-edit-line h-4 w-4" />
+                                  </div>
+                                )}
+                                />
+                                {isVariable && (
+                                  <TooltipContent>
+                                    {t('nodes.common.valueType.constant', { ns: 'workflow' })}
+                                  </TooltipContent>
+                                )}
                               </Tooltip>
                             </div>
                             <div className="h-full w-px bg-divider-regular" />

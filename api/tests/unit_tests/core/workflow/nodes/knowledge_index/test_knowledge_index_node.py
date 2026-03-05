@@ -1,169 +1,798 @@
-import unittest
+import time
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
-from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from core.workflow.runtime import VariablePool
-from models.dataset import Dataset, DatasetMetadata, Document
-from models.enums import UserFrom
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import SystemVariableKey, UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
+from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
+from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
+from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
+from dify_graph.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import StringSegment
 
 
-class TestKnowledgeIndexNode(unittest.TestCase):
-    def setUp(self):
-        self.dataset_id = str(uuid.uuid4())
-        self.document_id = str(uuid.uuid4())
-        self.mock_dataset = MagicMock(spec=Dataset)
-        self.mock_dataset.id = self.dataset_id
-        self.mock_dataset.built_in_field_enabled = False
+@pytest.fixture
+def mock_graph_init_params():
+    """Create mock GraphInitParams."""
+    return GraphInitParams(
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
+        workflow_id=str(uuid.uuid4()),
+        graph_config={},
+        user_id=str(uuid.uuid4()),
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
 
-        self.mock_document = MagicMock(spec=Document)
-        self.mock_document.id = self.document_id
-        self.mock_document.doc_metadata = {}
 
-    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.attributes.flag_modified")
-    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.db.session")
-    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessorFactory")
-    def test_run_with_custom_metadata(self, mock_index_processor_factory, mock_db_session, mock_flag_modified):
-        # Mock DB queries
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
-            self.mock_dataset,  # For dataset query
-            self.mock_document,  # For document query
-        ]
+@pytest.fixture
+def mock_graph_runtime_state():
+    """Create mock GraphRuntimeState."""
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(user_id=str(uuid.uuid4()), files=[]),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-        # Mock Dataset Metadata
-        mock_metadata = MagicMock(spec=DatasetMetadata)
-        mock_metadata.id = "meta_uuid_1"
-        mock_metadata.name = "Category"
-        mock_db_session.scalars.return_value.all.return_value = [mock_metadata]
-        # Simpler mock for the scalar query - switched to bulk fetch
-        mock_db_session.scalar.return_value = "Category"
 
-        # Mock Variable Pool
-        pool = MagicMock(spec=VariablePool)
+@pytest.fixture
+def mock_index_processor():
+    """Create mock IndexProcessorProtocol."""
+    mock_processor = Mock(spec=IndexProcessorProtocol)
+    return mock_processor
 
-        # Handle the chunk variable
-        chunk_var_mock = MagicMock()
-        chunk_var_mock.value = {"chunk": "data"}
 
-        def variable_pool_get(selector):
-            if selector == ["sys", SystemVariableKey.DATASET_ID]:
-                return MagicMock(value=self.dataset_id)
-            if selector == ["sys", SystemVariableKey.DOCUMENT_ID]:
-                return MagicMock(value=self.document_id)
-            if selector == ["sys", SystemVariableKey.BATCH]:
-                return MagicMock(value="test-batch")
-            if selector == ["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID]:
-                return None
-            if selector == ["Start", "category"]:
-                var = MagicMock()
-                var.to_object.return_value = "Financial"
-                return var
-            if selector == ["sys", SystemVariableKey.INVOKE_FROM]:
-                return None
-            if selector == ["sys", "chunks"]:
-                return chunk_var_mock
-            return None
+@pytest.fixture
+def mock_summary_index_service():
+    """Create mock SummaryIndexServiceProtocol."""
+    mock_service = Mock(spec=SummaryIndexServiceProtocol)
+    return mock_service
 
-        pool.get.side_effect = variable_pool_get
 
-        # Node Configuration
-        node_data = KnowledgeIndexNodeData(
-            id="node1",
-            title="Knowledge",
-            chunk_structure="chunk",
-            index_chunk_variable_selector=["sys", "chunks"],
-            doc_metadata=[DocMetadata(metadata_id="meta_uuid_1", value=["Start", "category"])],
-        )
+@pytest.fixture
+def sample_node_data():
+    """Create sample KnowledgeIndexNodeData."""
+    return KnowledgeIndexNodeData(
+        title="Knowledge Index",
+        type="knowledge-index",
+        chunk_structure="general_structure",
+        index_chunk_variable_selector=["start", "chunks"],
+        indexing_technique="high_quality",
+        summary_index_setting=None,
+    )
 
-        # Initialize Node
-        graph_init_params = MagicMock()
-        graph_init_params.user_from = UserFrom.ACCOUNT
-        graph_init_params.invoke_from = InvokeFrom.WEB_APP
 
-        config = {"id": "node1", "data": node_data.model_dump()}
+@pytest.fixture
+def sample_chunks():
+    """Create sample chunks data."""
+    return {
+        "general_chunks": ["Chunk 1 content", "Chunk 2 content"],
+        "data_source_info": {"file_id": str(uuid.uuid4())},
+    }
 
-        node = KnowledgeIndexNode(
-            id="node1",
-            graph_init_params=graph_init_params,
-            graph_runtime_state=MagicMock(variable_pool=pool),
-            config=config,
-        )
 
-        # Execute
-        result = node._run()
+class TestKnowledgeIndexNode:
+    """
+    Test suite for KnowledgeIndexNode.
+    """
 
-        # Verify metadata was set on document
-        assert self.mock_document.doc_metadata["Category"] == "Financial"
-        # Verify flag_modified was called for the doc_metadata field
-        mock_flag_modified.assert_called_with(self.mock_document, "doc_metadata")
-        # Verify commit was called
-        mock_db_session.commit.assert_called()
-
-    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.db.session")
-    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessorFactory")
-    def test_run_with_missing_metadata_variable_fails_before_indexing(
-        self, mock_index_processor_factory, mock_db_session
+    def test_node_initialization(
+        self, mock_graph_init_params, mock_graph_runtime_state, mock_index_processor, mock_summary_index_service
     ):
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
-            self.mock_dataset,
-            self.mock_document,
-        ]
+        """Test KnowledgeIndexNode initialization."""
+        # Arrange
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": {
+                "title": "Knowledge Index",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+            },
+        }
 
-        mock_metadata = MagicMock(spec=DatasetMetadata)
-        mock_metadata.id = "meta_uuid_1"
-        mock_metadata.name = "Category"
-        mock_db_session.scalars.return_value.all.return_value = [mock_metadata]
-
-        pool = MagicMock(spec=VariablePool)
-        chunk_var_mock = MagicMock()
-        chunk_var_mock.value = {"chunk": "data"}
-
-        def variable_pool_get(selector):
-            if selector == ["sys", SystemVariableKey.DATASET_ID]:
-                return MagicMock(value=self.dataset_id)
-            if selector == ["sys", SystemVariableKey.DOCUMENT_ID]:
-                return MagicMock(value=self.document_id)
-            if selector == ["sys", SystemVariableKey.BATCH]:
-                return MagicMock(value="test-batch")
-            if selector == ["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID]:
-                return None
-            if selector == ["Start", "missing"]:
-                return None
-            if selector == ["sys", SystemVariableKey.INVOKE_FROM]:
-                return None
-            if selector == ["sys", "chunks"]:
-                return chunk_var_mock
-            return None
-
-        pool.get.side_effect = variable_pool_get
-
-        node_data = KnowledgeIndexNodeData(
-            id="node1",
-            title="Knowledge",
-            chunk_structure="chunk",
-            index_chunk_variable_selector=["sys", "chunks"],
-            doc_metadata=[DocMetadata(metadata_id="meta_uuid_1", value=["Start", "missing"])],
-        )
-
-        graph_init_params = MagicMock()
-        graph_init_params.user_from = UserFrom.ACCOUNT
-        graph_init_params.invoke_from = InvokeFrom.WEB_APP
-
-        config = {"id": "node1", "data": node_data.model_dump()}
+        # Act
         node = KnowledgeIndexNode(
-            id="node1",
-            graph_init_params=graph_init_params,
-            graph_runtime_state=MagicMock(variable_pool=pool),
+            id=node_id,
             config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
         )
 
+        # Assert
+        assert node.id == node_id
+        assert node.index_processor == mock_index_processor
+        assert node.summary_index_service == mock_summary_index_service
+
+    def test_run_without_dataset_id(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        """Test _run raises KnowledgeIndexNodeError when dataset_id is not provided."""
+        # Arrange
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act & Assert
+        with pytest.raises(KnowledgeIndexNodeError, match="Dataset ID is required"):
+            node._run()
+
+    def test_run_without_index_chunk_variable(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        """Test _run raises KnowledgeIndexNodeError when index chunk variable is not provided."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act & Assert
+        with pytest.raises(KnowledgeIndexNodeError, match="Index chunk variable is required"):
+            node._run()
+
+    def test_run_with_empty_chunks(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        """Test _run fails when chunks is empty."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, StringSegment(value=""))
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
         result = node._run()
 
+        # Assert
         assert result.status == WorkflowNodeExecutionStatus.FAILED
-        assert result.error
-        assert "Variable 'Start.missing' not found" in result.error
-        mock_index_processor_factory.return_value.init_index_processor.assert_not_called()
+        assert "Chunks is required" in result.error
+
+    def test_run_preview_mode_success(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
+    ):
+        """Test _run succeeds in preview mode."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.DEBUGGER),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+
+        # Mock preview output
+        mock_preview = Preview(
+            chunk_structure="general_structure",
+            preview=[PreviewItem(content="Chunk 1"), PreviewItem(content="Chunk 2")],
+            total_segments=2,
+        )
+        mock_index_processor.get_preview_output.return_value = mock_preview
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs is not None
+        assert mock_index_processor.get_preview_output.called
+
+    def test_run_production_mode_success(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
+    ):
+        """Test _run succeeds in production mode."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        original_document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID],
+            StringSegment(value=original_document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+
+        # Mock index_and_clean output
+        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert result.outputs is not None
+        assert mock_summary_index_service.generate_and_vectorize_summary.called
+        assert mock_index_processor.index_and_clean.called
+
+    def test_run_production_mode_without_batch(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
+    ):
+        """Test _run fails when batch is not provided in production mode."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "Batch is required" in result.error
+
+    def test_run_with_knowledge_index_node_error(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
+    ):
+        """Test _run handles KnowledgeIndexNodeError properly."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+
+        # Mock to raise KnowledgeIndexNodeError
+        mock_index_processor.index_and_clean.side_effect = KnowledgeIndexNodeError("Indexing failed")
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "Indexing failed" in result.error
+        assert result.error_type == "KnowledgeIndexNodeError"
+
+    def test_run_with_generic_exception(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+        sample_chunks,
+    ):
+        """Test _run handles generic exceptions properly."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+
+        # Mock to raise generic exception
+        mock_index_processor.index_and_clean.side_effect = Exception("Unexpected error")
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "Unexpected error" in result.error
+        assert result.error_type == "Exception"
+
+    def test_run_with_doc_metadata(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_chunks,
+    ):
+        """Test _run resolves doc_metadata from variable pool and passes to index_processor."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        meta_id = "meta_uuid_1"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+        mock_graph_runtime_state.variable_pool.add(["start", "category"], StringSegment(value="Financial"))
+
+        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
+
+        node_data = KnowledgeIndexNodeData(
+            title="Knowledge Index",
+            type="knowledge-index",
+            chunk_structure="general_structure",
+            index_chunk_variable_selector=chunks_selector,
+            doc_metadata=[DocMetadata(metadata_id=meta_id, value=["start", "category"])],
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        call_kwargs = mock_index_processor.index_and_clean.call_args.kwargs
+        assert call_kwargs["doc_metadata"] == {meta_id: "Financial"}
+        assert meta_id in call_kwargs["metadata_binding_ids"]
+
+    def test_run_with_missing_metadata_variable_fails(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_chunks,
+    ):
+        """Test _run fails when a metadata variable selector is not in the pool."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+        # NOTE: "start.missing" is NOT added to the pool
+
+        node_data = KnowledgeIndexNodeData(
+            title="Knowledge Index",
+            type="knowledge-index",
+            chunk_structure="general_structure",
+            index_chunk_variable_selector=chunks_selector,
+            doc_metadata=[DocMetadata(metadata_id="meta_uuid_1", value=["start", "missing"])],
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "start.missing" in result.error
+        mock_index_processor.index_and_clean.assert_not_called()
+
+    def test_invoke_knowledge_index(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        original_document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks = {"general_chunks": ["content"]}
+
+        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._invoke_knowledge_index(
+            dataset_id=dataset_id,
+            document_id=document_id,
+            original_document_id=original_document_id,
+            is_preview=False,
+            batch=batch,
+            chunks=chunks,
+            summary_index_setting=None,
+        )
+
+        # Assert
+        assert mock_summary_index_service.generate_and_vectorize_summary.called
+        assert mock_index_processor.index_and_clean.called
+        assert result == {"status": "indexed"}
+
+    def test_version_method(self):
+        """Test version class method."""
+        # Act
+        version = KnowledgeIndexNode.version()
+
+        # Assert
+        assert version == "1"
+
+    def test_get_streaming_template(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        """Test get_streaming_template method."""
+        # Arrange
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        template = node.get_streaming_template()
+
+        # Assert
+        assert template is not None
+        assert template.segments == []
+
+
+class TestInvokeKnowledgeIndex:
+    def test_invoke_with_summary_index_setting(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_node_data,
+    ):
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        original_document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks = {"general_chunks": ["content"]}
+        summary_setting = {"enabled": True}
+
+        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
+
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": sample_node_data.model_dump(),
+        }
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._invoke_knowledge_index(
+            dataset_id=dataset_id,
+            document_id=document_id,
+            original_document_id=original_document_id,
+            is_preview=False,
+            batch=batch,
+            chunks=chunks,
+            summary_index_setting=summary_setting,
+        )
+
+        # Assert
+        mock_summary_index_service.generate_and_vectorize_summary.assert_called_once_with(
+            dataset_id, document_id, False, summary_setting
+        )
+        mock_index_processor.index_and_clean.assert_called_once_with(
+            dataset_id,
+            document_id,
+            original_document_id,
+            chunks,
+            batch,
+            summary_setting,
+            doc_metadata=None,
+            metadata_binding_ids=None,
+            user_id=mock_graph_init_params.user_id,
+        )
+        assert result == {"status": "indexed"}

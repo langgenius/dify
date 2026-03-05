@@ -2,9 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.workflow.enums import NodeType
-from core.workflow.graph import Graph
-from core.workflow.nodes.base.node import Node
+from dify_graph.enums import NodeType
+from dify_graph.graph import Graph
+from dify_graph.nodes.base.node import Node
 
 
 def _make_node(node_id: str, node_type: NodeType = NodeType.START) -> Node:

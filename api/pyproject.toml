@@ -238,7 +238,7 @@ module = [
     "configs.middleware.cache.redis_pubsub_config",
     "extensions.ext_redis",
     "tasks.workflow_execution_tasks",
-    "core.workflow.nodes.base.node",
+    "dify_graph.nodes.base.node",
     "services.human_input_delivery_test_service",
     "core.app.apps.advanced_chat.app_generator",
     "controllers.console.human_input_form",
