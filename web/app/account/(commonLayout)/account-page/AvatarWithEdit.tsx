@@ -8,7 +8,7 @@ import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
 import Avatar from '@/app/components/base/avatar'
@@ -16,7 +16,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { updateUserProfile } from '@/service/common'
 
@@ -25,6 +25,8 @@ type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -46,24 +48,24 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       setIsShowAvatarPicker(false)
       onSave?.()
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      notify({ type: 'error', message: (e as Error).message })
     }
-  }, [onSave, t])
+  }, [notify, onSave, t])
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setIsShowDeleteConfirm(false)
       onSave?.()
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      notify({ type: 'error', message: (e as Error).message })
     }
-  }, [onSave, t])
+  }, [notify, onSave, t])
 
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit: 3,
@@ -158,7 +160,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         isShow={isShowDeleteConfirm}
         onClose={() => setIsShowDeleteConfirm(false)}
       >
-        <div className="mb-3 text-text-primary title-2xl-semi-bold">{t('avatar.deleteTitle', { ns: 'common' })}</div>
+        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
         <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
 
         <div className="flex w-full items-center justify-center gap-2">

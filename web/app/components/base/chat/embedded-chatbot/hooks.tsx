@@ -21,7 +21,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -374,6 +374,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
+
+  const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
     if (allInputsHidden)
       return true
@@ -403,17 +405,17 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
 
     if (hasEmptyInput) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return
     }
 
     return true
-  }, [inputsForms, t, allInputsHidden])
+  }, [inputsForms, notify, t, allInputsHidden])
   const handleStartChat = useCallback((callback?: () => void) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
@@ -450,8 +452,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
-    Toast.notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
-  }, [appSourceType, appId, t])
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
+  }, [appSourceType, appId, t, notify])
 
   return {
     appSourceType,

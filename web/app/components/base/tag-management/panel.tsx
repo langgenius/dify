@@ -6,11 +6,11 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { bindTag, createTag, unBindTag } from '@/service/tag'
 import { useStore as useTagStore } from './store'
 
@@ -20,6 +20,7 @@ type PanelProps = {
 
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
@@ -49,7 +50,7 @@ const Panel = (props: PanelProps) => {
     try {
       setCreating(true)
       const newTag = await createTag(keywords, type)
-      Toast.notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
+      notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
       setTagList([
         ...tagList,
         newTag,
@@ -59,26 +60,26 @@ const Panel = (props: PanelProps) => {
       onCreate()
     }
     catch {
-      Toast.notify({ type: 'error', message: t('tag.failed', { ns: 'common' }) })
+      notify({ type: 'error', message: t('tag.failed', { ns: 'common' }) })
       setCreating(false)
     }
   }
   const bind = async (tagIDs: string[]) => {
     try {
       await bindTag(tagIDs, targetID, type)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
   const unbind = async (tagID: string) => {
     try {
       await unBindTag(tagID, targetID, type)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
   const selectTag = (tag: Tag) => {

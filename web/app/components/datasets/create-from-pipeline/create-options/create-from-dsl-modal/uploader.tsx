@@ -8,9 +8,9 @@ import {
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
@@ -26,6 +26,7 @@ const Uploader: FC<Props> = ({
   className,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -55,7 +56,7 @@ const Uploader: FC<Props> = ({
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      Toast.notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     updateFile(files[0])

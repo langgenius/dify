@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
@@ -52,6 +52,7 @@ const ModelLoadBalancingModal = ({
   onSave,
 }: ModelLoadBalancingModalProps) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const {
     doingAction,
     deleteModel,
@@ -157,7 +158,7 @@ const ModelLoadBalancingModal = ({
         },
       )
       if (res.result === 'success') {
-        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         handleRefreshModel(provider, currentCustomConfigurationModelFixedFields, false)
         onSave?.(provider.provider)
         onClose?.()

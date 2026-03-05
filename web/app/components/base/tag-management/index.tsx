@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import {
   createTag,
   fetchTagList,
@@ -19,6 +19,7 @@ type TagManagementModalProps = {
 
 const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
@@ -38,7 +39,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
     try {
       setPending(true)
       const newTag = await createTag(name, type)
-      Toast.notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
+      notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
       setTagList([
         newTag,
         ...tagList,
@@ -47,7 +48,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
       setPending(false)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('tag.failed', { ns: 'common' }) })
+      notify({ type: 'error', message: t('tag.failed', { ns: 'common' }) })
       setPending(false)
     }
   }

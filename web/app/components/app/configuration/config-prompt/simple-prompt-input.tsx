@@ -17,7 +17,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -72,6 +72,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
@@ -91,7 +92,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
             return false
           }
         }

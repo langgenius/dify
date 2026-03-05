@@ -20,7 +20,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -65,6 +65,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const {
     title,
@@ -145,7 +146,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const onClickSave = async () => {
     if (!inputInfo.title) {
-      Toast.notify({ type: 'error', message: t('newApp.nameNotEmpty', { ns: 'app' }) })
+      notify({ type: 'error', message: t('newApp.nameNotEmpty', { ns: 'app' }) })
       return
     }
 
@@ -167,11 +168,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
     if (inputInfo !== null) {
       if (!validateColorHex(inputInfo.chatColorTheme)) {
-        Toast.notify({ type: 'error', message: t(`${prefixSettings}.invalidHexMessage`, { ns: 'appOverview' }) })
+        notify({ type: 'error', message: t(`${prefixSettings}.invalidHexMessage`, { ns: 'appOverview' }) })
         return
       }
       if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
-        Toast.notify({ type: 'error', message: t(`${prefixSettings}.invalidPrivacyPolicy`, { ns: 'appOverview' }) })
+        notify({ type: 'error', message: t(`${prefixSettings}.invalidPrivacyPolicy`, { ns: 'appOverview' }) })
         return
       }
     }

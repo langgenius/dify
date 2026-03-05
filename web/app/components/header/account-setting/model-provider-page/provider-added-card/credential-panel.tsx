@@ -3,7 +3,7 @@ import type {
 } from '../declarations'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import Indicator from '@/app/components/header/indicator'
@@ -32,6 +32,7 @@ const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
@@ -58,7 +59,7 @@ const CredentialPanel = ({
       },
     })
     if (res.result === 'success') {
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       updateModelProviders()
 
       configurateMethods.forEach((method) => {

@@ -3,8 +3,8 @@ import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Toast from '@/app/components/base/toast'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { modifyDocMetadata } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
 import { useDocumentContext } from '../../context'
@@ -32,6 +32,7 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
   const docType = normalizeDocType(rawDocType)
 
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const datasetId = useDocumentContext(s => s.datasetId)
   const documentId = useDocumentContext(s => s.documentId)
 
@@ -105,9 +106,9 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
       },
     }) as Promise<CommonResponse>)
     if (!e)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     else
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)

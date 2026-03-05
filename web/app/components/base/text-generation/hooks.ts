@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ssePost } from '@/service/base'
 
 export const useTextGeneration = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
@@ -14,7 +15,7 @@ export const useTextGeneration = () => {
     data: any,
   ) => {
     if (isResponding) {
-      Toast.notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 

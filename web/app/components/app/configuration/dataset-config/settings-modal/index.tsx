@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -51,6 +51,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
   const { setShowAccountSettingModal } = useModalContext()
@@ -95,7 +96,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (loading)
       return
     if (!localeCurrentDataset.name?.trim()) {
-      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     if (
@@ -105,7 +106,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
+      notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     try {
@@ -145,7 +146,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         })
       }
       await updateDatasetSetting(requestParams)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
@@ -153,7 +154,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       })
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)

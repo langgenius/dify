@@ -19,7 +19,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
@@ -62,6 +62,7 @@ const formSchemas: FormSchema[] = [
 
 const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCancel, datasetBindings, isEditMode, onEdit }) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [formData, setFormData] = useState<CreateExternalAPIReq>({ name: '', settings: { endpoint: '', api_key: '' } })
@@ -80,7 +81,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
 
   const handleSave = async () => {
     if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
-      Toast.notify({ type: 'error', message: t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }) })
+      notify({ type: 'error', message: t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }) })
       setLoading(false)
       return
     }
@@ -93,12 +94,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
             settings: { ...formData.settings, api_key: formData.settings.api_key ? '[__HIDDEN__]' : formData.settings.api_key },
           },
         )
-        Toast.notify({ type: 'success', message: 'External API updated successfully' })
+        notify({ type: 'success', message: 'External API updated successfully' })
       }
       else {
         const res = await createExternalAPI({ body: formData })
         if (res && res.id) {
-          Toast.notify({ type: 'success', message: 'External API saved successfully' })
+          notify({ type: 'success', message: 'External API saved successfully' })
           onSave(res)
         }
       }
@@ -106,7 +107,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
     }
     catch (error) {
       console.error('Error saving/updating external API:', error)
-      Toast.notify({ type: 'error', message: 'Failed to save/update External API' })
+      notify({ type: 'error', message: 'Failed to save/update External API' })
     }
     finally {
       setLoading(false)

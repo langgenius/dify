@@ -4,8 +4,8 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Toast from '@/app/components/base/toast'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
@@ -28,6 +28,8 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   retrievalMethod,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+
   const contextDatasetId = useDocumentContext(s => s.datasetId)
   const contextDocumentId = useDocumentContext(s => s.documentId)
   const datasetId = dstId ?? contextDatasetId
@@ -51,12 +53,12 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   const { data: ruleDetail } = useProcessRule(documentId)
 
   const handleSuccess = useCallback(() => {
-    Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-  }, [t])
+    notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+  }, [notify, t])
 
   const handleError = useCallback(() => {
-    Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
-  }, [t])
+    notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+  }, [notify, t])
 
   const pauseMutation = usePauseIndexing({
     datasetId,

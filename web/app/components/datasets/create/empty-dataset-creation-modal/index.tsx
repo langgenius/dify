@@ -3,12 +3,13 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
+
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
@@ -25,16 +26,17 @@ const EmptyDatasetCreationModal = ({
 }: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const router = useRouter()
   const invalidDatasetList = useInvalidDatasetList()
 
   const submit = async () => {
     if (!inputValue) {
-      Toast.notify({ type: 'error', message: t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }) })
+      notify({ type: 'error', message: t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }) })
       return
     }
     if (inputValue.length > 40) {
-      Toast.notify({ type: 'error', message: t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }) })
+      notify({ type: 'error', message: t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }) })
       return
     }
     try {
@@ -48,7 +50,7 @@ const EmptyDatasetCreationModal = ({
       router.push(`/datasets/${dataset.id}/documents`)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('stepOne.modal.failed', { ns: 'datasetCreation' }) })
+      notify({ type: 'error', message: t('stepOne.modal.failed', { ns: 'datasetCreation' }) })
     }
   }
 

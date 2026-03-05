@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -416,6 +416,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (currentConversationItem)
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
+
+  const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
     if (allInputsHidden)
       return true
@@ -445,17 +447,17 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
 
     if (hasEmptyInput) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      Toast.notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return
     }
 
     return true
-  }, [inputsForms, t, allInputsHidden])
+  }, [inputsForms, notify, t, allInputsHidden])
   const handleStartChat = useCallback((callback: any) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
@@ -487,15 +489,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const handlePinConversation = useCallback(async (conversationId: string) => {
     await pinConversation(appSourceType, appId, conversationId)
-    Toast.notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
     handleUpdateConversationList()
-  }, [appSourceType, appId, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const handleUnpinConversation = useCallback(async (conversationId: string) => {
     await unpinConversation(appSourceType, appId, conversationId)
-    Toast.notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
     handleUpdateConversationList()
-  }, [appSourceType, appId, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const [conversationDeleting, setConversationDeleting] = useState(false)
   const handleDeleteConversation = useCallback(async (
@@ -510,7 +512,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     try {
       setConversationDeleting(true)
       await delConversation(appSourceType, appId, conversationId)
-      Toast.notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
+      notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
       onSuccess()
     }
     finally {
@@ -521,7 +523,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       handleNewConversation()
 
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, t, handleUpdateConversationList, handleNewConversation, currentConversationId, conversationDeleting])
+  }, [isInstalledApp, appId, notify, t, handleUpdateConversationList, handleNewConversation, currentConversationId, conversationDeleting])
 
   const [conversationRenaming, setConversationRenaming] = useState(false)
   const handleRenameConversation = useCallback(async (
@@ -535,7 +537,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       return
 
     if (!newName.trim()) {
-      Toast.notify({
+      notify({
         type: 'error',
         message: t('chat.conversationNameCanNotEmpty', { ns: 'common' }),
       })
@@ -546,7 +548,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     try {
       await renameConversation(appSourceType, appId, conversationId, newName)
 
-      Toast.notify({
+      notify({
         type: 'success',
         message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }),
       })
@@ -564,7 +566,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     finally {
       setConversationRenaming(false)
     }
-  }, [isInstalledApp, appId, t, conversationRenaming, originConversationList])
+  }, [isInstalledApp, appId, notify, t, conversationRenaming, originConversationList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -575,8 +577,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
-    Toast.notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
-  }, [appSourceType, appId, t])
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
+  }, [appSourceType, appId, t, notify])
 
   return {
     isInstalledApp,

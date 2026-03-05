@@ -7,12 +7,12 @@ import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -48,6 +48,7 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -125,7 +126,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        Toast.notify({
+        notify({
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
           message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
@@ -146,12 +147,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
     isCreatingRef.current = false
   }
@@ -184,7 +185,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        Toast.notify({
+        notify({
           type: 'success',
           message: t('newApp.appCreated', { ns: 'app' }),
         })
@@ -194,12 +195,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      Toast.notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 

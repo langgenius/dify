@@ -71,6 +71,7 @@ const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   isWorkflow = false,
 }) => {
+  const { notify } = Toast
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
@@ -108,12 +109,12 @@ const TextGeneration: FC<IMainProps> = ({
   }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
     await saveMessage(messageId, appSourceType, appId)
-    Toast.notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
+    notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
     await removeMessage(messageId, appSourceType, appId)
-    Toast.notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
+    notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
     fetchSavedMessage()
   }
 
@@ -193,7 +194,7 @@ const TextGeneration: FC<IMainProps> = ({
   })
   const checkBatchInputs = (data: string[][]) => {
     if (!data || data.length === 0) {
-      Toast.notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
+      notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
       return false
     }
     const headerData = data[0]
@@ -207,13 +208,13 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (!isMapVarName) {
-      Toast.notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
+      notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
       return false
     }
 
     let payloadData = data.slice(1)
     if (payloadData.length === 0) {
-      Toast.notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
 
@@ -234,7 +235,7 @@ const TextGeneration: FC<IMainProps> = ({
       })
 
       if (hasMiddleEmptyLine) {
-        Toast.notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
+        notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
         return false
       }
     }
@@ -243,7 +244,7 @@ const TextGeneration: FC<IMainProps> = ({
     payloadData = payloadData.filter(item => !item.every(i => i === ''))
     // after remove empty rows in the end, checked again
     if (payloadData.length === 0) {
-      Toast.notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
+      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
       return false
     }
     let errorRowIndex = 0
@@ -277,10 +278,10 @@ const TextGeneration: FC<IMainProps> = ({
 
     if (errorRowIndex !== 0) {
       if (requiredVarName)
-        Toast.notify({ type: 'error', message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+        notify({ type: 'error', message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
 
       if (moreThanMaxLengthVarName)
-        Toast.notify({ type: 'error', message: t('generation.errorMsg.moreThanMaxLengthLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+        notify({ type: 'error', message: t('generation.errorMsg.moreThanMaxLengthLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
 
       return false
     }
@@ -290,7 +291,7 @@ const TextGeneration: FC<IMainProps> = ({
     if (!checkBatchInputs(data))
       return
     if (!allTasksFinished) {
-      Toast.notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
       return
     }
 

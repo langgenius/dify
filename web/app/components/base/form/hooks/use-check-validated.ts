@@ -1,9 +1,11 @@
 import type { AnyFormApi } from '@tanstack/react-form'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { useCallback } from 'react'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 
 export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) => {
+  const { notify } = useToastContext()
+
   const checkValidated = useCallback(() => {
     const allError = form?.getAllErrors()
     const values = form.state.values
@@ -27,7 +29,7 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
       }, [] as string[])
 
       if (errorArray.length) {
-        Toast.notify({
+        notify({
           type: 'error',
           message: errorArray[0],
         })
@@ -38,7 +40,7 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
     }
 
     return true
-  }, [form, FormSchemas])
+  }, [form, notify, FormSchemas])
 
   return {
     checkValidated,

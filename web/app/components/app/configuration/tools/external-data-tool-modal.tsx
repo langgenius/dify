@@ -13,7 +13,7 @@ import FormGeneration from '@/app/components/base/features/new-feature-panel/mod
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -39,6 +39,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const { notify } = useToastContext()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -132,34 +133,34 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
   const handleSave = () => {
     if (!localeData.type) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.toolType.title', { ns: 'appDebug' }) }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.toolType.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.label) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.name.title', { ns: 'appDebug' }) }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.name.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.variable) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (localeData.variable && !/^[a-z_]\w{0,29}$/i.test(localeData.variable)) {
-      Toast.notify({ type: 'error', message: t('varKeyError.notValid', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
+      notify({ type: 'error', message: t('varKeyError.notValid', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      Toast.notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          Toast.notify({
+          notify({
             type: 'error',
             message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })

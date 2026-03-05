@@ -6,10 +6,10 @@ import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
-
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -34,6 +34,7 @@ const InviteModal = ({
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
+  const { notify } = useContext(ToastContext)
   const [isLimited, setIsLimited] = useState(false)
   const [isLimitExceeded, setIsLimitExceeded] = useState(false)
   const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
@@ -73,10 +74,10 @@ const InviteModal = ({
       catch { }
     }
     else {
-      Toast.notify({ type: 'error', message: t('members.emailInvalid', { ns: 'common' }) })
+      notify({ type: 'error', message: t('members.emailInvalid', { ns: 'common' }) })
     }
     setIsSubmitted()
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
 
   return (
     <div className={cn(s.wrap)}>

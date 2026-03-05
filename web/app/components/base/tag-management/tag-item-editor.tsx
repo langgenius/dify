@@ -4,9 +4,9 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
@@ -22,6 +22,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
   tag,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
 
@@ -33,7 +34,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       return
     }
     if (!name) {
-      Toast.notify({ type: 'error', message: 'tag name is empty' })
+      notify({ type: 'error', message: 'tag name is empty' })
       setName(tag.name)
       setIsEditing(false)
       return
@@ -53,11 +54,11 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setIsEditing(false)
       await updateTag(tagID, name)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setName(name)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
         if (tag.id === tagID) {
@@ -82,7 +83,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     try {
       setPending(true)
       await deleteTag(tagID)
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       const newList = tagList.filter(tag => tag.id !== tagID)
       setTagList([
         ...newList,
@@ -90,7 +91,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       setPending(false)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       setPending(false)
     }
   }

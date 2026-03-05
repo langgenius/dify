@@ -12,7 +12,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -44,6 +44,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -102,7 +103,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setOpen(false)
 
       changedModelTypes.forEach((modelType) => {

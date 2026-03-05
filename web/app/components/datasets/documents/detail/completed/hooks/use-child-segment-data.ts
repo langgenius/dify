@@ -2,7 +2,7 @@ import type { ChildChunkDetail, ChildSegmentsResponse, SegmentDetailModel, Segme
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   useChildSegmentList,
@@ -53,6 +53,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
   } = options
 
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
 
@@ -128,7 +129,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
       { datasetId, documentId, segmentId: segmentIdParam, childChunkId },
       {
         onSuccess: () => {
-          Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+          notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
           if (parentMode === 'paragraph') {
             // Update parent segment's child_chunks in cache
             updateSegmentInCache(segmentIdParam, seg => ({
@@ -141,11 +142,11 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
           }
         },
         onError: () => {
-          Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+          notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
         },
       },
     )
-  }, [datasetId, documentId, parentMode, deleteChildSegment, updateSegmentInCache, resetChildList, t])
+  }, [datasetId, documentId, parentMode, deleteChildSegment, updateSegmentInCache, resetChildList, t, notify])
 
   const handleUpdateChildChunk = useCallback(async (
     segmentIdParam: string,
@@ -154,7 +155,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
   ) => {
     const params: SegmentUpdater = { content: '' }
     if (!content.trim()) {
-      Toast.notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+      notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
       return
     }
 
@@ -163,7 +164,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
     eventEmitter?.emit('update-child-segment')
     await updateChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params }, {
       onSuccess: (res) => {
-        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         onCloseChildSegmentDetail()
 
         if (parentMode === 'paragraph') {
@@ -198,7 +199,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
         eventEmitter?.emit('update-child-segment-done')
       },
     })
-  }, [datasetId, documentId, parentMode, updateChildSegment, eventEmitter, onCloseChildSegmentDetail, updateSegmentInCache, updateChildSegmentInCache, refreshChunkListDataWithDetailChanged, t])
+  }, [datasetId, documentId, parentMode, updateChildSegment, notify, eventEmitter, onCloseChildSegmentDetail, updateSegmentInCache, updateChildSegmentInCache, refreshChunkListDataWithDetailChanged, t])
 
   const onSaveNewChildChunk = useCallback((newChildChunk?: ChildChunkDetail) => {
     if (parentMode === 'paragraph') {

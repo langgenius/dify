@@ -24,7 +24,7 @@ import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import {
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks'
@@ -66,6 +66,7 @@ const Popup = () => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
   const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(s => s.isAllowPublishAsCustomKnowledgePipelineTemplate)
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
@@ -114,18 +115,18 @@ const Popup = () => {
         setPublished(true)
         trackEvent('app_published_time', { action_mode: 'pipeline', app_id: datasetId, app_name: params?.title || '' })
         if (res) {
-          Toast.notify({
+          notify({
             type: 'success',
             message: t('publishPipeline.success.message', { ns: 'datasetPipeline' }),
             children: (
-              <div className="text-text-secondary system-xs-regular">
+              <div className="system-xs-regular text-text-secondary">
                 <Trans
                   i18nKey="publishPipeline.success.tip"
                   ns="datasetPipeline"
                   components={{
                     CustomLink: (
                       <Link
-                        className="text-text-accent system-xs-medium"
+                        className="system-xs-medium text-text-accent"
                         href={`/datasets/${datasetId}/documents`}
                       >
                       </Link>
@@ -143,7 +144,7 @@ const Popup = () => {
       }
     }
     catch {
-      Toast.notify({ type: 'error', message: t('publishPipeline.error.message', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('publishPipeline.error.message', { ns: 'datasetPipeline' }) })
     }
     finally {
       if (publishing)
@@ -151,7 +152,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -179,18 +180,18 @@ const Popup = () => {
         icon_info: icon,
         description,
       })
-      Toast.notify({
+      notify({
         type: 'success',
         message: t('publishTemplate.success.message', { ns: 'datasetPipeline' }),
         children: (
           <div className="flex flex-col gap-y-1">
-            <span className="text-text-secondary system-xs-regular">
+            <span className="system-xs-regular text-text-secondary">
               {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
             <Link
               href={docLink()}
               target="_blank"
-              className="inline-block text-text-accent system-xs-medium-uppercase"
+              className="system-xs-medium-uppercase inline-block text-text-accent"
             >
               {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
             </Link>
@@ -200,13 +201,13 @@ const Popup = () => {
       invalidCustomizedTemplateList()
     }
     catch {
-      Toast.notify({ type: 'error', message: t('publishTemplate.error.message', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('publishTemplate.error.message', { ns: 'datasetPipeline' }) })
     }
     finally {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, notify, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
@@ -218,14 +219,14 @@ const Popup = () => {
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
-        <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+        <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
           {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
         </div>
         {
           publishedAt
             ? (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center text-text-secondary system-sm-medium">
+                  <div className="system-sm-medium flex items-center text-text-secondary">
                     {t('common.publishedAt', { ns: 'workflow' })}
                     {' '}
                     {formatTimeFromNow(publishedAt)}
@@ -233,7 +234,7 @@ const Popup = () => {
                 </div>
               )
             : (
-                <div className="flex items-center text-text-secondary system-sm-medium">
+                <div className="system-sm-medium flex items-center text-text-secondary">
                   {t('common.autoSaved', { ns: 'workflow' })}
                   {' '}
                   ·
@@ -304,7 +305,7 @@ const Popup = () => {
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
                 <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
-                <span className="p-0.5 system-2xs-medium">
+                <span className="system-2xs-medium p-0.5">
                   {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>
               </PremiumBadge>

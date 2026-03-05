@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
@@ -39,6 +39,7 @@ const EducationApplyAge = () => {
   const [modalShow, setShowModal] = useState<undefined | { title: string, desc: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
+  const { notify } = useToastContext()
   const router = useRouter()
   const docLink = useDocLink()
 
@@ -66,7 +67,7 @@ const EducationApplyAge = () => {
         })
       }
       else {
-        Toast.notify({
+        notify({
           type: 'error',
           message: t('submitError', { ns: 'education' }),
         })

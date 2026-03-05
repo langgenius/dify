@@ -1,15 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useCallback } from 'react'
 import Toast, { ToastProvider } from '.'
+import { useToastContext } from './context'
 
 const ToastControls = () => {
+  const { notify } = useToastContext()
+
   const trigger = useCallback((type: 'success' | 'error' | 'warning' | 'info') => {
-    Toast.notify({
+    notify({
       type,
       message: `This is a ${type} toast`,
       children: type === 'info' ? 'Additional details can live here.' : undefined,
     })
-  }, [])
+  }, [notify])
 
   return (
     <div className="flex flex-wrap gap-3">

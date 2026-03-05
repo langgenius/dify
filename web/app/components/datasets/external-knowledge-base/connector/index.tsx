@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import { createExternalKnowledgeBase } from '@/service/datasets'
 
 const ExternalKnowledgeBaseConnector = () => {
+  const { notify } = useToastContext()
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -18,7 +19,7 @@ const ExternalKnowledgeBaseConnector = () => {
       setLoading(true)
       const result = await createExternalKnowledgeBase({ body: formValue })
       if (result && result.id) {
-        Toast.notify({ type: 'success', message: 'External Knowledge Base Connected Successfully' })
+        notify({ type: 'success', message: 'External Knowledge Base Connected Successfully' })
         trackEvent('create_external_knowledge_base', {
           provider: formValue.provider,
           name: formValue.name,
@@ -29,7 +30,7 @@ const ExternalKnowledgeBaseConnector = () => {
     }
     catch (error) {
       console.error('Error creating external knowledge base:', error)
-      Toast.notify({ type: 'error', message: 'Failed to connect External Knowledge Base' })
+      notify({ type: 'error', message: 'Failed to connect External Knowledge Base' })
     }
     setLoading(false)
   }

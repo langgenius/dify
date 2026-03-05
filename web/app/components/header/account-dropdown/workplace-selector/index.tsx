@@ -3,8 +3,8 @@ import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Toast from '@/app/components/base/toast'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast/context'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
@@ -13,6 +13,7 @@ import { basePath } from '@/utils/var'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
 
@@ -21,11 +22,11 @@ const WorkplaceSelector = () => {
       if (currentWorkspace?.id === tenant_id)
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       location.assign(`${location.origin}${basePath}`)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('provider.saveFailed', { ns: 'common' }) })
+      notify({ type: 'error', message: t('provider.saveFailed', { ns: 'common' }) })
     }
   }
 

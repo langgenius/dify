@@ -124,9 +124,8 @@ Toast.notify = ({
   duration,
   className,
   customComponent,
-  children,
   onClose,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'children' | 'onClose'>): ToastHandle => {
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>): ToastHandle => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   const toastHandler: ToastHandle = {}
 
@@ -154,16 +153,7 @@ Toast.notify = ({
         },
       }}
       >
-        <Toast
-          type={type}
-          size={size}
-          message={message}
-          duration={duration}
-          className={className}
-          customComponent={customComponent}
-        >
-          {children}
-        </Toast>
+        <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
       </ToastContext.Provider>,
     )
     document.body.appendChild(holder)

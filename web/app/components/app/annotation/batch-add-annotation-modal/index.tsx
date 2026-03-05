@@ -46,6 +46,7 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const notify = Toast.notify
   const checkProcess = async (jobID: string) => {
     try {
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
@@ -53,15 +54,15 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        Toast.notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}` })
+        notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}` })
       if (res.job_status === ProcessStatus.COMPLETED) {
-        Toast.notify({ type: 'success', message: `${t('batchModal.completed', { ns: 'appAnnotation' })}` })
+        notify({ type: 'success', message: `${t('batchModal.completed', { ns: 'appAnnotation' })}` })
         onAdded()
         onCancel()
       }
     }
     catch (e: any) {
-      Toast.notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
+      notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
     }
   }
 
@@ -77,7 +78,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       checkProcess(res.job_id)
     }
     catch (e: any) {
-      Toast.notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
+      notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
     }
   }
 

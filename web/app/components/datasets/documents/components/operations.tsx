@@ -18,13 +18,13 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
@@ -79,6 +79,7 @@ const Operations = ({
   const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
   const { mutateAsync: archiveDocument } = useDocumentArchive()
@@ -131,13 +132,13 @@ const Operations = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       // If it is a delete operation, need to update the selectedIds state
       if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
         onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
       onUpdate(operationName)
     }
-    else { Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
+    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
     if (operationName === DocumentActionType.delete)
       setDeleting(false)
   }
@@ -179,13 +180,13 @@ const Operations = ({
       downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
     )
     if (e || !res?.url) {
-      Toast.notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
       return
     }
 
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name })
-  }, [datasetId, downloadDocument, id, isDownloading, name, t])
+  }, [datasetId, downloadDocument, id, isDownloading, name, notify, t])
 
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>

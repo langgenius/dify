@@ -3,11 +3,11 @@ import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
@@ -57,6 +57,7 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const workflowStore = useWorkflowStore()
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
@@ -124,7 +125,7 @@ const ChatVariableModal = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      Toast.notify({
+      notify({
         type: 'error',
         message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
       })
@@ -235,11 +236,11 @@ const ChatVariableModal = ({
       return
     const varList = workflowStore.getState().conversationVariables
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
-      return Toast.notify({ type: 'error', message: 'name is existed' })
+      return notify({ type: 'error', message: 'name is existed' })
     // if (type !== ChatVarType.Object && !value)
-    //   return Toast.notify({ type: 'error', message: 'value can not be empty' })
+    //   return notify({ type: 'error', message: 'value can not be empty' })
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
-      return Toast.notify({ type: 'error', message: 'object key can not be empty' })
+      return notify({ type: 'error', message: 'object key can not be empty' })
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),

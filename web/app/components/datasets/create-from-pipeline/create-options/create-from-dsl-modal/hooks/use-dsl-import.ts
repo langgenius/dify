@@ -3,8 +3,8 @@ import { useDebounceFn } from 'ahooks'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Toast from '@/app/components/base/toast'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import {
   DSLImportMode,
@@ -37,6 +37,8 @@ export const useDSLImport = ({
 }: UseDSLImportOptions) => {
   const { push } = useRouter()
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -94,7 +96,7 @@ export const useDSLImport = ({
     }
 
     if (!response) {
-      Toast.notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       isCreatingRef.current = false
       return
     }
@@ -105,7 +107,7 @@ export const useDSLImport = ({
       onSuccess?.()
       onClose?.()
 
-      Toast.notify({
+      notify({
         type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
         message: t(status === DSLImportStatus.COMPLETED ? 'creation.successTip' : 'creation.caution', { ns: 'datasetPipeline' }),
         children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
@@ -130,7 +132,7 @@ export const useDSLImport = ({
       isCreatingRef.current = false
     }
     else {
-      Toast.notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       isCreatingRef.current = false
     }
   }, [
@@ -139,6 +141,7 @@ export const useDSLImport = ({
     dslUrlValue,
     fileContent,
     importDSL,
+    notify,
     t,
     onSuccess,
     onClose,
@@ -157,7 +160,7 @@ export const useDSLImport = ({
     setIsConfirming(false)
 
     if (!response) {
-      Toast.notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
       return
     }
 
@@ -167,7 +170,7 @@ export const useDSLImport = ({
       onSuccess?.()
       setShowConfirmModal(false)
 
-      Toast.notify({
+      notify({
         type: 'success',
         message: t('creation.successTip', { ns: 'datasetPipeline' }),
       })
@@ -178,9 +181,9 @@ export const useDSLImport = ({
       push(`/datasets/${dataset_id}/pipeline`)
     }
     else if (status === DSLImportStatus.FAILED) {
-      Toast.notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
+      notify({ type: 'error', message: t('creation.errorTip', { ns: 'datasetPipeline' }) })
     }
-  }, [importId, importDSLConfirm, t, onSuccess, handleCheckPluginDependencies, push])
+  }, [importId, importDSLConfirm, notify, t, onSuccess, handleCheckPluginDependencies, push])
 
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
