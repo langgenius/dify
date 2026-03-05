@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
@@ -20,15 +20,16 @@ from dify_graph.nodes.document_extractor.node import (
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment
 from dify_graph.variables.variables import StringVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="test_tenant",
-        app_id="test_app",
+    return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},
+        tenant_id="test_tenant",
+        app_id="test_app",
         user_id="test_user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
