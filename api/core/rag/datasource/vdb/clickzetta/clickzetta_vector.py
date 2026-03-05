@@ -619,9 +619,7 @@ class ClickzettaVector(BaseVector):
             batch_embeddings = embeddings[i : i + batch_size]
             batch_doc_ids = []
             for doc in batch_docs:
-                metadata = doc.metadata or {}
-                if not isinstance(metadata, dict):
-                    metadata = {}
+                metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
                 batch_doc_ids.append(self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4()))))
             added_ids.extend(batch_doc_ids)
 
@@ -656,10 +654,7 @@ class ClickzettaVector(BaseVector):
 
         for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata or {}
-
-            if not isinstance(metadata, dict):
-                metadata = {}
+            metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
 
             # Fast path for JSON serialization
             try:
