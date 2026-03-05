@@ -79,6 +79,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider not support text to speech."
+    code = 400
+
+
 class DraftWorkflowNotExist(BaseHTTPException):
     error_code = "draft_workflow_not_exist"
     description = "Draft workflow need to be initialized."

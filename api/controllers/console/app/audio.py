@@ -16,6 +16,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
@@ -30,6 +31,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -134,6 +136,8 @@ class ChatMessageTextApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except ProviderNotSupportTextToSpeechServiceError:
+            raise ProviderNotSupportTextToSpeechError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -175,6 +179,8 @@ class TextModesApi(Resource):
             return response
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
             raise AppUnavailableError("Text to audio voices language parameter loss.")
+        except ProviderNotSupportTextToSpeechServiceError:
+            raise ProviderNotSupportTextToSpeechError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
