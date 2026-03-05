@@ -23,7 +23,7 @@ from dify_graph.variables.types import SegmentType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
@@ -238,6 +238,7 @@ class WorkflowVariableCollectionApi(Resource):
                 app_id=app_model.id,
                 page=args.page,
                 limit=args.limit,
+                user_id=current_user.id,
             )
 
         return workflow_vars
@@ -250,7 +251,7 @@ class WorkflowVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        draft_var_srv.delete_workflow_variables(app_model.id)
+        draft_var_srv.delete_user_workflow_variables(app_model.id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -287,7 +288,7 @@ class NodeVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id)
+            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
 
         return node_vars
 
@@ -298,7 +299,7 @@ class NodeVariableCollectionApi(Resource):
     def delete(self, app_model: App, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(app_model.id, node_id)
+        srv.delete_node_variables(app_model.id, node_id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -447,11 +448,15 @@ def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id)
+            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user.id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id)
+            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user.id)
         else:
-            draft_vars = draft_var_srv.list_node_variables(app_id=app_model.id, node_id=node_id)
+            draft_vars = draft_var_srv.list_node_variables(
+                app_id=app_model.id,
+                node_id=node_id,
+                user_id=current_user.id,
+            )
     return draft_vars
 
 
@@ -472,7 +477,7 @@ class ConversationVariableCollectionApi(Resource):
         if draft_workflow is None:
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 
