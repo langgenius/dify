@@ -2,8 +2,9 @@ import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkDirective from 'remark-directive'
 import { visit } from 'unist-util-visit'
-import { WithIconItem, WithIconList } from './markdown-with-directive-components'
-import { directivePropsSchemas } from './markdown-with-directive-schema'
+import { directivePropsSchemas } from './components/markdown-with-directive-schema'
+import WithIconCardItem from './components/with-icon-card-item'
+import WithIconCardList from './components/with-icon-card-list'
 
 type DirectiveNode = {
   type?: string
@@ -173,8 +174,8 @@ function directivePlugin() {
 }
 
 const directiveComponents = {
-  withiconlist: WithIconList,
-  withiconitem: WithIconItem,
+  withIconCardList: WithIconCardList,
+  withIconCardItem: WithIconCardItem,
 } as unknown as Components
 
 type MarkdownWithDirectiveProps = {

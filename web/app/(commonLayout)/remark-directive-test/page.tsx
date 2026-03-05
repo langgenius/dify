@@ -8,17 +8,15 @@ We’re speaking with technical teams to better understand:
 - What resonated — and what didn’t
 - How we can improve the experience
 
-::::withiconlist{.mt-4}
+::::withIconCardList
 
-:::withiconitem {icon="amazon"} {b="3"}
+:::withIconCardItem {icon="https://assets.dify.ai/images/gift-card.png"}
 $100 Amazon gift card
 :::
 
-:::withiconitem {icon="amazon2"}
-$100 Amazon gift card2
+:::withIconCardItem {icon="https://assets.dify.ai/images/dify-swag.png"}
+Dify swag
 :::
-
-::withiconitem[Exclusive Dify swag]{icon="dify"}
 
 ::::
 `
