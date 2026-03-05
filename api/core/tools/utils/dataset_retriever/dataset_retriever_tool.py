@@ -85,7 +85,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,
-                external_retrieval_parameters=dataset.retrieval_model,
+                external_retrieval_parameters=dataset.retrieval_model or {},
                 metadata_condition=metadata_condition,
             )
             for external_document in external_documents:

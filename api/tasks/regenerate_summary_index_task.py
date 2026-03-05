@@ -258,7 +258,7 @@ def regenerate_summary_index_task(
 
                                 # Regenerate both summary content and vectors (for summary_model change)
                                 SummaryIndexService.generate_and_vectorize_summary(
-                                    segment, dataset, summary_index_setting
+                                    segment, dataset, summary_index_setting or {}
                                 )
                                 session.commit()
                                 total_segments_processed += 1
