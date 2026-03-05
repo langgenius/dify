@@ -151,11 +151,14 @@ function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
 ) {
+  const historyCtxValue = historyConfig
+    ? createTestHistoryStoreContext(historyConfig)
+    : undefined
+
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
 
-    if (historyConfig) {
-      const historyCtxValue = createTestHistoryStoreContext(historyConfig)
+    if (historyCtxValue) {
       inner = React.createElement(
         WorkflowHistoryStoreContext.Provider,
         { value: historyCtxValue },
