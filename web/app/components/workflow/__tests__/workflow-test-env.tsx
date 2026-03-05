@@ -1,7 +1,7 @@
 /**
  * Workflow test environment — composable providers + render helpers.
  *
- * ## Quick start
+ * ## Quick start (hook)
  *
  * ```ts
  * import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -29,13 +29,43 @@
  *   expect(rfState.setNodes).toHaveBeenCalled()
  * })
  * ```
+ *
+ * ## Quick start (component)
+ *
+ * ```ts
+ * import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+ *
+ * it('renders correctly', () => {
+ *   const { getByText, store } = renderWorkflowComponent(
+ *     <MyComponent someProp="value" />,
+ *     { initialStoreState: { showConfirm: undefined } },
+ *   )
+ *   expect(getByText('value')).toBeInTheDocument()
+ *   expect(store.getState().showConfirm).toBeUndefined()
+ * })
+ * ```
+ *
+ * ## Quick start (node component)
+ *
+ * ```ts
+ * import { renderNodeComponent } from '../../__tests__/workflow-test-env'
+ *
+ * it('renders node', () => {
+ *   const { getByText, store } = renderNodeComponent(
+ *     MyNodeComponent,
+ *     { type: BlockEnum.Code, title: 'My Node', desc: '' },
+ *     { nodeId: 'n-1', initialStoreState: { ... } },
+ *   )
+ *   expect(getByText('My Node')).toBeInTheDocument()
+ * })
+ * ```
  */
-import type { RenderHookOptions, RenderHookResult } from '@testing-library/react'
+import type { RenderHookOptions, RenderHookResult, RenderOptions, RenderResult } from '@testing-library/react'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import type { WorkflowHistoryStoreApi } from '../workflow-history-store'
-import { renderHook } from '@testing-library/react'
+import { render, renderHook } from '@testing-library/react'
 import isDeepEqual from 'fast-deep-equal'
 import * as React from 'react'
 import { temporal } from 'zundo'
@@ -83,11 +113,14 @@ export function createTestWorkflowStore(initialState?: Partial<Shape>): Workflow
 }
 
 export function createTestHooksStore(props?: Partial<HooksStoreShape>): HooksStore {
-  return createHooksStore(props ?? {})
+  const store = createHooksStore(props ?? {})
+  if (props)
+    store.setState(props)
+  return store
 }
 
 // ---------------------------------------------------------------------------
-// renderWorkflowHook — composable hook renderer
+// Shared provider options & wrapper factory
 // ---------------------------------------------------------------------------
 
 type HistoryStoreConfig = {
@@ -95,16 +128,67 @@ type HistoryStoreConfig = {
   edges?: Edge[]
 }
 
-type WorkflowTestOptions<P> = Omit<RenderHookOptions<P>, 'wrapper'> & {
+type WorkflowProviderOptions = {
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
 }
 
-type WorkflowTestResult<R, P> = RenderHookResult<R, P> & {
+type StoreInstances = {
   store: WorkflowStore
   hooksStore?: HooksStore
 }
+
+function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstances {
+  const store = createTestWorkflowStore(options.initialStoreState)
+  const hooksStore = options.hooksStoreProps !== undefined
+    ? createTestHooksStore(options.hooksStoreProps)
+    : undefined
+  return { store, hooksStore }
+}
+
+function createWorkflowWrapper(
+  stores: StoreInstances,
+  historyConfig?: HistoryStoreConfig,
+) {
+  const historyCtxValue = historyConfig
+    ? createTestHistoryStoreContext(historyConfig)
+    : undefined
+
+  return ({ children }: { children: React.ReactNode }) => {
+    let inner: React.ReactNode = children
+
+    if (historyCtxValue) {
+      inner = React.createElement(
+        WorkflowHistoryStoreContext.Provider,
+        { value: historyCtxValue },
+        inner,
+      )
+    }
+
+    if (stores.hooksStore) {
+      inner = React.createElement(
+        HooksStoreContext.Provider,
+        { value: stores.hooksStore },
+        inner,
+      )
+    }
+
+    return React.createElement(
+      WorkflowContext.Provider,
+      { value: stores.store },
+      inner,
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// renderWorkflowHook — composable hook renderer
+// ---------------------------------------------------------------------------
+
+type WorkflowHookTestOptions<P> = Omit<RenderHookOptions<P>, 'wrapper'> & WorkflowProviderOptions
+
+type WorkflowHookTestResult<R, P> = RenderHookResult<R, P> & StoreInstances
 
 /**
  * Renders a hook inside composable workflow providers.
@@ -116,44 +200,77 @@ type WorkflowTestResult<R, P> = RenderHookResult<R, P> & {
  */
 export function renderWorkflowHook<R, P = undefined>(
   hook: (props: P) => R,
-  options?: WorkflowTestOptions<P>,
-): WorkflowTestResult<R, P> {
+  options?: WorkflowHookTestOptions<P>,
+): WorkflowHookTestResult<R, P> {
   const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...rest } = options ?? {}
 
-  const store = createTestWorkflowStore(initialStoreState)
-  const hooksStore = hooksStoreProps !== undefined
-    ? createTestHooksStore(hooksStoreProps)
-    : undefined
-
-  const wrapper = ({ children }: { children: React.ReactNode }) => {
-    let inner: React.ReactNode = children
-
-    if (historyConfig) {
-      const historyCtxValue = createTestHistoryStoreContext(historyConfig)
-      inner = React.createElement(
-        WorkflowHistoryStoreContext.Provider,
-        { value: historyCtxValue },
-        inner,
-      )
-    }
-
-    if (hooksStore) {
-      inner = React.createElement(
-        HooksStoreContext.Provider,
-        { value: hooksStore },
-        inner,
-      )
-    }
-
-    return React.createElement(
-      WorkflowContext.Provider,
-      { value: store },
-      inner,
-    )
-  }
+  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const wrapper = createWorkflowWrapper(stores, historyConfig)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
-  return { ...renderResult, store, hooksStore }
+  return { ...renderResult, ...stores }
+}
+
+// ---------------------------------------------------------------------------
+// renderWorkflowComponent — composable component renderer
+// ---------------------------------------------------------------------------
+
+type WorkflowComponentTestOptions = Omit<RenderOptions, 'wrapper'> & WorkflowProviderOptions
+
+type WorkflowComponentTestResult = RenderResult & StoreInstances
+
+/**
+ * Renders a React element inside composable workflow providers.
+ *
+ * Provides the same context layers as `renderWorkflowHook`:
+ * - **Always**: `WorkflowContext` (real zustand store)
+ * - **hooksStoreProps**: `HooksStoreContext` (real zustand store)
+ * - **historyStore**: `WorkflowHistoryStoreContext` (real zundo temporal store)
+ */
+export function renderWorkflowComponent(
+  ui: React.ReactElement,
+  options?: WorkflowComponentTestOptions,
+): WorkflowComponentTestResult {
+  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...renderOptions } = options ?? {}
+
+  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const wrapper = createWorkflowWrapper(stores, historyConfig)
+
+  const renderResult = render(ui, { wrapper, ...renderOptions })
+  return { ...renderResult, ...stores }
+}
+
+// ---------------------------------------------------------------------------
+// renderNodeComponent — convenience wrapper for node components
+// ---------------------------------------------------------------------------
+
+type NodeComponentProps<T = Record<string, unknown>> = {
+  id: string
+  data: T
+  selected?: boolean
+}
+
+type NodeTestOptions = WorkflowComponentTestOptions & {
+  nodeId?: string
+  selected?: boolean
+}
+
+/**
+ * Renders a workflow node component inside composable workflow providers.
+ *
+ * Automatically provides `id`, `data`, and `selected` props that
+ * ReactFlow would normally inject into custom node components.
+ */
+export function renderNodeComponent<T extends Record<string, unknown>>(
+  Component: React.ComponentType<NodeComponentProps<T>>,
+  data: T,
+  options?: NodeTestOptions,
+): WorkflowComponentTestResult {
+  const { nodeId = 'test-node-1', selected = false, ...rest } = options ?? {}
+  return renderWorkflowComponent(
+    React.createElement(Component, { id: nodeId, data, selected }),
+    rest,
+  )
 }
 
 // ---------------------------------------------------------------------------
