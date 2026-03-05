@@ -247,3 +247,13 @@ module = [
     "extensions.logstore.repositories.logstore_api_workflow_run_repository",
 ]
 ignore_errors = true
+
+[tool.pyrefly]
+project-includes = ["."]
+project-excludes = [
+    ".venv",
+    "migrations/",
+]
+python-platform = "linux"
+python-version = "3.11.0"
+infer-with-first-use = false
