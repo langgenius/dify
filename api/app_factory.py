@@ -11,6 +11,7 @@ from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
 from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,8 @@ def create_flask_app_with_configs() -> DifyApp:
         # When license expires, block all API access except bootstrap endpoints needed
         # for the frontend to load the license expiration page without infinite reloads.
         if dify_config.ENTERPRISE_ENABLED:
-            is_console_api = request.path.startswith("/console/api")
-            is_webapp_api = request.path.startswith("/api") and not is_console_api
+            is_console_api = request.path.startswith("/console/api/")
+            is_webapp_api = request.path.startswith("/api/") and not is_console_api
 
             if is_console_api or is_webapp_api:
                 if is_console_api:
@@ -57,7 +58,7 @@ def create_flask_app_with_configs() -> DifyApp:
                     try:
                         # Check license status with caching (10 min TTL)
                         license_status = EnterpriseService.get_cached_license_status()
-                        if license_status in ["inactive", "expired", "lost"]:
+                        if license_status in (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST):
                             raise UnauthorizedAndForceLogout(
                                 f"Enterprise license is {license_status}. Please contact your administrator."
                             )
