@@ -5,9 +5,9 @@ from typing import Any, ClassVar
 from pydantic import TypeAdapter
 
 from core.db.session_factory import session_factory
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
-from core.workflow.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events.base import GraphEngineEvent
+from dify_graph.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity

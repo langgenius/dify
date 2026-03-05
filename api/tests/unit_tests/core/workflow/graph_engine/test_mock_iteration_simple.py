@@ -5,31 +5,36 @@ Simple test to verify MockNodeFactory works with iteration nodes.
 import sys
 from pathlib import Path
 
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+
 # Add api directory to path
 api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(api_dir))
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
 
 def test_mock_factory_registers_iteration_node():
     """Test that MockNodeFactory has iteration node registered."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     # Create a MockNodeFactory instance
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={"nodes": [], "edges": []},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
@@ -65,10 +70,9 @@ def test_mock_factory_registers_iteration_node():
 def test_mock_iteration_node_preserves_config():
     """Test that MockIterationNode preserves mock configuration."""
 
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode
 
     # Create mock config
@@ -76,13 +80,17 @@ def test_mock_iteration_node_preserves_config():
 
     # Create minimal graph init params
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={"nodes": [], "edges": []},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
@@ -127,10 +135,9 @@ def test_mock_iteration_node_preserves_config():
 def test_mock_loop_node_preserves_config():
     """Test that MockLoopNode preserves mock configuration."""
 
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockLoopNode
 
     # Create mock config
@@ -138,13 +145,17 @@ def test_mock_loop_node_preserves_config():
 
     # Create minimal graph init params
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={"nodes": [], "edges": []},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 

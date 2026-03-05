@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ */
 import type { ButtonProps } from '@/app/components/base/button'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'

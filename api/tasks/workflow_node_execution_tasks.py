@@ -12,10 +12,10 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.workflow.entities.workflow_node_execution import (
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 

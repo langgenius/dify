@@ -2,9 +2,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider_ids import ModelProviderID
 
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks

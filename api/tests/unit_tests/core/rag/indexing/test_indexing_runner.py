@@ -61,9 +61,9 @@ from core.indexing_runner import (
     DocumentIsPausedError,
     IndexingRunner,
 )
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import ChildDocument, Document
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument

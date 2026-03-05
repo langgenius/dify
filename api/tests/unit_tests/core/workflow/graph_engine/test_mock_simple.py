@@ -5,11 +5,13 @@ Simple test to validate the auto-mock system without external dependencies.
 import sys
 from pathlib import Path
 
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+
 # Add api directory to path
 api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
 sys.path.insert(0, str(api_dir))
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -101,21 +103,24 @@ def test_node_mock_config():
 
 def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory detection...")
 
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
@@ -154,21 +159,24 @@ def test_mock_factory_detection():
 
 def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory registration...")
 
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
