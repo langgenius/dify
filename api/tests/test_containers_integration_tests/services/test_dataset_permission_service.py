@@ -1,9 +1,8 @@
 """
-Comprehensive integration tests for DatasetPermissionService and DatasetService permission methods.
+Container-backed integration tests for dataset permission services on the real SQL path.
 
-This module contains extensive testcontainers-backed integration tests for dataset
-permission management, including partial member list operations, permission
-validation, and permission enum handling.
+This module exercises persisted DatasetPermission rows and dataset permission
+checks with testcontainers-backed infrastructure instead of database-chain mocks.
 """
 
 from uuid import uuid4
@@ -22,19 +21,7 @@ from services.errors.account import NoPermissionError
 
 
 class DatasetPermissionTestDataFactory:
-    """
-    Factory class for creating test data and mock objects for dataset permission tests.
-
-    This factory provides static methods to create mock objects for:
-    - Dataset instances with various permission configurations
-    - User/Account instances with different roles and permissions
-    - DatasetPermission instances
-    - Permission enum values
-    - Database query results
-
-    The factory methods help maintain consistency across tests and reduce
-    code duplication when setting up test scenarios.
-    """
+    """Create persisted entities and request payloads for dataset permission integration tests."""
 
     @staticmethod
     def create_account_with_tenant(
@@ -111,22 +98,12 @@ class DatasetPermissionTestDataFactory:
 
     @staticmethod
     def create_user_list_mock(user_ids: list[str]) -> list[dict[str, str]]:
-        """
-        Create a list of user dictionaries for partial member list operations.
-
-        Args:
-            user_ids: List of user IDs to include
-
-        Returns:
-            List of user dictionaries with "user_id" keys
-        """
+        """Build the request payload shape used by partial-member list updates."""
         return [{"user_id": user_id} for user_id in user_ids]
 
 
 class TestDatasetPermissionServiceGetPartialMemberList:
-    """
-    Comprehensive integration tests for DatasetPermissionService.get_dataset_partial_member_list method.
-    """
+    """Verify partial-member list reads against persisted DatasetPermission rows."""
 
     def test_get_dataset_partial_member_list_with_members(self, db_session_with_containers):
         """
@@ -186,9 +163,7 @@ class TestDatasetPermissionServiceGetPartialMemberList:
 
 
 class TestDatasetPermissionServiceUpdatePartialMemberList:
-    """
-    Comprehensive integration tests for DatasetPermissionService.update_partial_member_list method.
-    """
+    """Verify partial-member list updates against persisted DatasetPermission rows."""
 
     def test_update_partial_member_list_add_new_members(self, db_session_with_containers):
         """
@@ -271,9 +246,7 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
 
 
 class TestDatasetPermissionServiceClearPartialMemberList:
-    """
-    Comprehensive integration tests for DatasetPermissionService.clear_partial_member_list method.
-    """
+    """Verify partial-member clearing against persisted DatasetPermission rows."""
 
     def test_clear_partial_member_list_success(self, db_session_with_containers):
         """
@@ -334,9 +307,7 @@ class TestDatasetPermissionServiceClearPartialMemberList:
 
 
 class TestDatasetServiceCheckDatasetPermission:
-    """
-    Comprehensive integration tests for DatasetService.check_dataset_permission method.
-    """
+    """Verify dataset access checks against persisted partial-member permissions."""
 
     def test_check_dataset_permission_partial_members_with_permission_success(self, db_session_with_containers):
         """
@@ -386,9 +357,7 @@ class TestDatasetServiceCheckDatasetPermission:
 
 
 class TestDatasetServiceCheckDatasetOperatorPermission:
-    """
-    Comprehensive integration tests for DatasetService.check_dataset_operator_permission method.
-    """
+    """Verify operator permission checks against persisted partial-member permissions."""
 
     def test_check_dataset_operator_permission_partial_members_with_permission_success(
         self, db_session_with_containers
