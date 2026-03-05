@@ -10,14 +10,12 @@ import {
 import CredentialPanel from './credential-panel'
 
 const {
-  mockEventEmitter,
   mockToastNotify,
   mockUpdateModelList,
   mockUpdateModelProviders,
   mockTrialCredits,
   mockChangePriorityFn,
 } = vi.hoisted(() => ({
-  mockEventEmitter: { emit: vi.fn() },
   mockToastNotify: vi.fn(),
   mockUpdateModelList: vi.fn(),
   mockUpdateModelProviders: vi.fn(),
@@ -32,10 +30,6 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: mockToastNotify },
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -76,6 +70,10 @@ vi.mock('./model-auth-dropdown', () => ({
 
 vi.mock('@/app/components/header/indicator', () => ({
   default: ({ color }: { color: string }) => <div data-testid="indicator" data-color={color} />,
+}))
+
+vi.mock('@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning', () => ({
+  default: (props: Record<string, unknown>) => <div data-testid="warning-icon" className={props.className as string} />,
 }))
 
 const createTestQueryClient = () => new QueryClient({
@@ -172,14 +170,14 @@ describe('CredentialPanel', () => {
     })
 
     it('should show warning icon for credits-fallback variant', () => {
-      const { container } = renderWithQueryClient(createProvider({
+      renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
         custom_configuration: {
           status: CustomConfigurationStatusEnum.noConfigure,
           available_credentials: [],
         },
       }))
-      expect(container.querySelector('.i-ri-error-warning-fill')).toBeTruthy()
+      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
     })
   })
 
@@ -193,8 +191,8 @@ describe('CredentialPanel', () => {
 
     it('should show warning icon for api-fallback variant', () => {
       mockTrialCredits.isExhausted = true
-      const { container } = renderWithQueryClient(createProvider())
-      expect(container.querySelector('.i-ri-error-warning-fill')).toBeTruthy()
+      renderWithQueryClient(createProvider())
+      expect(screen.getByTestId('warning-icon')).toBeInTheDocument()
     })
 
     it('should show green indicator for api-active (custom priority + authorized)', () => {
@@ -206,10 +204,10 @@ describe('CredentialPanel', () => {
     })
 
     it('should NOT show warning icon for api-active variant', () => {
-      const { container } = renderWithQueryClient(createProvider({
+      renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
       }))
-      expect(container.querySelector('.i-ri-error-warning-fill')).toBeNull()
+      expect(screen.queryByTestId('warning-icon')).not.toBeInTheDocument()
     })
 
     it('should show red indicator and "Unavailable" for api-unavailable (exhausted + named unauthorized key)', () => {
@@ -334,7 +332,6 @@ describe('CredentialPanel', () => {
         )
         expect(mockUpdateModelProviders).toHaveBeenCalled()
         expect(mockUpdateModelList).toHaveBeenCalledWith('llm')
-        expect(mockEventEmitter.emit).not.toHaveBeenCalled()
       })
     })
   })

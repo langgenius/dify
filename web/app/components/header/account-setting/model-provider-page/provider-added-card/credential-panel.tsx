@@ -5,6 +5,7 @@ import type {
 import type { CardVariant } from './use-credential-panel-state'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
 import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import { consoleQuery } from '@/service/client'
@@ -112,7 +113,7 @@ function TextLabel({ variant }: { variant: CardVariant }) {
         {t(labelKey, { ns: 'common' })}
       </span>
       {variant === 'credits-fallback' && (
-        <span className="i-ri-error-warning-fill h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
       )}
     </>
   )
@@ -136,7 +137,7 @@ function StatusLabel({ variant, credentialName }: {
         {credentialName}
       </span>
       {showWarning && (
-        <span className="i-ri-error-warning-fill h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
       )}
       {variant === 'api-unavailable' && (
         <span className="shrink-0 text-text-destructive system-2xs-medium">
