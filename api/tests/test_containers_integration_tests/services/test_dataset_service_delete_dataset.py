@@ -1,216 +1,246 @@
-from unittest.mock import Mock, patch
+"""Container-backed integration tests for DatasetService.delete_dataset real SQL paths."""
+
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
-from models.account import Account, TenantAccountRole
-from models.dataset import Dataset
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Dataset, Document
 from services.dataset_service import DatasetService
 
 
-class DatasetDeleteTestDataFactory:
-    """Factory class for creating test data and mock objects for dataset delete tests."""
+class DatasetDeleteIntegrationDataFactory:
+    """Create persisted entities used by delete_dataset integration tests."""
 
     @staticmethod
-    def create_dataset_mock(
-        dataset_id: str = "dataset-123",
-        tenant_id: str = "test-tenant-123",
-        created_by: str = "creator-456",
-        doc_form: str | None = None,
-        indexing_technique: str | None = "high_quality",
-        **kwargs,
-    ) -> Mock:
-        """Create a mock dataset with specified attributes."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.created_by = created_by
-        dataset.doc_form = doc_form
-        dataset.indexing_technique = indexing_technique
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
+    def create_account_with_tenant(db_session_with_containers) -> tuple[Account, Tenant]:
+        """Persist an owner account, tenant, and tenant join for dataset deletion tests."""
+        account = Account(
+            email=f"owner-{uuid4()}@example.com",
+            name="Owner",
+            interface_language="en-US",
+            status="active",
+        )
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
+
+        tenant = Tenant(
+            name=f"tenant-{uuid4()}",
+            status="normal",
+        )
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
+
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+            current=True,
+        )
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
+
+        account.current_tenant = tenant
+        return account, tenant
+
+    @staticmethod
+    def create_dataset(
+        db_session_with_containers,
+        tenant_id: str,
+        created_by: str,
+        *,
+        indexing_technique: str | None,
+        chunk_structure: str | None,
+        index_struct: str | None = '{"type": "paragraph"}',
+        collection_binding_id: str | None = None,
+        pipeline_id: str | None = None,
+    ) -> Dataset:
+        """Persist a dataset with delete_dataset-relevant fields configured."""
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name=f"dataset-{uuid4()}",
+            data_source_type="upload_file",
+            indexing_technique=indexing_technique,
+            index_struct=index_struct,
+            created_by=created_by,
+            collection_binding_id=collection_binding_id,
+            pipeline_id=pipeline_id,
+            chunk_structure=chunk_structure,
+        )
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
         return dataset
 
     @staticmethod
-    def create_user_mock(
-        user_id: str = "user-789",
-        tenant_id: str = "test-tenant-123",
-        role: TenantAccountRole = TenantAccountRole.ADMIN,
-        **kwargs,
-    ) -> Mock:
-        """Create a mock user with specified attributes."""
-        user = Mock(spec=Account)
-        user.id = user_id
-        user.current_tenant_id = tenant_id
-        user.current_role = role
-        for key, value in kwargs.items():
-            setattr(user, key, value)
-        return user
+    def create_document(
+        db_session_with_containers,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        created_by: str,
+        doc_form: str = "text_model",
+    ) -> Document:
+        """Persist a document so dataset.doc_form resolves through the real document path."""
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            position=1,
+            data_source_type="upload_file",
+            batch=f"batch-{uuid4()}",
+            name="Document",
+            created_from="upload_file",
+            created_by=created_by,
+            doc_form=doc_form,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
+        return document
 
 
 class TestDatasetServiceDeleteDataset:
-    """
-    Comprehensive unit tests for DatasetService.delete_dataset method.
+    """Integration coverage for DatasetService.delete_dataset using testcontainers."""
 
-    This test suite covers all deletion scenarios including:
-    - Normal dataset deletion with documents
-    - Empty dataset deletion (no documents, doc_form is None)
-    - Dataset deletion with missing indexing_technique
-    - Permission checks
-    - Event handling
-
-    This test suite provides regression protection for issue #27073.
-    """
-
-    @pytest.fixture
-    def mock_dataset_service_dependencies(self):
-        """Common mock setup for dataset service dependencies."""
-        with (
-            patch("services.dataset_service.DatasetService.get_dataset") as mock_get_dataset,
-            patch("services.dataset_service.DatasetService.check_dataset_permission") as mock_check_perm,
-            patch("extensions.ext_database.db.session") as mock_db,
-            patch("services.dataset_service.dataset_was_deleted") as mock_dataset_was_deleted,
-        ):
-            yield {
-                "get_dataset": mock_get_dataset,
-                "check_permission": mock_check_perm,
-                "db_session": mock_db,
-                "dataset_was_deleted": mock_dataset_was_deleted,
-            }
-
-    def test_delete_dataset_with_documents_success(self, mock_dataset_service_dependencies):
-        """
-        Test successful deletion of a dataset with documents.
-
-        This test verifies:
-        - Dataset is retrieved correctly
-        - Permission check is performed
-        - dataset_was_deleted event is sent
-        - Dataset is deleted from database
-        - Method returns True
-        """
+    def test_delete_dataset_with_documents_success(self, db_session_with_containers):
+        """Delete a dataset with documents and dispatch cleanup through the real signal handler."""
         # Arrange
-        dataset = DatasetDeleteTestDataFactory.create_dataset_mock(
-            doc_form="text_model", indexing_technique="high_quality"
+        owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=owner.id,
+            indexing_technique="high_quality",
+            chunk_structure=None,
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=str(uuid4()),
+            pipeline_id=str(uuid4()),
         )
-        user = DatasetDeleteTestDataFactory.create_user_mock()
-
-        mock_dataset_service_dependencies["get_dataset"].return_value = dataset
+        DatasetDeleteIntegrationDataFactory.create_document(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            dataset_id=dataset.id,
+            created_by=owner.id,
+            doc_form="text_model",
+        )
 
         # Act
-        result = DatasetService.delete_dataset(dataset.id, user)
+        with patch(
+            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            autospec=True,
+        ) as clean_dataset_delay:
+            result = DatasetService.delete_dataset(dataset.id, owner)
 
         # Assert
+        db_session_with_containers.expire_all()
         assert result is True
-        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
-        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
-        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        clean_dataset_delay.assert_called_once_with(
+            dataset.id,
+            dataset.tenant_id,
+            dataset.indexing_technique,
+            dataset.index_struct,
+            dataset.collection_binding_id,
+            dataset.doc_form,
+            dataset.pipeline_id,
+        )
 
-    def test_delete_empty_dataset_success(self, mock_dataset_service_dependencies):
-        """
-        Test successful deletion of an empty dataset (no documents, doc_form is None).
-
-        This test verifies that:
-        - Empty datasets can be deleted without errors
-        - dataset_was_deleted event is sent (event handler will skip cleanup if doc_form is None)
-        - Dataset is deleted from database
-        - Method returns True
-
-        This is the primary test for issue #27073 where deleting an empty dataset
-        caused internal server error due to assertion failure in event handlers.
-        """
+    def test_delete_empty_dataset_success(self, db_session_with_containers):
+        """Delete an empty dataset without scheduling cleanup when doc_form and indexing_technique are both absent."""
         # Arrange
-        dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form=None, indexing_technique=None)
-        user = DatasetDeleteTestDataFactory.create_user_mock()
-
-        mock_dataset_service_dependencies["get_dataset"].return_value = dataset
+        owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=owner.id,
+            indexing_technique=None,
+            chunk_structure=None,
+            index_struct=None,
+            collection_binding_id=None,
+            pipeline_id=None,
+        )
 
         # Act
-        result = DatasetService.delete_dataset(dataset.id, user)
+        with patch(
+            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            autospec=True,
+        ) as clean_dataset_delay:
+            result = DatasetService.delete_dataset(dataset.id, owner)
 
-        # Assert - Verify complete deletion flow
+        # Assert
+        db_session_with_containers.expire_all()
         assert result is True
-        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
-        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
-        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_with_partial_none_values(self, mock_dataset_service_dependencies):
-        """
-        Test deletion of dataset with partial None values.
-
-        This test verifies that datasets with partial None values (e.g., doc_form exists
-        but indexing_technique is None) can be deleted successfully. The event handler
-        will skip cleanup if any required field is None.
-
-        Improvement based on Gemini Code Assist suggestion: Added comprehensive assertions
-        to verify all core deletion operations are performed, not just event sending.
-        """
+    def test_delete_dataset_with_partial_none_values(self, db_session_with_containers):
+        """Delete a dataset without scheduling cleanup when indexing_technique is missing but doc_form still resolves."""
         # Arrange
-        dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form="text_model", indexing_technique=None)
-        user = DatasetDeleteTestDataFactory.create_user_mock()
-
-        mock_dataset_service_dependencies["get_dataset"].return_value = dataset
+        owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=owner.id,
+            indexing_technique=None,
+            chunk_structure="text_model",
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=str(uuid4()),
+            pipeline_id=str(uuid4()),
+        )
 
         # Act
-        result = DatasetService.delete_dataset(dataset.id, user)
+        with patch(
+            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            autospec=True,
+        ) as clean_dataset_delay:
+            result = DatasetService.delete_dataset(dataset.id, owner)
 
-        # Assert - Verify complete deletion flow (Gemini suggestion implemented)
+        # Assert
+        db_session_with_containers.expire_all()
         assert result is True
-        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
-        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
-        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, mock_dataset_service_dependencies):
-        """
-        Test deletion of dataset where doc_form is None but indexing_technique exists.
-
-        This edge case can occur in certain dataset configurations and should be handled
-        gracefully by the event handler's conditional check.
-        """
+    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, db_session_with_containers):
+        """Delete a dataset without scheduling cleanup when indexing exists but doc_form resolves to None."""
         # Arrange
-        dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form=None, indexing_technique="high_quality")
-        user = DatasetDeleteTestDataFactory.create_user_mock()
-
-        mock_dataset_service_dependencies["get_dataset"].return_value = dataset
+        owner, tenant = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DatasetDeleteIntegrationDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=owner.id,
+            indexing_technique="high_quality",
+            chunk_structure=None,
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=str(uuid4()),
+            pipeline_id=str(uuid4()),
+        )
 
         # Act
-        result = DatasetService.delete_dataset(dataset.id, user)
+        with patch(
+            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            autospec=True,
+        ) as clean_dataset_delay:
+            result = DatasetService.delete_dataset(dataset.id, owner)
 
-        # Assert - Verify complete deletion flow
+        # Assert
+        db_session_with_containers.expire_all()
         assert result is True
-        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
-        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
-        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
-        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
+        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        clean_dataset_delay.assert_not_called()
 
-    def test_delete_dataset_not_found(self, mock_dataset_service_dependencies):
-        """
-        Test deletion attempt when dataset doesn't exist.
-
-        This test verifies that:
-        - Method returns False when dataset is not found
-        - No deletion operations are performed
-        - No events are sent
-        """
+    def test_delete_dataset_not_found(self, db_session_with_containers):
+        """Return False without scheduling cleanup when the target dataset does not exist."""
         # Arrange
-        dataset_id = "non-existent-dataset"
-        user = DatasetDeleteTestDataFactory.create_user_mock()
-
-        mock_dataset_service_dependencies["get_dataset"].return_value = None
+        owner, _ = DatasetDeleteIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
+        missing_dataset_id = str(uuid4())
 
         # Act
-        result = DatasetService.delete_dataset(dataset_id, user)
+        with patch(
+            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            autospec=True,
+        ) as clean_dataset_delay:
+            result = DatasetService.delete_dataset(missing_dataset_id, owner)
 
         # Assert
         assert result is False
-        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset_id)
-        mock_dataset_service_dependencies["check_permission"].assert_not_called()
-        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_not_called()
-        mock_dataset_service_dependencies["db_session"].delete.assert_not_called()
-        mock_dataset_service_dependencies["db_session"].commit.assert_not_called()
+        clean_dataset_delay.assert_not_called()
