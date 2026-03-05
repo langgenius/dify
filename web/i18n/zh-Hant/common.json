@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "語音轉文字模型",
   "modelProvider.speechToTextModel.tip": "設定對話中語音轉文字輸入的預設使用模型。",
   "modelProvider.systemModelSettings": "系統模型設定",
-  "modelProvider.systemModelSettingsLink": "為什麼需要設定系統模型？",
   "modelProvider.systemReasoningModel.key": "系統推理模型",
   "modelProvider.systemReasoningModel.tip": "設定建立應用使用的預設推理模型，以及對話名稱生成、下一步問題建議等功能也會使用該預設推理模型。",
   "modelProvider.toBeConfigured": "待配置",

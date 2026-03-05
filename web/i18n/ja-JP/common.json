@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "音声-to-テキストモデル",
   "modelProvider.speechToTextModel.tip": "会話での音声-to-テキスト入力に使用するデフォルトモデルを設定します。",
   "modelProvider.systemModelSettings": "システムモデル設定",
-  "modelProvider.systemModelSettingsLink": "システムモデルの設定が必要な理由は何ですか？",
   "modelProvider.systemReasoningModel.key": "システム推論モデル",
   "modelProvider.systemReasoningModel.tip": "アプリの作成に使用されるデフォルトの推論モデルを設定します。また、対話名の生成や次の質問の提案などの機能もデフォルトの推論モデルを使用します。",
   "modelProvider.toBeConfigured": "設定中",

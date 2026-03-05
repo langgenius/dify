@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Model Ucapan-ke-Teks",
   "modelProvider.speechToTextModel.tip": "Atur model default untuk input ucapan-ke-teks dalam percakapan.",
   "modelProvider.systemModelSettings": "Pengaturan Model Sistem",
-  "modelProvider.systemModelSettingsLink": "Mengapa perlu menyiapkan model sistem?",
   "modelProvider.systemReasoningModel.key": "Model Penalaran Sistem",
   "modelProvider.systemReasoningModel.tip": "Atur model inferensi default yang akan digunakan untuk membuat aplikasi, serta fitur seperti pembuatan nama dialog dan saran pertanyaan berikutnya juga akan menggunakan model inferensi default.",
   "modelProvider.toBeConfigured": "Untuk dikonfigurasi",

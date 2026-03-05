@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogTitle,
 } from '@/app/components/base/ui/dialog'
 import {
@@ -184,9 +183,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <DialogTitle className="text-text-primary title-2xl-semi-bold">
               {t('modelProvider.systemModelSettings', { ns: 'common' })}
             </DialogTitle>
-            <DialogDescription className="mt-1 text-text-tertiary system-xs-regular">
-              {t('modelProvider.systemModelSettingsLink', { ns: 'common' })}
-            </DialogDescription>
           </div>
           <div className="flex flex-col gap-4 px-6 py-3">
             <div className="flex flex-col gap-1">

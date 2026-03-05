@@ -18,7 +18,6 @@ vi.mock('react-i18next', async () => {
     'modelProvider.speechToTextModel.tip': 'Speech to text model tip',
     'modelProvider.ttsModel.key': 'TTS Model',
     'modelProvider.ttsModel.tip': 'TTS model tip',
-    'modelProvider.systemModelSettingsLink': 'Description text here',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',

@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Sprach-zu-Text-Modell",
   "modelProvider.speechToTextModel.tip": "Legen Sie das Standardmodell für die Spracheingabe in Konversationen fest.",
   "modelProvider.systemModelSettings": "Systemmodell-Einstellungen",
-  "modelProvider.systemModelSettingsLink": "Warum ist es notwendig, ein Systemmodell einzurichten?",
   "modelProvider.systemReasoningModel.key": "System-Reasoning-Modell",
   "modelProvider.systemReasoningModel.tip": "Legen Sie das Standardinferenzmodell fest, das für die Erstellung von Anwendungen verwendet wird, sowie Funktionen wie die Generierung von Dialognamen und die Vorschlagserstellung für die nächste Frage, die auch das Standardinferenzmodell verwenden.",
   "modelProvider.toBeConfigured": "Zu konfigurieren",

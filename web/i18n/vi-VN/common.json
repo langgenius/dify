@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Mô hình Chuyển đổi Văn bản thành Tiếng nói",
   "modelProvider.speechToTextModel.tip": "Thiết lập mô hình mặc định cho đầu vào chuyển đổi tiếng nói thành văn bản trong cuộc trò chuyện.",
   "modelProvider.systemModelSettings": "Cài đặt Mô hình Hệ thống",
-  "modelProvider.systemModelSettingsLink": "Tại sao cần thiết phải thiết lập mô hình hệ thống?",
   "modelProvider.systemReasoningModel.key": "Mô hình lập luận hệ thống",
   "modelProvider.systemReasoningModel.tip": "Thiết lập mô hình suy luận mặc định sẽ được sử dụng để tạo ứng dụng. Các tính năng như tạo tên cuộc trò chuyện và đề xuất câu hỏi tiếp theo cũng sẽ sử dụng mô hình suy luận mặc định này.",
   "modelProvider.toBeConfigured": "Được cấu hình",

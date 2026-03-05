@@ -12,7 +12,7 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
-import { modelProvidersModelsContract } from './console/model-providers'
+import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -66,6 +66,7 @@ export const consoleRouterContract = {
   },
   modelProviders: {
     models: modelProvidersModelsContract,
+    changePreferredProviderType: changePreferredProviderTypeContract,
   },
   billing: {
     invoices: invoicesContract,

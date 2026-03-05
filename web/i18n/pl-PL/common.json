@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Model mowy na tekst",
   "modelProvider.speechToTextModel.tip": "Ustaw domyślny model do przetwarzania mowy na tekst w rozmowach.",
   "modelProvider.systemModelSettings": "Ustawienia modelu systemowego",
-  "modelProvider.systemModelSettingsLink": "Dlaczego konieczne jest skonfigurowanie modelu systemowego?",
   "modelProvider.systemReasoningModel.key": "Model wnioskowania systemowego",
   "modelProvider.systemReasoningModel.tip": "Ustaw domyślny model wnioskowania do użytku przy tworzeniu aplikacji, a także cechy takie jak generowanie nazw dialogów i sugestie następnego pytania będą również korzystać z domyślnego modelu wnioskowania.",
   "modelProvider.toBeConfigured": "Do skonfigurowania",

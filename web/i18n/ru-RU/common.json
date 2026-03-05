@@ -414,7 +414,6 @@
   "modelProvider.speechToTextModel.key": "Модель преобразования речи в текст",
   "modelProvider.speechToTextModel.tip": "Установите модель по умолчанию для ввода речи в текст в разговоре.",
   "modelProvider.systemModelSettings": "Настройки системной модели",
-  "modelProvider.systemModelSettingsLink": "Зачем нужно настраивать системную модель?",
   "modelProvider.systemReasoningModel.key": "Модель системного мышления",
   "modelProvider.systemReasoningModel.tip": "Установите модель вывода по умолчанию, которая будет использоваться для создания приложений, а также такие функции, как генерация имени диалога и предложение следующего вопроса, также будут использовать модель вывода по умолчанию.",
   "modelProvider.toBeConfigured": "Подлежит настройке",
