@@ -262,9 +262,11 @@ describe('ImagePreview', () => {
     it('should open data image by writing to popup window document', async () => {
       const user = userEvent.setup()
       const write = vi.fn()
+      const close = vi.fn()
       mocks.windowOpen.mockReturnValue({
         document: {
           write,
+          close,
         },
       } as unknown as Window)
 
@@ -280,7 +282,10 @@ describe('ImagePreview', () => {
       await user.click(openInTabButton)
 
       expect(mocks.windowOpen).toHaveBeenCalledWith()
-      expect(write).toHaveBeenCalledWith(`<img src="${dataImage}" alt="Preview Image" />`)
+      // Check that document.write is called with the expected content
+      expect(write).toHaveBeenCalled()
+      expect(write.mock.calls.some(call => call[0].includes(dataImage))).toBe(true)
+      expect(write.mock.calls.some(call => call[0].includes('Preview Image'))).toBe(true)
     })
 
     it('should show error toast when opening unsupported url', async () => {
