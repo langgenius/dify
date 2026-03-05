@@ -4705,14 +4705,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-auth/authorized/credential-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 3
