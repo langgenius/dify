@@ -231,6 +231,8 @@ const ChatVariableModal = ({
     }
   }
 
+  const MAX_DESCRIPTION_LENGTH = 255
+
   const handleSave = () => {
     if (!checkVariableName(name))
       return
@@ -241,6 +243,8 @@ const ChatVariableModal = ({
     //   return notify({ type: 'error', message: 'value can not be empty' })
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
+    if (description.length > MAX_DESCRIPTION_LENGTH)
+      return notify({ type: 'error', message: t('chatVariable.modal.descriptionTooLong', { ns: 'workflow', maxLength: MAX_DESCRIPTION_LENGTH }) })
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
@@ -273,7 +277,7 @@ const ChatVariableModal = ({
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
-      <div className="system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
         {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
@@ -287,7 +291,7 @@ const ChatVariableModal = ({
       <div className="max-h-[480px] overflow-y-auto px-4 py-2">
         {/* name */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
           <div className="flex">
             <Input
               placeholder={t('chatVariable.modal.namePlaceholder', { ns: 'workflow' }) || ''}
@@ -300,7 +304,7 @@ const ChatVariableModal = ({
         </div>
         {/* type */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
           <div className="flex">
             <VariableTypeSelector
               value={type}
@@ -312,7 +316,7 @@ const ChatVariableModal = ({
         </div>
         {/* default value */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary">
+          <div className="mb-1 flex h-6 items-center justify-between text-text-secondary system-sm-semibold">
             <div>{t('chatVariable.modal.value', { ns: 'workflow' })}</div>
             {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
@@ -341,7 +345,7 @@ const ChatVariableModal = ({
             {type === ChatVarType.String && (
               // Input will remove \n\r, so use Textarea just like description area
               <textarea
-                className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+                className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                 value={value}
                 placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                 onChange={e => setValue(e.target.value)}
@@ -404,14 +408,19 @@ const ChatVariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
-              className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
               placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}
             />
+          </div>
+          <div className={cn('mt-1 text-right system-xs-regular', description.length > MAX_DESCRIPTION_LENGTH ? 'text-text-destructive' : 'text-text-quaternary')}>
+            {description.length}
+            /
+            {MAX_DESCRIPTION_LENGTH}
           </div>
         </div>
       </div>

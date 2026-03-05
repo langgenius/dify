@@ -700,6 +700,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 

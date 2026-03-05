@@ -25,6 +25,7 @@ from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
     WorkflowDraftVariableService,
+    _model_to_insertion_dict,
 )
 
 
@@ -475,3 +476,37 @@ class TestWorkflowDraftVariableService:
         assert node_var.visible == True
         assert node_var.editable == True
         assert node_var.node_execution_id == "exec-id"
+
+
+class TestModelToInsertionDict:
+    """Reproduce two production errors in _model_to_insertion_dict / _new()."""
+
+    def test_visible_and_is_default_value_always_present(self):
+        """Problem 1: _new() did not set visible/is_default_value, causing
+        inconsistent dict keys across rows in multi-row INSERT and missing
+        is_default_value in the insertion dict entirely.
+        """
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1", name="counter", value=StringSegment(value="0"),
+        )
+        # _new() should explicitly set these fields so they are not None
+        assert conv_var.visible is not None
+        assert conv_var.is_default_value is not None
+
+        d = _model_to_insertion_dict(conv_var)
+        # visible must appear in every row's dict
+        assert "visible" in d
+        # is_default_value must always be present
+        assert "is_default_value" in d
+
+    def test_description_truncated_to_255(self):
+        """Problem 2: StringDataRightTruncation — description longer than 255
+        chars causes psycopg2 error on varchar(255) column.
+        """
+        long_desc = "a" * 500
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1", name="counter", value=StringSegment(value="0"),
+            description=long_desc,
+        )
+        d = _model_to_insertion_dict(conv_var)
+        assert len(d["description"]) <= 255

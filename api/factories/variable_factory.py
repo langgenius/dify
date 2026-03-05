@@ -72,9 +72,18 @@ SEGMENT_TO_VARIABLE_MAP = {
 }
 
 
+_MAX_VARIABLE_DESCRIPTION_LENGTH = 255
+
+
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
+    description = mapping.get("description", "")
+    if len(description) > _MAX_VARIABLE_DESCRIPTION_LENGTH:
+        raise VariableError(
+            f"description of variable '{mapping['name']}' is too long"
+            f" (max {_MAX_VARIABLE_DESCRIPTION_LENGTH} characters)"
+        )
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
