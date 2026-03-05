@@ -1,23 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import Editor, { loader } from '@monaco-editor/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
+import { ModernMonacoEditor } from '@/app/components/base/modern-monaco/modern-monaco-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import { basePath } from '@/utils/var'
 import Base from '../base'
 import './style.css'
-
-// load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-if (typeof window !== 'undefined')
-  loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
@@ -73,10 +66,8 @@ const CodeEditor: FC<Props> = ({
   footer,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
-  const [isMounted, setIsMounted] = React.useState(false)
   const minHeight = height || 200
   const [editorContentHeight, setEditorContentHeight] = useState(56)
-  const { theme: appTheme } = useTheme()
   const valueRef = useRef(value)
   useEffect(() => {
     valueRef.current = value
@@ -114,10 +105,7 @@ const CodeEditor: FC<Props> = ({
       setIsFocus(false)
     })
 
-    monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark') // Fix: sometimes not load the default theme
-
     onMount?.(editor, monaco)
-    setIsMounted(true)
   }
 
   const outPutValue = (() => {
@@ -131,31 +119,20 @@ const CodeEditor: FC<Props> = ({
     }
   })()
 
-  const theme = useMemo(() => {
-    if (appTheme === Theme.light)
-      return 'light'
-    return 'vs-dark'
-  }, [appTheme])
-
   const main = (
     <>
-      {/* https://www.npmjs.com/package/@monaco-editor/react */}
-      <Editor
+      <ModernMonacoEditor
         // className='min-h-[100%]' // h-full
         // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
         language={languageMap[language] || 'javascript'}
-        theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
         value={outPutValue}
-        loading={<span className="text-text-primary">Loading...</span>}
+        readOnly={readOnly}
         onChange={handleEditorChange}
+        onReady={handleEditorDidMount}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{
-          readOnly,
-          domReadOnly: true,
           quickSuggestions: false,
-          minimap: { enabled: false },
           lineNumbersMinChars: 1, // would change line num width
-          wordWrap: 'on', // auto line wrap
           // lineNumbers: (num) => {
           //   return <div>{num}</div>
           // }
@@ -165,7 +142,6 @@ const CodeEditor: FC<Props> = ({
           },
           stickyScroll: { enabled: false },
         }}
-        onMount={handleEditorDidMount}
       />
       {!outPutValue && !isFocus && <div className="pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-components-input-text-placeholder">{placeholder}</div>}
     </>

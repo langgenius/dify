@@ -5,7 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@monaco-editor/loader': 1.5.0
   '@nolyfill/safe-buffer': npm:safe-buffer@^5.2.1
   '@stylistic/eslint-plugin': https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8
   array-includes: npm:@nolyfill/array-includes@^1
@@ -99,9 +98,6 @@ importers:
       '@lexical/utils':
         specifier: 0.39.0
         version: 0.39.0
-      '@monaco-editor/react':
-        specifier: 4.7.0
-        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@octokit/core':
         specifier: 6.1.6
         version: 6.1.6
@@ -249,6 +245,9 @@ importers:
       mitt:
         specifier: 3.0.1
         version: 3.0.1
+      modern-monaco:
+        specifier: 0.4.0
+        version: 0.4.0(typescript@5.9.3)
       negotiator:
         specifier: 1.0.0
         version: 1.0.0
@@ -1801,16 +1800,6 @@ packages:
 
   '@mermaid-js/parser@0.6.3':
     resolution: {integrity: sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA==}
-
-  '@monaco-editor/loader@1.5.0':
-    resolution: {integrity: sha512-hKoGSM+7aAc7eRTRjpqAZucPmoNOC4UUbknb/VNoTkEIkCPhqV8LfbsgM1webRM7S/z21eHEx9Fkwx8Z/C/+Xw==}
-
-  '@monaco-editor/react@4.7.0':
-    resolution: {integrity: sha512-cyzXQCtO47ydzxpQtCGSQGOC8Gk3ZUeBXFAxD+CWXYFo5OqZyZUonFl0DwUlTyAfRHntBfw2p3w4s9R6oe1eCA==}
-    peerDependencies:
-      monaco-editor: '>= 0.25.0 < 1'
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   '@mswjs/interceptors@0.39.8':
     resolution: {integrity: sha512-2+BzZbjRO7Ct61k8fMNHEtoKjeWI9pIlHFTqBwZ5icHpqszIgEZbjb1MW5Z0+bITTCTl3gk4PDBxs9tA/csXvA==}
@@ -4489,9 +4478,6 @@ packages:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
 
-  dompurify@3.2.7:
-    resolution: {integrity: sha512-WhL/YuveyGXJaerVlMYGWhvQswa7myDG17P7Vu65EWC05o8vfeNbvNf4d/BOvH99+ZW+LlQsc1GDKMa1vNK6dw==}
-
   dompurify@3.3.0:
     resolution: {integrity: sha512-r+f6MYR1gGN1eJv0TVQbhA7if/U7P87cdPl3HN5rikqaBSBxLiCb/b9O+2eG0cxz0ghyU+mU1QkbsOwERMYlWQ==}
 
@@ -5827,11 +5813,6 @@ packages:
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
 
-  marked@14.0.0:
-    resolution: {integrity: sha512-uIj4+faQ+MgHgwUW1l2PsPglZLOLOT1uErt06dAPtx2kjteLAkbsd/0FiYg/MGS+i7ZKLb7w2WClxHkzOOuryQ==}
-    engines: {node: '>= 18'}
-    hasBin: true
-
   marked@15.0.12:
     resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
     engines: {node: '>= 18'}
@@ -6102,11 +6083,13 @@ packages:
   mlly@1.8.0:
     resolution: {integrity: sha512-l8D9ODSRWLe2KHJSifWGwBqpTZXIXTeo8mlKjY+E2HAakaTeNpqAyBZ8GSqLzHgw4XmHmC8whvpjJNMbFZN7/g==}
 
+  modern-monaco@0.4.0:
+    resolution: {integrity: sha512-yAdBtGkSG4CzBfvBIhW4tSQMhLCc3GKIGAWchEqiyDl7lAcwD8DjmF6h0co/ZV1VQ1c3nP58zhMnapazlzZqUw==}
+    peerDependencies:
+      typescript: '>= 5.0.0'
+
   module-alias@2.3.4:
     resolution: {integrity: sha512-bOclZt8hkpuGgSSoG07PKmvzTizROilUTvLNyrMqvlC9snhs7y7GzjNWAVbISIOlhCP1T14rH1PDAV9iNyBq/w==}
-
-  monaco-editor@0.55.1:
-    resolution: {integrity: sha512-jz4x+TJNFHwHtwuV9vA9rMujcZRb0CEilTEwG2rRSpe/A7Jdkuj8xPKttCgOh+v/lkHy7HsZ64oj+q3xoAFl9A==}
 
   moo-color@1.0.3:
     resolution: {integrity: sha512-i/+ZKXMDf6aqYtBhuOcej71YSlbjT3wCO/4H1j8rPvxDJEifdwgg5MaFyu6iYAT8GBZJg2z0dkgK4YMzvURALQ==}
@@ -7059,9 +7042,6 @@ packages:
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
-
-  state-local@1.0.7:
-    resolution: {integrity: sha512-HTEHMNieakEnoe33shBYcZ7NX83ACUjCu8c40iOGEZsngj9zRnkqS9j1pqQPXwobB0ZcVTk27REb7COQ0UR59w==}
 
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
@@ -9425,17 +9405,6 @@ snapshots:
   '@mermaid-js/parser@0.6.3':
     dependencies:
       langium: 3.3.1
-
-  '@monaco-editor/loader@1.5.0':
-    dependencies:
-      state-local: 1.0.7
-
-  '@monaco-editor/react@4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@monaco-editor/loader': 1.5.0
-      monaco-editor: 0.55.1
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
 
   '@mswjs/interceptors@0.39.8':
     dependencies:
@@ -12194,10 +12163,6 @@ snapshots:
     dependencies:
       domelementtype: 2.3.0
 
-  dompurify@3.2.7:
-    optionalDependencies:
-      '@types/trusted-types': 2.0.7
-
   dompurify@3.3.0:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
@@ -13756,8 +13721,6 @@ snapshots:
 
   markdown-table@3.0.4: {}
 
-  marked@14.0.0: {}
-
   marked@15.0.12: {}
 
   mdast-util-find-and-replace@3.0.2:
@@ -14331,12 +14294,11 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.3
 
-  module-alias@2.3.4: {}
-
-  monaco-editor@0.55.1:
+  modern-monaco@0.4.0(typescript@5.9.3):
     dependencies:
-      dompurify: 3.2.7
-      marked: 14.0.0
+      typescript: 5.9.3
+
+  module-alias@2.3.4: {}
 
   moo-color@1.0.3:
     dependencies:
@@ -15486,8 +15448,6 @@ snapshots:
   srvx@0.11.7: {}
 
   stackback@0.0.2: {}
-
-  state-local@1.0.7: {}
 
   std-env@3.10.0: {}
 
