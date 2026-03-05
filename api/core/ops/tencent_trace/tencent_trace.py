@@ -24,10 +24,10 @@ from core.ops.tencent_trace.entities.tencent_trace_entity import SpanData
 from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.ops.tencent_trace.utils import TencentTraceUtils
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from core.workflow.nodes import NodeType
+from dify_graph.nodes import NodeType
 from extensions.ext_database import db
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 

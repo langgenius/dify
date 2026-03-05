@@ -1,11 +1,8 @@
 import type { FC } from 'react'
 import type { Dataset } from './index'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { File05, Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -44,12 +41,12 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
     <div
       className={`
       group inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#F4F3FF] pl-1 pr-0.5 text-[#6938EF] hover:bg-[#EBE9FE]
-      ${open ? 'bg-[#EBE9FE]' : 'bg-[#F4F3FF]'}
+      ${open ? 'bg-[#EBE9FE]' : ''}
       ${isSelected && '!border-[#9B8AFB]'}
     `}
       ref={ref}
     >
-      <File05 className="mr-1 h-[14px] w-[14px]" />
+      <span className="i-custom-vender-solid-files-file-05 mr-1 h-[14px] w-[14px]" data-testid="file-icon" />
       <div className="mr-1 text-xs font-medium">{t('promptEditor.context.item.title', { ns: 'common' })}</div>
       {!canNotAddContext && (
         <PortalToFollowElem
@@ -80,7 +77,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                     localDatasets.map(dataset => (
                       <div key={dataset.id} className="flex h-8 items-center">
                         <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5] bg-[#F5F8FF]">
-                          <Folder className="h-4 w-4 text-[#444CE7]" />
+                          <span className="i-custom-vender-solid-files-folder h-4 w-4 text-[#444CE7]" data-testid="folder-icon" />
                         </div>
                         <div className="truncate text-sm text-gray-800" title="">{dataset.name}</div>
                       </div>
@@ -88,8 +85,8 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                   }
                 </div>
                 <div className="flex h-8 cursor-pointer items-center text-[#155EEF]" onClick={onAddContext}>
-                  <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100">
-                    <RiAddLine className="h-[14px] w-[14px]" />
+                  <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100" data-testid="add-button">
+                    <span className="i-ri-add-line h-[14px] w-[14px]" />
                   </div>
                   <div className="text-[13px] font-medium" title="">{t('promptEditor.context.modal.add', { ns: 'common' })}</div>
                 </div>

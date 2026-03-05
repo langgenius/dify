@@ -1,6 +1,5 @@
 'use client'
 import type { InvitationResult } from '@/models/common'
-import { RiPencilLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
@@ -56,7 +55,7 @@ const MembersPage = () => {
             <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
           </div>
           <div className="grow">
-            <div className="system-md-semibold flex items-center gap-1 text-text-secondary">
+            <div className="flex items-center gap-1 text-text-secondary system-md-semibold">
               <span>{currentWorkspace?.name}</span>
               {isCurrentWorkspaceOwner && (
                 <span>
@@ -69,13 +68,16 @@ const MembersPage = () => {
                         setEditWorkspaceModalVisible(true)
                       }}
                     >
-                      <RiPencilLine className="h-4 w-4 text-text-tertiary" />
+                      <div
+                        data-testid="edit-workspace-pencil"
+                        className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
+                      />
                     </div>
                   </Tooltip>
                 </span>
               )}
             </div>
-            <div className="system-xs-medium mt-1 text-text-tertiary">
+            <div className="mt-1 text-text-tertiary system-xs-medium">
               {enableBilling && isNotUnlimitedMemberPlan
                 ? (
                     <div className="flex space-x-1">
@@ -109,9 +111,9 @@ const MembersPage = () => {
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
-            <div className="system-xs-medium-uppercase grow px-3 text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="system-xs-medium-uppercase w-[104px] shrink-0 text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="grow px-3 text-text-tertiary system-xs-medium-uppercase">{t('members.name', { ns: 'common' })}</div>
+            <div className="w-[104px] shrink-0 text-text-tertiary system-xs-medium-uppercase">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-[96px] shrink-0 px-3 text-text-tertiary system-xs-medium-uppercase">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-[480px]">
             {
@@ -120,27 +122,27 @@ const MembersPage = () => {
                   <div className="flex grow items-center px-3 py-2">
                     <Avatar avatar={account.avatar_url} size={24} className="mr-2" name={account.name} />
                     <div className="">
-                      <div className="system-sm-medium text-text-secondary">
+                      <div className="text-text-secondary system-sm-medium">
                         {account.name}
-                        {account.status === 'pending' && <span className="system-xs-medium ml-1 text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
-                        {userProfile.email === account.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
+                        {account.status === 'pending' && <span className="ml-1 text-text-warning system-xs-medium">{t('members.pending', { ns: 'common' })}</span>}
+                        {userProfile.email === account.email && <span className="text-text-tertiary system-xs-regular">{t('members.you', { ns: 'common' })}</span>}
                       </div>
-                      <div className="system-xs-regular text-text-tertiary">{account.email}</div>
+                      <div className="text-text-tertiary system-xs-regular">{account.email}</div>
                     </div>
                   </div>
-                  <div className="system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary">{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
+                  <div className="flex w-[104px] shrink-0 items-center py-2 text-text-secondary system-sm-regular">{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
                   <div className="flex w-[96px] shrink-0 items-center">
                     {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
                     )}
                     {isCurrentWorkspaceOwner && account.role === 'owner' && !isAllowTransferWorkspace && (
-                      <div className="system-sm-regular px-3 text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
+                      <div className="px-3 text-text-secondary system-sm-regular">{RoleMap[account.role] || RoleMap.normal}</div>
                     )}
                     {isCurrentWorkspaceOwner && account.role !== 'owner' && (
                       <Operation member={account} operatorRole={currentWorkspace.role} onOperate={refetch} />
                     )}
                     {!isCurrentWorkspaceOwner && (
-                      <div className="system-sm-regular px-3 text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
+                      <div className="px-3 text-text-secondary system-sm-regular">{RoleMap[account.role] || RoleMap.normal}</div>
                     )}
                   </div>
                 </div>

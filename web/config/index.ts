@@ -42,8 +42,8 @@ export const AMPLITUDE_API_KEY = getStringConfig(
   '',
 )
 
-export const IS_DEV = env.NODE_ENV === 'development'
-export const IS_PROD = env.NODE_ENV === 'production'
+export const IS_DEV = process.env.NODE_ENV === 'development'
+export const IS_PROD = process.env.NODE_ENV === 'production'
 
 export const SUPPORT_MAIL_LOGIN = env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
 

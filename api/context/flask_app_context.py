@@ -10,8 +10,8 @@ from typing import Any, final
 
 from flask import Flask, current_app, g
 
-from core.workflow.context import register_context_capturer
-from core.workflow.context.execution_context import (
+from dify_graph.context import register_context_capturer
+from dify_graph.context.execution_context import (
     AppContext,
     IExecutionContext,
 )

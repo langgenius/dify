@@ -11,12 +11,12 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     FormDefinition,
     HumanInputSubmissionValidationError,
     validate_human_input_submission,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
@@ -130,7 +130,7 @@ class HumanInputService:
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
-        self._form_repository = form_repository or HumanInputFormSubmissionRepository(session_factory)
+        self._form_repository = form_repository or HumanInputFormSubmissionRepository()
 
     def get_form_by_token(self, form_token: str) -> Form | None:
         record = self._form_repository.get_by_token(form_token)
