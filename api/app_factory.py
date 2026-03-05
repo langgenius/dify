@@ -10,7 +10,7 @@ from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
-from services.feature_service import FeatureService, LicenseStatus
+from services.enterprise.enterprise_service import EnterpriseService
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +50,13 @@ def create_flask_app_with_configs() -> DifyApp:
 
                 if not is_exempt:
                     try:
-                        # Check license status
-                        system_features = FeatureService.get_system_features(is_authenticated=True)
-                        if system_features.license.status in [
-                            LicenseStatus.INACTIVE,
-                            LicenseStatus.EXPIRED,
-                            LicenseStatus.LOST,
-                        ]:
+                        # Check license status with caching (10 min TTL)
+                        license_status = EnterpriseService.get_cached_license_status()
+                        if license_status in ["inactive", "expired", "lost"]:
                             # Raise UnauthorizedAndForceLogout to trigger frontend reload and logout
                             # Frontend checks code === 'unauthorized_and_force_logout' and calls location.reload()
                             raise UnauthorizedAndForceLogout(
-                                f"Enterprise license is {system_features.license.status.value}. "
-                                "Please contact your administrator."
+                                f"Enterprise license is {license_status}. Please contact your administrator."
                             )
                     except UnauthorizedAndForceLogout:
                         # Re-raise to let Flask error handler convert to proper JSON response
