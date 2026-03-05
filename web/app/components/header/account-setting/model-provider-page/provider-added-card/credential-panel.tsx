@@ -97,16 +97,18 @@ const CredentialPanel = ({
   )
 }
 
+const TEXT_LABEL_KEYS = {
+  'credits-active': 'modelProvider.card.aiCreditsInUse',
+  'credits-exhausted': 'modelProvider.card.quotaExhausted',
+  'no-usage': 'modelProvider.card.noAvailableUsage',
+  'api-required-add': 'modelProvider.card.apiKeyRequired',
+  'api-required-configure': 'modelProvider.card.apiKeyRequired',
+} as const satisfies Partial<Record<CardVariant, string>>
+
 function TextLabel({ variant }: { variant: CardVariant }) {
   const { t } = useTranslation()
   const isDestructive = isDestructiveVariant(variant)
-  const labelKey = variant === 'credits-active'
-    ? 'modelProvider.card.aiCreditsInUse'
-    : variant === 'credits-exhausted'
-      ? 'modelProvider.card.quotaExhausted'
-      : variant === 'no-usage'
-        ? 'modelProvider.card.noAvailableUsage'
-        : 'modelProvider.card.apiKeyRequired'
+  const labelKey = TEXT_LABEL_KEYS[variant as keyof typeof TEXT_LABEL_KEYS]
 
   return (
     <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>

@@ -18,6 +18,8 @@ import CreditsExhaustedAlert from './credits-exhausted-alert'
 import CreditsFallbackAlert from './credits-fallback-alert'
 import UsagePrioritySection from './usage-priority-section'
 
+const EMPTY_CREDENTIALS: Credential[] = []
+
 type DropdownContentProps = {
   provider: ModelProvider
   state: CredentialPanelState
@@ -95,7 +97,7 @@ function DropdownContent({
         )}
         <ApiKeySection
           provider={provider}
-          credentials={available_credentials ?? []}
+          credentials={available_credentials ?? EMPTY_CREDENTIALS}
           selectedCredentialId={current_credential_id}
           onItemClick={handleItemClick}
           onEdit={handleEdit}

@@ -12,7 +12,7 @@ const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
 
 vi.mock('../use-trial-credits', () => ({
-  useTrialCredits: () => ({ credits: 0, isExhausted: true, isLoading: false }),
+  useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
 }))
 
 vi.mock('../../model-auth/hooks', () => ({

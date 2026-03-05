@@ -17,7 +17,7 @@ vi.mock('../../model-auth/hooks', () => ({
 }))
 
 vi.mock('../use-trial-credits', () => ({
-  useTrialCredits: () => ({ credits: 0, isExhausted: true, isLoading: false }),
+  useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
 }))
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({

@@ -8,7 +8,7 @@ import {
 } from '../declarations'
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
-const mockTrialCredits = { credits: 100, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
+const mockTrialCredits = { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
 
 vi.mock('./use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
@@ -38,7 +38,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
 describe('useCredentialPanelState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.assign(mockTrialCredits, { credits: 100, isExhausted: false, isLoading: false })
+    Object.assign(mockTrialCredits, { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false })
   })
 
   // Credits priority variants

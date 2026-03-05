@@ -21,7 +21,7 @@ const {
   mockToastNotify: vi.fn(),
   mockUpdateModelList: vi.fn(),
   mockUpdateModelProviders: vi.fn(),
-  mockTrialCredits: { credits: 100, isExhausted: false, isLoading: false, nextCreditResetDate: undefined },
+  mockTrialCredits: { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined },
   mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
 }))
 
@@ -113,7 +113,7 @@ const renderWithQueryClient = (provider: ModelProvider) => {
 describe('CredentialPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.assign(mockTrialCredits, { credits: 100, isExhausted: false, isLoading: false })
+    Object.assign(mockTrialCredits, { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false })
   })
 
   describe('Text label variants', () => {
