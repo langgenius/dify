@@ -7,9 +7,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, Literal, cast
-
-from typing_extensions import NotRequired, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -17,6 +15,7 @@ from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -195,7 +194,6 @@ class AppModelConfigDict(TypedDict):
     # Added dynamically in Conversation.model_config
     model_id: NotRequired[str | None]
     provider: NotRequired[str | None]
-
 
 
 class ConversationDict(TypedDict):
@@ -646,7 +644,9 @@ class AppModelConfig(TypeBase):
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True})
+        return cast(
+            EnabledConfig, json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
+        )
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
