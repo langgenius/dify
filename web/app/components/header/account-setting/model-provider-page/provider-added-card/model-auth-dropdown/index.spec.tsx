@@ -52,6 +52,7 @@ describe('ModelAuthDropdown', () => {
         <ModelAuthDropdown
           provider={createProvider()}
           state={createState({ hasCredentials: false, variant: 'credits-active' })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
         />,
       )
@@ -64,6 +65,7 @@ describe('ModelAuthDropdown', () => {
         <ModelAuthDropdown
           provider={createProvider()}
           state={createState({ hasCredentials: true, variant: 'api-active' })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
         />,
       )
@@ -76,6 +78,7 @@ describe('ModelAuthDropdown', () => {
         <ModelAuthDropdown
           provider={createProvider()}
           state={createState({ variant: 'api-required-add', hasCredentials: false })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
         />,
       )
@@ -89,6 +92,7 @@ describe('ModelAuthDropdown', () => {
         <ModelAuthDropdown
           provider={createProvider()}
           state={createState({ variant: 'api-required-configure', hasCredentials: true })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
         />,
       )

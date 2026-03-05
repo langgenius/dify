@@ -1,5 +1,5 @@
-import type { CredentialPanelState } from '../use-credential-panel-state'
 import type { ModelProvider } from '../../declarations'
+import type { CredentialPanelState } from '../use-credential-panel-state'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../declarations'
 import DropdownContent from './dropdown-content'
@@ -73,6 +73,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState({ showPrioritySwitcher: true })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -86,6 +87,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState({ showPrioritySwitcher: false })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -99,6 +101,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState({ isCreditsExhausted: true, supportsCredits: true })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -112,6 +115,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState({ isCreditsExhausted: false })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -128,6 +132,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState()}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -147,6 +152,7 @@ describe('DropdownContent', () => {
             },
           })}
           state={createState({ hasCredentials: false })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -168,6 +174,7 @@ describe('DropdownContent', () => {
             },
           })}
           state={createState({ hasCredentials: false })}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,
@@ -187,6 +194,7 @@ describe('DropdownContent', () => {
         <DropdownContent
           provider={createProvider()}
           state={createState()}
+          isChangingPriority={false}
           onChangePriority={onChangePriority}
           onClose={onClose}
         />,

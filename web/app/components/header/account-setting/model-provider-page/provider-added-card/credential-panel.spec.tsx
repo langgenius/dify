@@ -1,7 +1,6 @@
 import type { ModelProvider } from '../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { changeModelProviderPriority } from '@/service/common'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -9,11 +8,21 @@ import {
 } from '../declarations'
 import CredentialPanel from './credential-panel'
 
-const mockEventEmitter = { emit: vi.fn() }
-const mockNotify = vi.fn()
-const mockUpdateModelList = vi.fn()
-const mockUpdateModelProviders = vi.fn()
-const mockTrialCredits = { credits: 100, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
+const {
+  mockEventEmitter,
+  mockToastNotify,
+  mockUpdateModelList,
+  mockUpdateModelProviders,
+  mockTrialCredits,
+  mockChangePriorityFn,
+} = vi.hoisted(() => ({
+  mockEventEmitter: { emit: vi.fn() },
+  mockToastNotify: vi.fn(),
+  mockUpdateModelList: vi.fn(),
+  mockUpdateModelProviders: vi.fn(),
+  mockTrialCredits: { credits: 100, isExhausted: false, isLoading: false, nextCreditResetDate: undefined },
+  mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
+}))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -21,15 +30,28 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+  default: { notify: mockToastNotify },
 }))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/common', () => ({
-  changeModelProviderPriority: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    modelProviders: {
+      models: { key: () => ['console', 'modelProviders', 'models'] },
+      changePreferredProviderType: {
+        mutationOptions: (opts: Record<string, unknown>) => ({
+          mutationFn: (...args: unknown[]) => {
+            mockChangePriorityFn(...args)
+            return Promise.resolve({ result: 'success' })
+          },
+          ...opts,
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock('../hooks', () => ({
@@ -58,6 +80,7 @@ vi.mock('@/app/components/header/indicator', () => ({
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: { retry: false, gcTime: 0 },
+    mutations: { retry: false },
   },
 })
 
@@ -92,31 +115,26 @@ describe('CredentialPanel', () => {
     Object.assign(mockTrialCredits, { credits: 100, isExhausted: false, isLoading: false })
   })
 
-  // Text label variants
   describe('Text label variants', () => {
     it('should show "AI credits in use" for credits-active variant', () => {
       renderWithQueryClient(createProvider())
-
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
 
     it('should show "Credits exhausted" for credits-exhausted variant', () => {
       mockTrialCredits.isExhausted = true
       mockTrialCredits.credits = 0
-
       renderWithQueryClient(createProvider({
         custom_configuration: {
           status: CustomConfigurationStatusEnum.noConfigure,
           available_credentials: [],
         },
       }))
-
       expect(screen.getByText(/quotaExhausted/)).toBeInTheDocument()
     })
 
     it('should show "No available usage" for no-usage variant', () => {
       mockTrialCredits.isExhausted = true
-
       renderWithQueryClient(createProvider({
         custom_configuration: {
           status: CustomConfigurationStatusEnum.active,
@@ -125,7 +143,6 @@ describe('CredentialPanel', () => {
           available_credentials: [{ credential_id: 'cred-1' }],
         },
       }))
-
       expect(screen.getByText(/noAvailableUsage/)).toBeInTheDocument()
     })
 
@@ -137,18 +154,14 @@ describe('CredentialPanel', () => {
           available_credentials: [],
         },
       }))
-
       expect(screen.getByText(/apiKeyRequired/)).toBeInTheDocument()
     })
   })
 
-  // Status label variants (dot + credential name)
   describe('Status label variants', () => {
     it('should show green indicator and credential name for api-fallback', () => {
       mockTrialCredits.isExhausted = true
-
       renderWithQueryClient(createProvider())
-
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
@@ -157,7 +170,6 @@ describe('CredentialPanel', () => {
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
       }))
-
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
     })
 
@@ -167,53 +179,52 @@ describe('CredentialPanel', () => {
         custom_configuration: {
           status: CustomConfigurationStatusEnum.active,
           current_credential_id: undefined,
-          current_credential_name: undefined,
-          available_credentials: [{ credential_id: 'cred-1' }],
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
         },
       }))
-
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'red')
       expect(screen.getByText(/unavailable/i)).toBeInTheDocument()
     })
   })
 
-  // Destructive styling
   describe('Destructive styling', () => {
     it('should apply destructive container for credits-exhausted', () => {
       mockTrialCredits.isExhausted = true
-
       const { container } = renderWithQueryClient(createProvider({
         custom_configuration: {
           status: CustomConfigurationStatusEnum.noConfigure,
           available_credentials: [],
         },
       }))
-
-      const card = container.querySelector('[class*="border-state-destructive"]')
-      expect(card).toBeTruthy()
+      expect(container.querySelector('[class*="border-state-destructive"]')).toBeTruthy()
     })
 
     it('should apply default container for credits-active', () => {
       const { container } = renderWithQueryClient(createProvider())
-
-      const card = container.querySelector('[class*="bg-white"]')
-      expect(card).toBeTruthy()
+      expect(container.querySelector('[class*="bg-white"]')).toBeTruthy()
     })
   })
 
-  // Priority change
   describe('Priority change', () => {
-    it('should change priority and refresh data after success', async () => {
-      const mockChangePriority = changeModelProviderPriority as ReturnType<typeof vi.fn>
-      mockChangePriority.mockResolvedValue({ result: 'success' })
-
+    it('should call mutation and trigger side effects on success', async () => {
       renderWithQueryClient(createProvider())
 
-      fireEvent.click(screen.getByTestId('change-priority-btn'))
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('change-priority-btn'))
+      })
 
       await waitFor(() => {
-        expect(mockChangePriority).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalled()
+        expect(mockChangePriorityFn.mock.calls[0]?.[0]).toEqual({
+          params: { provider: 'test-provider' },
+          body: { preferred_provider_type: 'custom' },
+        })
+      })
+
+      await waitFor(() => {
+        expect(mockToastNotify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'success' }),
+        )
         expect(mockUpdateModelProviders).toHaveBeenCalled()
         expect(mockUpdateModelList).toHaveBeenCalledWith('llm')
         expect(mockEventEmitter.emit).toHaveBeenCalled()
@@ -221,11 +232,9 @@ describe('CredentialPanel', () => {
     })
   })
 
-  // ModelAuthDropdown integration
   describe('ModelAuthDropdown integration', () => {
     it('should pass state variant to ModelAuthDropdown', () => {
       renderWithQueryClient(createProvider())
-
       expect(screen.getByTestId('model-auth-dropdown')).toHaveAttribute('data-variant', 'credits-active')
     })
   })

@@ -5,6 +5,7 @@ import { PreferredProviderTypeEnum } from '../../declarations'
 
 type UsagePrioritySectionProps = {
   value: UsagePriority
+  disabled?: boolean
   onSelect: (key: PreferredProviderTypeEnum) => void
 }
 
@@ -13,7 +14,7 @@ const options = [
   { key: PreferredProviderTypeEnum.custom, labelKey: 'modelProvider.card.apiKeyOption' },
 ] as const
 
-export default function UsagePrioritySection({ value, onSelect }: UsagePrioritySectionProps) {
+export default function UsagePrioritySection({ value, disabled, onSelect }: UsagePrioritySectionProps) {
   const { t } = useTranslation()
   const selectedKey = value === 'credits'
     ? PreferredProviderTypeEnum.system
@@ -37,11 +38,12 @@ export default function UsagePrioritySection({ value, onSelect }: UsagePriorityS
               key={option.key}
               type="button"
               className={cn(
-                'shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-button-primary-border',
+                'shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-button-primary-border disabled:opacity-50',
                 selectedKey === option.key
                   ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-panel-bg text-text-primary shadow-xs system-xs-medium'
                   : 'border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-xs-regular hover:bg-components-option-card-option-bg-hover',
               )}
+              disabled={disabled}
               onClick={() => onSelect(option.key)}
             >
               {t(option.labelKey, { ns: 'common' })}

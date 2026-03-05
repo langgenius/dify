@@ -117,7 +117,7 @@ describe('useCredentialPanelState', () => {
 
       const { result } = renderHook(() => useCredentialPanelState(provider))
 
-      expect(result.current.variant).toBe('api-unavailable')
+      expect(result.current.variant).toBe('api-required-configure')
     })
 
     it('should return api-required-add when no credentials exist', () => {
@@ -159,12 +159,9 @@ describe('useCredentialPanelState', () => {
       expect(result.current.showPrioritySwitcher).toBe(true)
     })
 
-    it('should hide priority switcher when custom config not active', () => {
+    it('should hide priority switcher when system config disabled', () => {
       const provider = createProvider({
-        custom_configuration: {
-          status: CustomConfigurationStatusEnum.noConfigure,
-          available_credentials: [],
-        },
+        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
       })
 
       const { result } = renderHook(() => useCredentialPanelState(provider))

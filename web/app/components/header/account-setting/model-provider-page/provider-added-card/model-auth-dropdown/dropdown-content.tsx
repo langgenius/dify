@@ -21,6 +21,7 @@ import UsagePrioritySection from './usage-priority-section'
 type DropdownContentProps = {
   provider: ModelProvider
   state: CredentialPanelState
+  isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
   onClose: () => void
 }
@@ -28,6 +29,7 @@ type DropdownContentProps = {
 function DropdownContent({
   provider,
   state,
+  isChangingPriority,
   onChangePriority,
   onClose,
 }: DropdownContentProps) {
@@ -81,6 +83,7 @@ function DropdownContent({
         {state.showPrioritySwitcher && (
           <UsagePrioritySection
             value={state.priority}
+            disabled={isChangingPriority}
             onSelect={onChangePriority}
           />
         )}

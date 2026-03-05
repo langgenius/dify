@@ -13,6 +13,7 @@ import DropdownContent from './dropdown-content'
 type ModelAuthDropdownProps = {
   provider: ModelProvider
   state: CredentialPanelState
+  isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
 }
 
@@ -38,7 +39,7 @@ function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key:
   return { text, variant: 'secondary' as const }
 }
 
-function ModelAuthDropdown({ provider, state, onChangePriority }: ModelAuthDropdownProps) {
+function ModelAuthDropdown({ provider, state, isChangingPriority, onChangePriority }: ModelAuthDropdownProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -67,6 +68,7 @@ function ModelAuthDropdown({ provider, state, onChangePriority }: ModelAuthDropd
         <DropdownContent
           provider={provider}
           state={state}
+          isChangingPriority={isChangingPriority}
           onChangePriority={onChangePriority}
           onClose={handleClose}
         />
