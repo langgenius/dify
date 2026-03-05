@@ -51,7 +51,6 @@ reg(RuleCodeGeneratePayload)
 reg(RuleStructuredOutputPayload)
 reg(InstructionGeneratePayload)
 reg(InstructionTemplatePayload)
-reg(ModelConfig)
 
 
 @console_ns.route("/rule-generate")
