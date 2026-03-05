@@ -29,20 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEvaluationRunner(ABC):
-    """Abstract base class for evaluation runners.
-
-    Runners are responsible for executing the target (App/Snippet/Retrieval)
-    to collect actual outputs, then computing evaluation metrics, optionally
-    applying judgment conditions, and persisting results.
-
-    Built-in capabilities (implemented in this base class):
-      - Customized workflow dispatch (``_evaluate_customized``)
-      - Judgment condition evaluation (``_apply_judgment``)
-
-    Subclass responsibilities:
-      - ``execute_target``  — target-specific execution logic
-      - ``evaluate_metrics`` — framework-specific metric computation (RAGAS etc.)
-    """
+    """Abstract base class for evaluation runners. """
 
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
         self.evaluation_instance = evaluation_instance
@@ -69,18 +56,7 @@ class BaseEvaluationRunner(ABC):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        """Compute evaluation metrics on the collected results.
-
-        Called only when the evaluation is NOT using a customized workflow
-        (i.e. ``metrics_config`` does not contain ``workflow_id``).
-
-        Implementations should:
-          1. Merge ``actual_output`` from ``results`` into the ``context``
-             field of each ``EvaluationItemInput``.
-          2. Call ``self.evaluation_instance.evaluate_xxx()`` with the
-             merged items.
-          3. Return updated results with metrics populated.
-        """
+        """Compute evaluation metrics on the collected results."""
         ...
 
     def run(
@@ -131,13 +107,10 @@ class BaseEvaluationRunner(ABC):
         if successful_items and successful_results:
             try:
                 if _is_customized_evaluation(metrics_config):
-                    # Customized workflow evaluation — target-type agnostic,
-                    # handled via BaseEvaluationInstance.evaluate_with_customized_workflow().
                     evaluated_results = self._evaluate_customized(
                         successful_items, successful_results, metrics_config, tenant_id,
                     )
                 else:
-                    # Framework-specific evaluation — delegate to subclass
                     evaluated_results = self.evaluate_metrics(
                         successful_items, successful_results, metrics_config,
                         model_provider, model_name, tenant_id,
@@ -176,10 +149,6 @@ class BaseEvaluationRunner(ABC):
 
         return results
 
-    # ------------------------------------------------------------------
-    # Customized workflow evaluation dispatch
-    # ------------------------------------------------------------------
-
     def _evaluate_customized(
         self,
         items: list[EvaluationItemInput],
@@ -187,13 +156,7 @@ class BaseEvaluationRunner(ABC):
         metrics_config: dict,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        """Delegate to the instance's customized workflow evaluator.
-
-        Unlike the framework path (which merges ``actual_output`` into
-        ``context``), here we pass ``results`` directly — the instance's
-        ``evaluate_with_customized_workflow()`` reads ``actual_output``
-        from each ``EvaluationItemResult``.
-        """
+        """Delegate to the instance's customized workflow evaluator."""
         evaluated = self.evaluation_instance.evaluate_with_customized_workflow(
             items, results, metrics_config, tenant_id,
         )
@@ -217,9 +180,6 @@ class BaseEvaluationRunner(ABC):
                 final_results.append(result)
         return final_results
 
-    # ------------------------------------------------------------------
-    # Judgment (target-type agnostic)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _apply_judgment(
@@ -268,9 +228,5 @@ class BaseEvaluationRunner(ABC):
 
 
 def _is_customized_evaluation(metrics_config: dict[str, Any]) -> bool:
-    """Check if metrics_config indicates a customized workflow evaluation.
-
-    The convention is that ``metrics_config["workflow_id"]`` is present
-    when a user-defined workflow should be used for evaluation.
-    """
+    """Check if metrics_config indicates a customized workflow evaluation."""
     return bool(metrics_config.get("workflow_id"))
