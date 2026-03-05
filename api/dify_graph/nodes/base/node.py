@@ -81,7 +81,7 @@ class Node(Generic[NodeDataT]):
 
     node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
-    _node_data_type: ClassVar[type[NodeDataT]]
+    _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """
@@ -246,7 +246,7 @@ class Node(Generic[NodeDataT]):
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        self._node_data = self._node_data_type.model_validate(config["data"], from_attributes=True)
+        self._node_data = cast(NodeDataT, self._node_data_type.model_validate(config["data"], from_attributes=True))
 
         self.post_init()
 
@@ -424,7 +424,7 @@ class Node(Generic[NodeDataT]):
         :return:
         """
         node_id = config["id"]
-        node_data = cls._node_data_type.model_validate(config["data"], from_attributes=True)
+        node_data = cast(NodeDataT, cls._node_data_type.model_validate(config["data"], from_attributes=True))
         data = cls._extract_variable_selector_to_variable_mapping(
             graph_config=graph_config,
             node_id=node_id,

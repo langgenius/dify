@@ -151,7 +151,7 @@ class BaseNodeData(ABC, BaseModel):
         Prefer using model fields and Pydantic's extra storage.
         """
         # First, check declared model fields
-        if key in self.model_fields:
+        if key in self.__class__.model_fields:
             return getattr(self, key)
 
         # Then, check any extra fields allowed by ConfigDict(extra="allow")
@@ -167,7 +167,7 @@ class BaseNodeData(ABC, BaseModel):
         """
         Dict-style .get() without calling model_dump() on every lookup.
         """
-        if key in self.model_fields:
+        if key in self.__class__.model_fields:
             return getattr(self, key)
 
         extras = getattr(self, "__pydantic_extra__", None)

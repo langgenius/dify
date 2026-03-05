@@ -10,6 +10,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     NodeType,
     WorkflowNodeExecutionMetadataKey,
@@ -106,7 +107,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,

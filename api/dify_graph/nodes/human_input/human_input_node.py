@@ -4,6 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import InvokeFrom, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import (
@@ -63,7 +64,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         form_repository: HumanInputFormRepository | None = None,
@@ -341,7 +342,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: HumanInputNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selectors referenced in form content and input default values.
@@ -350,5 +351,4 @@ class HumanInputNode(Node[HumanInputNodeData]):
         1. Variables referenced in form_content ({{#node_name.var_name#}})
         2. Variables referenced in input default values
         """
-        validated_node_data = HumanInputNodeData.model_validate(node_data)
-        return validated_node_data.extract_variable_selector_to_variable_mapping(node_id)
+        return node_data.extract_variable_selector_to_variable_mapping(node_id)

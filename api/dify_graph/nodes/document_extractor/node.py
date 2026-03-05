@@ -21,6 +21,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from core.helper import ssrf_proxy
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, file_manager
 from dify_graph.node_events import NodeRunResult
@@ -53,7 +54,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
