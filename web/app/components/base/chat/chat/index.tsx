@@ -30,7 +30,7 @@ import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { cn } from '@/utils/classnames'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
-import { ChatContextProvider } from './context'
+import { ChatContextProvider } from './context-provider'
 import Question from './question'
 import TryToAsk from './try-to-ask'
 
