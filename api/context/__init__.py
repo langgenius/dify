@@ -12,7 +12,7 @@ or any other web framework.
 import contextvars
 from collections.abc import Callable
 
-from core.workflow.context.execution_context import (
+from dify_graph.context.execution_context import (
     ExecutionContext,
     IExecutionContext,
     NullAppContext,

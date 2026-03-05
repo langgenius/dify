@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use `@/app/components/base/ui/alert-dialog` instead.
+ * See issue #32767 for migration details.
+ */
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -5,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '../button'
 import Tooltip from '../tooltip'
 
+/** @deprecated Use `@/app/components/base/ui/alert-dialog` instead. */
 export type IConfirm = {
   className?: string
   isShow: boolean
@@ -101,6 +107,7 @@ function Confirm({
         e.preventDefault()
         e.stopPropagation()
       }}
+      data-testid="confirm-overlay"
     >
       <div ref={dialogRef} className="relative w-full max-w-[480px] overflow-hidden">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">

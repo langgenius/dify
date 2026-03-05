@@ -24,7 +24,7 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
@@ -33,7 +33,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import MessageService
+from services.message_service import MessageService, attach_message_extra_contents
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +207,7 @@ message_detail_model = console_ns.model(
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
         "message_files": fields.List(fields.Nested(message_file_model)),
+        "extra_contents": fields.List(fields.Raw),
         "metadata": fields.Raw(attribute="message_metadata_dict"),
         "status": fields.String,
         "error": fields.String,
@@ -299,6 +300,7 @@ class ChatMessageListApi(Resource):
             has_more = False
 
         history_messages = list(reversed(history_messages))
+        attach_message_extra_contents(history_messages)
 
         return InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more)
 
@@ -481,4 +483,5 @@ class MessageApi(Resource):
         if not message:
             raise NotFound("Message Not Exists.")
 
+        attach_message_extra_contents([message])
         return message

@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, load_only
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -23,6 +22,7 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.dataset import (
     ChildChunk,

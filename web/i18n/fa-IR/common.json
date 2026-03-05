@@ -511,6 +511,8 @@
   "promptEditor.placeholder": "دستور خود را اینجا بنویسید، «{» را وارد کنید تا یک متغیر درج کنید، «/» را وارد کنید تا یک بلوک محتوای دستور درج کنید",
   "promptEditor.query.item.desc": "درج الگوی پرس‌وجوی کاربر",
   "promptEditor.query.item.title": "پرس‌وجو",
+  "promptEditor.requestURL.item.desc": "درج URL درخواست",
+  "promptEditor.requestURL.item.title": "URL درخواست",
   "promptEditor.variable.item.desc": "درج متغیرها و ابزارهای خارجی",
   "promptEditor.variable.item.title": "متغیرها و ابزارهای خارجی",
   "promptEditor.variable.modal.add": "متغیر جدید",
