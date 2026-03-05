@@ -5,7 +5,7 @@ from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -376,7 +376,7 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+            query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args.annotation_status == "not_annotated":
@@ -511,7 +511,7 @@ class ChatConversationApi(Resource):
 
         match args.annotation_status:
             case "annotated":
-                query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
+                query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
             case "not_annotated":
