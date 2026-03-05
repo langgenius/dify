@@ -57,15 +57,21 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
     return currentDefaultModel
   }, [defaultModel, modelList])
+  const currentDefaultModelKey = currentDefaultModel
+    ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
+    : ''
   const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(currentDefaultModel)
-  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
-    setDefaultModelState(model)
-  }, [])
-  useEffect(() => {
-    setDefaultModelState(currentDefaultModel)
-  }, [currentDefaultModel])
+  const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
+  const selectedDefaultModel = defaultModelSourceKey === currentDefaultModelKey
+    ? defaultModelState
+    : currentDefaultModel
 
-  return [defaultModelState, handleDefaultModelChange]
+  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
+    setDefaultModelSourceKey(currentDefaultModelKey)
+    setDefaultModelState(model)
+  }, [currentDefaultModelKey])
+
+  return [selectedDefaultModel, handleDefaultModelChange]
 }
 
 export const useLanguage = () => {
@@ -116,7 +122,7 @@ export const useProviderCredentialsAndLoadBalancing = (
     predefinedFormSchemasValue?.credentials,
   ])
 
-  const mutate = useMemo(() => () => {
+  const mutate = useCallback(() => {
     if (predefinedEnabled)
       queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
     if (customEnabled)

@@ -66,9 +66,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         self._rag_retrieval = rag_retrieval
 
         if llm_file_saver is None:
+            dify_ctx = self.require_dify_context()
             llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -160,6 +161,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
+        dify_ctx = self.require_dify_context()
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -176,10 +178,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             model = node_data.single_retrieval_config.model
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
                 request=KnowledgeRetrievalRequest(
-                    tenant_id=self.tenant_id,
-                    user_id=self.user_id,
-                    app_id=self.app_id,
-                    user_from=self.user_from.value,
+                    tenant_id=dify_ctx.tenant_id,
+                    user_id=dify_ctx.user_id,
+                    app_id=dify_ctx.app_id,
+                    user_from=dify_ctx.user_from.value,
                     dataset_ids=dataset_ids,
                     retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value,
                     completion_params=model.completion_params,
@@ -229,10 +231,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
                 request=KnowledgeRetrievalRequest(
-                    app_id=self.app_id,
-                    tenant_id=self.tenant_id,
-                    user_id=self.user_id,
-                    user_from=self.user_from.value,
+                    app_id=dify_ctx.app_id,
+                    tenant_id=dify_ctx.tenant_id,
+                    user_id=dify_ctx.user_id,
+                    user_from=dify_ctx.user_from.value,
                     dataset_ids=dataset_ids,
                     query=query,
                     retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value,

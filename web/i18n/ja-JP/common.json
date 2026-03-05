@@ -353,6 +353,7 @@
   "modelProvider.card.removeKey": "API キーを削除",
   "modelProvider.card.tip": "メッセージ枠は{{modelNames}}のモデルを使用することをサポートしています。無料枠は有料枠が使い果たされた後に消費されます。",
   "modelProvider.card.tokens": "トークン",
+  "modelProvider.card.usagePriorityTip": "モデル実行時に優先して使用するリソースを設定します。",
   "modelProvider.collapse": "折り畳み",
   "modelProvider.config": "設定",
   "modelProvider.configLoadBalancing": "負荷分散の設定",

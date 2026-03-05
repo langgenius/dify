@@ -371,6 +371,7 @@
   "modelProvider.card.upgradePlan": "升级套餐",
   "modelProvider.card.usageLabel": "用量",
   "modelProvider.card.usagePriority": "使用优先级",
+  "modelProvider.card.usagePriorityTip": "设置运行模型时优先使用的资源。",
   "modelProvider.collapse": "收起",
   "modelProvider.config": "配置",
   "modelProvider.configLoadBalancing": "设置负载均衡",

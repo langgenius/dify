@@ -371,6 +371,7 @@
   "modelProvider.card.upgradePlan": "upgrade your plan",
   "modelProvider.card.usageLabel": "Usage",
   "modelProvider.card.usagePriority": "Usage Priority",
+  "modelProvider.card.usagePriorityTip": "Set which resource to use first when running models.",
   "modelProvider.collapse": "Collapse",
   "modelProvider.config": "Config",
   "modelProvider.configLoadBalancing": "Config Load Balancing",

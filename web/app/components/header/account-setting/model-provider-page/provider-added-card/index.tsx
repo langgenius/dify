@@ -6,7 +6,7 @@ import type { ModelProviderQuotaGetPaid } from '../utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
 
 import { useQuery } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
@@ -14,7 +14,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
@@ -40,7 +40,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   pluginDetail,
 }) => {
   const { t } = useTranslation()
-  const { refreshModelProviders } = useProviderContext()
+  const refreshModelProviders = useProviderContextSelector(state => state.refreshModelProviders)
   const currentProviderName = provider.provider
   const expanded = useModelProviderListExpanded(currentProviderName)
   const setExpanded = useSetModelProviderListExpanded(currentProviderName)
@@ -183,4 +183,4 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   )
 }
 
-export default ProviderAddedCard
+export default memo(ProviderAddedCard)

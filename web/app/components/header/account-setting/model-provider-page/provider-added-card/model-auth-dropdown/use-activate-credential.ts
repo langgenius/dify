@@ -21,7 +21,8 @@ export function useActivateCredential(provider: ModelProvider) {
   const selectedIdRef = useRef(selectedCredentialId)
   selectedIdRef.current = selectedCredentialId
 
-  const supportedModelTypes = provider.supported_model_types
+  const supportedModelTypesRef = useRef(provider.supported_model_types)
+  supportedModelTypesRef.current = provider.supported_model_types
 
   const activate = useCallback((credential: Credential) => {
     if (credential.credential_id === selectedIdRef.current)
@@ -33,7 +34,7 @@ export function useActivateCredential(provider: ModelProvider) {
         onSuccess: () => {
           Toast.notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
           updateModelProviders()
-          supportedModelTypes.forEach(type => updateModelList(type))
+          supportedModelTypesRef.current.forEach(type => updateModelList(type))
         },
         onError: () => {
           setOptimisticId(undefined)
@@ -41,7 +42,7 @@ export function useActivateCredential(provider: ModelProvider) {
         },
       },
     )
-  }, [mutate, t, updateModelProviders, updateModelList, supportedModelTypes])
+  }, [mutate, t, updateModelProviders, updateModelList])
 
   return {
     selectedCredentialId,
