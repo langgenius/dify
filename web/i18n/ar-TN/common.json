@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "تمت إزالة هذا النموذج. يرجى إضافة نموذج أو تحديد نموذج آخر.",
   "modelProvider.setupModelFirst": "يرجى إعداد نموذجك أولاً",
   "modelProvider.showModels": "عرض النماذج",
-  "modelProvider.showModelsNum": "عرض {{num}} نماذج",
   "modelProvider.showMoreModelProvider": "عرض المزيد من مزودي النماذج",
   "modelProvider.speechToTextModel.key": "نموذج تحويل الكلام إلى نص",
   "modelProvider.speechToTextModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل الكلام إلى نص في المحادثة.",

@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "इस मॉडल को हटा दिया गया है। कृपया एक मॉडल जोड़ें या किसी अन्य मॉडल का चयन करें।",
   "modelProvider.setupModelFirst": "कृपया पहले अपना मॉडल सेट करें",
   "modelProvider.showModels": "मॉडल्स दिखाएं",
-  "modelProvider.showModelsNum": "{{num}} मॉडल्स दिखाएं",
   "modelProvider.showMoreModelProvider": "अधिक मॉडल प्रदाता दिखाएं",
   "modelProvider.speechToTextModel.key": "भाषण-से-पाठ मॉडल",
   "modelProvider.speechToTextModel.tip": "संवाद में भाषण-से-पाठ इनपुट के लिए डिफ़ॉल्ट मॉडल सेट करें।",

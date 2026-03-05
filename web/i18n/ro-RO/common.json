@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Acest model a fost eliminat. Vă rugăm să adăugați un model sau să selectați un alt model.",
   "modelProvider.setupModelFirst": "Vă rugăm să configurați mai întâi modelul",
   "modelProvider.showModels": "Arată modele",
-  "modelProvider.showModelsNum": "Arată {{num}} modele",
   "modelProvider.showMoreModelProvider": "Arată mai multe furnizori de modele",
   "modelProvider.speechToTextModel.key": "Model de conversie text-la-vorbire",
   "modelProvider.speechToTextModel.tip": "Setați modelul implicit pentru intrarea de conversie text-la-vorbire în conversație.",

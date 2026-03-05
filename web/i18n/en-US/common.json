@@ -428,7 +428,6 @@
   "modelProvider.selector.tip": "This model has been removed. Please add a model or select another model.",
   "modelProvider.setupModelFirst": "Please set up your model first",
   "modelProvider.showModels": "Show Models",
-  "modelProvider.showModelsNum": "Show {{num}} Models",
   "modelProvider.showMoreModelProvider": "Show more model provider",
   "modelProvider.speechToTextModel.key": "Speech-to-Text Model",
   "modelProvider.speechToTextModel.tip": "Set the default model for speech-to-text input in conversation.",

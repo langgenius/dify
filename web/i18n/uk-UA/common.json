@@ -409,7 +409,6 @@
   "modelProvider.selector.tip": "Цю модель було видалено. Будь ласка, додайте модель або виберіть іншу.",
   "modelProvider.setupModelFirst": "Будь ласка, спочатку налаштуйте свою модель",
   "modelProvider.showModels": "Показати моделі",
-  "modelProvider.showModelsNum": "Показати {{num}} моделей",
   "modelProvider.showMoreModelProvider": "Показати більше постачальників моделей",
   "modelProvider.speechToTextModel.key": "Модель перетворення мовлення в текст",
   "modelProvider.speechToTextModel.tip": "Встановіть модель за замовчуванням для введення мовлення в текст під час розмови.",

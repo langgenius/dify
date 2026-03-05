@@ -151,33 +151,23 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         showCollapsedSection && (
           <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
-              <>
-                <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
-                  {
-                    hasModelList
-                      ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
-                      : t('modelProvider.showModels', { ns: 'common' })
-                  }
-                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
-                </div>
-                <div
-                  data-testid="show-models-button"
-                  className="hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex"
-                  onClick={handleOpenModelList}
-                >
-                  {
-                    hasModelList
-                      ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
-                      : t('modelProvider.showModels', { ns: 'common' })
-                  }
-                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
-                  {
-                    loading && (
-                      <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
-                    )
-                  }
-                </div>
-              </>
+              <div
+                data-testid="show-models-button"
+                className="flex h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover"
+                onClick={handleOpenModelList}
+              >
+                {
+                  hasModelList
+                    ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
+                    : t('modelProvider.showModels', { ns: 'common' })
+                }
+                {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
+                {
+                  loading && (
+                    <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
+                  )
+                }
+              </div>
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
