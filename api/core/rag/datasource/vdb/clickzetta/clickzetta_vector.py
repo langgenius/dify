@@ -626,7 +626,9 @@ class ClickzettaVector(BaseVector):
             added_ids.extend(batch_doc_ids)
 
             # Execute batch insert through write queue
-            self._execute_write(self._insert_batch, batch_docs, batch_embeddings, batch_doc_ids, i, batch_size, total_batches)
+            self._execute_write(
+                self._insert_batch, batch_docs, batch_embeddings, batch_doc_ids, i, batch_size, total_batches
+            )
 
         return added_ids
 
