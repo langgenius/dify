@@ -2,6 +2,7 @@ import type { ModelProvider } from '../declarations'
 import { renderHook } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
+  CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
@@ -138,7 +139,7 @@ describe('useCredentialPanelState', () => {
   describe('apiKeyOnly priority (non-cloud / system disabled)', () => {
     it('should return apiKeyOnly when system config disabled', () => {
       const provider = createProvider({
-        system_configuration: { enabled: false, current_quota_type: 'trial', quota_configurations: [] },
+        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
       })
 
       const { result } = renderHook(() => useCredentialPanelState(provider))

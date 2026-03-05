@@ -1,7 +1,6 @@
 import type { ModelProvider } from '../declarations'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import {
-  CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
 import { useTrialCredits } from './use-trial-credits'
@@ -43,6 +42,7 @@ function deriveVariant(
   isExhausted: boolean,
   hasCredential: boolean,
   authorized: boolean | undefined,
+  credentialName: string | undefined,
 ): CardVariant {
   if (priority === 'credits') {
     if (!isExhausted)
@@ -57,7 +57,7 @@ function deriveVariant(
   if (hasCredential && authorized)
     return 'api-active'
   if (hasCredential && !authorized)
-    return 'api-unavailable'
+    return credentialName ? 'api-unavailable' : 'api-required-configure'
   return 'api-required-add'
 }
 
@@ -70,11 +70,9 @@ export function useCredentialPanelState(provider: ModelProvider): CredentialPane
   } = useCredentialStatus(provider)
 
   const systemConfig = provider.system_configuration
-  const customConfig = provider.custom_configuration
   const preferredType = provider.preferred_provider_type
 
   const supportsCredits = systemConfig.enabled
-  const isCustomConfigured = customConfig.status === CustomConfigurationStatusEnum.active
 
   const priority: UsagePriority = !supportsCredits
     ? 'apiKeyOnly'
@@ -82,9 +80,9 @@ export function useCredentialPanelState(provider: ModelProvider): CredentialPane
       ? 'credits'
       : 'apiKey'
 
-  const showPrioritySwitcher = supportsCredits && isCustomConfigured
+  const showPrioritySwitcher = supportsCredits
 
-  const variant = deriveVariant(priority, isExhausted, hasCredential, !!authorized)
+  const variant = deriveVariant(priority, isExhausted, hasCredential, !!authorized, current_credential_name)
 
   return {
     variant,

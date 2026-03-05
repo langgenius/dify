@@ -15,6 +15,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import { useAuth } from '../../model-auth/hooks'
 import ApiKeySection from './api-key-section'
 import CreditsExhaustedAlert from './credits-exhausted-alert'
+import CreditsFallbackAlert from './credits-fallback-alert'
 import UsagePrioritySection from './usage-priority-section'
 
 type DropdownContentProps = {
@@ -66,9 +67,13 @@ function DropdownContent({
     onClose()
   }, [handleOpenModal, onClose])
 
-  const showCreditsAlert = state.isCreditsExhausted && state.supportsCredits
+  const showCreditsExhaustedAlert = state.isCreditsExhausted && state.supportsCredits
   const hasApiKeyFallback = state.variant === 'api-fallback'
     || (state.variant === 'api-active' && state.priority === 'apiKey')
+  const showCreditsFallbackAlert = state.priority === 'apiKey'
+    && state.supportsCredits
+    && !state.isCreditsExhausted
+    && state.variant !== 'api-active'
 
   return (
     <>
@@ -79,7 +84,10 @@ function DropdownContent({
             onSelect={onChangePriority}
           />
         )}
-        {showCreditsAlert && (
+        {showCreditsFallbackAlert && (
+          <CreditsFallbackAlert hasCredentials={state.hasCredentials} />
+        )}
+        {showCreditsExhaustedAlert && (
           <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
         )}
         <ApiKeySection

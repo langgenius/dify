@@ -1,5 +1,5 @@
-import type { CredentialPanelState } from '../use-credential-panel-state'
 import type { ModelProvider } from '../../declarations'
+import type { CredentialPanelState } from '../use-credential-panel-state'
 import { render, screen } from '@testing-library/react'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../declarations'
 import ModelAuthDropdown from './index'
