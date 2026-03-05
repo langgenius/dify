@@ -2,7 +2,7 @@ import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { useCallback, useState } from 'react'
 import AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
 
 type TagInputProps = {

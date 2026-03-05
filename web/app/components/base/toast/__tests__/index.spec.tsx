@@ -3,7 +3,8 @@ import type { ToastHandle } from '../index'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import Toast, { ToastProvider, useToastContext } from '..'
+import Toast, { ToastProvider } from '..'
+import { useToastContext } from '../context'
 
 const TestComponent = () => {
   const { notify, close } = useToastContext()

@@ -93,15 +93,9 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@/app/components/base/toast', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/base/toast')>(
-    '@/app/components/base/toast',
-  )
-  return {
-    ...actual,
-    useToastContext: () => ({ notify: mockNotify }),
-  }
-})
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({ notify: mockNotify, close: vi.fn() }),
+}))
 
 // ---------------------------------------------------------------------------
 // Internal layout hook – controls single/multi-line textarea mode
