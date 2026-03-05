@@ -10,7 +10,7 @@ import click
 import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import Row, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -62,7 +62,7 @@ DB_UPGRADE_LOCK_TTL_SECONDS = 60
 @click.option("--email", prompt=True, help="Account email to reset password for")
 @click.option("--new-password", prompt=True, help="New password")
 @click.option("--password-confirm", prompt=True, help="Confirm new password")
-def reset_password(email, new_password, password_confirm):
+def reset_password(email: str, new_password: str, password_confirm: str) -> None:
     """
     Reset password of owner account
     Only available in SELF_HOSTED mode
@@ -81,7 +81,7 @@ def reset_password(email, new_password, password_confirm):
 
         try:
             valid_password(new_password)
-        except:
+        except Exception:
             click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
             return
 
@@ -102,7 +102,7 @@ def reset_password(email, new_password, password_confirm):
 @click.option("--email", prompt=True, help="Current account email")
 @click.option("--new-email", prompt=True, help="New email")
 @click.option("--email-confirm", prompt=True, help="Confirm new email")
-def reset_email(email, new_email, email_confirm):
+def reset_email(email: str, new_email: str, email_confirm: str) -> None:
     """
     Replace account email
     :return:
@@ -141,7 +141,7 @@ def reset_email(email, new_email, email_confirm):
         "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!", fg="red"
     )
 )
-def reset_encrypt_key_pair():
+def reset_encrypt_key_pair() -> None:
     """
     Reset the encrypted key pair of workspace for encrypt LLM credentials.
     After the reset, all LLM credentials will become invalid, requiring re-entry.
@@ -172,14 +172,14 @@ def reset_encrypt_key_pair():
 
 @click.command("vdb-migrate", help="Migrate vector db.")
 @click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
-def vdb_migrate(scope: str):
+def vdb_migrate(scope: str) -> None:
     if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
     if scope in {"annotation", "all"}:
         migrate_annotation_vector_database()
 
 
-def migrate_annotation_vector_database():
+def migrate_annotation_vector_database() -> None:
     """
     Migrate annotation datas to target vector database .
     """
@@ -243,7 +243,7 @@ def migrate_annotation_vector_database():
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
                 )
-                documents = []
+                documents: list[Document] = []
                 if annotations:
                     for annotation in annotations:
                         document = Document(
@@ -290,7 +290,7 @@ def migrate_annotation_vector_database():
     )
 
 
-def migrate_knowledge_vector_database():
+def migrate_knowledge_vector_database() -> None:
     """
     Migrate vector database datas to target vector database .
     """
@@ -400,7 +400,7 @@ def migrate_knowledge_vector_database():
                     )
                 ).all()
 
-                documents = []
+                documents: list[Document] = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
                     segments = db.session.scalars(
@@ -478,7 +478,7 @@ def migrate_knowledge_vector_database():
 
 
 @click.command("convert-to-agent-apps", help="Convert Agent Assistant to Agent App.")
-def convert_to_agent_apps():
+def convert_to_agent_apps() -> None:
     """
     Convert Agent Assistant to Agent App.
     """
@@ -539,7 +539,7 @@ def convert_to_agent_apps():
 
 @click.command("add-qdrant-index", help="Add Qdrant index.")
 @click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id.")
-def add_qdrant_index(field: str):
+def add_qdrant_index(field: str) -> None:
     click.echo(click.style("Starting Qdrant index creation.", fg="green"))
 
     create_count = 0
@@ -553,7 +553,7 @@ def add_qdrant_index(field: str):
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
 
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig, UrlQdrantParams
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -574,16 +574,19 @@ def add_qdrant_index(field: str):
                     client = qdrant_client.QdrantClient(path=params.path)
                 else:
                     # UrlQdrantParams case - params is UrlQdrantParams
+                    url_params = cast(UrlQdrantParams, params)
                     client = qdrant_client.QdrantClient(
-                        url=params.url,
-                        api_key=params.api_key,
-                        timeout=int(params.timeout),
-                        verify=params.verify,
-                        grpc_port=params.grpc_port,
-                        prefer_grpc=params.prefer_grpc,
+                        url=url_params.url,
+                        api_key=url_params.api_key,
+                        timeout=url_params.timeout,
+                        verify=url_params.verify,
+                        grpc_port=url_params.grpc_port,
+                        prefer_grpc=url_params.prefer_grpc,
                     )
                 # create payload index
-                client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
+                client.create_payload_index(
+                    collection_name=binding.collection_name, field_name=field, field_schema=PayloadSchemaType.KEYWORD
+                )
                 create_count += 1
             except UnexpectedResponse as e:
                 # Collection does not exist, so return
@@ -605,7 +608,7 @@ def add_qdrant_index(field: str):
 
 
 @click.command("old-metadata-migration", help="Old metadata migration.")
-def old_metadata_migration():
+def old_metadata_migration() -> None:
     """
     Old metadata migration.
     """
@@ -683,7 +686,7 @@ def old_metadata_migration():
 @click.option("--email", prompt=True, help="Tenant account email.")
 @click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
-def create_tenant(email: str, language: str | None = None, name: str | None = None):
+def create_tenant(email: str, language: str | None = None, name: str | None = None) -> None:
     """
     Create tenant account
     """
@@ -728,7 +731,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 
 
 @click.command("upgrade-db", help="Upgrade the database")
-def upgrade_db():
+def upgrade_db() -> None:
     click.echo("Preparing database migration...")
     lock = DbMigrationAutoRenewLock(
         redis_client=redis_client,
@@ -762,7 +765,7 @@ def upgrade_db():
 
 
 @click.command("fix-app-site-missing", help="Fix app related site missing issue.")
-def fix_app_site_missing():
+def fix_app_site_missing() -> None:
     """
     Fix app related site missing issue.
     """
@@ -812,7 +815,7 @@ where sites.id is null limit 1000"""
 
 
 @click.command("migrate-data-for-plugin", help="Migrate data for plugin.")
-def migrate_data_for_plugin():
+def migrate_data_for_plugin() -> None:
     """
     Migrate data for plugin.
     """
@@ -826,7 +829,7 @@ def migrate_data_for_plugin():
 @click.command("extract-plugins", help="Extract plugins.")
 @click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
 @click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
-def extract_plugins(output_file: str, workers: int):
+def extract_plugins(output_file: str, workers: int) -> None:
     """
     Extract plugins.
     """
@@ -847,7 +850,7 @@ def extract_plugins(output_file: str, workers: int):
 @click.option(
     "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
 )
-def extract_unique_plugins(output_file: str, input_file: str):
+def extract_unique_plugins(output_file: str, input_file: str) -> None:
     """
     Extract unique plugins.
     """
@@ -866,7 +869,7 @@ def extract_unique_plugins(output_file: str, input_file: str):
     "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
 )
 @click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
-def install_plugins(input_file: str, output_file: str, workers: int):
+def install_plugins(input_file: str, output_file: str, workers: int) -> None:
     """
     Install plugins.
     """
@@ -886,7 +889,7 @@ def install_plugins(input_file: str, output_file: str, workers: int):
     multiple=True,
     help="The tenant ids to clear free plan tenant expired logs.",
 )
-def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[str]):
+def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[str]) -> None:
     """
     Clear free plan tenant expired logs.
     """
@@ -1328,7 +1331,7 @@ def delete_archived_workflow_runs(
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
-def clear_orphaned_file_records(force: bool):
+def clear_orphaned_file_records(force: bool) -> None:
     """
     Clear orphaned file records in the database.
     """
@@ -1414,7 +1417,7 @@ def clear_orphaned_file_records(force: bool):
             "FROM message_files mf LEFT JOIN messages m ON mf.message_id = m.id "
             "WHERE m.id IS NULL"
         )
-        orphaned_message_files = []
+        orphaned_message_files: list[dict[str, str]] = []
         with db.engine.begin() as conn:
             rs = conn.execute(sa.text(query))
             for i in rs:
@@ -1449,19 +1452,19 @@ def clear_orphaned_file_records(force: bool):
     # clean up the orphaned records in the rest of the *_files tables
     try:
         # fetch file id and keys from each table
-        all_files_in_tables = []
+        all_files_in_tables: list[dict[str, str]] = []
         for files_table in files_tables:
             click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
                 rs = conn.execute(sa.text(query))
-            for i in rs:
-                all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
+                for i in rs:
+                    all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": str(i[1])})
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
 
         # fetch referred table and columns
         guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-        all_ids_in_tables = []
+        all_ids_in_tables: list[dict[str, str]] = []
         for ids_table in ids_tables:
             query = ""
             match ids_table["type"]:
@@ -1550,7 +1553,7 @@ def clear_orphaned_file_records(force: bool):
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
-def remove_orphaned_files_on_storage(force: bool):
+def remove_orphaned_files_on_storage(force: bool) -> None:
     """
     Remove orphaned files on the storage.
     """
@@ -1605,7 +1608,7 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style("Starting orphaned files cleanup.", fg="white"))
 
     # fetch file id and keys from each table
-    all_files_in_tables = []
+    all_files_in_tables: list[str] = []
     try:
         for files_table in files_tables:
             click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
@@ -1879,7 +1882,7 @@ def file_usage(
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_system_tool_oauth_client(provider, client_params):
+def setup_system_tool_oauth_client(provider: str, client_params: str) -> None:
     """
     Setup system tool oauth client
     """
@@ -1992,7 +1995,7 @@ def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
 
     with db.engine.connect() as conn:
         result = conn.execute(sa.text(query), {"batch_size": batch_size})
-        return [row[0] for row in result]
+        return [row[0] for row in result if row and row[0]]
 
 
 def _count_orphaned_draft_variables() -> dict[str, Any]:
@@ -2017,16 +2020,16 @@ def _count_orphaned_draft_variables() -> dict[str, Any]:
     """
 
     with db.engine.connect() as conn:
-        result = conn.execute(sa.text(variables_query))
-        orphaned_by_app = {}
+        result: Iterable[Row] = conn.execute(sa.text(variables_query))
+        orphaned_by_app: dict[str, dict[str, int]] = {}
         total_files = 0
 
         for row in result:
             app_id, variable_count, file_count = row
-            orphaned_by_app[app_id] = {"variables": variable_count, "files": file_count}
-            total_files += file_count
+            orphaned_by_app[str(app_id)] = {"variables": int(variable_count), "files": int(file_count)}
+            total_files += int(file_count)
 
-        total_orphaned = sum(app_data["variables"] for app_data in orphaned_by_app.values())
+        total_orphaned = sum(app_data.get("variables", 0) for app_data in orphaned_by_app.values())
         app_count = len(orphaned_by_app)
 
         return {
@@ -2047,7 +2050,7 @@ def cleanup_orphaned_draft_variables(
     batch_size: int,
     max_apps: int | None,
     force: bool = False,
-):
+) -> None:
     """
     Clean up orphaned draft variables from the database.
 
@@ -2120,7 +2123,7 @@ def cleanup_orphaned_draft_variables(
 @click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")
-def setup_datasource_oauth_client(provider, client_params):
+def setup_datasource_oauth_client(provider: str, client_params: str) -> None:
     """
     Setup datasource oauth client
     """
@@ -2386,7 +2389,7 @@ def transform_datasource_credentials(environment: str):
     "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
 )
 @click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
-def install_rag_pipeline_plugins(input_file, output_file, workers):
+def install_rag_pipeline_plugins(input_file: str, output_file: str, workers: int) -> None:
     """
     Install rag pipeline plugins
     """
@@ -2433,7 +2436,7 @@ def migrate_oss(
     dry_run: bool,
     force: bool,
     update_db: bool,
-):
+) -> None:
     """
     Copy all files under selected prefixes from a source storage
     (Local filesystem or OpenDAL-backed) into the currently configured
