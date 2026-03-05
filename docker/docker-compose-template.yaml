@@ -360,6 +360,8 @@ services:
       REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
       SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+      SSRF_REQUEST_TIMEOUT: ${SSRF_REQUEST_TIMEOUT:-1200}
+      SSRF_READ_TIMEOUT: ${SSRF_READ_TIMEOUT:-1200}
     networks:
       - ssrf_proxy_network
       - default
