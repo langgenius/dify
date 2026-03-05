@@ -5,31 +5,31 @@ import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import ArrayFileSegment
-from core.variables.segments import ArrayStringSegment
-from core.variables.variables import StringVariable
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.file import File, FileTransferMethod
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
-from core.workflow.nodes.document_extractor.node import (
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from dify_graph.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
-from models.enums import UserFrom
+from dify_graph.variables import ArrayFileSegment
+from dify_graph.variables.segments import ArrayStringSegment
+from dify_graph.variables.variables import StringVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="test_tenant",
-        app_id="test_app",
+    return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},
+        tenant_id="test_tenant",
+        app_id="test_app",
         user_id="test_user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -44,11 +44,13 @@ def document_extractor_node(graph_init_params):
         variable_selector=["node_id", "variable_name"],
     )
     node_config = {"id": "test_node_id", "data": node_data.model_dump()}
+    http_client = Mock()
     node = DocumentExtractorNode(
         id="test_node_id",
         config=node_config,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
+        http_client=http_client,
     )
     return node
 
@@ -142,19 +144,20 @@ def test_run_extract_text(
     mock_graph_runtime_state.variable_pool.get.return_value = mock_array_file_segment
 
     mock_download = Mock(return_value=file_content)
-    mock_ssrf_proxy_get = Mock()
-    mock_ssrf_proxy_get.return_value.content = file_content
-    mock_ssrf_proxy_get.return_value.raise_for_status = Mock()
 
-    monkeypatch.setattr("core.workflow.file.file_manager.download", mock_download)
-    monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
+    mock_response = Mock()
+    mock_response.content = file_content
+    mock_response.raise_for_status = Mock()
+    document_extractor_node._http_client.get = Mock(return_value=mock_response)
+
+    monkeypatch.setattr("dify_graph.file.file_manager.download", mock_download)
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        monkeypatch.setattr("dify_graph.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
 
     result = document_extractor_node._run()
 
@@ -164,7 +167,7 @@ def test_run_extract_text(
     assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
-        mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
+        document_extractor_node._http_client.get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
         mock_download.assert_called_once_with(mock_file)
 

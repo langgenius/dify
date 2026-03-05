@@ -1,6 +1,5 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import { cn } from '@/utils/classnames'
 
 type StartNodeOptionProps = {
   icon: ReactNode
@@ -20,22 +19,18 @@ const StartNodeOption: FC<StartNodeOptionProps> = ({
   return (
     <div
       onClick={onClick}
-      className={cn(
-        'hover:border-components-panel-border-active flex h-40 w-[280px] cursor-pointer flex-col gap-2 rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-4 shadow-sm transition-all hover:shadow-md',
-      )}
+      className="flex h-40 w-[280px] cursor-pointer flex-col gap-2 rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-4 shadow-sm transition-all hover:shadow-md"
     >
-      {/* Icon */}
       <div className="shrink-0">
         {icon}
       </div>
 
-      {/* Text content */}
       <div className="flex h-[74px] flex-col gap-1 py-0.5">
         <div className="h-5 leading-5">
-          <h3 className="system-md-semi-bold text-text-primary">
+          <h3 className="text-text-primary">
             {title}
             {subtitle && (
-              <span className="system-md-regular text-text-quaternary">
+              <span className="text-text-quaternary system-md-regular">
                 {' '}
                 {subtitle}
               </span>
@@ -44,7 +39,7 @@ const StartNodeOption: FC<StartNodeOptionProps> = ({
         </div>
 
         <div className="h-12 leading-4">
-          <p className="system-xs-regular text-text-tertiary">
+          <p className="text-text-tertiary system-xs-regular">
             {description}
           </p>
         </div>
