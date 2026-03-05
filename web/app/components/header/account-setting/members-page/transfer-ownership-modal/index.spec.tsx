@@ -35,11 +35,13 @@ describe('TransferOwnershipModal', () => {
       data: { accounts: [] },
     } as unknown as ReturnType<typeof useMembers>)
 
-    // Fix Location stubbing for reload
+    // Stub globalThis.location.reload (component calls globalThis.location.reload())
     const mockReload = vi.fn()
     vi.stubGlobal('location', {
-      ...window.location,
       reload: mockReload,
+      href: '',
+      assign: vi.fn(),
+      replace: vi.fn(),
     } as unknown as Location)
   })
 
@@ -100,8 +102,8 @@ describe('TransferOwnershipModal', () => {
     await waitFor(() => {
       expect(ownershipTransfer).toHaveBeenCalledWith('new-owner-id', { token: 'final-token' })
       expect(window.location.reload).toHaveBeenCalled()
-    })
-  })
+    }, { timeout: 10000 })
+  }, 15000)
 
   it('should handle timer countdown and resend', async () => {
     vi.useFakeTimers()

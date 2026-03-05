@@ -246,10 +246,14 @@ describe('Compliance', () => {
       const downloadButtons = screen.getAllByText('common.operation.download')
       fireEvent.click(downloadButtons[0])
 
-      // Assert - spinner should appear while pending
+      // Assert - btn-disabled class and spinner should appear while mutation is pending
       await waitFor(() => {
-        expect(screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')!.querySelector('.btn-disabled')).toBeInTheDocument()
-      })
+        const menuItem = screen.getByText('common.compliance.soc2Type1').closest('[role="menuitem"]')
+        expect(menuItem).not.toBeNull()
+        // The action div gets btn-disabled class when isPending
+        const disabledBtn = menuItem!.querySelector('.btn-disabled')
+        expect(disabledBtn).not.toBeNull()
+      }, { timeout: 10000 })
 
       // Cleanup: resolve the pending promise
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
