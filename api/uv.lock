@@ -1606,7 +1606,7 @@ requires-dist = [
     { name = "langfuse", specifier = "~=2.51.3" },
     { name = "langsmith", specifier = "~=0.1.77" },
     { name = "litellm", specifier = "==1.77.1" },
-    { name = "markdown", specifier = "~=3.5.1" },
+    { name = "markdown", specifier = "~=3.8.1" },
     { name = "mlflow-skinny", specifier = ">=3.0.0" },
     { name = "numpy", specifier = "~=1.26.4" },
     { name = "openpyxl", specifier = "~=3.1.5" },
@@ -3437,11 +3437,11 @@ wheels = [
 
 [[package]]
 name = "markdown"
-version = "3.5.2"
+version = "3.8.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/28/c5441a6642681d92de56063fa7984df56f783d3f1eba518dc3e7a253b606/Markdown-3.5.2.tar.gz", hash = "sha256:e1ac7b3dc550ee80e602e71c1d168002f062e49f1b11e26a36264dafd4df2ef8", size = 349398, upload-time = "2024-01-10T15:19:38.261Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/7c/0738e5ff0adccd0b4e02c66d0446c03a3c557e02bb49b7c263d7ab56c57d/markdown-3.8.1.tar.gz", hash = "sha256:a2e2f01cead4828ee74ecca9623045f62216aef2212a7685d6eb9163f590b8c1", size = 361280, upload-time = "2025-06-18T14:50:49.618Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/f4/f0031854de10a0bc7821ef9fca0b92ca0d7aa6fbfbf504c5473ba825e49c/Markdown-3.5.2-py3-none-any.whl", hash = "sha256:d43323865d89fc0cb9b20c75fc8ad313af307cc087e84b657d9eec768eddeadd", size = 103870, upload-time = "2024-01-10T15:19:36.071Z" },
+    { url = "https://files.pythonhosted.org/packages/50/34/3d1ff0cb4843a33817d06800e9383a2b2a2df4d508e37f53a40e829905d9/markdown-3.8.1-py3-none-any.whl", hash = "sha256:46cc0c0f1e5211ab2e9d453582f0b28a1bfaf058a9f7d5c50386b99b588d8811", size = 106642, upload-time = "2025-06-18T14:50:48.52Z" },
 ]
 
 [[package]]
