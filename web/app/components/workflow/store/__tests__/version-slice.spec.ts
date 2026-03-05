@@ -1,8 +1,8 @@
 import type { VersionHistory } from '@/types/workflow'
-import { createWorkflowStore } from '../workflow'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 describe('Version Slice', () => {

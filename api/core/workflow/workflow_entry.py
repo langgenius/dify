@@ -5,26 +5,26 @@ from typing import Any, cast
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
-from dify_graph.enums import UserFrom
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
 from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from dify_graph.nodes import NodeType
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
@@ -32,6 +32,66 @@ from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class _WorkflowChildEngineBuilder:
+    @staticmethod
+    def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
+        """
+        Return whether `graph_config["nodes"]` contains the given node id.
+
+        Returns `None` when the nodes payload shape is unexpected, so graph-level
+        validation can surface the original configuration error.
+        """
+        nodes = graph_config.get("nodes")
+        if not isinstance(nodes, list):
+            return None
+
+        for node in nodes:
+            if not isinstance(node, Mapping):
+                return None
+            current_id = node.get("id")
+            if isinstance(current_id, str) and current_id == node_id:
+                return True
+        return False
+
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: Mapping[str, Any],
+        root_node_id: str,
+        layers: Sequence[object] = (),
+    ) -> GraphEngine:
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
+        has_root_node = self._has_node_id(graph_config=graph_config, node_id=root_node_id)
+        if has_root_node is False:
+            raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
+
+        child_graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=root_node_id,
+        )
+
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
+            child_engine_builder=self,
+        )
+        child_engine.layer(LLMQuotaLayer())
+        for layer in layers:
+            child_engine.layer(cast(GraphEngineLayer, layer))
+        return child_engine
 
 
 class WorkflowEntry:
@@ -77,6 +137,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
+        self._child_engine_builder = _WorkflowChildEngineBuilder()
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -88,6 +149,7 @@ class WorkflowEntry:
                 scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
+            child_engine_builder=self._child_engine_builder,
         )
 
         # Add debug logging layer when in debug mode
@@ -154,13 +216,15 @@ class WorkflowEntry:
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -293,13 +357,15 @@ class WorkflowEntry:
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
-            tenant_id=tenant_id,
-            app_id="",
             workflow_id="",
             graph_config=graph_dict,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=tenant_id,
+                app_id="",
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
