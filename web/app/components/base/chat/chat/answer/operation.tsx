@@ -39,6 +39,91 @@ type OperationProps = {
   noChatInput?: boolean
 }
 
+const stringifyCopyValue = (value: unknown) => {
+  if (typeof value === 'string')
+    return value
+
+  if (value === null || typeof value === 'undefined')
+    return ''
+
+  try {
+    return JSON.stringify(value, null, 2)
+  }
+  catch {
+    return String(value)
+  }
+}
+
+const buildCopyContentFromLLMGenerationItems = (llmGenerationItems?: ChatItem['llmGenerationItems']) => {
+  if (!llmGenerationItems?.length)
+    return ''
+
+  const hasStructuredItems = llmGenerationItems.some(item => item.type !== 'text')
+  if (!hasStructuredItems)
+    return ''
+
+  return llmGenerationItems
+    .map((item) => {
+      if (item.type === 'text')
+        return item.text || ''
+
+      if (item.type === 'thought')
+        return item.thoughtOutput ? `[THOUGHT]\n${item.thoughtOutput}` : ''
+
+      if (item.type === 'tool') {
+        const sections = [
+          `[TOOL] ${item.toolName || ''}`.trim(),
+        ]
+
+        if (item.toolArguments)
+          sections.push(`INPUT:\n${stringifyCopyValue(item.toolArguments)}`)
+        if (typeof item.toolOutput !== 'undefined')
+          sections.push(`OUTPUT:\n${stringifyCopyValue(item.toolOutput)}`)
+        if (item.toolError)
+          sections.push(`ERROR:\n${item.toolError}`)
+
+        return sections.join('\n')
+      }
+
+      if (item.type === 'model') {
+        const sections = [
+          `[MODEL] ${item.modelName || ''}`.trim(),
+        ]
+
+        if (typeof item.modelOutput !== 'undefined')
+          sections.push(`OUTPUT:\n${stringifyCopyValue(item.modelOutput)}`)
+
+        return sections.join('\n')
+      }
+
+      return ''
+    })
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+const buildCopyContentFromAgentThoughts = (agentThoughts?: ChatItem['agent_thoughts']) => {
+  if (!agentThoughts?.length)
+    return ''
+
+  return agentThoughts
+    .map((thought) => {
+      const sections = [
+        `[AGENT] ${thought.tool || ''}`.trim(),
+      ]
+
+      if (thought.thought)
+        sections.push(`THOUGHT:\n${thought.thought}`)
+      if (thought.tool_input)
+        sections.push(`INPUT:\n${thought.tool_input}`)
+      if (thought.observation)
+        sections.push(`OUTPUT:\n${thought.observation}`)
+
+      return sections.join('\n')
+    })
+    .join('\n\n')
+}
+
 const Operation: FC<OperationProps> = ({
   item,
   question,
@@ -84,6 +169,18 @@ const Operation: FC<OperationProps> = ({
 
     return messageContent
   }, [agent_thoughts, messageContent])
+
+  const copyContent = useMemo(() => {
+    const llmGenerationCopyContent = buildCopyContentFromLLMGenerationItems(item.llmGenerationItems)
+    if (llmGenerationCopyContent)
+      return llmGenerationCopyContent
+
+    const agentThoughtCopyContent = buildCopyContentFromAgentThoughts(agent_thoughts)
+    if (agentThoughtCopyContent)
+      return agentThoughtCopyContent
+
+    return messageContent
+  }, [item.llmGenerationItems, agent_thoughts, messageContent])
 
   const displayUserFeedback = userLocalFeedback ?? userFeedback
 
@@ -315,7 +412,7 @@ const Operation: FC<OperationProps> = ({
             )}
             {!humanInputFormDataList?.length && (
               <ActionButton onClick={() => {
-                copy(content)
+                copy(copyContent)
                 Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
               }}
               >
