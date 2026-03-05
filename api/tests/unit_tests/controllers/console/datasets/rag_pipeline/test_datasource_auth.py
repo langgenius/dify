@@ -16,8 +16,8 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourcePluginOAuthAuthorizationUrl,
     DatasourceUpdateProviderNameApi,
 )
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.impl.oauth import OAuthHandler
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 

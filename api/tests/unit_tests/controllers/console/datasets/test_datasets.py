@@ -220,10 +220,9 @@ class TestDatasetList:
                     "get_datasets",
                     return_value=(datasets, 1),
                 ),
-                patch.object(
-                    DatasetPermissionService,
-                    "get_dataset_partial_member_list",
-                    return_value=[{"id": "u1"}],
+                patch(
+                    "controllers.console.datasets.datasets.db.session.execute",
+                    return_value=MagicMock(all=lambda: [("ds-1", "u1")]),
                 ),
                 patch(
                     "controllers.console.datasets.datasets.marshal",
@@ -237,7 +236,7 @@ class TestDatasetList:
             ):
                 resp, status = method(api)
 
-        assert resp["data"][0]["partial_member_list"] == [{"id": "u1"}]
+        assert resp["data"][0]["partial_member_list"] == ["u1"]
 
 
 class TestDatasetListApiPost:

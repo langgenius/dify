@@ -248,6 +248,10 @@ class TestDatasetDocumentSegmentApi:
                 return_value=document,
             ),
             patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
@@ -288,6 +292,10 @@ class TestDatasetDocumentSegmentApi:
                 return_value=document,
             ),
             patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
@@ -296,7 +304,7 @@ class TestDatasetDocumentSegmentApi:
                 side_effect=LLMBadRequestError(),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ProviderNotInitializeError):
                 method(api, "ds-1", "doc-1", "enable")
 
     def test_patch_provider_token_not_init(self, app):
@@ -328,6 +336,10 @@ class TestDatasetDocumentSegmentApi:
                 return_value=document,
             ),
             patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
@@ -336,7 +348,7 @@ class TestDatasetDocumentSegmentApi:
                 side_effect=ProviderTokenNotInitError("token missing"),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ProviderNotInitializeError):
                 method(api, "ds-1", "doc-1", "enable")
 
 
@@ -570,11 +582,15 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=document,
             ),
             patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=LLMBadRequestError(),
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ProviderNotInitializeError):
                 method(api, "ds-1", "doc-1", "seg-1")
 
 
