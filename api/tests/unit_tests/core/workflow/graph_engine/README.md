@@ -68,7 +68,7 @@ print(f"Success rate: {suite_result.success_rate:.1f}%")
 #### Event Sequence Validation
 
 ```python
-from core.workflow.graph_events import (
+from dify_graph.graph_events import (
     GraphRunStartedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
@@ -376,39 +376,39 @@ See `test_mock_example.py` for comprehensive examples including:
 
 ```bash
 # Run graph engine tests (includes property-based tests)
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/test_graph_engine.py
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/test_graph_engine.py
 
 # Run with specific test patterns
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/test_graph_engine.py -k "test_echo"
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/test_graph_engine.py -k "test_echo"
 
 # Run with verbose output
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/test_graph_engine.py -v
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/test_graph_engine.py -v
 ```
 
 ### Mock System Tests
 
 ```bash
 # Run auto-mock system tests
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/test_auto_mock_system.py
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/test_auto_mock_system.py
 
 # Run examples
-uv run python api/tests/unit_tests/core/workflow/graph_engine/test_mock_example.py
+uv run python api/tests/unit_tests/dify_graph/graph_engine/test_mock_example.py
 
 # Run simple validation
-uv run python api/tests/unit_tests/core/workflow/graph_engine/test_mock_simple.py
+uv run python api/tests/unit_tests/dify_graph/graph_engine/test_mock_simple.py
 ```
 
 ### All Tests
 
 ```bash
 # Run all graph engine tests
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/
 
 # Run with coverage
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/ --cov=core.workflow.graph_engine
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/ --cov=dify_graph.graph_engine
 
 # Run in parallel
-uv run pytest api/tests/unit_tests/core/workflow/graph_engine/ -n auto
+uv run pytest api/tests/unit_tests/dify_graph/graph_engine/ -n auto
 ```
 
 ## Troubleshooting
