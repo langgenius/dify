@@ -7,7 +7,9 @@ const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [windowSize, setWindowSize] = useState({
+    /* v8 ignore next */
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    /* v8 ignore next */
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
   })
 

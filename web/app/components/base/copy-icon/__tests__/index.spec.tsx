@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import CopyIcon from '..'
 
 const copy = vi.fn()
@@ -20,33 +20,34 @@ describe('copy icon component', () => {
   })
 
   it('renders normally', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    expect(container.querySelector('svg')).not.toBeNull()
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = screen.getByTestId('copy-icon')
+    expect(icon).toBeInTheDocument()
   })
 
   it('shows copy icon initially', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = screen.getByTestId('copy-icon')
     expect(icon).toBeInTheDocument()
   })
 
   it('shows copy check icon when copied', () => {
     copied = true
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="CopyCheck"]')
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = screen.getByTestId('copied-icon')
     expect(icon).toBeInTheDocument()
   })
 
   it('handles copy when clicked', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = screen.getByTestId('copy-icon')
     fireEvent.click(icon as Element)
     expect(copy).toBeCalledTimes(1)
   })
 
   it('resets on mouse leave', () => {
-    const { container } = render(<CopyIcon content="this is some test content for the copy icon component" />)
-    const icon = container.querySelector('[data-icon="Copy"]')
+    render(<CopyIcon content="this is some test content for the copy icon component" />)
+    const icon = screen.getByTestId('copy-icon')
     const div = icon?.parentElement as HTMLElement
     fireEvent.mouseLeave(div)
     expect(reset).toBeCalledTimes(1)

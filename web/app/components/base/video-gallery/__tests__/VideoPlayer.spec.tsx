@@ -47,7 +47,7 @@ describe('VideoPlayer', () => {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'volume', {
         configurable: true,
         // eslint-disable-next-line ts/no-explicit-any
-        get() { return (this as any)._volume || 1 },
+        get() { return (this as any)._volume ?? 1 },
         // eslint-disable-next-line ts/no-explicit-any
         set(v) { (this as any)._volume = v },
       })
@@ -96,10 +96,23 @@ describe('VideoPlayer', () => {
     it('should toggle mute on button click', async () => {
       const user = userEvent.setup()
       render(<VideoPlayer src={mockSrc} />)
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
       const muteBtn = screen.getByTestId('video-mute-button')
 
+      // Ensure volume is positive before muting
+      video.volume = 0.7
+
+      // First click mutes
       await user.click(muteBtn)
-      expect(muteBtn).toBeInTheDocument()
+      expect(video.muted).toBe(true)
+
+      // Set volume back to a positive value to test the volume > 0 branch in unmute
+      video.volume = 0.7
+
+      // Second click unmutes — since volume > 0, the ternary should keep video.volume
+      await user.click(muteBtn)
+      expect(video.muted).toBe(false)
+      expect(video.volume).toBe(0.7)
     })
 
     it('should toggle fullscreen on button click', async () => {
@@ -257,6 +270,187 @@ describe('VideoPlayer', () => {
       await waitFor(() => {
         expect(screen.getByTestId('video-time-display')).toBeInTheDocument()
       })
+    })
+
+    it('should handle play() rejection error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      window.HTMLVideoElement.prototype.play = vi.fn().mockRejectedValue(new Error('Play failed'))
+      const user = userEvent.setup()
+
+      render(<VideoPlayer src={mockSrc} />)
+      const playPauseBtn = screen.getByTestId('video-play-pause-button')
+
+      await user.click(playPauseBtn)
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith('Error playing video:', expect.any(Error))
+      })
+      consoleSpy.mockRestore()
+    })
+
+    it('should reset volume to 1 when unmuting with volume at 0', async () => {
+      const user = userEvent.setup()
+      render(<VideoPlayer src={mockSrc} />)
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      const muteBtn = screen.getByTestId('video-mute-button')
+
+      // First click mutes — this sets volume to 0 and muted to true
+      await user.click(muteBtn)
+      expect(video.muted).toBe(true)
+      expect(video.volume).toBe(0)
+
+      // Now explicitly ensure video.volume is 0 for unmute path
+      video.volume = 0
+
+      // Second click unmutes — since volume is 0, the ternary
+      // (video.volume > 0 ? video.volume : 1) should choose 1
+      await user.click(muteBtn)
+      expect(video.muted).toBe(false)
+      expect(video.volume).toBe(1)
+    })
+
+    it('should not clear hoverTime on mouseLeave while dragging', () => {
+      render(<VideoPlayer src={mockSrc} />)
+      const progressBar = screen.getByTestId('video-progress-bar')
+
+      vi.spyOn(progressBar, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        width: 100,
+        top: 0,
+        right: 100,
+        bottom: 10,
+        height: 10,
+        x: 0,
+        y: 0,
+        toJSON: () => { },
+      } as DOMRect)
+
+      // Start dragging
+      fireEvent.mouseDown(progressBar, { clientX: 50 })
+
+      // mouseLeave while dragging — hoverTime should remain visible
+      fireEvent.mouseLeave(progressBar)
+      expect(screen.getByTestId('video-hover-time')).toBeInTheDocument()
+
+      // End drag
+      fireEvent.mouseUp(document)
+    })
+
+    it('should not update time for out-of-bounds progress click', () => {
+      render(<VideoPlayer src={mockSrc} />)
+      const progressBar = screen.getByTestId('video-progress-bar')
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+
+      vi.spyOn(progressBar, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        width: 100,
+        top: 0,
+        right: 100,
+        bottom: 10,
+        height: 10,
+        x: 0,
+        y: 0,
+        toJSON: () => { },
+      } as DOMRect)
+
+      // Click far beyond the bar (clientX > rect.width) — pos > 1, newTime > duration
+      fireEvent.click(progressBar, { clientX: 200 })
+      // currentTime should remain unchanged since newTime (200) > duration (100)
+      expect(video.currentTime).toBe(0)
+
+      // Click at negative position
+      fireEvent.click(progressBar, { clientX: -50 })
+      // currentTime should remain unchanged since newTime < 0
+      expect(video.currentTime).toBe(0)
+    })
+
+    it('should render without src or srcs', () => {
+      render(<VideoPlayer />)
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+      expect(video).toBeInTheDocument()
+      expect(video.src).toBeFalsy()
+      expect(video.querySelectorAll('source')).toHaveLength(0)
+    })
+
+    it('should show controls on mouseEnter', () => {
+      vi.useFakeTimers()
+      render(<VideoPlayer src={mockSrc} />)
+      const container = screen.getByTestId('video-player-container')
+
+      // Let controls hide
+      fireEvent.mouseMove(container)
+      act(() => {
+        vi.advanceTimersByTime(3001)
+      })
+
+      // mouseEnter should show controls again
+      fireEvent.mouseEnter(container)
+
+      vi.useRealTimers()
+    })
+
+    it('should handle volume drag with inline mouseDown handler', () => {
+      render(<VideoPlayer src={mockSrc} />)
+      const volumeSlider = screen.getByTestId('video-volume-slider')
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+
+      vi.spyOn(volumeSlider, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        width: 100,
+        top: 0,
+        right: 100,
+        bottom: 10,
+        height: 10,
+        x: 0,
+        y: 0,
+        toJSON: () => { },
+      } as DOMRect)
+
+      // MouseDown starts the inline drag handler and sets initial volume
+      fireEvent.mouseDown(volumeSlider, { clientX: 30 })
+      expect(video.volume).toBe(0.3)
+
+      // Drag via document mousemove (registered in inline handler)
+      fireEvent.mouseMove(document, { clientX: 60 })
+      expect(video.volume).toBe(0.6)
+
+      // MouseUp cleans up the listeners
+      fireEvent.mouseUp(document)
+
+      // After mouseUp, further moves should not affect volume
+      fireEvent.mouseMove(document, { clientX: 10 })
+      expect(video.volume).toBe(0.6)
+    })
+
+    it('should clamp volume slider to max 1', () => {
+      render(<VideoPlayer src={mockSrc} />)
+      const volumeSlider = screen.getByTestId('video-volume-slider')
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+
+      vi.spyOn(volumeSlider, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        width: 100,
+        top: 0,
+        right: 100,
+        bottom: 10,
+        height: 10,
+        x: 0,
+        y: 0,
+        toJSON: () => { },
+      } as DOMRect)
+
+      // Click beyond slider range — should clamp to 1
+      fireEvent.click(volumeSlider, { clientX: 200 })
+      expect(video.volume).toBe(1)
+    })
+
+    it('should handle global mouse move when not dragging (no-op)', () => {
+      render(<VideoPlayer src={mockSrc} />)
+      const video = screen.getByTestId('video-element') as HTMLVideoElement
+
+      // Global mouse move without any drag — should not change anything
+      fireEvent.mouseMove(document, { clientX: 50 })
+      expect(video.currentTime).toBe(0)
     })
   })
 })

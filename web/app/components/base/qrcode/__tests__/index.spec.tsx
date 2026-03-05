@@ -90,5 +90,42 @@ describe('ShareQRCode', () => {
         HTMLCanvasElement.prototype.toDataURL = originalToDataURL
       }
     })
+
+    it('does not call downloadUrl when canvas is not found', async () => {
+      const user = userEvent.setup()
+      render(<ShareQRCode content={content} />)
+
+      const trigger = screen.getByTestId('qrcode-container')
+      await user.click(trigger)
+
+      // Override querySelector on the panel to simulate canvas not being found
+      const panel = screen.getByRole('img').parentElement!
+      const origQuerySelector = panel.querySelector.bind(panel)
+      panel.querySelector = ((sel: string) => {
+        if (sel === 'canvas')
+          return null
+        return origQuerySelector(sel)
+      }) as typeof panel.querySelector
+
+      const downloadBtn = screen.getByText('appOverview.overview.appInfo.qrcode.download')
+      await user.click(downloadBtn)
+
+      expect(downloadUrl).not.toHaveBeenCalled()
+      panel.querySelector = origQuerySelector
+    })
+
+    it('does not close when clicking inside the qrcode ref area', async () => {
+      const user = userEvent.setup()
+      render(<ShareQRCode content={content} />)
+
+      const trigger = screen.getByTestId('qrcode-container')
+      await user.click(trigger)
+
+      // Click on the scan text inside the panel — panel should remain open
+      const scanText = screen.getByText('appOverview.overview.appInfo.qrcode.scan')
+      await user.click(scanText)
+
+      expect(screen.getByRole('img')).toBeInTheDocument()
+    })
   })
 })

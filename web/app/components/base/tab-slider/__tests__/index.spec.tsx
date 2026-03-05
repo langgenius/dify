@@ -104,4 +104,11 @@ describe('TabSlider Component', () => {
     expect(slider.style.transform).toBe('translateX(120px)')
     expect(slider.style.width).toBe('80px')
   })
+
+  it('does not call onChange when clicking the already active tab', () => {
+    render(<TabSlider value="all" options={mockOptions} onChange={onChangeMock} />)
+    const activeTab = screen.getByTestId('tab-item-all')
+    fireEvent.click(activeTab)
+    expect(onChangeMock).not.toHaveBeenCalled()
+  })
 })

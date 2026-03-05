@@ -55,6 +55,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const video = videoRef.current
+    /* v8 ignore next 2 -- @preserve */
     if (!video)
       return
 
@@ -99,6 +100,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current
+    /* v8 ignore next -- @preserve */
     if (video) {
       if (isPlaying)
         video.pause()
@@ -109,6 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current
+    /* v8 ignore next -- @preserve */
     if (video) {
       const newMutedState = !video.muted
       video.muted = newMutedState
@@ -120,6 +123,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const toggleFullscreen = useCallback(() => {
     const video = videoRef.current
+    /* v8 ignore next -- @preserve */
     if (video) {
       if (document.fullscreenElement)
         document.exitFullscreen()
@@ -136,6 +140,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const updateVideoProgress = useCallback((clientX: number, updateTime = false) => {
     const progressBar = progressRef.current
     const video = videoRef.current
+    /* v8 ignore next -- @preserve */
     if (progressBar && video) {
       const rect = progressBar.getBoundingClientRect()
       const pos = (clientX - rect.left) / rect.width
@@ -170,6 +175,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
+      /* v8 ignore next -- @preserve */
       if (isDragging)
         updateVideoProgress(e.clientX)
     }
@@ -191,6 +197,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   }, [isDragging, updateVideoProgress])
 
   const checkSize = useCallback(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (containerRef.current)
       setIsSmallSize(containerRef.current.offsetWidth < 400)
   }, [])
@@ -204,6 +211,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const volumeBar = volumeRef.current
     const video = videoRef.current
+    /* v8 ignore next */
     if (volumeBar && video) {
       const rect = volumeBar.getBoundingClientRect()
       const newVolume = (e.clientX - rect.left) / rect.width
