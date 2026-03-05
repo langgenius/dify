@@ -1,4 +1,6 @@
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { useModalContextSelector } from '@/context/modal-context'
 import { formatNumber } from '@/utils/format'
 import { useTrialCredits } from '../use-trial-credits'
 
@@ -8,6 +10,7 @@ type CreditsExhaustedAlertProps = {
 
 export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExhaustedAlertProps) {
   const { t } = useTranslation()
+  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const { credits, totalCredits } = useTrialCredits()
 
   const titleKey = hasApiKeyFallback
@@ -27,11 +30,13 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
           {t(titleKey, { ns: 'common' })}
         </div>
         <div className="text-text-tertiary system-xs-regular">
-          {t(descriptionKey, {
-            ns: 'common',
-            upgradeLink: `<a class="text-text-accent cursor-pointer system-xs-medium">${t('modelProvider.card.upgradePlan', { ns: 'common' })}</a>`,
-            interpolation: { escapeValue: false },
-          })}
+          <Trans
+            i18nKey={descriptionKey}
+            ns="common"
+            components={{
+              upgradeLink: <span className="cursor-pointer text-text-accent system-xs-medium" onClick={setShowPricingModal} />,
+            }}
+          />
         </div>
       </div>
       <div className="mt-3 flex flex-col gap-1">
@@ -40,7 +45,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             {t('modelProvider.card.usageLabel', { ns: 'common' })}
           </span>
           <div className="flex items-center gap-0.5 text-text-tertiary system-xs-regular">
-            <span className="i-ri-coin-line h-3 w-3" />
+            <CreditsCoin className="h-3 w-3" />
             <span>
               {formatNumber(usedCredits)}
               /
