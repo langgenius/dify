@@ -14,7 +14,7 @@ from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParamet
 from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError
 
 
-class _OpenAPIInterface(TypedDict):
+class InterfaceDict(TypedDict):
     path: str
     method: str
     operation: dict[str, Any]
@@ -41,17 +41,17 @@ class ApiBasedToolSchemaParser:
             server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
-        interfaces: list[_OpenAPIInterface] = []
+        interfaces: list[InterfaceDict] = []
         for path, path_item in openapi["paths"].items():
             methods = ["get", "post", "put", "delete", "patch", "head", "options", "trace"]
             for method in methods:
                 if method in path_item:
                     interfaces.append(
-                        _OpenAPIInterface(
-                            path=path,
-                            method=method,
-                            operation=path_item[method],
-                        )
+                        {
+                            "path": path,
+                            "method": method,
+                            "operation": path_item[method],
+                        }
                     )
 
         # get all parameters

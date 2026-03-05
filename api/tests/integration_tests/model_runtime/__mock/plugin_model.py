@@ -4,20 +4,27 @@ from collections.abc import Generator, Sequence
 from decimal import Decimal
 from json import dumps
 
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.impl.model import PluginModelClient
+
 # import monkeypatch
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import (
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.llm_entities import (
+    LLMMode,
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
+from dify_graph.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     ModelFeature,
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
-from core.plugin.impl.model import PluginModelClient
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 
 class MockModelClass(PluginModelClient):

@@ -12,8 +12,8 @@ from controllers.common.schema import register_enum_models, register_schema_mode
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService

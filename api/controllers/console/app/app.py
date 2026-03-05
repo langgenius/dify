@@ -25,8 +25,8 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
-from core.workflow.file import helpers as file_helpers
+from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
