@@ -76,8 +76,7 @@ def create_flask_app_with_configs() -> DifyApp:
                             # build_force_logout_cookie_headers(). Frontend then checks
                             # code === 'unauthorized_and_force_logout' and calls location.reload().
                             raise UnauthorizedAndForceLogout(
-                                f"Enterprise license is {license_status}. "
-                                "Please contact your administrator."
+                                f"Enterprise license is {license_status}. Please contact your administrator."
                             )
                     except UnauthorizedAndForceLogout:
                         raise

@@ -101,10 +101,7 @@ class BaseRequest:
                 # {"message": "..."}
                 # {"detail": "..."}
                 error_message = (
-                    error_data.get("message")
-                    or error_data.get("error")
-                    or error_data.get("detail")
-                    or error_message
+                    error_data.get("message") or error_data.get("error") or error_data.get("detail") or error_message
                 )
         except Exception:
             # If JSON parsing fails, use the default message
