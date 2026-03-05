@@ -14,8 +14,8 @@ from controllers.console.workspace.models import (
     ModelProviderModelParameterRuleApi,
     ModelProviderModelValidateApi,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
 def unwrap(func):

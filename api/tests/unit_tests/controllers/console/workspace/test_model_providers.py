@@ -13,7 +13,7 @@ from controllers.console.workspace.model_providers import (
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
