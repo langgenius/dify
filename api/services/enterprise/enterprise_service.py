@@ -258,9 +258,11 @@ class EnterpriseService:
             info = cls.get_info()
             license_info = info.get("License")
             if license_info:
-                status = license_info.get("status", "inactive")
+                from services.feature_service import LicenseStatus
+
+                status = license_info.get("status", LicenseStatus.INACTIVE)
                 # Only cache valid statuses so license updates are picked up immediately
-                if status in ("active", "expiring"):
+                if status in (LicenseStatus.ACTIVE, LicenseStatus.EXPIRING):
                     try:
                         redis_client.setex(LICENSE_STATUS_CACHE_KEY, LICENSE_STATUS_CACHE_TTL, status)
                     except Exception:
