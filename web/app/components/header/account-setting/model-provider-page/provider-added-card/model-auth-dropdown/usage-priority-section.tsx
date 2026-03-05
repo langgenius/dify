@@ -21,7 +21,7 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
     : PreferredProviderTypeEnum.custom
 
   return (
-    <div className="border-b border-b-divider-subtle p-1">
+    <div className="p-1">
       <div className="flex items-center gap-1 rounded-lg p-1">
         <div className="shrink-0 px-0.5 py-1">
           <span className="i-ri-arrow-up-double-line block h-4 w-4 text-text-tertiary" />

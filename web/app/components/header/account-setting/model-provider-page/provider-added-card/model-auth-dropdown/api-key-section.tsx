@@ -52,7 +52,7 @@ function ApiKeySection({
   }
 
   return (
-    <div>
+    <div className="border-t border-t-divider-subtle">
       <div className="px-1">
         <div className="pb-1 pl-7 pr-2 pt-3 text-text-tertiary system-xs-medium-uppercase">
           {t('modelProvider.auth.apiKeys', { ns: 'common' })}
