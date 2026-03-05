@@ -25,11 +25,15 @@ class DatasetConfigManager:
             datasets = config.get("dataset_configs", {}).get("datasets", {"strategy": "router", "datasets": []})
 
             for dataset in datasets.get("datasets", []):
+                if not isinstance(dataset, dict):
+                    continue
                 keys = list(dataset.keys())
                 if len(keys) == 0 or keys[0] != "dataset":
                     continue
 
                 dataset = dataset["dataset"]
+                if not isinstance(dataset, dict):
+                    continue
 
                 if "enabled" not in dataset or not dataset["enabled"]:
                     continue
