@@ -84,7 +84,6 @@ from .entities import (
     LLMNodeData,
 )
 from .exc import (
-    InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMNodeError,
     MemoryRolePrefixRequiredError,
@@ -578,6 +577,27 @@ class LLMNode(Node[LLMNodeData]):
 
         return messages
 
+    @staticmethod
+    def _dict_to_text(input_dict: Mapping[str, Any]) -> str:
+        """
+        Convert a dictionary into a string suitable for LLM consumption.
+
+        This mirrors the logic previously duplicated in
+        `_fetch_jinja_inputs.parse_dict`:
+        * if the dict looks like a context entry (`metadata._source` and
+          `content` present) return the content string directly
+        * otherwise fall back to `json.dumps` and finally `str`
+        """
+        # check if it's a context structure
+        if "metadata" in input_dict and "_source" in input_dict["metadata"] and "content" in input_dict:
+            return str(input_dict["content"])
+
+        # else, try to serialize
+        try:
+            return json.dumps(input_dict, ensure_ascii=False)
+        except Exception:
+            return str(input_dict)
+
     def _fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
         variables: dict[str, Any] = {}
 
@@ -590,31 +610,17 @@ class LLMNode(Node[LLMNodeData]):
             if variable is None:
                 raise VariableNotFoundError(f"Variable {variable_selector.variable} not found")
 
-            def parse_dict(input_dict: Mapping[str, Any]) -> str:
-                """
-                Parse dict into string
-                """
-                # check if it's a context structure
-                if "metadata" in input_dict and "_source" in input_dict["metadata"] and "content" in input_dict:
-                    return str(input_dict["content"])
-
-                # else, parse the dict
-                try:
-                    return json.dumps(input_dict, ensure_ascii=False)
-                except Exception:
-                    return str(input_dict)
-
             if isinstance(variable, ArraySegment):
                 result = ""
                 for item in variable.value:
                     if isinstance(item, dict):
-                        result += parse_dict(item)
+                        result += LLMNode._dict_to_text(item)
                     else:
                         result += str(item)
                     result += "\n"
                 value = result.strip()
             elif isinstance(variable, ObjectSegment):
-                value = parse_dict(variable.value)
+                value = LLMNode._dict_to_text(variable.value)
             else:
                 value = variable.text
 
@@ -679,12 +685,17 @@ class LLMNode(Node[LLMNodeData]):
                     if isinstance(item, str):
                         context_str += item + "\n"
                     else:
-                        if "content" not in item:
-                            raise InvalidContextStructureError(f"Invalid context structure: {item}")
-
-                        if item.get("summary"):
-                            context_str += item["summary"] + "\n"
-                        context_str += item["content"] + "\n"
+                        # if the item carries an explicit 'content' field we treat
+                        # it as the usual retriever output; otherwise we simply
+                        # serialize the item so arbitrary dictionaries are
+                        # tolerated.
+                        if "content" in item:
+                            if item.get("summary"):
+                                context_str += item["summary"] + "\n"
+                            context_str += item["content"] + "\n"
+                        else:
+                            # fallback for user‑constructed or aggregated vars
+                            context_str += LLMNode._dict_to_text(item) + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
                         if retriever_resource:

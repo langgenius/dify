@@ -24,6 +24,7 @@ from dify_graph.model_runtime.entities.message_entities import (
 )
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.node_events.node import RunRetrieverResourceEvent
 from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,
@@ -324,6 +325,44 @@ def test_fetch_files_with_non_existent_variable():
     variable_pool = VariablePool.empty()
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
+
+
+def test_fetch_context_array_with_various_items(llm_node, graph_runtime_state):
+    # enable context and set selector in node data
+    llm_node.node_data.context.enabled = True
+    llm_node.node_data.context.variable_selector = ["sys", "ctx"]
+
+    # prepare an ArrayAnySegment containing a raw dict, a string and a knowledge-like dict
+    raw_dict = {"foo": "bar"}
+    knowledge_item = {
+        "metadata": {"_source": "knowledge", "segment_id": "seg1"},
+        "content": "hello",
+        "summary": "hi",
+    }
+    arr = ArrayAnySegment(value=[raw_dict, "plain text", knowledge_item])
+    graph_runtime_state.variable_pool.add(["sys", "ctx"], arr)
+
+    events = list(llm_node._fetch_context(node_data=llm_node.node_data))
+    assert len(events) == 1
+    ev = events[0]
+    assert isinstance(ev, RunRetrieverResourceEvent)
+
+    # context string should contain both the serialized raw dict and the string and content
+    assert "foo" in ev.context
+    assert "plain text" in ev.context
+    assert "hello" in ev.context
+
+    # retriever_resources should capture the knowledge item
+    assert len(ev.retriever_resources) == 1
+    assert ev.retriever_resources[0].segment_id == "seg1"
+
+
+def test_fetch_context_disabled_returns_nothing(llm_node):
+    llm_node.node_data.context.enabled = False
+    llm_node.node_data.context.variable_selector = ["sys", "ctx"]
+    # even if the variable exists, generator should be empty when disabled
+    llm_node.graph_runtime_state.variable_pool.add(["sys", "ctx"], ArrayAnySegment(value=[{"a": 1}]))
+    assert list(llm_node._fetch_context(node_data=llm_node.node_data)) == []
 
 
 # def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
