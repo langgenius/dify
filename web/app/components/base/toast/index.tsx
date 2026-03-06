@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import ActionButton from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'
+import type { IToastProps } from './context'
 import { ToastContext, useToastContext } from './context'
 
 export type ToastHandle = {
