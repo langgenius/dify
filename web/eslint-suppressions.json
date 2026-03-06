@@ -4891,11 +4891,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-selector/model-trigger.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
     "no-restricted-imports": {
       "count": 1
