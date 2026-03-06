@@ -28,7 +28,7 @@ export const Markdown = (props: MarkdownProps) => {
   ])(props.content)
 
   return (
-    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
+    <div className={cn('markdown-body', '!text-text-primary', props.className)} data-testid="markdown-body">
       <ReactMarkdown
         pluginInfo={pluginInfo}
         latexContent={latexContent}

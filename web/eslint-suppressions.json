@@ -1675,9 +1675,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7270,9 +7267,6 @@
   "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-name.tsx": {
