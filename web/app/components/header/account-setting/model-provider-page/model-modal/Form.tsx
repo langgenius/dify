@@ -12,7 +12,7 @@ import type {
 import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { Fragment, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -211,6 +211,7 @@ function Form<
             )}
             {tooltipContent}
           </div>
+          {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
           <div className={cn('grid gap-3', `grid-cols-${options?.length}`)}>
             {options.filter((option) => {
               if (option.show_on.length)
@@ -484,11 +485,7 @@ function Form<
 
   return (
     <div className={className}>
-      {formSchemas.map(formSchema => (
-        <Fragment key={formSchema.variable}>
-          {renderField(formSchema)}
-        </Fragment>
-      ))}
+      {formSchemas.map(formSchema => renderField(formSchema))}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
+import type { IToastProps } from './context'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'

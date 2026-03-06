@@ -2,14 +2,6 @@ import type { InvitationResult } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import InvitedModal from './index'
 
-vi.mock('@headlessui/react', () => ({
-  Transition: ({ show, children }: { show: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogPanel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
-  DialogTitle: ({ children, className }: { children: React.ReactNode, className?: string }) => <h3 className={className}>{children}</h3>,
-}))
-
 const mockConfigState = vi.hoisted(() => ({ isCeEdition: true }))
 
 vi.mock('@/config', () => ({

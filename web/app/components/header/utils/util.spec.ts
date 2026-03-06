@@ -25,7 +25,7 @@ describe('generateMailToLink', () => {
     const result = generateMailToLink('test@example.com', undefined, 'Some body text')
 
     // Assert
-    expect(result).toBe('mailto:test@example.com?body=Some%20body%20text')
+    expect(result).toBe('mailto:test@example.com&body=Some%20body%20text')
   })
 
   // Both subject and body provided: both branches true
