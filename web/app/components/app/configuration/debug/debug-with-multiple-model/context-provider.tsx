@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { DebugWithMultipleModelContextType } from './context'
 import { DebugWithMultipleModelContext } from './context'
@@ -14,13 +15,20 @@ export const DebugWithMultipleModelContextProvider = ({
   onDebugWithMultipleModelChange,
   checkCanSend,
 }: DebugWithMultipleModelContextProviderProps) => {
+  const contextValue = useMemo(() => ({
+    onMultipleModelConfigsChange,
+    multipleModelConfigs,
+    onDebugWithMultipleModelChange,
+    checkCanSend,
+  }), [
+    onMultipleModelConfigsChange,
+    multipleModelConfigs,
+    onDebugWithMultipleModelChange,
+    checkCanSend,
+  ])
+
   return (
-    <DebugWithMultipleModelContext.Provider value={{
-      onMultipleModelConfigsChange,
-      multipleModelConfigs,
-      onDebugWithMultipleModelChange,
-      checkCanSend,
-    }}
+    <DebugWithMultipleModelContext.Provider value={contextValue}
     >
       {children}
     </DebugWithMultipleModelContext.Provider>

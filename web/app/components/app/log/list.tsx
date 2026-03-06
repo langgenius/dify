@@ -1040,10 +1040,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         footer={null}
         panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
       >
-        <DrawerContext.Provider value={{
+        <DrawerContext.Provider value={useMemo(() => ({
           onClose: onCloseDrawer,
           appDetail,
-        }}
+        }), [onCloseDrawer, appDetail])}
         >
           {isChatMode
             ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />

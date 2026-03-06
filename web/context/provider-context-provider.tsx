@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/base/ui/toast'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -57,11 +57,11 @@ export const ProviderContextProvider = ({
   const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
-  const refreshModelProviders = () => {
+  const refreshModelProviders = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
-  }
+  }, [queryClient])
 
-  const fetchPlan = async () => {
+  const fetchPlan = useCallback(async () => {
     try {
       const data = await fetchCurrentPlanInfo()
       if (!data) {
@@ -103,10 +103,10 @@ export const ProviderContextProvider = ({
       setIsEducationWorkspace(false)
       setEnableReplaceWebAppLogo(false)
     }
-  }
+  }, [])
   useEffect(() => {
     fetchPlan()
-  }, [])
+  }, [fetchPlan])
 
   // #region Zendesk conversation fields
   useEffect(() => {
@@ -143,34 +143,61 @@ export const ProviderContextProvider = ({
     }
   }, [providersData, t])
 
+  const contextValue = useMemo(() => ({
+    modelProviders: providersData?.data || [],
+    refreshModelProviders,
+    textGenerationModelList: textGenerationModelList?.data || [],
+    isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),
+    supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
+    plan,
+    isFetchedPlan,
+    enableBilling,
+    onPlanInfoChanged: fetchPlan,
+    enableReplaceWebAppLogo,
+    modelLoadBalancingEnabled,
+    datasetOperatorEnabled,
+    enableEducationPlan,
+    isEducationWorkspace,
+    isEducationAccount: isEducationDataFetchedAfterMount ? (educationAccountInfo?.is_student ?? false) : false,
+    allowRefreshEducationVerify: isEducationDataFetchedAfterMount ? (educationAccountInfo?.allow_refresh ?? false) : false,
+    educationAccountExpireAt: isEducationDataFetchedAfterMount ? (educationAccountInfo?.expire_at ?? null) : null,
+    isLoadingEducationAccountInfo,
+    isFetchingEducationAccountInfo,
+    webappCopyrightEnabled,
+    licenseLimit,
+    refreshLicenseLimit: fetchPlan,
+    isAllowTransferWorkspace,
+    isAllowPublishAsCustomKnowledgePipelineTemplate,
+    humanInputEmailDeliveryEnabled,
+  }), [
+    providersData?.data,
+    refreshModelProviders,
+    textGenerationModelList?.data,
+    supportRetrievalMethods?.retrieval_method,
+    plan,
+    isFetchedPlan,
+    enableBilling,
+    fetchPlan,
+    enableReplaceWebAppLogo,
+    modelLoadBalancingEnabled,
+    datasetOperatorEnabled,
+    enableEducationPlan,
+    isEducationWorkspace,
+    isEducationDataFetchedAfterMount,
+    educationAccountInfo?.is_student,
+    educationAccountInfo?.allow_refresh,
+    educationAccountInfo?.expire_at,
+    isLoadingEducationAccountInfo,
+    isFetchingEducationAccountInfo,
+    webappCopyrightEnabled,
+    licenseLimit,
+    isAllowTransferWorkspace,
+    isAllowPublishAsCustomKnowledgePipelineTemplate,
+    humanInputEmailDeliveryEnabled,
+  ])
+
   return (
-    <ProviderContext.Provider value={{
-      modelProviders: providersData?.data || [],
-      refreshModelProviders,
-      textGenerationModelList: textGenerationModelList?.data || [],
-      isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),
-      supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
-      plan,
-      isFetchedPlan,
-      enableBilling,
-      onPlanInfoChanged: fetchPlan,
-      enableReplaceWebAppLogo,
-      modelLoadBalancingEnabled,
-      datasetOperatorEnabled,
-      enableEducationPlan,
-      isEducationWorkspace,
-      isEducationAccount: isEducationDataFetchedAfterMount ? (educationAccountInfo?.is_student ?? false) : false,
-      allowRefreshEducationVerify: isEducationDataFetchedAfterMount ? (educationAccountInfo?.allow_refresh ?? false) : false,
-      educationAccountExpireAt: isEducationDataFetchedAfterMount ? (educationAccountInfo?.expire_at ?? null) : null,
-      isLoadingEducationAccountInfo,
-      isFetchingEducationAccountInfo,
-      webappCopyrightEnabled,
-      licenseLimit,
-      refreshLicenseLimit: fetchPlan,
-      isAllowTransferWorkspace,
-      isAllowPublishAsCustomKnowledgePipelineTemplate,
-      humanInputEmailDeliveryEnabled,
-    }}
+    <ProviderContext.Provider value={contextValue}
     >
       {children}
     </ProviderContext.Provider>

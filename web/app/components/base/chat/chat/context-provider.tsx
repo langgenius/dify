@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { ChatContextValue } from './context'
 import { ChatContext } from './context'
@@ -26,24 +27,42 @@ export const ChatContextProvider = ({
   onFeedback,
   getHumanInputNodeData,
 }: ChatContextProviderProps) => {
+  const contextValue = useMemo(() => ({
+    config,
+    readonly,
+    isResponding,
+    chatList: chatList || [],
+    showPromptLog,
+    questionIcon,
+    answerIcon,
+    onSend,
+    onRegenerate,
+    onAnnotationEdited,
+    onAnnotationAdded,
+    onAnnotationRemoved,
+    disableFeedback,
+    onFeedback,
+    getHumanInputNodeData,
+  }), [
+    config,
+    readonly,
+    isResponding,
+    chatList,
+    showPromptLog,
+    questionIcon,
+    answerIcon,
+    onSend,
+    onRegenerate,
+    onAnnotationEdited,
+    onAnnotationAdded,
+    onAnnotationRemoved,
+    disableFeedback,
+    onFeedback,
+    getHumanInputNodeData,
+  ])
+
   return (
-    <ChatContext.Provider value={{
-      config,
-      readonly,
-      isResponding,
-      chatList: chatList || [],
-      showPromptLog,
-      questionIcon,
-      answerIcon,
-      onSend,
-      onRegenerate,
-      onAnnotationEdited,
-      onAnnotationAdded,
-      onAnnotationRemoved,
-      disableFeedback,
-      onFeedback,
-      getHumanInputNodeData,
-    }}
+    <ChatContext.Provider value={contextValue}
     >
       {children}
     </ChatContext.Provider>

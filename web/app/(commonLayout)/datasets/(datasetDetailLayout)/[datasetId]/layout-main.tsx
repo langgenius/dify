@@ -125,11 +125,11 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
-      <DatasetDetailContext.Provider value={{
+      <DatasetDetailContext.Provider value={useMemo(() => ({
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
         mutateDatasetRes,
-      }}
+      }), [datasetRes, mutateDatasetRes])}
       >
         {!hideSideBar && (
           <AppSideBar
