@@ -13,6 +13,46 @@ def variable_pool() -> VariablePool:
     return pool
 
 
+class TestTypeCoercionViaResolve:
+    """Type coercion is tested through the public resolve_completion_params_variables API."""
+
+    def test_numeric_string_coerced_to_float(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], "0.7")
+        result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
+        assert result["p"] == 0.7
+
+    def test_integer_string_coerced_to_int(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], "1024")
+        result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
+        assert result["p"] == 1024
+
+    def test_boolean_string_coerced_to_bool(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], "true")
+        result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
+        assert result["p"] is True
+
+    def test_plain_string_stays_string(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], "json_object")
+        result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
+        assert result["p"] == "json_object"
+
+    def test_json_object_string_stays_string(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], '{"key": "val"}')
+        result = llm_utils.resolve_completion_params_variables({"p": "{{#n.v#}}"}, pool)
+        assert result["p"] == '{"key": "val"}'
+
+    def test_mixed_text_and_variable_stays_string(self):
+        pool = VariablePool.empty()
+        pool.add(["n", "v"], "0.7")
+        result = llm_utils.resolve_completion_params_variables({"p": "val={{#n.v#}}"}, pool)
+        assert result["p"] == "val=0.7"
+
+
 class TestResolveCompletionParamsVariables:
     def test_plain_string_values_unchanged(self, variable_pool: VariablePool):
         params = {"response_format": "json", "custom_param": "static_value"}
@@ -112,6 +152,15 @@ class TestResolveCompletionParamsVariables:
         original = {"response_format": "{{#node1.output#}}", "temperature": 0.5}
         original_copy = dict(original)
 
-        llm_utils.resolve_completion_params_variables(original, variable_pool)
+        _ = llm_utils.resolve_completion_params_variables(original, variable_pool)
 
         assert original == original_copy
+
+    def test_long_value_truncated(self):
+        pool = VariablePool.empty()
+        pool.add(["node1", "big"], "x" * 2000)
+        params = {"param": "{{#node1.big#}}"}
+
+        result = llm_utils.resolve_completion_params_variables(params, pool)
+
+        assert len(result["param"]) == llm_utils.MAX_RESOLVED_VALUE_LENGTH

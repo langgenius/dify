@@ -4,7 +4,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -40,6 +40,24 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
+
+  const workflowNodesMap = useMemo(() => {
+    if (!isInWorkflow || !availableNodes.length)
+      return undefined
+    return availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
+      acc[node.id] = {
+        title: node.data.title,
+        type: node.data.type,
+      }
+      if (node.data.type === BlockEnum.Start) {
+        acc.sys = {
+          title: 'Start',
+          type: BlockEnum.Start,
+        }
+      }
+      return acc
+    }, {})
+  }, [isInWorkflow, availableNodes])
 
   const getDefaultValue = () => {
     let defaultValue: ParameterValue
@@ -222,19 +240,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
               workflowVariableBlock={{
                 show: true,
                 variables: nodesOutputVars,
-                workflowNodesMap: availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
-                  acc[node.id] = {
-                    title: node.data.title,
-                    type: node.data.type,
-                  }
-                  if (node.data.type === BlockEnum.Start) {
-                    acc.sys = {
-                      title: 'Start',
-                      type: BlockEnum.Start,
-                    }
-                  }
-                  return acc
-                }, {}),
+                workflowNodesMap,
               }}
               editable
             />
@@ -262,19 +268,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
               workflowVariableBlock={{
                 show: true,
                 variables: nodesOutputVars,
-                workflowNodesMap: availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
-                  acc[node.id] = {
-                    title: node.data.title,
-                    type: node.data.type,
-                  }
-                  if (node.data.type === BlockEnum.Start) {
-                    acc.sys = {
-                      title: 'Start',
-                      type: BlockEnum.Start,
-                    }
-                  }
-                  return acc
-                }, {}),
+                workflowNodesMap,
               }}
               editable
             />
