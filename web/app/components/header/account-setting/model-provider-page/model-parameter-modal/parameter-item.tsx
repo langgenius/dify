@@ -1,12 +1,18 @@
 import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { useEffect, useRef, useState } from 'react'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
 import Tooltip from '@/app/components/base/tooltip'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -19,6 +25,8 @@ type ParameterItemProps = {
   onChange?: (value: ParameterValue) => void
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 const ParameterItem: FC<ParameterItemProps> = ({
   parameterRule,
@@ -26,6 +34,8 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onChange,
   onSwitch,
   isInWorkflow,
+  nodesOutputVars,
+  availableNodes = [],
 }) => {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
@@ -201,6 +211,36 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
 
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
+      if (isInWorkflow && nodesOutputVars) {
+        return (
+          <div className="ml-4 w-[200px] rounded-lg bg-components-input-bg-normal px-2 py-1">
+            <PromptEditor
+              compact
+              className="min-h-[22px] text-[13px]"
+              value={renderValue as string}
+              onChange={(text) => { handleInputChange(text) }}
+              workflowVariableBlock={{
+                show: true,
+                variables: nodesOutputVars,
+                workflowNodesMap: availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
+                  acc[node.id] = {
+                    title: node.data.title,
+                    type: node.data.type,
+                  }
+                  if (node.data.type === BlockEnum.Start) {
+                    acc.sys = {
+                      title: 'Start',
+                      type: BlockEnum.Start,
+                    }
+                  }
+                  return acc
+                }, {}),
+              }}
+              editable
+            />
+          </div>
+        )
+      }
       return (
         <input
           className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none system-sm-regular')}
@@ -211,6 +251,36 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
 
     if (parameterRule.type === 'text') {
+      if (isInWorkflow && nodesOutputVars) {
+        return (
+          <div className="ml-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
+            <PromptEditor
+              compact
+              className="min-h-[56px] text-[13px]"
+              value={renderValue as string}
+              onChange={(text) => { handleInputChange(text) }}
+              workflowVariableBlock={{
+                show: true,
+                variables: nodesOutputVars,
+                workflowNodesMap: availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
+                  acc[node.id] = {
+                    title: node.data.title,
+                    type: node.data.type,
+                  }
+                  if (node.data.type === BlockEnum.Start) {
+                    acc.sys = {
+                      title: 'Start',
+                      type: BlockEnum.Start,
+                    }
+                  }
+                  return acc
+                }, {}),
+              }}
+              editable
+            />
+          </div>
+        )
+      }
       return (
         <textarea
           className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 text-components-input-text-filled system-sm-regular"

@@ -1,5 +1,6 @@
-from collections.abc import Sequence
-from typing import cast
+import re
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from core.model_manager import ModelInstance
 from dify_graph.file.models import File
@@ -16,6 +17,8 @@ from dify_graph.runtime import VariablePool
 from dify_graph.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment
 
 from .exc import InvalidVariableTypeError
+
+VARIABLE_PATTERN = re.compile(r"\{\{#[^#]+#\}\}")
 
 
 def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
@@ -89,3 +92,21 @@ def fetch_memory_text(
         human_prefix=human_prefix,
         ai_prefix=ai_prefix,
     )
+
+
+def resolve_completion_params_variables(
+    completion_params: Mapping[str, Any],
+    variable_pool: VariablePool,
+) -> dict[str, Any]:
+    """Resolve variable references ({{#node_id.var#}}) in string-typed completion params.
+
+    Non-string values and strings without variable patterns are passed through unchanged.
+    """
+    resolved: dict[str, Any] = {}
+    for key, value in completion_params.items():
+        if isinstance(value, str) and VARIABLE_PATTERN.search(value):
+            segment_group = variable_pool.convert_template(value)
+            resolved[key] = segment_group.text
+        else:
+            resolved[key] = value
+    return resolved
