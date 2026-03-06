@@ -31,6 +31,7 @@
   "list.action.pause": "مکث",
   "list.action.resume": "ادامه",
   "list.action.settings": "تنظیمات بخش‌بندی",
+  "list.action.summary": "ایجاد خلاصه",
   "list.action.sync": "همگام‌سازی",
   "list.action.unarchive": "خارج کردن از بایگانی",
   "list.action.uploadFile": "بارگذاری فایل جدید",
@@ -75,6 +76,9 @@
   "list.status.indexing": "ایندکس‌سازی",
   "list.status.paused": "متوقف شده",
   "list.status.queuing": "در صف",
+  "list.summary.generating": "در حال ایجاد...",
+  "list.summary.generatingSummary": "در حال ایجاد خلاصه",
+  "list.summary.ready": "خلاصه آماده است",
   "list.table.header.action": "اقدام",
   "list.table.header.chunkingMode": "حالت تکه تکه کردن",
   "list.table.header.fileName": "نام فایل",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "نتیجه",
   "segment.searchResults_other": "نتیجه",
   "segment.searchResults_zero": "نتیجه",
+  "segment.summary": "خلاصه",
+  "segment.summaryPlaceholder": "خلاصه‌ای کوتاه برای بازیابی بهتر بنویسید…",
   "segment.vectorHash": "هش برداری: "
 }

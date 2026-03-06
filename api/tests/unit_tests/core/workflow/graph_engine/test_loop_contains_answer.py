@@ -5,7 +5,7 @@ This test validates the behavior of a loop containing an answer node
 inside the loop that may produce output errors.
 """
 
-from core.workflow.graph_events import (
+from dify_graph.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunLoopNextEvent,

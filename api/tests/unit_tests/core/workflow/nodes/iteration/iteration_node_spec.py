@@ -1,6 +1,6 @@
-from core.workflow.enums import NodeType
-from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from core.workflow.nodes.iteration.exc import (
+from dify_graph.enums import NodeType
+from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from dify_graph.nodes.iteration.exc import (
     InvalidIteratorValueError,
     IterationGraphNotFoundError,
     IterationIndexNotFoundError,
@@ -8,7 +8,7 @@ from core.workflow.nodes.iteration.exc import (
     IteratorVariableNotFoundError,
     StartNodeIdNotFoundError,
 )
-from core.workflow.nodes.iteration.iteration_node import IterationNode
+from dify_graph.nodes.iteration.iteration_node import IterationNode
 
 
 class TestIterationNodeExceptions:

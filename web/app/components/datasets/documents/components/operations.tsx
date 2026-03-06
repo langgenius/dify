@@ -21,10 +21,12 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,
@@ -34,6 +36,7 @@ import {
   useDocumentEnable,
   useDocumentPause,
   useDocumentResume,
+  useDocumentSummary,
   useDocumentUnArchive,
   useSyncDocument,
   useSyncWebsite,
@@ -87,6 +90,7 @@ const Operations = ({
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
+  const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
@@ -111,6 +115,9 @@ const Operations = ({
           opApi = syncDocument
         else
           opApi = syncWebsite
+        break
+      case 'summary':
+        opApi = generateSummary
         break
       case 'pause':
         opApi = pauseDocument
@@ -184,7 +191,7 @@ const Operations = ({
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (
-        <Switch defaultValue={false} onChange={noop} disabled={true} size="md" />
+        <Switch value={false} onChange={noop} disabled={true} size="md" />
       )}
       {isListScene && embeddingAvailable && (
         <>
@@ -195,11 +202,11 @@ const Operations = ({
                   popupClassName="!font-semibold"
                 >
                   <div>
-                    <Switch defaultValue={false} onChange={noop} disabled={true} size="md" />
+                    <Switch value={false} onChange={noop} disabled={true} size="md" />
                   </div>
                 </Tooltip>
               )
-            : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
+            : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
           <Divider className="!ml-4 !mr-2 !h-3" type="vertical" />
         </>
       )}
@@ -257,6 +264,14 @@ const Operations = ({
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
+                    {
+                      IS_CE_EDITION && (
+                        <div className={s.actionItem} onClick={() => onOperate('summary')}>
+                          <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
+                          <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                        </div>
+                      )
+                    }
                     <Divider className="my-1" />
                   </>
                 )}

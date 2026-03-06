@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Einstellungen für den Abruf",
   "form.save": "Speichern",
   "form.searchModel": "Modell suchen",
+  "form.summaryAutoGen": "Automatische Zusammenfassungserstellung",
+  "form.summaryAutoGenEnableTip": "Nach der Aktivierung werden Zusammenfassungen automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",
+  "form.summaryAutoGenTip": "Zusammenfassungen werden automatisch für neu hinzugefügte Dokumente generiert. Vorhandene Dokumente können weiterhin manuell zusammengefasst werden.",
+  "form.summaryInstructions": "Anweisungen",
+  "form.summaryInstructionsPlaceholder": "Beschreiben Sie die Regeln oder den Stil für automatisch generierte Zusammenfassungen…",
+  "form.summaryModel": "Zusammenfassungsmodell",
   "form.upgradeHighQualityTip": "Nach dem Upgrade auf den Modus \"Hohe Qualität\" ist das Zurücksetzen auf den Modus \"Wirtschaftlich\" nicht mehr möglich",
   "title": "Wissenseinstellungen"
 }

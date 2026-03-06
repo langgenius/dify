@@ -31,6 +31,7 @@
   "list.action.pause": "Pauza",
   "list.action.resume": "Wznów",
   "list.action.settings": "Ustawienia segmentacji",
+  "list.action.summary": "Wygeneruj podsumowanie",
   "list.action.sync": "Synchronizuj",
   "list.action.unarchive": "Usuń z archiwum",
   "list.action.uploadFile": "Wgraj nowy plik",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indeksowanie",
   "list.status.paused": "Wstrzymane",
   "list.status.queuing": "Oczekiwanie",
+  "list.summary.generating": "Generowanie...",
+  "list.summary.generatingSummary": "Generowanie podsumowania",
+  "list.summary.ready": "Podsumowanie gotowe",
   "list.table.header.action": "AKCJA",
   "list.table.header.chunkingMode": "TRYB CHUNKINGU",
   "list.table.header.fileName": "NAZWA PLIKU",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "WYNIK",
   "segment.searchResults_other": "WYNIKI",
   "segment.searchResults_zero": "WYNIK",
+  "segment.summary": "PODSUMOWANIE",
+  "segment.summaryPlaceholder": "Napisz krótkie podsumowanie dla lepszego wyszukiwania…",
   "segment.vectorHash": "Wektor hash: "
 }

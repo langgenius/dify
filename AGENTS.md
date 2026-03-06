@@ -7,7 +7,7 @@ Dify is an open-source platform for developing LLM applications with an intuitiv
 The codebase is split into:
 
 - **Backend API** (`/api`): Python Flask application organized with Domain-Driven Design
-- **Frontend Web** (`/web`): Next.js 15 application using TypeScript and React 19
+- **Frontend Web** (`/web`): Next.js application using TypeScript and React
 - **Docker deployment** (`/docker`): Containerized deployment configurations
 
 ## Backend Workflow
@@ -18,12 +18,7 @@ The codebase is split into:
 
 ## Frontend Workflow
 
-```bash
-cd web
-pnpm lint:fix
-pnpm type-check:tsgo
-pnpm test
-```
+- Read `web/AGENTS.md` for details
 
 ## Testing & Quality Practices
 
@@ -34,7 +29,7 @@ pnpm test
 
 ## Language Style
 
-- **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`).
+- **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`). Prefer `TypedDict` over `dict` or `Mapping` for type safety and better code documentation.
 - **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint:fix` preferred) plus `pnpm type-check:tsgo`, and avoid `any` types.
 
 ## General Practices

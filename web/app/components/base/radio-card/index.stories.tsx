@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { RiCloudLine, RiCpuLine, RiDatabase2Line, RiLightbulbLine, RiRocketLine, RiShieldLine } from '@remixicon/react'
 import { useState } from 'react'
 import RadioCard from '.'

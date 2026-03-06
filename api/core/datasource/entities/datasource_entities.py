@@ -379,4 +379,11 @@ class OnlineDriveDownloadFileRequest(BaseModel):
     """
 
     id: str = Field(..., description="The id of the file")
-    bucket: str | None = Field(None, description="The name of the bucket")
+    bucket: str = Field("", description="The name of the bucket")
+
+    @field_validator("bucket", mode="before")
+    @classmethod
+    def _coerce_bucket(cls, v) -> str:
+        if v is None:
+            return ""
+        return str(v)

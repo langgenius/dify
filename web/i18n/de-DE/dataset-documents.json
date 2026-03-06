@@ -31,6 +31,7 @@
   "list.action.pause": "Pause",
   "list.action.resume": "Fortsetzen",
   "list.action.settings": "Segment-Einstellungen",
+  "list.action.summary": "Zusammenfassung generieren",
   "list.action.sync": "Synchronisieren",
   "list.action.unarchive": "Archivierung aufheben",
   "list.action.uploadFile": "Neue Datei hochladen",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indizierung",
   "list.status.paused": "Pausiert",
   "list.status.queuing": "In Warteschlange",
+  "list.summary.generating": "Wird generiert...",
+  "list.summary.generatingSummary": "Zusammenfassung wird generiert",
+  "list.summary.ready": "Zusammenfassung bereit",
   "list.table.header.action": "AKTION",
   "list.table.header.chunkingMode": "CHUNKING-MODUS",
   "list.table.header.fileName": "DATEINAME",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "ERGEBNIS",
   "segment.searchResults_other": "BEFUND",
   "segment.searchResults_zero": "ERGEBNIS",
+  "segment.summary": "ZUSAMMENFASSUNG",
+  "segment.summaryPlaceholder": "Schreiben Sie eine kurze Zusammenfassung für bessere Abrufbarkeit…",
   "segment.vectorHash": "Vektor-Hash: "
 }

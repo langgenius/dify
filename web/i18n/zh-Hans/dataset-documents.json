@@ -31,6 +31,7 @@
   "list.action.pause": "暂停",
   "list.action.resume": "恢复",
   "list.action.settings": "分段设置",
+  "list.action.summary": "生成摘要",
   "list.action.sync": "同步",
   "list.action.unarchive": "撤销归档",
   "list.action.uploadFile": "上传新文件",
@@ -75,6 +76,9 @@
   "list.status.indexing": "索引中",
   "list.status.paused": "已暂停",
   "list.status.queuing": "排队中",
+  "list.summary.generating": "生成中...",
+  "list.summary.generatingSummary": "生成摘要中",
+  "list.summary.ready": "摘要已生成",
   "list.table.header.action": "操作",
   "list.table.header.chunkingMode": "分段模式",
   "list.table.header.fileName": "名称",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "搜索结果",
   "segment.searchResults_other": "搜索结果",
   "segment.searchResults_zero": "搜索结果",
+  "segment.summary": "摘要",
+  "segment.summaryPlaceholder": "写一个简短的摘要，以便更好地检索…",
   "segment.vectorHash": "向量哈希："
 }

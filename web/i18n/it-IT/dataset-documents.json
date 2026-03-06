@@ -31,6 +31,7 @@
   "list.action.pause": "Pausa",
   "list.action.resume": "Riprendi",
   "list.action.settings": "Impostazioni segmenti",
+  "list.action.summary": "Genera riepilogo",
   "list.action.sync": "Sincronizza",
   "list.action.unarchive": "Disarchivia",
   "list.action.uploadFile": "Carica nuovo file",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Indicizzazione",
   "list.status.paused": "In pausa",
   "list.status.queuing": "In coda",
+  "list.summary.generating": "Generazione...",
+  "list.summary.generatingSummary": "Generazione riepilogo",
+  "list.summary.ready": "Riepilogo pronto",
   "list.table.header.action": "AZIONE",
   "list.table.header.chunkingMode": "MODALITÀ DI SUDDIVISIONE IN BLOCCHI",
   "list.table.header.fileName": "NOME FILE",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "RISULTATO",
   "segment.searchResults_other": "RISULTATI",
   "segment.searchResults_zero": "RISULTATO",
+  "segment.summary": "RIEPILOGO",
+  "segment.summaryPlaceholder": "Scrivi un breve riepilogo per un migliore recupero…",
   "segment.vectorHash": "Hash del vettore: "
 }

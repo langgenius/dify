@@ -21,20 +21,20 @@ from core.app.entities.queue_entities import (
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
+from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
-from core.variables.variables import Variable
-from core.workflow.enums import WorkflowType
-from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.enums import WorkflowType
+from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import VariableLoader
+from dify_graph.variables.variables import Variable
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
@@ -66,6 +66,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -82,6 +83,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._resume_graph_runtime_state = graph_runtime_state
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -110,7 +112,21 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             invoke_from = InvokeFrom.DEBUGGER
         user_from = self._resolve_user_from(invoke_from)
 
-        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+        resume_state = self._resume_graph_runtime_state
+
+        if resume_state is not None:
+            graph_runtime_state = resume_state
+            variable_pool = graph_runtime_state.variable_pool
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+                user_id=self.application_generate_entity.user_id,
+                invoke_from=invoke_from,
+                user_from=user_from,
+            )
+        elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,

@@ -31,6 +31,7 @@
   "list.action.pause": "रोकें",
   "list.action.resume": "रिज़्यूमे",
   "list.action.settings": "खंड सेटिंग्स",
+  "list.action.summary": "सारांश बनाएं",
   "list.action.sync": "सिंक्रोनाइज़ करें",
   "list.action.unarchive": "संग्रह से बाहर करें",
   "list.action.uploadFile": "नई फाइल अपलोड करें",
@@ -75,6 +76,9 @@
   "list.status.indexing": "अनुक्रमण",
   "list.status.paused": "रुका हुआ",
   "list.status.queuing": "पंक्तिबद्ध",
+  "list.summary.generating": "बना रहे हैं...",
+  "list.summary.generatingSummary": "सारांश बना रहे हैं",
+  "list.summary.ready": "सारांश तैयार है",
   "list.table.header.action": "क्रिया",
   "list.table.header.chunkingMode": "चंकिंग मोड",
   "list.table.header.fileName": "फाइल का नाम",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "परिणाम",
   "segment.searchResults_other": "परिणाम",
   "segment.searchResults_zero": "परिणाम",
+  "segment.summary": "सारांश",
+  "segment.summaryPlaceholder": "बेहतर पुनर्प्राप्ति के लिए संक्षिप्त सारांश लिखें…",
   "segment.vectorHash": "वेक्टर हैश: "
 }

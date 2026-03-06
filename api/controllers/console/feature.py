@@ -1,6 +1,7 @@
 from flask_restx import Resource, fields
+from werkzeug.exceptions import Unauthorized
 
-from libs.login import current_account_with_tenant, login_required
+from libs.login import current_account_with_tenant, current_user, login_required
 from services.feature_service import FeatureService
 
 from . import console_ns
@@ -48,4 +49,12 @@ class SystemFeatureApi(Resource):
 
         Only non-sensitive configuration data should be returned by this endpoint.
         """
-        return FeatureService.get_system_features().model_dump()
+        # NOTE(QuantumGhost): ideally we should access `current_user.is_authenticated`
+        # without a try-catch. However, due to the implementation of user loader (the `load_user_from_request`
+        # in api/extensions/ext_login.py), accessing `current_user.is_authenticated` will
+        # raise `Unauthorized` exception if authentication token is not provided.
+        try:
+            is_authenticated = current_user.is_authenticated
+        except Unauthorized:
+            is_authenticated = False
+        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
