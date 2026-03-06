@@ -11,6 +11,7 @@ import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
+import { ReactGrabLoader } from './components/devtools/react-grab/loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import SentryInitializer from './components/sentry-initializer'
@@ -56,6 +57,7 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
+        <ReactGrabLoader />
         <ReactScanLoader />
       </head>
       <body

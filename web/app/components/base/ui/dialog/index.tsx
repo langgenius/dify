@@ -43,20 +43,24 @@ type DialogContentProps = {
   children: React.ReactNode
   className?: string
   overlayClassName?: string
+  backdropProps?: React.ComponentPropsWithoutRef<typeof BaseDialog.Backdrop>
 }
 
 export function DialogContent({
   children,
   className,
   overlayClassName,
+  backdropProps,
 }: DialogContentProps) {
   return (
     <DialogPortal>
       <BaseDialog.Backdrop
+        {...backdropProps}
         className={cn(
           'fixed inset-0 z-50 bg-background-overlay',
           'transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
           overlayClassName,
+          backdropProps?.className,
         )}
       />
       <BaseDialog.Popup

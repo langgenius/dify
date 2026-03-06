@@ -7,16 +7,7 @@ import {
 } from './declarations'
 import ModelProviderPage from './index'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    mutateCurrentWorkspace: vi.fn(),
-    isValidatingCurrentWorkspace: false,
-  }),
-}))
-
-const mockGlobalState = {
-  systemFeatures: { enable_marketplace: true },
-}
+let mockEnableMarketplace = true
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -28,7 +19,11 @@ const mockQuotaConfig = {
 }
 
 vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector(mockGlobalState),
+  useSystemFeaturesQuery: () => ({
+    data: {
+      enable_marketplace: mockEnableMarketplace,
+    },
+  }),
 }))
 
 const mockProviders = [
@@ -60,13 +55,16 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-const mockDefaultModelState = {
-  data: null,
-  isLoading: false,
+const mockDefaultModels: Record<string, { data: unknown, isLoading: boolean }> = {
+  'llm': { data: null, isLoading: false },
+  'text-embedding': { data: null, isLoading: false },
+  'rerank': { data: null, isLoading: false },
+  'speech2text': { data: null, isLoading: false },
+  'tts': { data: null, isLoading: false },
 }
 
 vi.mock('./hooks', () => ({
-  useDefaultModel: () => mockDefaultModelState,
+  useDefaultModel: (type: string) => mockDefaultModels[type] ?? { data: null, isLoading: false },
 }))
 
 vi.mock('./install-from-marketplace', () => ({
@@ -85,13 +83,18 @@ vi.mock('./system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
+vi.mock('@/service/use-plugins', () => ({
+  useCheckInstalled: () => ({ data: undefined }),
+}))
+
 describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    mockGlobalState.systemFeatures.enable_marketplace = true
-    mockDefaultModelState.data = null
-    mockDefaultModelState.isLoading = false
+    mockEnableMarketplace = true
+    Object.keys(mockDefaultModels).forEach((key) => {
+      mockDefaultModels[key] = { data: null, isLoading: false }
+    })
     mockProviders.splice(0, mockProviders.length, {
       provider: 'openai',
       label: { en_US: 'OpenAI' },
@@ -149,11 +152,74 @@ describe('ModelProviderPage', () => {
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {
-    mockGlobalState.systemFeatures.enable_marketplace = false
+    mockEnableMarketplace = false
 
     render(<ModelProviderPage searchText="" />)
 
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+  })
+
+  describe('system model config status', () => {
+    it('should not show top warning when no configured providers exist (empty state card handles it)', () => {
+      mockProviders.splice(0, mockProviders.length, {
+        provider: 'anthropic',
+        label: { en_US: 'Anthropic' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
+      })
+
+      render(<ModelProviderPage searchText="" />)
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
+    })
+
+    it('should show none-configured warning when providers exist but no default models set', () => {
+      render(<ModelProviderPage searchText="" />)
+      expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
+    })
+
+    it('should show partially-configured warning when some default models are set', () => {
+      mockDefaultModels.llm = {
+        data: { model: 'gpt-4', model_type: 'llm', provider: { provider: 'openai', icon_small: { en_US: '' } } },
+        isLoading: false,
+      }
+
+      render(<ModelProviderPage searchText="" />)
+      expect(screen.getByText('common.modelProvider.notConfigured')).toBeInTheDocument()
+    })
+
+    it('should not show warning when all default models are configured', () => {
+      const makeModel = (model: string, type: string) => ({
+        data: { model, model_type: type, provider: { provider: 'openai', icon_small: { en_US: '' } } },
+        isLoading: false,
+      })
+      mockDefaultModels.llm = makeModel('gpt-4', 'llm')
+      mockDefaultModels['text-embedding'] = makeModel('text-embedding-3', 'text-embedding')
+      mockDefaultModels.rerank = makeModel('rerank-v3', 'rerank')
+      mockDefaultModels.speech2text = makeModel('whisper-1', 'speech2text')
+      mockDefaultModels.tts = makeModel('tts-1', 'tts')
+
+      render(<ModelProviderPage searchText="" />)
+      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+    })
+
+    it('should not show warning while loading', () => {
+      Object.keys(mockDefaultModels).forEach((key) => {
+        mockDefaultModels[key] = { data: null, isLoading: true }
+      })
+
+      render(<ModelProviderPage searchText="" />)
+      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+    })
   })
 
   it('should prioritize fixed providers in visible order', () => {

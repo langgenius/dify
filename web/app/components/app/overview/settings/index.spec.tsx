@@ -59,16 +59,12 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => buildModalContext(),
 }))
 
-vi.mock('@/app/components/base/toast', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/base/toast')>('@/app/components/base/toast')
-  return {
-    ...actual,
-    useToastContext: () => ({
-      notify: mockNotify,
-      close: vi.fn(),
-    }),
-  }
-})
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+    close: vi.fn(),
+  }),
+}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')

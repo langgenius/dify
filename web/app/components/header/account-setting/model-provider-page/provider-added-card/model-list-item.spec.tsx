@@ -1,8 +1,16 @@
 import type { ModelItem, ModelProvider } from '../declarations'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { disableModel, enableModel } from '@/service/common'
 import { ModelStatusEnum } from '../declarations'
 import ModelListItem from './model-list-item'
+
+function createWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+}
 
 let mockModelLoadBalancingEnabled = false
 
@@ -69,6 +77,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
     expect(screen.getByTestId('model-name')).toBeInTheDocument()
@@ -83,6 +92,7 @@ describe('ModelListItem', () => {
         isConfigurable={false}
         onChange={onChange}
       />,
+      { wrapper: createWrapper() },
     )
     fireEvent.click(screen.getByRole('switch'))
 
@@ -102,6 +112,7 @@ describe('ModelListItem', () => {
         isConfigurable={false}
         onChange={onChange}
       />,
+      { wrapper: createWrapper() },
     )
     fireEvent.click(screen.getByRole('switch'))
 
@@ -122,6 +133,7 @@ describe('ModelListItem', () => {
         isConfigurable={false}
         onModifyLoadBalancing={onModifyLoadBalancing}
       />,
+      { wrapper: createWrapper() },
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'modify load balancing' }))
