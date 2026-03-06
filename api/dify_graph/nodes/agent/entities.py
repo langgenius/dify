@@ -4,7 +4,7 @@ from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.model_runtime.entities import ImagePromptMessageContent
+from dify_graph.model_runtime.entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.nodes.base.entities import BaseNodeData
