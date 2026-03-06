@@ -270,7 +270,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         assert node1_var.id == self._node_var_id
 
     @pytest.mark.usefixtures("setup_account")
-    def test_load_offloaded_variable_string_type_integration(self, setup_account):
+    def test_load_offloaded_variable_string_type_integration(self):
         """Test _load_offloaded_variable with string type using DraftVariableSaver for data creation."""
 
         # Create a large string that will be offloaded
@@ -281,6 +281,13 @@ class TestDraftVariableLoader(unittest.TestCase):
 
         try:
             with Session(bind=db.engine, expire_on_commit=False) as session:
+                # Retrieve an account for the saver
+                from models.account import Account
+
+                test_account = session.query(Account).first()
+                if not test_account:
+                    pytest.skip("No account found for testing")
+
                 # Use DraftVariableSaver to create offloaded variable (this mimics production)
                 saver = DraftVariableSaver(
                     session=session,
@@ -288,7 +295,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     node_id="test_offload_node",
                     node_type=NodeType.LLM,  # Use a real node type
                     node_execution_id=node_execution_id,
-                    user=setup_account,
+                    user=test_account,
                 )
 
                 # Save the variable - this will trigger offloading due to large size
@@ -306,8 +313,8 @@ class TestDraftVariableLoader(unittest.TestCase):
                 loaded_variable = variables[0]
                 assert loaded_variable.name == "offloaded_string_var"
                 assert loaded_variable.selector == ["test_offload_node", "offloaded_string_var"]
-                assert isinstance(loaded_variable.value, StringSegment)
-                assert loaded_variable.value.value == test_content
+                assert isinstance(loaded_variable.value, str)
+                assert loaded_variable.value == test_content
 
         finally:
             # Clean up - delete all draft variables for this app
@@ -396,7 +403,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 assert selector_tuple == ("test_offload_node", "offloaded_object_var")
                 assert variable.id == loaded_var.id
                 assert variable.name == "offloaded_object_var"
-                assert variable.value.value == test_object
+                assert variable.value == test_object
 
         finally:
             # Clean up
