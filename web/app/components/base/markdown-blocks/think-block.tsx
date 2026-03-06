@@ -62,10 +62,8 @@ const useThinkTimer = (children: any) => {
   useEffect(() => {
     // Stop timer when:
     // 1. Content has [ENDTHINKFLAG] marker (normal completion)
-    // 2. isResponding is explicitly false (user clicked stop button)
-    // 3. isResponding is undefined AND no ENDTHINKFLAG (historical conversation
-    //    rendered outside an active response — timer should not start)
-    if (endThinkDetected || isResponding === false || isResponding === undefined)
+    // 2. isResponding is not true (false = user clicked stop, undefined = historical conversation)
+    if (endThinkDetected || !isResponding)
       setIsComplete(true)
   }, [endThinkDetected, isResponding])
 
