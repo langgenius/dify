@@ -132,8 +132,6 @@ class WorkflowRunDetailApi(Resource):
             app_id=app_model.id,
             run_id=workflow_run_id,
         )
-        if not workflow_run:
-            raise NotFound("Workflow run not found.")
         return workflow_run
 
 

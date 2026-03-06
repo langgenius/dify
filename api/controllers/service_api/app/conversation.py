@@ -14,6 +14,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
+    ConversationDelete,
     ConversationInfiniteScrollPagination,
     SimpleConversation,
 )
@@ -162,7 +163,7 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return "", 204
+        return ConversationDelete(result="success").model_dump(mode="json"), 204
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")

@@ -6,7 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
-from dify_graph.nodes.knowledge_index.entities import KnowledgeIndexNodeData
+from dify_graph.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
 from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
@@ -518,6 +518,134 @@ class TestKnowledgeIndexNode:
         assert "Unexpected error" in result.error
         assert result.error_type == "Exception"
 
+    def test_run_with_doc_metadata(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_chunks,
+    ):
+        """Test _run resolves doc_metadata from variable pool and passes to index_processor."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        meta_id = "meta_uuid_1"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+        mock_graph_runtime_state.variable_pool.add(["start", "category"], StringSegment(value="Financial"))
+
+        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
+
+        node_data = KnowledgeIndexNodeData(
+            title="Knowledge Index",
+            type="knowledge-index",
+            chunk_structure="general_structure",
+            index_chunk_variable_selector=chunks_selector,
+            doc_metadata=[DocMetadata(metadata_id=meta_id, value=["start", "category"])],
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        call_kwargs = mock_index_processor.index_and_clean.call_args.kwargs
+        assert call_kwargs["doc_metadata"] == {meta_id: "Financial"}
+        assert meta_id in call_kwargs["metadata_binding_ids"]
+
+    def test_run_with_missing_metadata_variable_fails(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_index_processor,
+        mock_summary_index_service,
+        sample_chunks,
+    ):
+        """Test _run fails when a metadata variable selector is not in the pool."""
+        # Arrange
+        dataset_id = str(uuid.uuid4())
+        document_id = str(uuid.uuid4())
+        batch = "batch_123"
+        chunks_selector = ["start", "chunks"]
+
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DATASET_ID],
+            StringSegment(value=dataset_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.DOCUMENT_ID],
+            StringSegment(value=document_id),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.BATCH],
+            StringSegment(value=batch),
+        )
+        mock_graph_runtime_state.variable_pool.add(
+            ["sys", SystemVariableKey.INVOKE_FROM],
+            StringSegment(value=InvokeFrom.SERVICE_API),
+        )
+        mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
+        # NOTE: "start.missing" is NOT added to the pool
+
+        node_data = KnowledgeIndexNodeData(
+            title="Knowledge Index",
+            type="knowledge-index",
+            chunk_structure="general_structure",
+            index_chunk_variable_selector=chunks_selector,
+            doc_metadata=[DocMetadata(metadata_id="meta_uuid_1", value=["start", "missing"])],
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+
+        node = KnowledgeIndexNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            index_processor=mock_index_processor,
+            summary_index_service=mock_summary_index_service,
+        )
+
+        # Act
+        result = node._run()
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.FAILED
+        assert "start.missing" in result.error
+        mock_index_processor.index_and_clean.assert_not_called()
+
     def test_invoke_knowledge_index(
         self,
         mock_graph_init_params,
@@ -657,6 +785,14 @@ class TestInvokeKnowledgeIndex:
             dataset_id, document_id, False, summary_setting
         )
         mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_setting
+            dataset_id,
+            document_id,
+            original_document_id,
+            chunks,
+            batch,
+            summary_setting,
+            doc_metadata=None,
+            metadata_binding_ids=None,
+            user_id=mock_graph_init_params.run_context["_dify"].user_id,
         )
         assert result == {"status": "indexed"}

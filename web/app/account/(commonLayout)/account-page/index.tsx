@@ -138,7 +138,7 @@ export default function AccountPage() {
             imageUrl={icon_url}
           />
         </div>
-        <div className="system-sm-medium mt-[3px] text-text-secondary">{item.name}</div>
+        <div className="mt-[3px] text-text-secondary system-sm-medium">{item.name}</div>
       </div>
     )
   }
@@ -146,12 +146,12 @@ export default function AccountPage() {
   return (
     <>
       <div className="pb-3 pt-2">
-        <h4 className="title-2xl-semi-bold text-text-primary">{t('account.myAccount', { ns: 'common' })}</h4>
+        <h4 className="text-text-primary title-2xl-semi-bold">{t('account.myAccount', { ns: 'common' })}</h4>
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size={64} />
         <div className="ml-4">
-          <p className="system-xl-semibold text-text-primary">
+          <p className="text-text-primary system-xl-semibold">
             {userProfile.name}
             {isEducationAccount && (
               <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
@@ -160,16 +160,16 @@ export default function AccountPage() {
               </PremiumBadge>
             )}
           </p>
-          <p className="system-xs-regular text-text-tertiary">{userProfile.email}</p>
+          <p className="text-text-tertiary system-xs-regular">{userProfile.email}</p>
         </div>
       </div>
       <div className="mb-8">
         <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
-          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled ">
+          <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled system-sm-regular">
             <span className="pl-1">{userProfile.name}</span>
           </div>
-          <div className="system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text" onClick={handleEditName}>
+          <div className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text system-sm-medium" onClick={handleEditName}>
             {t('operation.edit', { ns: 'common' })}
           </div>
         </div>
@@ -177,11 +177,11 @@ export default function AccountPage() {
       <div className="mb-8">
         <div className={titleClassName}>{t('account.email', { ns: 'common' })}</div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
-          <div className="system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled ">
+          <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled system-sm-regular">
             <span className="pl-1">{userProfile.email}</span>
           </div>
           {systemFeatures.enable_change_email && (
-            <div className="system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text" onClick={() => setShowUpdateEmail(true)}>
+            <div className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text system-sm-medium" onClick={() => setShowUpdateEmail(true)}>
               {t('operation.change', { ns: 'common' })}
             </div>
           )}
@@ -191,8 +191,8 @@ export default function AccountPage() {
         systemFeatures.enable_email_password_login && (
           <div className="mb-8 flex justify-between gap-2">
             <div>
-              <div className="system-sm-semibold mb-1 text-text-secondary">{t('account.password', { ns: 'common' })}</div>
-              <div className="body-xs-regular mb-2 text-text-tertiary">{t('account.passwordTip', { ns: 'common' })}</div>
+              <div className="mb-1 text-text-secondary system-sm-semibold">{t('account.password', { ns: 'common' })}</div>
+              <div className="mb-2 text-text-tertiary body-xs-regular">{t('account.passwordTip', { ns: 'common' })}</div>
             </div>
             <Button onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</Button>
           </div>
@@ -219,7 +219,7 @@ export default function AccountPage() {
             onClose={() => setEditNameModalVisible(false)}
             className="!w-[420px] !p-6"
           >
-            <div className="title-2xl-semi-bold mb-6 text-text-primary">{t('account.editName', { ns: 'common' })}</div>
+            <div className="mb-6 text-text-primary title-2xl-semi-bold">{t('account.editName', { ns: 'common' })}</div>
             <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
             <Input
               className="mt-2"
@@ -249,7 +249,7 @@ export default function AccountPage() {
             }}
             className="!w-[420px] !p-6"
           >
-            <div className="title-2xl-semi-bold mb-6 text-text-primary">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
+            <div className="mb-6 text-text-primary title-2xl-semi-bold">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
             {userProfile.is_password_set && (
               <>
                 <div className={titleClassName}>{t('account.currentPassword', { ns: 'common' })}</div>
@@ -272,7 +272,7 @@ export default function AccountPage() {
                 </div>
               </>
             )}
-            <div className="system-sm-semibold mt-8 text-text-secondary">
+            <div className="mt-8 text-text-secondary system-sm-semibold">
               {userProfile.is_password_set ? t('account.newPassword', { ns: 'common' }) : t('account.password', { ns: 'common' })}
             </div>
             <div className="relative mt-2">
@@ -291,7 +291,7 @@ export default function AccountPage() {
                 </Button>
               </div>
             </div>
-            <div className="system-sm-semibold mt-8 text-text-secondary">{t('account.confirmPassword', { ns: 'common' })}</div>
+            <div className="mt-8 text-text-secondary system-sm-semibold">{t('account.confirmPassword', { ns: 'common' })}</div>
             <div className="relative mt-2">
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
