@@ -1,6 +1,4 @@
-from .asset_references import AssetReferences
-from .skill_bundle import SkillBundle
-from .skill_bundle_entry import SkillBundleEntry, SourceInfo
+from .skill_bundle import Skill, SkillBundle, SkillDependance
 from .skill_document import SkillDocument
 from .skill_metadata import (
     FileReference,
@@ -13,13 +11,12 @@ from .tool_access_policy import ToolAccessPolicy, ToolDescription, ToolInvocatio
 from .tool_dependencies import ToolDependencies, ToolDependency
 
 __all__ = [
-    "AssetReferences",
     "FileReference",
+    "Skill",
     "SkillBundle",
-    "SkillBundleEntry",
+    "SkillDependance",
     "SkillDocument",
     "SkillMetadata",
-    "SourceInfo",
     "ToolAccessPolicy",
     "ToolConfiguration",
     "ToolDependencies",

@@ -17,9 +17,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
-from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.app_assets.constants import AppAssetsAttrs
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -66,11 +64,11 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
 from core.sandbox.bash.session import MAX_OUTPUT_FILE_SIZE, MAX_OUTPUT_FILES, SandboxBashSession
 from core.sandbox.entities.config import AppAssets
+from core.skill.assembler import SkillDocumentAssembler
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
-from core.skill.skill_compiler import SkillCompiler
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_tool_file, sign_upload_file
 from core.tools.tool_file_manager import ToolFileManager
@@ -1621,10 +1619,8 @@ class LLMNode(Node[LLMNodeData]):
         prompt_messages: list[PromptMessage] = []
 
         bundle: SkillBundle | None = None
-        file_tree: AppAssetFileTree | None = None
         if sandbox:
             bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
-            file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
 
         for message in messages:
             if message.edition_type == "jinja2":
@@ -1634,13 +1630,11 @@ class LLMNode(Node[LLMNodeData]):
                     variable_pool=variable_pool,
                 )
 
-                if bundle is not None and file_tree is not None:
-                    skill_entry = SkillCompiler().compile_document(
-                        bundle=bundle,
+                if bundle is not None:
+                    skill_entry = SkillDocumentAssembler(bundle).assemble_document(
                         document=SkillDocument(
                             skill_id="anonymous", content=result_text, metadata=message.metadata or {}
                         ),
-                        file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
                     result_text = skill_entry.content
@@ -1675,13 +1669,11 @@ class LLMNode(Node[LLMNodeData]):
 
                 plain_text = segment_group.text
 
-                if plain_text and bundle is not None and file_tree is not None:
-                    skill_entry = SkillCompiler().compile_document(
-                        bundle=bundle,
+                if plain_text and bundle is not None:
+                    skill_entry = SkillDocumentAssembler(bundle).assemble_document(
                         document=SkillDocument(
                             skill_id="anonymous", content=plain_text, metadata=message.metadata or {}
                         ),
-                        file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
                     plain_text = skill_entry.content
@@ -2036,14 +2028,11 @@ class LLMNode(Node[LLMNodeData]):
             raise LLMNodeError("Sandbox not found")
 
         bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
-        file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
         tool_deps_list: list[ToolDependencies] = []
         for prompt in self.node_data.prompt_template:
             if isinstance(prompt, LLMNodeChatModelMessage):
-                skill_entry = SkillCompiler().compile_document(
-                    bundle=bundle,
+                skill_entry = SkillDocumentAssembler(bundle).assemble_document(
                     document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata=prompt.metadata or {}),
-                    file_tree=file_tree,
                     base_path=AppAssets.PATH,
                 )
                 tool_deps_list.append(skill_entry.tools)

@@ -1,11 +1,13 @@
 import logging
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, cast
 
 from core.sandbox.entities.config import AppAssets
+from core.skill.assembler import SkillDocumentAssembler
 from core.skill.entities.api_entities import NodeSkillInfo
 from core.skill.entities.skill_document import SkillDocument
+from core.skill.entities.skill_metadata import SkillMetadata
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
-from core.skill.skill_compiler import SkillCompiler
 from core.skill.skill_manager import SkillManager
 from core.workflow.entities.graph_config import NodeConfigData, NodeConfigDict
 from core.workflow.enums import NodeType
@@ -88,23 +90,27 @@ class SkillService:
         return result
 
     @staticmethod
-    def _has_skill(node_data: NodeConfigData) -> bool:
+    def _has_skill(node_data: Mapping[str, Any]) -> bool:
         """Check if node has any skill prompts."""
-        prompt_template = node_data.get("prompt_template", [])
-        if isinstance(prompt_template, list):
-            for prompt in prompt_template:
-                if isinstance(prompt, dict) and prompt.get("skill", False):
+        prompt_template_raw = node_data.get("prompt_template", [])
+        if isinstance(prompt_template_raw, list):
+            prompt_template = cast(list[object], prompt_template_raw)
+            for prompt_item in prompt_template:
+                if not isinstance(prompt_item, dict):
+                    continue
+                prompt = cast(dict[str, Any], prompt_item)
+                if prompt.get("skill", False):
                     return True
         return False
 
     @staticmethod
     def _extract_tool_dependencies_with_compiler(
-        app: App, node_data: dict[str, Any], user_id: str
+        app: App, node_data: Mapping[str, Any], user_id: str
     ) -> list[ToolDependency]:
-        """Extract tool dependencies using SkillCompiler.
+        """Extract tool dependencies using SkillDocumentAssembler.
 
         This method loads the SkillBundle and AppAssetFileTree, then uses
-        SkillCompiler.compile_document() to properly extract tool dependencies
+        SkillDocumentAssembler.assemble_document() to properly extract tool dependencies
         including transitive dependencies from referenced skill files.
         """
         # Get the draft assets to obtain assets_id and file_tree
@@ -120,7 +126,6 @@ class SkillService:
             return []
 
         assets_id = assets.id
-        file_tree = assets.asset_tree
 
         # Load the skill bundle
         try:
@@ -135,23 +140,32 @@ class SkillService:
             return []
 
         # Compile each skill prompt and collect tool dependencies
-        compiler = SkillCompiler()
+        assembler = SkillDocumentAssembler(bundle)
         tool_deps_list: list[ToolDependencies] = []
 
-        prompt_template = node_data.get("prompt_template", [])
-        if isinstance(prompt_template, list):
-            for prompt in prompt_template:
-                if isinstance(prompt, dict) and prompt.get("skill", False):
-                    text: str = prompt.get("text", "")
-                    metadata: dict[str, Any] = prompt.get("metadata") or {}
+        prompt_template_raw = node_data.get("prompt_template", [])
+        if isinstance(prompt_template_raw, list):
+            prompt_template = cast(list[object], prompt_template_raw)
+            for prompt_item in prompt_template:
+                if not isinstance(prompt_item, dict):
+                    continue
+                prompt = cast(dict[str, Any], prompt_item)
+                if prompt.get("skill", False):
+                    text_raw = prompt.get("text", "")
+                    text = text_raw if isinstance(text_raw, str) else str(text_raw)
 
-                    skill_entry = compiler.compile_document(
-                        bundle=bundle,
-                        document=SkillDocument(skill_id="anonymous", content=text, metadata=metadata),
-                        file_tree=file_tree,
+                    metadata_obj: object = prompt.get("metadata")
+                    metadata = cast(dict[str, Any], metadata_obj) if isinstance(metadata_obj, dict) else {}
+
+                    skill_entry = assembler.assemble_document(
+                        document=SkillDocument(
+                            skill_id="anonymous",
+                            content=text,
+                            metadata=SkillMetadata.model_validate(metadata),
+                        ),
                         base_path=AppAssets.PATH,
                     )
-                    tool_deps_list.append(skill_entry.tools)
+                    tool_deps_list.append(skill_entry.dependance.tools)
 
         if not tool_deps_list:
             return []
