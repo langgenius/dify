@@ -8,7 +8,7 @@ import { Thinking } from '@/app/components/base/icons/src/vender/workflow'
 
 type LLMLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowLLMDetail: (detail: LLMTraceItem[]) => void
+  onShowLLMDetail: (detail: LLMTraceItem[], nodeId?: string) => void
 }
 const LLMLogTrigger = ({
   nodeInfo,
@@ -20,7 +20,7 @@ const LLMLogTrigger = ({
   const handleShowLLMDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowLLMDetail(llmTrace || [])
+    onShowLLMDetail(llmTrace || [], nodeInfo.node_id)
   }
 
   return (

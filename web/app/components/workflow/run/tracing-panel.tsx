@@ -8,6 +8,7 @@ import {
 import * as React from 'react'
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -95,8 +96,16 @@ const TracingPanel: FC<TracingPanelProps> = ({
     showLLMDetail,
     setShowLLMDetailFalse,
     llmResultList,
+    llmDetailNodeId,
     handleShowLLMDetail,
   } = useLogs()
+
+  const liveLLMResultList = useMemo(() => {
+    if (!showLLMDetail || !llmDetailNodeId)
+      return llmResultList
+    const node = list.find(n => n.node_id === llmDetailNodeId)
+    return node?.execution_metadata?.llm_trace || llmResultList
+  }, [showLLMDetail, llmDetailNodeId, list, llmResultList])
 
   const renderNode = (node: NodeTracing) => {
     const isParallelFirstNode = !!node.parallelDetail?.isParallelStartNode
@@ -191,7 +200,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
 
         showLLMDetail={showLLMDetail}
         setShowLLMDetailFalse={setShowLLMDetailFalse}
-        llmResultList={llmResultList}
+        llmResultList={liveLLMResultList}
       />
     )
   }

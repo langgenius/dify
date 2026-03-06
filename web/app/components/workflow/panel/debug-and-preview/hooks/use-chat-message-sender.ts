@@ -44,6 +44,7 @@ import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../../../types'
+import { createLLMTraceBuilder } from './create-llm-trace-builder'
 import { createWorkflowEventHandlers } from './use-workflow-event-handlers'
 
 type UseChatMessageSenderParams = {
@@ -216,6 +217,7 @@ export function useChatMessageSender({
     let hasSetResponseId = false
     let toolCallId = ''
     let thoughtId = ''
+    const llmTraceBuilder = createLLMTraceBuilder()
 
     const workflowHandlers = createWorkflowEventHandlers({
       responseItem,
@@ -236,6 +238,8 @@ export function useChatMessageSender({
           messageId,
           taskId,
           chunk_type,
+          node_id,
+          tool_call_id,
           tool_icon,
           tool_icon_dark,
           tool_name,
@@ -243,6 +247,12 @@ export function useChatMessageSender({
           tool_files,
           tool_error,
           tool_elapsed_time,
+          model_provider,
+          model_name,
+          model_icon,
+          model_icon_dark,
+          model_usage,
+          model_duration,
         }: StreamChunkMeta) => {
           if (!isCurrentRun())
             return
@@ -340,6 +350,45 @@ export function useChatMessageSender({
             setActiveTaskId(taskId)
           if (messageId)
             responseItem.id = messageId
+
+          if (responseItem.workflowProcess?.tracing) {
+            const idx = llmTraceBuilder(
+              responseItem.workflowProcess.tracing,
+              chunk_type,
+              message,
+              {
+                node_id,
+                tool_call_id,
+                tool_name,
+                tool_arguments,
+                tool_icon,
+                tool_icon_dark,
+                tool_error,
+                tool_elapsed_time,
+                model_provider,
+                model_name,
+                model_icon,
+                model_icon_dark,
+                model_usage,
+                model_duration,
+              },
+            )
+            if (idx >= 0) {
+              const tracing = responseItem.workflowProcess.tracing
+              const item = tracing[idx]
+              tracing[idx] = {
+                ...item,
+                execution_metadata: {
+                  ...item.execution_metadata!,
+                  llm_trace: [...(item.execution_metadata?.llm_trace || [])],
+                },
+              }
+              responseItem.workflowProcess = {
+                ...responseItem.workflowProcess,
+                tracing: [...tracing],
+              }
+            }
+          }
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -548,6 +597,7 @@ export function useChatMessageSender({
     const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
     let toolCallId = ''
     let thoughtId = ''
+    const llmTraceBuilder = createLLMTraceBuilder()
 
     const otherOptions: IOtherOptions = {
       getAbortController: (abortController) => {
@@ -558,6 +608,8 @@ export function useChatMessageSender({
         messageId: msgId,
         taskId,
         chunk_type,
+        node_id,
+        tool_call_id,
         tool_icon,
         tool_icon_dark,
         tool_name,
@@ -565,6 +617,12 @@ export function useChatMessageSender({
         tool_files,
         tool_error,
         tool_elapsed_time,
+        model_provider,
+        model_name,
+        model_icon,
+        model_icon_dark,
+        model_usage,
+        model_duration,
       }: StreamChunkMeta) => {
         updateChatTreeNode(messageId, (responseItem) => {
           if (chunk_type === 'text' || !chunk_type) {
@@ -642,6 +700,45 @@ export function useChatMessageSender({
             if (currentThoughtIndex > -1) {
               responseItem.llmGenerationItems![currentThoughtIndex].thoughtOutput += message
               responseItem.llmGenerationItems![currentThoughtIndex].thoughtCompleted = true
+            }
+          }
+
+          if (responseItem.workflowProcess?.tracing) {
+            const idx = llmTraceBuilder(
+              responseItem.workflowProcess.tracing,
+              chunk_type,
+              message,
+              {
+                node_id,
+                tool_call_id,
+                tool_name,
+                tool_arguments,
+                tool_icon,
+                tool_icon_dark,
+                tool_error,
+                tool_elapsed_time,
+                model_provider,
+                model_name,
+                model_icon,
+                model_icon_dark,
+                model_usage,
+                model_duration,
+              },
+            )
+            if (idx >= 0) {
+              const tracing = responseItem.workflowProcess.tracing
+              const item = tracing[idx]
+              tracing[idx] = {
+                ...item,
+                execution_metadata: {
+                  ...item.execution_metadata!,
+                  llm_trace: [...(item.execution_metadata?.llm_trace || [])],
+                },
+              }
+              responseItem.workflowProcess = {
+                ...responseItem.workflowProcess,
+                tracing: [...tracing],
+              }
             }
           }
 

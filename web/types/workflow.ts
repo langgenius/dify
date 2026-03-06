@@ -105,6 +105,7 @@ export type LLMTraceItem = {
   icon_dark?: string | IconObject
   error?: string
   status?: 'success' | 'error'
+  usage?: Record<string, number | string> | null
 }
 
 export type NodeTracing = {

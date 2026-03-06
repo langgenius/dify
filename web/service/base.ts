@@ -51,7 +51,8 @@ export type IOnDataMoreInfo = {
   messageId: string
   errorMessage?: string
   errorCode?: string
-  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start' | 'thought_end'
+  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start' | 'thought_end' | 'model_start' | 'model_end'
+  node_id?: string
   tool_call_id?: string
   tool_name?: string
   tool_arguments?: string
@@ -61,6 +62,13 @@ export type IOnDataMoreInfo = {
   tool_files?: string[]
   tool_error?: string
   tool_elapsed_time?: number
+
+  model_provider?: string
+  model_name?: string
+  model_icon?: string | IconObject
+  model_icon_dark?: string | IconObject
+  model_usage?: Record<string, number | string> | null
+  model_duration?: number
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
@@ -312,6 +320,7 @@ export const handleStream = (
                 taskId: bufferObj.task_id,
                 messageId: bufferObj.id,
                 chunk_type: bufferObj.chunk_type,
+                node_id: bufferObj.node_id,
                 tool_call_id: bufferObj.tool_call_id,
                 tool_name: bufferObj.tool_name,
                 tool_arguments: bufferObj.tool_arguments,
@@ -320,6 +329,12 @@ export const handleStream = (
                 tool_files: bufferObj.tool_files,
                 tool_error: bufferObj.tool_error,
                 tool_elapsed_time: bufferObj.tool_elapsed_time,
+                model_provider: bufferObj.model_provider,
+                model_name: bufferObj.model_name,
+                model_icon: bufferObj.model_icon,
+                model_icon_dark: bufferObj.model_icon_dark,
+                model_usage: bufferObj.model_usage,
+                model_duration: bufferObj.model_duration,
               })
               isFirstMessage = false
             }

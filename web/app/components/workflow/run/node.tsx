@@ -46,7 +46,7 @@ type Props = {
   onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  onShowLLMDetail?: (detail: LLMTraceItem[]) => void
+  onShowLLMDetail?: (detail: LLMTraceItem[], nodeId?: string) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
 }

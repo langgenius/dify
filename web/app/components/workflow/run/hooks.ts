@@ -85,9 +85,12 @@ export const useLogs = () => {
     setFalse: setShowLLMDetailFalse,
   }] = useBoolean(false)
   const [llmResultList, setLLMResultList] = useState<LLMTraceItem[]>([])
-  const handleShowLLMDetail = useCallback((detail: LLMTraceItem[]) => {
+  const [llmDetailNodeId, setLLMDetailNodeId] = useState('')
+  const handleShowLLMDetail = useCallback((detail: LLMTraceItem[], nodeId?: string) => {
     setShowLLMDetailTrue()
     setLLMResultList(detail)
+    if (nodeId)
+      setLLMDetailNodeId(nodeId)
   }, [setShowLLMDetailTrue, setLLMResultList])
 
   return {
@@ -128,6 +131,7 @@ export const useLogs = () => {
     setShowLLMDetailFalse,
     llmResultList,
     setLLMResultList,
+    llmDetailNodeId,
     handleShowLLMDetail,
   }
 }
