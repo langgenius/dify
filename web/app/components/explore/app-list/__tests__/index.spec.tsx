@@ -1,12 +1,12 @@
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import AppList from '../index'
 
@@ -132,10 +132,9 @@ const mockMemberRole = (hasEditPermission: boolean) => {
 
 const renderAppList = (hasEditPermission = false, onSuccess?: () => void, searchParams?: Record<string, string>) => {
   mockMemberRole(hasEditPermission)
-  return render(
-    <NuqsTestingAdapter searchParams={searchParams}>
-      <AppList onSuccess={onSuccess} />
-    </NuqsTestingAdapter>,
+  return renderWithNuqs(
+    <AppList onSuccess={onSuccess} />,
+    { searchParams },
   )
 }
 

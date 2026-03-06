@@ -28,10 +28,14 @@ class TestArchivedWorkflowRunDeletion:
         with (
             patch("services.retention.workflow_run.delete_archived_workflow_run.db", mock_db),
             patch(
-                "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker", return_value=session_maker
+                "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker",
+                return_value=session_maker,
+                autospec=True,
             ),
-            patch.object(deleter, "_get_workflow_run_repo", return_value=repo),
-            patch.object(deleter, "_delete_run", return_value=MagicMock(success=True)) as mock_delete_run,
+            patch.object(deleter, "_get_workflow_run_repo", return_value=repo, autospec=True),
+            patch.object(
+                deleter, "_delete_run", return_value=MagicMock(success=True), autospec=True
+            ) as mock_delete_run,
         ):
             result = deleter.delete_by_run_id("run-1")
 
@@ -46,7 +50,7 @@ class TestArchivedWorkflowRunDeletion:
         run.id = "run-1"
         run.tenant_id = "tenant-1"
 
-        with patch.object(deleter, "_get_workflow_run_repo") as mock_get_repo:
+        with patch.object(deleter, "_get_workflow_run_repo", autospec=True) as mock_get_repo:
             result = deleter._delete_run(run)
 
         assert result.success is True

@@ -5,12 +5,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    ImagePromptMessageContent,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
 from core.prompt.prompt_templates.advanced_prompt_templates import (
     BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
     BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG,
@@ -24,6 +18,12 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
     CONTEXT,
 )
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from models.model import AppMode, Conversation
 
 

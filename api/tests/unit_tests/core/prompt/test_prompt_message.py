@@ -1,4 +1,6 @@
-from core.model_runtime.entities.message_entities import (
+from core.prompt.simple_prompt_transform import ModelMode
+from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
     ImagePromptMessageContent,
@@ -6,8 +8,6 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.prompt.simple_prompt_transform import ModelMode
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
 
 
 def test_build_prompt_message_with_prompt_message_contents():

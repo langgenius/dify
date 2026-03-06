@@ -13,8 +13,8 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
-from core.variables.types import SegmentType
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.variables.types import SegmentType
 from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -40,7 +40,7 @@ class TestWorkflowDraftVariableFields:
         mock_variable.variable_file = mock_variable_file
 
         # Mock the file helpers
-        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
             mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
 
             # Call the function
@@ -203,7 +203,7 @@ class TestWorkflowDraftVariableFields:
             }
         )
 
-        with patch("controllers.console.app.workflow_draft_variable.file_helpers") as mock_file_helpers:
+        with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
             mock_file_helpers.get_signed_file_url.return_value = "http://example.com/signed-url"
             assert marshal(node_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
             expected_with_value = expected_without_value.copy()
@@ -310,8 +310,8 @@ def test_workflow_node_variables_fields():
 
 def test_workflow_file_variable_with_signed_url():
     """Test that File type variables include signed URLs in API responses."""
-    from core.workflow.file.enums import FileTransferMethod, FileType
-    from core.workflow.file.models import File
+    from dify_graph.file.enums import FileTransferMethod, FileType
+    from dify_graph.file.models import File
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
@@ -368,8 +368,8 @@ def test_workflow_file_variable_with_signed_url():
 
 def test_workflow_file_variable_remote_url():
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
-    from core.workflow.file.enums import FileTransferMethod, FileType
-    from core.workflow.file.models import File
+    from dify_graph.file.enums import FileTransferMethod, FileType
+    from dify_graph.file.models import File
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(

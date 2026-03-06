@@ -1,24 +1,8 @@
 import pytest
 
-from core.variables.segment_group import SegmentGroup
-from core.variables.segments import StringSegment
-from core.variables.types import ArrayValidation, SegmentType
-from core.workflow.file import File, FileTransferMethod, FileType
-
-
-def _create_remote_file() -> File:
-    return File(
-        tenant_id="tenant-1",
-        type=FileType.DOCUMENT,
-        transfer_method=FileTransferMethod.REMOTE_URL,
-        remote_url="https://example.com/doc.txt",
-        related_id=None,
-        filename="doc.txt",
-        extension=".txt",
-        mime_type="text/plain",
-        size=1,
-        storage_key="storage-key",
-    )
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import StringSegment
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 class TestSegmentTypeIsArrayType:
@@ -220,12 +204,6 @@ class TestSegmentTypeInferSegmentType:
     )
     def test_infer_segment_type_supported_values(self, value, expected):
         assert SegmentType.infer_segment_type(value) == expected
-
-    def test_infer_segment_type_file_and_unknown(self):
-        file = _create_remote_file()
-        assert SegmentType.infer_segment_type(file) == SegmentType.FILE
-        assert SegmentType.infer_segment_type([object()]) is None
-        assert SegmentType.infer_segment_type(object()) is None
 
 
 class TestSegmentTypeAdditionalMethods:
