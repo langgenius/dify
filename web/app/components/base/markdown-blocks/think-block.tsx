@@ -39,9 +39,10 @@ const removeEndThink = (children: any): any => {
 
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
+  const endThinkDetected = hasEndThink(children)
   const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [isComplete, setIsComplete] = useState(false)
+  const [isComplete, setIsComplete] = useState(() => endThinkDetected)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -62,10 +63,11 @@ const useThinkTimer = (children: any) => {
     // Stop timer when:
     // 1. Content has [ENDTHINKFLAG] marker (normal completion)
     // 2. isResponding is explicitly false (user clicked stop button)
-    // Note: Don't stop when isResponding is undefined (component used outside ChatContextProvider)
-    if (hasEndThink(children) || isResponding === false)
+    // 3. isResponding is undefined AND no ENDTHINKFLAG (historical conversation
+    //    rendered outside an active response — timer should not start)
+    if (endThinkDetected || isResponding === false || isResponding === undefined)
       setIsComplete(true)
-  }, [children, isResponding])
+  }, [endThinkDetected, isResponding])
 
   return { elapsedTime, isComplete }
 }
