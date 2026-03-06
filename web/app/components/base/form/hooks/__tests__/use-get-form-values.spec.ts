@@ -131,6 +131,7 @@ describe('useGetFormValues', () => {
       values: {},
       isCheckValidated: true,
     })
+    expect(mockCheckValidated).not.toHaveBeenCalled()
   })
 
   it('should handle null form values gracefully', () => {

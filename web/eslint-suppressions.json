@@ -2143,9 +2143,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3567,14 +3564,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/empty-search-result.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/header.tsx": {

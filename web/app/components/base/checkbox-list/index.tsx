@@ -75,7 +75,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
     if (disabled)
       return
 
-    if (isAllSelected || isIndeterminate) {
+    if (isAllSelected) {
       // Deselect all
       onChange?.([])
     }
@@ -86,7 +86,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
         .map(option => option.value)
       onChange?.(allValues)
     }
-  }, [isAllSelected, isIndeterminate, options, onChange, disabled])
+  }, [isAllSelected, options, onChange, disabled])
 
   const handleToggleOption = useCallback((optionValue: string) => {
     if (disabled)

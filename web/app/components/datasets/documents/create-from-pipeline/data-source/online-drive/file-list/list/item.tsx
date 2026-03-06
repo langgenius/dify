@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
@@ -42,7 +42,7 @@ const Item = ({
       }
     : {}
 
-  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
     e.stopPropagation()
     onSelect(file)
   }, [file, onSelect])
@@ -91,13 +91,13 @@ const Item = ({
         >
           <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
           <span
-            className="system-sm-medium grow truncate text-text-secondary"
+            className="grow truncate text-text-secondary system-sm-medium"
             title={name}
           >
             {name}
           </span>
           {!isFolder && typeof size === 'number' && (
-            <span className="system-xs-regular shrink-0 text-text-tertiary">{formatFileSize(size)}</span>
+            <span className="shrink-0 text-text-tertiary system-xs-regular">{formatFileSize(size)}</span>
           )}
         </div>
       </Wrapper>

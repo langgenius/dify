@@ -303,7 +303,7 @@ describe('BaseField', () => {
     expect(screen.getByText('This is a warning')).toBeInTheDocument()
   })
 
-  it('should render tooltip when provided', () => {
+  it('should render tooltip when provided', async () => {
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
@@ -313,8 +313,13 @@ describe('BaseField', () => {
         tooltip: 'Extra info',
       },
     })
-    // Tooltip trigger is likely present
+
     expect(screen.getByText('Info')).toBeInTheDocument()
+
+    const tooltipTrigger = screen.getByTestId('base-field-tooltip-trigger')
+    fireEvent.mouseEnter(tooltipTrigger)
+
+    expect(screen.getByText('Extra info')).toBeInTheDocument()
   })
 
   it('should render checkbox list and handle changes', async () => {
@@ -338,97 +343,97 @@ describe('BaseField', () => {
       fireEvent.click(screen.getByText('Feature B'))
     })
   })
-})
 
-it('should handle dynamic select error state', () => {
-  mockDynamicOptions.mockReturnValue({
-    data: undefined,
-    isLoading: false,
-    error: new Error('Failed'),
+  it('should handle dynamic select error state', () => {
+    mockDynamicOptions.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('Failed'),
+    })
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.dynamicSelect,
+        name: 'ds_error',
+        label: 'DS Error',
+        required: false,
+      },
+    })
+    expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
   })
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.dynamicSelect,
-      name: 'ds_error',
-      label: 'DS Error',
-      required: false,
-    },
-  })
-  expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
-})
 
-it('should handle dynamic select no data state', () => {
-  mockDynamicOptions.mockReturnValue({
-    data: { options: [] },
-    isLoading: false,
-    error: null,
+  it('should handle dynamic select no data state', () => {
+    mockDynamicOptions.mockReturnValue({
+      data: { options: [] },
+      isLoading: false,
+      error: null,
+    })
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.dynamicSelect,
+        name: 'ds_empty',
+        label: 'DS Empty',
+        required: false,
+      },
+    })
+    expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
   })
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.dynamicSelect,
-      name: 'ds_empty',
-      label: 'DS Empty',
-      required: false,
-    },
-  })
-  expect(screen.getByText('common.placeholder.input')).toBeInTheDocument()
-})
 
-it('should render radio buttons in vertical layout when length >= 3', () => {
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.radio,
-      name: 'vertical_radio',
-      label: 'Vertical',
-      required: false,
-      options: [
-        { label: 'O1', value: '1' },
-        { label: 'O2', value: '2' },
-        { label: 'O3', value: '3' },
-      ],
-    },
+  it('should render radio buttons in vertical layout when length >= 3', () => {
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.radio,
+        name: 'vertical_radio',
+        label: 'Vertical',
+        required: false,
+        options: [
+          { label: 'O1', value: '1' },
+          { label: 'O2', value: '2' },
+          { label: 'O3', value: '3' },
+        ],
+      },
+    })
+    expect(screen.getByText('O1')).toBeInTheDocument()
   })
-  expect(screen.getByText('O1')).toBeInTheDocument()
-})
 
-it('should render radio UI when showRadioUI is true', () => {
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.radio,
-      name: 'ui_radio',
-      label: 'UI Radio',
-      required: false,
-      showRadioUI: true,
-      options: [{ label: 'Option 1', value: '1' }],
-    },
+  it('should render radio UI when showRadioUI is true', () => {
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.radio,
+        name: 'ui_radio',
+        label: 'UI Radio',
+        required: false,
+        showRadioUI: true,
+        options: [{ label: 'Option 1', value: '1' }],
+      },
+    })
+    expect(screen.getByText('Option 1')).toBeInTheDocument()
   })
-  expect(screen.getByText('Option 1')).toBeInTheDocument()
-})
 
-it('should apply disabled styles', () => {
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.radio,
-      name: 'disabled_radio',
-      label: 'Disabled',
-      required: false,
-      options: [{ label: 'Option 1', value: '1' }],
-      disabled: true,
-    },
+  it('should apply disabled styles', () => {
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.radio,
+        name: 'disabled_radio',
+        label: 'Disabled',
+        required: false,
+        options: [{ label: 'Option 1', value: '1' }],
+        disabled: true,
+      },
+    })
+    // In radio, the option itself has the disabled class
+    expect(screen.getByText('Option 1')).toHaveClass('cursor-not-allowed')
   })
-  // In radio, the option itself has the disabled class
-  expect(screen.getByText('Option 1')).toHaveClass('cursor-not-allowed')
-})
 
-it('should return empty string for null content in getTranslatedContent', () => {
-  renderBaseField({
-    formSchema: {
-      type: FormTypeEnum.textInput,
-      name: 'null_label',
-      label: null as unknown as string,
-      required: false,
-    },
+  it('should return empty string for null content in getTranslatedContent', () => {
+    renderBaseField({
+      formSchema: {
+        type: FormTypeEnum.textInput,
+        name: 'null_label',
+        label: null as unknown as string,
+        required: false,
+      },
+    })
+    // Expecting translatedLabel to be '' so title block only renders required * if applicable
+    expect(screen.queryByText('*')).not.toBeInTheDocument()
   })
-  // Expecting translatedLabel to be '' so title block only renders required * if applicable
-  expect(screen.queryByText('*')).not.toBeInTheDocument()
 })

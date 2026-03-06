@@ -28,18 +28,21 @@ describe('useCheckValidated', () => {
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
-  it('should notify and return false when visible field has errors', () => {
+  it.each([
+    { fieldName: 'name', label: 'Name', message: 'Name is required' },
+    { fieldName: 'field1', label: 'Field 1', message: 'Field is required' },
+  ])('should notify and return false when visible field has errors (show_on: []) for $fieldName', ({ fieldName, label, message }) => {
     const form = {
       getAllErrors: () => ({
         fields: {
-          name: { errors: ['Name is required'] },
+          [fieldName]: { errors: [message] },
         },
       }),
       state: { values: {} },
     }
     const schemas = [{
-      name: 'name',
-      label: 'Name',
+      name: fieldName,
+      label,
       required: true,
       type: FormTypeEnum.textInput,
       show_on: [],
@@ -50,7 +53,7 @@ describe('useCheckValidated', () => {
     expect(result.current.checkValidated()).toBe(false)
     expect(mockNotify).toHaveBeenCalledWith({
       type: 'error',
-      message: 'Name is required',
+      message,
     })
   })
 
@@ -103,32 +106,6 @@ describe('useCheckValidated', () => {
     })
   })
 
-  it('should show field when show_on is empty array and notify on errors', () => {
-    const form = {
-      getAllErrors: () => ({
-        fields: {
-          field1: { errors: ['Field is required'] },
-        },
-      }),
-      state: { values: {} },
-    }
-    const schemas = [{
-      name: 'field1',
-      label: 'Field 1',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [],
-    }]
-
-    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
-
-    expect(result.current.checkValidated()).toBe(false)
-    expect(mockNotify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'Field is required',
-    })
-  })
-
   it('should notify with first error when multiple fields have errors', () => {
     const form = {
       getAllErrors: () => ({
@@ -163,6 +140,7 @@ describe('useCheckValidated', () => {
       type: 'error',
       message: 'Name error',
     })
+    expect(mockNotify).toHaveBeenCalledTimes(1)
   })
 
   it('should notify when multiple conditions all match', () => {
@@ -244,6 +222,7 @@ describe('useCheckValidated', () => {
       type: 'error',
       message: 'Unknown error',
     })
+    expect(mockNotify).toHaveBeenCalledTimes(1)
   })
 
   it('should handle field with multiple errors and notify only first one', () => {

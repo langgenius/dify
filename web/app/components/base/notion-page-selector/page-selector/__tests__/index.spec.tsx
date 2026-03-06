@@ -131,7 +131,7 @@ describe('PageSelector', () => {
   it('should disable checkbox when page is in disabledValue', async () => {
     const handleSelect = vi.fn()
     const user = userEvent.setup()
-    render(<PageSelector value={new Set()} disabledValue={new Set(['root-1'])} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} />)
+    render(<PageSelector value={new Set()} disabledValue={new Set(['root-1'])} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
     const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
     await user.click(checkbox)
@@ -153,25 +153,28 @@ describe('PageSelector', () => {
   it('should use previewPageId prop when provided', () => {
     const { rerender } = render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} previewPageId="root-1" />)
 
-    let container = screen.getByTestId('notion-page-name-root-1').closest('div')?.parentElement
-    expect(container).toHaveClass('bg-state-base-hover')
+    let row = screen.getByTestId('notion-page-row-root-1')
+    expect(row).toHaveClass('bg-state-base-hover')
 
     rerender(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} previewPageId="root-2" />)
 
-    container = screen.getByTestId('notion-page-name-root-1').closest('div')?.parentElement
-    expect(container).not.toHaveClass('bg-state-base-hover')
+    row = screen.getByTestId('notion-page-row-root-1')
+    expect(row).not.toHaveClass('bg-state-base-hover')
   })
 
   it('should handle selection of multiple pages independently when searching', async () => {
     const handleSelect = vi.fn()
     const user = userEvent.setup()
-    render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
+    const { rerender } = render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
     const checkbox1 = screen.getByTestId('checkbox-notion-page-checkbox-child-1')
     const checkbox2 = screen.getByTestId('checkbox-notion-page-checkbox-child-2')
 
     await user.click(checkbox1)
     expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
+
+    // Simulate parent component updating the value prop
+    rerender(<PageSelector value={new Set(['child-1'])} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
     await user.click(checkbox2)
     expect(handleSelect).toHaveBeenLastCalledWith(new Set(['child-1', 'child-2']))
@@ -270,8 +273,8 @@ describe('PageSelector', () => {
     // The preview should now show the hover state for root-1
     rerender(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} canPreview={true} />)
 
-    const item = screen.getByTestId('notion-page-name-root-1').closest('div')?.parentElement
-    expect(item).toHaveClass('bg-state-base-hover')
+    const row = screen.getByTestId('notion-page-row-root-1')
+    expect(row).toHaveClass('bg-state-base-hover')
   })
 
   it('should render page name with correct title attribute', () => {

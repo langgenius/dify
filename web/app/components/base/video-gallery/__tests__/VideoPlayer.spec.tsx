@@ -350,17 +350,21 @@ describe('VideoPlayer', () => {
       vi.useFakeTimers()
       render(<VideoPlayer src={mockSrc} />)
       const container = screen.getByTestId('video-player-container')
+      const controls = screen.getByTestId('video-controls')
+
+      // Initial state: visible
+      expect(controls).toHaveAttribute('data-is-visible', 'true')
 
       // Let controls hide
       fireEvent.mouseMove(container)
       act(() => {
         vi.advanceTimersByTime(3001)
       })
+      expect(controls).toHaveAttribute('data-is-visible', 'false')
 
       // mouseEnter should show controls again
       fireEvent.mouseEnter(container)
-      const controls = screen.getByTestId('video-controls')
-      expect(controls).toBeInTheDocument()
+      expect(controls).toHaveAttribute('data-is-visible', 'true')
 
       vi.useRealTimers()
     })

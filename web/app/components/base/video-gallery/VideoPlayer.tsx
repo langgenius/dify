@@ -230,7 +230,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
           <source key={index} src={srcUrl} />
         ))}
       </video>
-      <div className={`${styles.controls} ${isControlsVisible ? styles.visible : styles.hidden} ${isSmallSize ? styles.smallSize : ''}`} data-testid="video-controls">
+      <div className={`${styles.controls} ${isControlsVisible ? styles.visible : styles.hidden} ${isSmallSize ? styles.smallSize : ''}`} data-testid="video-controls" data-is-visible={isControlsVisible}>
         <div className={styles.overlay}>
           <div className={styles.progressBarContainer}>
             <div

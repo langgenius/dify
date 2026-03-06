@@ -227,7 +227,7 @@ describe('checkbox list component', () => {
 
     // Find option and click the div container
     const optionLabels = screen.getAllByText('Option 1')
-    const optionDiv = optionLabels[0].closest('div[class*="flex cursor-pointer"]')
+    const optionDiv = optionLabels[0].closest('[data-testid="option-item"]')
     await userEvent.click(optionDiv!)
     expect(onChange).not.toHaveBeenCalled()
   })
@@ -288,13 +288,13 @@ describe('checkbox list component', () => {
         showSelectAll
       />,
     )
-    // When some but not all options are selected, clicking select-all should deselect all
+    // When some but not all options are selected, clicking select-all should select all remaining options
     const selectAll = screen.getByTestId('checkbox-selectAll')
     expect(selectAll).toBeInTheDocument()
     expect(selectAll).toHaveAttribute('aria-checked', 'mixed')
 
     await userEvent.click(selectAll)
-    expect(onChange).toHaveBeenCalledWith([])
+    expect(onChange).toHaveBeenCalledWith(['option1', 'option2', 'option3', 'apple'])
   })
 
   it('filters options correctly when searching', async () => {
