@@ -35,7 +35,7 @@ dependencies = [
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
-    "markdown~=3.5.1",
+    "markdown~=3.8.1",
     "mlflow-skinny>=3.0.0",
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
@@ -113,7 +113,7 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=38.2.0",
     "lxml-stubs~=0.5.1",
-    "basedpyright~=1.31.0",
+    "basedpyright~=1.38.2",
     "ruff~=0.14.0",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -167,12 +167,12 @@ dev = [
     "import-linter>=2.3",
     "types-redis>=4.6.0.20241004",
     "celery-types>=0.23.0",
-    "mypy~=1.17.1",
+    "mypy~=1.19.1",
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.54.0",
+    "pyrefly>=0.55.0",
 ]
 
 ############################################################
