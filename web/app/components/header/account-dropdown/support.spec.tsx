@@ -36,8 +36,8 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     IS_CE_EDITION: false,
-    get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
-    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value },
+    get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value || '' },
+    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value || '' },
   }
 })
 
