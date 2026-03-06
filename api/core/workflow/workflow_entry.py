@@ -10,7 +10,7 @@ from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import GraphConfigDict, GraphInitParams, RunContextDict
 from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
@@ -217,13 +217,16 @@ class WorkflowEntry:
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
             workflow_id=workflow.id,
-            graph_config=workflow.graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
+            graph_config=cast(GraphConfigDict, workflow.graph_dict),
+            run_context=cast(
+                RunContextDict,
+                build_dify_run_context(
+                    tenant_id=workflow.tenant_id,
+                    app_id=workflow.app_id,
+                    user_id=user_id,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
             ),
             call_depth=0,
         )
@@ -358,13 +361,16 @@ class WorkflowEntry:
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
             workflow_id="",
-            graph_config=graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id,
-                app_id="",
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
+            graph_config=cast(GraphConfigDict, graph_dict),
+            run_context=cast(
+                RunContextDict,
+                build_dify_run_context(
+                    tenant_id=tenant_id,
+                    app_id="",
+                    user_id=user_id,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
             ),
             call_depth=0,
         )

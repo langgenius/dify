@@ -1,9 +1,45 @@
-from collections.abc import Mapping
+import sys
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, with_config
+
+if sys.version_info >= (3, 12):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
+
+
+class GraphEdgeConfigDict(TypedDict, total=False):
+    source: str
+    target: str
+    sourceHandle: str
+
+
+class GraphNodeConfigDict(TypedDict, total=False):
+    id: str
+    data: Any
+
+
+@with_config(extra="allow")
+class GraphConfigDict(TypedDict, total=False):
+    nodes: list[GraphNodeConfigDict]
+    edges: list[GraphEdgeConfigDict]
+
+
+class DifyRunContextDict(TypedDict):
+    tenant_id: str
+    app_id: str
+    user_id: str
+    user_from: Any
+    invoke_from: Any
+
+
+@with_config(extra="allow")
+class RunContextDict(TypedDict, total=False):
+    # Accept either dict or model instance
+    _dify: Any
 
 
 class GraphInitParams(BaseModel):
@@ -19,6 +55,6 @@ class GraphInitParams(BaseModel):
 
     # init params
     workflow_id: str = Field(..., description="workflow id")
-    graph_config: Mapping[str, Any] = Field(..., description="graph config")
-    run_context: Mapping[str, Any] = Field(..., description="runtime context")
+    graph_config: GraphConfigDict = Field(..., description="graph config")
+    run_context: RunContextDict = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")
