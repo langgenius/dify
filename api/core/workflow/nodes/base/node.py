@@ -674,6 +674,12 @@ class Node(Generic[NodeDataT]):
             chunk_type=ChunkType(event.chunk_type.value),
             tool_call=event.tool_call,
             tool_result=event.tool_result,
+            model_provider=event.model_provider,
+            model_name=event.model_name,
+            model_icon=event.model_icon,
+            model_icon_dark=event.model_icon_dark,
+            model_usage=event.model_usage.model_dump() if event.model_usage else None,
+            model_duration=event.model_duration,
         )
 
     @_dispatch.register

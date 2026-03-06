@@ -330,25 +330,19 @@ class ResponseStreamCoordinator:
         chunk_type: ChunkType = ChunkType.TEXT,
         tool_call: ToolCall | None = None,
         tool_result: ToolResult | None = None,
+        model_provider: str | None = None,
+        model_name: str | None = None,
+        model_icon: str | dict | None = None,
+        model_icon_dark: str | dict | None = None,
+        model_usage: dict | None = None,
+        model_duration: float | None = None,
     ) -> NodeRunStreamChunkEvent:
         """Create a stream chunk event with consistent structure.
 
         For selectors with special prefixes (sys, env, conversation), we use the
         active response node's information since these are not actual node IDs.
-
-        Args:
-            node_id: The node ID to attribute the event to
-            execution_id: The execution ID for this node
-            selector: The variable selector
-            chunk: The chunk content
-            is_final: Whether this is the final chunk
-            chunk_type: The semantic type of the chunk being streamed
-            tool_call: Structured data for tool_call chunks
-            tool_result: Structured data for tool_result chunks
         """
-        # Check if this is a special selector that doesn't correspond to a node
         if selector and selector[0] not in self._graph.nodes and self._active_session:
-            # Use the active response node for special selectors
             response_node = self._graph.nodes[self._active_session.node_id]
             return NodeRunStreamChunkEvent(
                 id=execution_id,
@@ -360,9 +354,14 @@ class ResponseStreamCoordinator:
                 chunk_type=chunk_type,
                 tool_call=tool_call,
                 tool_result=tool_result,
+                model_provider=model_provider,
+                model_name=model_name,
+                model_icon=model_icon,
+                model_icon_dark=model_icon_dark,
+                model_usage=model_usage,
+                model_duration=model_duration,
             )
 
-        # Standard case: selector refers to an actual node
         node = self._graph.nodes[node_id]
         return NodeRunStreamChunkEvent(
             id=execution_id,
@@ -374,6 +373,12 @@ class ResponseStreamCoordinator:
             chunk_type=chunk_type,
             tool_call=tool_call,
             tool_result=tool_result,
+            model_provider=model_provider,
+            model_name=model_name,
+            model_icon=model_icon,
+            model_icon_dark=model_icon_dark,
+            model_usage=model_usage,
+            model_duration=model_duration,
         )
 
     def _process_variable_segment(self, segment: VariableSegment) -> tuple[Sequence[NodeRunStreamChunkEvent], bool]:
@@ -464,6 +469,12 @@ class ResponseStreamCoordinator:
             chunk_type=event.chunk_type,
             tool_call=event.tool_call,
             tool_result=event.tool_result,
+            model_provider=event.model_provider,
+            model_name=event.model_name,
+            model_icon=event.model_icon,
+            model_icon_dark=event.model_icon_dark,
+            model_usage=event.model_usage,
+            model_duration=event.model_duration,
         )
 
     def _process_text_segment(self, segment: TextSegment) -> Sequence[NodeRunStreamChunkEvent]:
