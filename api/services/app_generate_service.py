@@ -38,6 +38,13 @@ if TYPE_CHECKING:
 class AppGenerateService:
     @staticmethod
     def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+        """
+        Build a subscription callback that coordinates when the background task starts.
+
+        - streams transport: start immediately (events are durable; late subscribers can replay).
+        - pubsub/sharded transport: start on first subscribe, with a short fallback timer so the task
+          still runs if the client never connects.
+        """
         started = False
         lock = threading.Lock()
 
@@ -54,10 +61,18 @@ class AppGenerateService:
                 started = True
                 return True
 
-        # XXX(QuantumGhost): dirty hacks to avoid a race between publisher and SSE subscriber.
-        # The Celery task may publish the first event before the API side actually subscribes,
-        # causing an "at most once" drop with Redis Pub/Sub. We start the task on subscribe,
-        # but also use a short fallback timer so the task still runs if the client never consumes.
+        channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
+        if channel_type == "streams":
+            # With Redis Streams, we can safely start right away; consumers can read past events.
+            _try_start()
+
+            # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
+            def _on_subscribe_streams() -> None:
+                _try_start()
+
+            return _on_subscribe_streams
+
+        # Pub/Sub modes (at-most-once): subscribe-gated start with a tiny fallback.
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
         timer.daemon = True
         timer.start()
@@ -131,33 +146,54 @@ class AppGenerateService:
             elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
-                with rate_limit_context(rate_limit, request_id):
-                    payload = AppExecutionParams.new(
-                        app_model=app_model,
-                        workflow=workflow,
-                        user=user,
-                        args=args,
-                        invoke_from=invoke_from,
-                        streaming=streaming,
-                        call_depth=0,
-                    )
-                    payload_json = payload.model_dump_json()
 
-                def on_subscribe():
-                    workflow_based_app_execution_task.delay(payload_json)
+                if streaming:
+                    # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
+                    with rate_limit_context(rate_limit, request_id):
+                        payload = AppExecutionParams.new(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=True,
+                            call_depth=0,
+                        )
+                        payload_json = payload.model_dump_json()
 
-                on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                generator = AdvancedChatAppGenerator()
-                return rate_limit.generate(
-                    generator.convert_to_event_stream(
-                        generator.retrieve_events(
-                            AppMode.ADVANCED_CHAT,
-                            payload.workflow_run_id,
-                            on_subscribe=on_subscribe,
+                    def on_subscribe():
+                        workflow_based_app_execution_task.delay(payload_json)
+
+                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    generator = AdvancedChatAppGenerator()
+                    return rate_limit.generate(
+                        generator.convert_to_event_stream(
+                            generator.retrieve_events(
+                                AppMode.ADVANCED_CHAT,
+                                payload.workflow_run_id,
+                                on_subscribe=on_subscribe,
+                            ),
                         ),
-                    ),
-                    request_id=request_id,
-                )
+                        request_id=request_id,
+                    )
+                else:
+                    # Blocking mode: run synchronously and return JSON instead of SSE
+                    # Keep behaviour consistent with WORKFLOW blocking branch.
+                    advanced_generator = AdvancedChatAppGenerator()
+                    return rate_limit.generate(
+                        advanced_generator.convert_to_event_stream(
+                            advanced_generator.generate(
+                                app_model=app_model,
+                                workflow=workflow,
+                                user=user,
+                                args=args,
+                                invoke_from=invoke_from,
+                                workflow_run_id=str(uuid.uuid4()),
+                                streaming=False,
+                            )
+                        ),
+                        request_id=request_id,
+                    )
             elif app_model.mode == AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)

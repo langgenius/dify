@@ -18,9 +18,9 @@ from core.entities.execution_extra_content import (
 from core.entities.execution_extra_content import (
     HumanInputContent as HumanInputContentDomainModel,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.human_input.entities import FormDefinition
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
 )

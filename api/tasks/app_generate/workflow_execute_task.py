@@ -21,7 +21,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.runtime import GraphRuntimeState
+from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
 from libs.flask_utils import set_login_user
 from models.account import Account
@@ -321,7 +321,13 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 return
 
             message = session.scalar(
-                select(Message).where(Message.workflow_run_id == workflow_run_id).order_by(Message.created_at.desc())
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation.id,
+                    Message.workflow_run_id == workflow_run_id,
+                )
+                .order_by(Message.created_at.desc())
+                .limit(1)
             )
             if message is None:
                 logger.warning("Message not found for workflow run %s", workflow_run_id)
