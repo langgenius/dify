@@ -513,7 +513,7 @@ class ChatConversationApi(Resource):
             case "annotated":
                 query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                )
+                ).distinct()
             case "not_annotated":
                 query = (
                     query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
