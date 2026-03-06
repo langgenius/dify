@@ -5,8 +5,8 @@ import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
 import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
