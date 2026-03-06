@@ -1263,8 +1263,28 @@
       "count": 4
     }
   },
+  "app/components/base/date-and-time-picker/time-picker/header.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 2
+    }
+  },
+  "app/components/base/date-and-time-picker/time-picker/options.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    }
+  },
+  "app/components/base/date-and-time-picker/year-and-month-picker/header.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/date-and-time-picker/year-and-month-picker/options.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
   },
@@ -1555,6 +1575,11 @@
       "count": 1
     }
   },
+  "app/components/base/input-with-copy/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/base/input/index.stories.tsx": {
     "no-console": {
       "count": 2
@@ -1676,7 +1701,7 @@
       "count": 3
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/mermaid/utils.ts": {
