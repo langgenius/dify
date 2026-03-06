@@ -282,12 +282,25 @@ class BaseAgentRunner(AppRunner):
 
         return prompt_tool
 
+    def _get_creator_info(self) -> tuple[CreatorUserRole, str]:
+        """
+        Determine created_by_role and created_by based on message source.
+        Returns tuple of (created_by_role, created_by).
+        """
+        if self.message.from_end_user_id:
+            return CreatorUserRole.END_USER, self.message.from_end_user_id
+        elif self.message.from_account_id:
+            return CreatorUserRole.ACCOUNT, self.message.from_account_id
+        else:
+            return CreatorUserRole.ACCOUNT, self.user_id
+
     def create_agent_thought(
         self, message_id: str, message: str, tool_name: str, tool_input: str, messages_ids: list[str]
     ) -> str:
         """
         Create agent thought
         """
+        created_by_role, created_by = self._get_creator_info()
         thought = MessageAgentThought(
             message_id=message_id,
             message_chain_id=None,
@@ -312,8 +325,8 @@ class BaseAgentRunner(AppRunner):
             position=self.agent_thought_count + 1,
             currency="USD",
             latency=0,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=self.user_id,
+            created_by_role=created_by_role,
+            created_by=created_by,
         )
 
         db.session.add(thought)
