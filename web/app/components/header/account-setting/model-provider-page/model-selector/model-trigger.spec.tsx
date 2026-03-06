@@ -1,5 +1,5 @@
 import type { Model, ModelItem } from '../declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -60,8 +60,8 @@ describe('ModelTrigger', () => {
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
   })
 
-  it('should show status tooltip content when model is not active', async () => {
-    const { container } = render(
+  it('should show status badge when model is not active', () => {
+    render(
       <ModelTrigger
         open={false}
         provider={makeModel()}
@@ -69,10 +69,7 @@ describe('ModelTrigger', () => {
       />,
     )
 
-    const tooltipTrigger = container.querySelector('[data-state]') as HTMLElement
-    fireEvent.mouseEnter(tooltipTrigger)
-
-    expect(await screen.findByText('No Configure')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.selector\.configureRequired/)).toBeInTheDocument()
   })
 
   it('should not show status icon when readonly', () => {
@@ -86,6 +83,6 @@ describe('ModelTrigger', () => {
     )
 
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
-    expect(screen.queryByText('No Configure')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.configureRequired/)).not.toBeInTheDocument()
   })
 })

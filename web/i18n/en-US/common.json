@@ -416,6 +416,7 @@
   "modelProvider.selector.incompatible": "Incompatible",
   "modelProvider.selector.incompatibleTip": "This model is not available in the current version. Please select another available model.",
   "modelProvider.selector.install": "Install",
+  "modelProvider.selector.modelProviderSettings": "Model Provider Settings",
   "modelProvider.selector.noProviderConfigured": "No model provider configured",
   "modelProvider.selector.noProviderConfiguredDesc": "Browse Marketplace to install one, or configure providers in settings.",
   "modelProvider.selector.rerankTip": "Please set up the Rerank model",

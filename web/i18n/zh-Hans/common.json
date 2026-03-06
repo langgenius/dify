@@ -416,6 +416,7 @@
   "modelProvider.selector.incompatible": "不兼容",
   "modelProvider.selector.incompatibleTip": "该模型在当前版本中不可用，请选择其他可用模型。",
   "modelProvider.selector.install": "安装",
+  "modelProvider.selector.modelProviderSettings": "模型供应商设置",
   "modelProvider.selector.noProviderConfigured": "未配置模型提供商",
   "modelProvider.selector.noProviderConfiguredDesc": "前往插件市场安装，或在设置中配置提供商。",
   "modelProvider.selector.rerankTip": "请设置 Rerank 模型",

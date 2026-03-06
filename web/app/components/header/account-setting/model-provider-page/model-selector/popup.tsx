@@ -263,14 +263,14 @@ const Popup: FC<PopupProps> = ({
         )}
       </div>
       <div
-        className="sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-4 py-2 text-text-accent-light-mode-only"
+        className="sticky bottom-0 flex cursor-pointer items-center gap-1 rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-3 py-2 text-text-tertiary hover:text-text-secondary"
         onClick={() => {
           onHide()
           setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
         }}
       >
-        <span className="system-xs-medium">{t('model.settingsLink', { ns: 'common' })}</span>
-        <span className="i-ri-arrow-right-up-line ml-0.5 h-3 w-3" />
+        <span className="i-ri-equalizer-2-line h-4 w-4 shrink-0" />
+        <span className="system-xs-medium">{t('modelProvider.selector.modelProviderSettings', { ns: 'common' })}</span>
       </div>
     </div>
   )

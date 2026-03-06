@@ -5733,11 +5733,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-page/plugin-tasks/components/plugin-task-list.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-page/plugin-tasks/components/task-status-indicator.tsx": {
     "no-restricted-imports": {
       "count": 1
