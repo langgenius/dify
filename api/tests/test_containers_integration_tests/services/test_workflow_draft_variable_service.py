@@ -689,9 +689,7 @@ class TestWorkflowDraftVariableService:
 
         db_session_with_containers.commit()
         service = WorkflowDraftVariableService(db_session_with_containers)
-        service.prefill_conversation_variable_default_values(
-            workflow, user_id="00000000-0000-0000-0000-000000000001"
-        )
+        service.prefill_conversation_variable_default_values(workflow, user_id="00000000-0000-0000-0000-000000000001")
         draft_variables = (
             db_session_with_containers.query(WorkflowDraftVariable)
             .filter_by(app_id=app.id, node_id=CONVERSATION_VARIABLE_NODE_ID)

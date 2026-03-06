@@ -106,9 +106,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         page1_var_ids = {v.id for v in var_list.variables}
         assert page1_var_ids.issubset(self._variable_ids)
 
-        var_list_2 = srv.list_variables_without_values(
-            self._test_app_id, page=2, limit=2, user_id=self._test_user_id
-        )
+        var_list_2 = srv.list_variables_without_values(self._test_app_id, page=2, limit=2, user_id=self._test_user_id)
         assert var_list_2.total is None
         assert len(var_list_2.variables) == 2
         page2_var_ids = {v.id for v in var_list_2.variables}
