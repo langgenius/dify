@@ -342,6 +342,12 @@ export const ZENDESK_FIELD_IDS = {
     '',
   ),
 }
+
+export const SUPPORT_EMAIL_ADDRESS = getStringConfig(
+  env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS,
+  '',
+)
+
 export const APP_VERSION = pkg.version
 
 export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE

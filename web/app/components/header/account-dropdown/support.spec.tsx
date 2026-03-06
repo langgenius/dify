@@ -11,6 +11,10 @@ const { mockZendeskKey } = vi.hoisted(() => ({
   mockZendeskKey: { value: 'test-key' },
 }))
 
+const { mockSupportEmailKey } = vi.hoisted(() => ({
+  mockSupportEmailKey: { value: '' },
+}))
+
 vi.mock('@/context/app-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/app-context')>()
   return {
@@ -33,6 +37,7 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     IS_CE_EDITION: false,
     get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
+    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value },
   }
 })
 
@@ -84,6 +89,7 @@ describe('Support', () => {
     vi.clearAllMocks()
     window.zE = vi.fn()
     mockZendeskKey.value = 'test-key'
+    mockSupportEmailKey.value = ''
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
@@ -96,7 +102,7 @@ describe('Support', () => {
 
   const renderSupport = () => {
     return render(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
+      <DropdownMenu open={true} onOpenChange={() => { }}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
           <Support closeAccountDropdown={mockCloseAccountDropdown} />
@@ -125,7 +131,7 @@ describe('Support', () => {
     })
   })
 
-  describe('Plan-based Channels', () => {
+  describe('Dedicated Channels', () => {
     it('should show "Contact Us" when ZENDESK_WIDGET_KEY is present', () => {
       // Act
       renderSupport()
