@@ -1,4 +1,4 @@
-import type { SimplePluginInfo } from '../react-markdown-wrapper'
+import type { SimplePluginInfo } from '../streamdown-wrapper'
 import { render, screen } from '@testing-library/react'
 import { Markdown } from '../index'
 

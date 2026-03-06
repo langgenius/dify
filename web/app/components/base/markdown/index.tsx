@@ -1,12 +1,11 @@
-import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
+import type { SimplePluginInfo, StreamdownWrapperProps } from './streamdown-wrapper'
 import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
-import 'katex/dist/katex.min.css'
 
-const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper'), { ssr: false })
+const ReactMarkdown = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
 
 const preprocess = flow([preprocessThinkTag, preprocessLaTeX])
 
@@ -23,7 +22,10 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins' | 'isAnimating'>
+} & Pick<
+  StreamdownWrapperProps,
+  'customComponents' | 'customDisallowedElements' | 'remarkPlugins' | 'rehypePlugins' | 'isAnimating' | 'mode'
+>
 
 export const Markdown = memo((props: MarkdownProps) => {
   const {
@@ -32,7 +34,9 @@ export const Markdown = memo((props: MarkdownProps) => {
     pluginInfo,
     isAnimating,
     customDisallowedElements,
+    remarkPlugins,
     rehypePlugins,
+    mode,
     className,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
@@ -44,8 +48,10 @@ export const Markdown = memo((props: MarkdownProps) => {
         latexContent={latexContent}
         customComponents={customComponents}
         customDisallowedElements={customDisallowedElements}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         isAnimating={isAnimating}
+        mode={mode}
       />
     </div>
   )

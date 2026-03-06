@@ -555,6 +555,33 @@
   border-bottom: 1px solid var(--color-divider-subtle);
 }
 
+/* streamdown table: bridge shadcn/ui tokens to Dify design system */
+[data-streamdown="table-wrapper"] {
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-wrapper"] > div:has(> [data-streamdown="table"]) {
+  border: none;
+}
+
+[data-streamdown="table-wrapper"] > div:first-child button {
+  color: var(--color-text-tertiary);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child button:hover {
+  color: var(--color-text-primary);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child > div > div {
+  background-color: var(--color-components-panel-bg);
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-wrapper"] > div:first-child > div > div button:hover {
+  color: var(--color-components-menu-item-text-hover);
+  background-color: var(--color-components-menu-item-bg-hover);
+}
+
 .markdown-body table img {
   background-color: transparent;
 }

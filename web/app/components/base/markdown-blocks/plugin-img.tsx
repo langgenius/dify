@@ -1,4 +1,4 @@
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
 /**
  * @fileoverview Img component for rendering <img> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.

@@ -4,7 +4,7 @@
  * Handles special rendering for paragraphs that directly contain an image.
  */
 import type { ExtraProps } from 'streamdown'
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'

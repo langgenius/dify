@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
 import dynamic from 'next/dynamic'
@@ -23,6 +24,12 @@ import 'katex/dist/katex.min.css'
 type PluggableList = NonNullable<StreamdownProps['rehypePlugins']>
 type Pluggable = PluggableList[number]
 
+type SanitizeSchema = {
+  tagNames?: string[]
+  attributes?: Record<string, string[]>
+  [key: string]: unknown
+}
+
 const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
 
 const mathPlugin = createMathPlugin({
@@ -45,6 +52,12 @@ const ALLOWED_TAGS: Record<string, string[]> = {
   sub: [],
   sup: [],
   kbd: [],
+  // custom tags from human input node
+  variable: ['data*'],
+  section: ['data*'],
+  // ... existing tags ...
+  withiconlist: ['className', 'mt'],
+  withiconitem: ['icon'],
 }
 
 /**
@@ -56,21 +69,27 @@ const ALLOWED_TAGS: Record<string, string[]> = {
  * when `rehypePlugins` is the exact default reference (identity check).
  */
 function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
-  // defaultRehypePlugins.sanitize is [rehypeSanitize, schema]
-  const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [Pluggable, Record<string, unknown>]
+  const [sanitizePlugin, defaultSanitizeSchema]
+    = defaultRehypePlugins.sanitize as [Pluggable, SanitizeSchema]
 
   const tagNamesSet = new Set([
-    ...((defaultSanitizeSchema.tagNames as string[]) ?? []),
+    ...(defaultSanitizeSchema.tagNames ?? []),
     ...Object.keys(ALLOWED_TAGS),
   ])
 
-  const customSchema = {
+  const mergedAttributes: Record<string, string[]> = {
+    ...(defaultSanitizeSchema.attributes ?? {}),
+  }
+  for (const tag of Object.keys(ALLOWED_TAGS)) {
+    mergedAttributes[tag] = mergedAttributes[tag]
+      ? Array.from(new Set([...mergedAttributes[tag], ...ALLOWED_TAGS[tag]]))
+      : ALLOWED_TAGS[tag]
+  }
+
+  const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
     tagNames: Array.from(tagNamesSet),
-    attributes: {
-      ...(defaultSanitizeSchema.attributes as Record<string, string[]>),
-      ...ALLOWED_TAGS,
-    },
+    attributes: mergedAttributes,
   }
 
   return [
@@ -86,25 +105,35 @@ export type SimplePluginInfo = {
   pluginId: string
 }
 
-export type ReactMarkdownWrapperProps = {
+export type StreamdownWrapperProps = {
   latexContent: string
   customDisallowedElements?: string[]
   customComponents?: Components
   pluginInfo?: SimplePluginInfo
+  remarkPlugins?: StreamdownProps['remarkPlugins']
   rehypePlugins?: StreamdownProps['rehypePlugins']
   isAnimating?: boolean
   className?: string
+  mode?: StreamdownProps['mode']
 }
 
-const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
-  const { customComponents, latexContent, pluginInfo, isAnimating, className } = props
+const StreamdownWrapper = (props: StreamdownWrapperProps) => {
+  const {
+    customComponents,
+    latexContent,
+    pluginInfo,
+    isAnimating,
+    className,
+    mode = 'streaming',
+  } = props
 
   const remarkPlugins = useMemo(
     () => [
       [Array.isArray(defaultRemarkPlugins.gfm) ? defaultRemarkPlugins.gfm[0] : defaultRemarkPlugins.gfm, { singleTilde: false }] as Pluggable,
       RemarkBreaks,
+      ...(props.remarkPlugins ?? []),
     ],
-    [],
+    [props.remarkPlugins],
   )
 
   const rehypePlugins = useMemo(
@@ -134,15 +163,11 @@ const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
       p: pProps => pluginInfo ? <PluginParagraph {...pProps} pluginInfo={pluginInfo} /> : <Paragraph {...pProps} />,
       button: MarkdownButton,
       form: MarkdownForm,
-      details: ThinkBlock as React.ComponentType,
+      details: ThinkBlock as ComponentType,
       ...customComponents,
     }),
     [pluginInfo, customComponents],
   )
-
-  const controls = useMemo(() => ({
-    table: false,
-  }), [])
 
   return (
     <Streamdown
@@ -153,12 +178,12 @@ const ReactMarkdownWrapper = (props: ReactMarkdownWrapperProps) => {
       urlTransform={customUrlTransform}
       disallowedElements={disallowedElements}
       components={components}
-      controls={controls}
       isAnimating={isAnimating}
+      mode={mode}
     >
       {latexContent}
     </Streamdown>
   )
 }
 
-export default memo(ReactMarkdownWrapper)
+export default memo(StreamdownWrapper)
