@@ -28,14 +28,6 @@ class GraphConfigDict(TypedDict, total=False):
     edges: list[GraphEdgeConfigDict]
 
 
-class DifyRunContextDict(TypedDict):
-    tenant_id: str
-    app_id: str
-    user_id: str
-    user_from: Any
-    invoke_from: Any
-
-
 @with_config(extra="allow")
 class RunContextDict(TypedDict, total=False):
     # Accept either dict or model instance
