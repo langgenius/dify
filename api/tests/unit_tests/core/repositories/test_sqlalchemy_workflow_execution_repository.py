@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
+from dify_graph.entities.workflow_execution import WorkflowExecution, WorkflowType
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
