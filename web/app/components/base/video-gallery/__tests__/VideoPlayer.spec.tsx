@@ -271,15 +271,19 @@ describe('VideoPlayer', () => {
       window.HTMLVideoElement.prototype.play = vi.fn().mockRejectedValue(new Error('Play failed'))
       const user = userEvent.setup()
 
-      render(<VideoPlayer src={mockSrc} />)
-      const playPauseBtn = screen.getByTestId('video-play-pause-button')
+      try {
+        render(<VideoPlayer src={mockSrc} />)
+        const playPauseBtn = screen.getByTestId('video-play-pause-button')
 
-      await user.click(playPauseBtn)
+        await user.click(playPauseBtn)
 
-      await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Error playing video:', expect.any(Error))
-      })
-      consoleSpy.mockRestore()
+        await waitFor(() => {
+          expect(consoleSpy).toHaveBeenCalledWith('Error playing video:', expect.any(Error))
+        })
+      }
+      finally {
+        consoleSpy.mockRestore()
+      }
     })
 
     it('should reset volume to 1 when unmuting with volume at 0', async () => {

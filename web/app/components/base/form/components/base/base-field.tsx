@@ -270,9 +270,11 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.radio && (
-              <div className={cn(
-                memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
-              )}
+              <div
+                className={cn(
+                  memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+                )}
+                data-testid="radio-group"
               >
                 {
                   memorizedOptions.map(option => (

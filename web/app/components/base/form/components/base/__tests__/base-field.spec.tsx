@@ -342,6 +342,9 @@ describe('BaseField', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Feature B'))
     })
+
+    const checkboxB = screen.getByTestId('checkbox-b')
+    expect(checkboxB).toBeChecked()
   })
 
   it('should handle dynamic select error state', () => {
@@ -393,6 +396,8 @@ describe('BaseField', () => {
       },
     })
     expect(screen.getByText('O1')).toBeInTheDocument()
+    expect(screen.getByText('O2')).toBeInTheDocument()
+    expect(screen.getByText('O3')).toBeInTheDocument()
   })
 
   it('should render radio UI when showRadioUI is true', () => {
@@ -407,6 +412,7 @@ describe('BaseField', () => {
       },
     })
     expect(screen.getByText('Option 1')).toBeInTheDocument()
+    expect(screen.getByTestId('radio-group')).toBeInTheDocument()
   })
 
   it('should apply disabled styles', () => {

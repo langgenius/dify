@@ -228,7 +228,8 @@ describe('checkbox list component', () => {
     // Find option and click the div container
     const optionLabels = screen.getAllByText('Option 1')
     const optionDiv = optionLabels[0].closest('[data-testid="option-item"]')
-    await userEvent.click(optionDiv!)
+    expect(optionDiv).toBeInTheDocument()
+    await userEvent.click(optionDiv as HTMLElement)
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -332,7 +333,8 @@ describe('checkbox list component', () => {
 
     const optionLabel = screen.getByText('Option 1')
     const optionRow = optionLabel.closest('div[data-testid="option-item"]')
-    await userEvent.click(optionRow!)
+    expect(optionRow).toBeInTheDocument()
+    await userEvent.click(optionRow as HTMLElement)
 
     expect(onChange).toHaveBeenCalledWith(['option1'])
   })
@@ -352,7 +354,8 @@ describe('checkbox list component', () => {
     )
 
     const optionRow = screen.getByText('Option 1').closest('div[data-testid="option-item"]')
-    await userEvent.click(optionRow!)
+    expect(optionRow).toBeInTheDocument()
+    await userEvent.click(optionRow as HTMLElement)
 
     expect(onChange).not.toHaveBeenCalled()
   })
@@ -392,7 +395,7 @@ describe('checkbox list component', () => {
     expect(screen.getByText('common.noData')).toBeInTheDocument()
   })
 
-  it('toggles option when clicking disabled component with enabled option', async () => {
+  it('does not toggle option when component is disabled even with enabled option', async () => {
     const onChange = vi.fn()
     const disabledOptions = [
       { label: 'Option', value: 'option' },

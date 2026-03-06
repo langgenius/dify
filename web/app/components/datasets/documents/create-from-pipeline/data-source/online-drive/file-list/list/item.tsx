@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import { Tooltip } from '@/app/components/base/ui/tooltip'
+import { Tooltip } from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
@@ -36,10 +36,10 @@ const Item = ({
   const Wrapper = disabled ? Tooltip : React.Fragment
   const wrapperProps = disabled
     ? {
-        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
-        position: 'top-end' as Placement,
-        offset: { mainAxis: 4, crossAxis: -104 },
-      }
+      popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
+      position: 'top-end' as Placement,
+      offset: { mainAxis: 4, crossAxis: -104 },
+    }
     : {}
 
   const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
