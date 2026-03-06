@@ -102,4 +102,232 @@ describe('useCheckValidated', () => {
       message: 'Secret is required',
     })
   })
+
+  it('should show field when show_on is empty array and notify on errors', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          field1: { errors: ['Field is required'] },
+        },
+      }),
+      state: { values: {} },
+    }
+    const schemas = [{
+      name: 'field1',
+      label: 'Field 1',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Field is required',
+    })
+  })
+
+  it('should notify with first error when multiple fields have errors', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          name: { errors: ['Name error'] },
+          email: { errors: ['Email error'] },
+        },
+      }),
+      state: { values: {} },
+    }
+    const schemas = [
+      {
+        name: 'name',
+        label: 'Name',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [],
+      },
+      {
+        name: 'email',
+        label: 'Email',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [],
+      },
+    ]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Name error',
+    })
+  })
+
+  it('should notify when multiple conditions all match', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          advancedOption: { errors: ['Advanced is required'] },
+        },
+      }),
+      state: { values: { enabled: 'true', level: 'advanced' } },
+    }
+    const schemas = [{
+      name: 'advancedOption',
+      label: 'Advanced Option',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [
+        { variable: 'enabled', value: 'true' },
+        { variable: 'level', value: 'advanced' },
+      ],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Advanced is required',
+    })
+  })
+
+  it('should ignore error when one of multiple conditions does not match', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          advancedOption: { errors: ['Advanced is required'] },
+        },
+      }),
+      state: { values: { enabled: 'true', level: 'basic' } },
+    }
+    const schemas = [{
+      name: 'advancedOption',
+      label: 'Advanced Option',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [
+        { variable: 'enabled', value: 'true' },
+        { variable: 'level', value: 'advanced' },
+      ],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(true)
+    expect(mockNotify).not.toHaveBeenCalled()
+  })
+
+  it('should handle field with error when schema is not found', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          unknownField: { errors: ['Unknown error'] },
+        },
+      }),
+      state: { values: {} },
+    }
+    const schemas = [{
+      name: 'knownField',
+      label: 'Known Field',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Unknown error',
+    })
+  })
+
+  it('should handle field with multiple errors and notify only first one', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          field1: { errors: ['First error', 'Second error'] },
+        },
+      }),
+      state: { values: {} },
+    }
+    const schemas = [{
+      name: 'field1',
+      label: 'Field 1',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'First error',
+    })
+  })
+
+  it('should return true when all visible fields have no errors', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          visibleField: { errors: [] },
+          hiddenField: { errors: [] },
+        },
+      }),
+      state: { values: { showHidden: 'false' } },
+    }
+    const schemas = [
+      {
+        name: 'visibleField',
+        label: 'Visible Field',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [],
+      },
+      {
+        name: 'hiddenField',
+        label: 'Hidden Field',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [{ variable: 'showHidden', value: 'true' }],
+      },
+    ]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(true)
+    expect(mockNotify).not.toHaveBeenCalled()
+  })
+
+  it('should properly evaluate show_on conditions with different values', () => {
+    const form = {
+      getAllErrors: () => ({
+        fields: {
+          numericField: { errors: ['Numeric error'] },
+        },
+      }),
+      state: { values: { threshold: '100' } },
+    }
+    const schemas = [{
+      name: 'numericField',
+      label: 'Numeric Field',
+      required: true,
+      type: FormTypeEnum.textInput,
+      show_on: [{ variable: 'threshold', value: '100' }],
+    }]
+
+    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+
+    expect(result.current.checkValidated()).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Numeric error',
+    })
+  })
 })
