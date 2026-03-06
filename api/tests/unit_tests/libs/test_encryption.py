@@ -6,6 +6,7 @@ proper error handling and fallback behavior.
 """
 
 import base64
+import json
 
 from libs.encryption import FieldEncryption
 
@@ -148,3 +149,47 @@ class TestRoundTripEncodingDecoding:
         decoded = FieldEncryption.decrypt_field(encoded)
 
         assert decoded == original_password
+
+
+class TestEncodeResponse:
+    """Test cases for response encoding (backend→frontend obfuscation)."""
+
+    def test_encode_response_returns_envelope(self):
+        """encode_response wraps payload in {'d': '<base64>'}."""
+        data = {"enable_email_password_login": True, "is_allow_register": False}
+        result = FieldEncryption.encode_response(data)
+        assert set(result.keys()) == {"d"}
+        assert isinstance(result["d"], str)
+
+    def test_encode_response_is_valid_base64(self):
+        """The 'd' value must be valid Base64."""
+        data = {"key": "value"}
+        result = FieldEncryption.encode_response(data)
+        # Should not raise
+        decoded_bytes = base64.b64decode(result["d"])
+        assert decoded_bytes  # non-empty
+
+    def test_encode_response_roundtrip(self):
+        """Backend encode -> frontend decode (JSON.parse(atob(d))) roundtrip."""
+        original = {
+            "enable_email_password_login": True,
+            "is_allow_register": False,
+            "sso_enforced_for_signin_protocol": "saml",
+        }
+        envelope = FieldEncryption.encode_response(original)
+        # Simulate frontend: atob(d) -> JSON.parse
+        decoded = json.loads(base64.b64decode(envelope["d"]).decode("utf-8"))
+        assert decoded == original
+
+    def test_encode_response_empty_dict(self):
+        """Empty dict encodes and decodes correctly."""
+        result = FieldEncryption.encode_response({})
+        decoded = json.loads(base64.b64decode(result["d"]).decode("utf-8"))
+        assert decoded == {}
+
+    def test_encode_response_nested_dict(self):
+        """Nested structures encode and decode correctly."""
+        data = {"branding": {"enabled": True, "logo_url": "https://example.com"}}
+        result = FieldEncryption.encode_response(data)
+        decoded = json.loads(base64.b64decode(result["d"]).decode("utf-8"))
+        assert decoded == data

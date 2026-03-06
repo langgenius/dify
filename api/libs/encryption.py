@@ -1,15 +1,17 @@
 """
 Field Encoding/Decoding Utilities
 
-Provides Base64 decoding for sensitive fields (password, verification code)
-received from the frontend.
+Provides Base64 encoding/decoding for sensitive fields (password, verification
+code, response payloads) transmitted between frontend and backend.
 
 Note: This uses Base64 encoding for obfuscation, not cryptographic encryption.
 Real security relies on HTTPS for transport layer encryption.
 """
 
 import base64
+import json
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -64,3 +66,22 @@ class FieldEncryption:
             Decrypted code or None if decryption fails
         """
         return cls.decrypt_field(encrypted_code)
+
+    @classmethod
+    def encode_response(cls, data: dict[str, Any]) -> dict[str, str]:
+        """
+        Base64-encode a response payload for obfuscation.
+
+        Symmetric counterpart to decrypt_field: backend encodes, frontend decodes
+        with atob() + JSON.parse().
+        Prevents casual inspection of feature configuration in browser network panel.
+
+        Args:
+            data: Response dict to encode
+
+        Returns:
+            {"d": "<base64-encoded JSON>"}
+        """
+        json_bytes = json.dumps(data).encode("utf-8")
+        encoded = base64.b64encode(json_bytes).decode("utf-8")
+        return {"d": encoded}
