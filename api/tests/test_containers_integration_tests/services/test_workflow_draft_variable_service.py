@@ -729,7 +729,7 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id)
+        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id, app.created_by)
         assert retrieved_conv_id == conversation_id
 
     def test_get_conversation_id_from_draft_variable_not_found(
@@ -745,7 +745,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id)
+        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id, app.created_by)
         assert retrieved_conv_id is None
 
     def test_list_system_variables_success(
