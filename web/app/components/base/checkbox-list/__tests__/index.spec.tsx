@@ -268,17 +268,17 @@ describe('checkbox list component', () => {
   })
 
   it('applies maxHeight style to options container', () => {
-    const { container } = render(
+    render(
       <CheckboxList
         options={options}
         maxHeight="200px"
       />,
     )
-    const optionsContainer = container.querySelector('div.p-1')
+    const optionsContainer = screen.getByTestId('options-container')
     expect(optionsContainer).toHaveStyle({ maxHeight: '200px', overflowY: 'auto' })
   })
 
-  it('shows indeterminate state when some options are selected', () => {
+  it('shows indeterminate state when some options are selected', async () => {
     const onChange = vi.fn()
     render(
       <CheckboxList
@@ -291,6 +291,10 @@ describe('checkbox list component', () => {
     // When some but not all options are selected, clicking select-all should deselect all
     const selectAll = screen.getByTestId('checkbox-selectAll')
     expect(selectAll).toBeInTheDocument()
+    expect(selectAll).toHaveAttribute('aria-checked', 'mixed')
+
+    await userEvent.click(selectAll)
+    expect(onChange).toHaveBeenCalledWith([])
   })
 
   it('filters options correctly when searching', async () => {
@@ -327,7 +331,7 @@ describe('checkbox list component', () => {
     )
 
     const optionLabel = screen.getByText('Option 1')
-    const optionRow = optionLabel.closest('div[class*="flex cursor-pointer"]')
+    const optionRow = optionLabel.closest('div[data-testid="option-item"]')
     await userEvent.click(optionRow!)
 
     expect(onChange).toHaveBeenCalledWith(['option1'])
@@ -347,7 +351,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const optionRow = screen.getByText('Option 1').closest('div[class*="flex cursor-pointer"]')
+    const optionRow = screen.getByText('Option 1').closest('div[data-testid="option-item"]')
     await userEvent.click(optionRow!)
 
     expect(onChange).not.toHaveBeenCalled()

@@ -96,12 +96,8 @@ vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/annot
     return (
       <div data-testid="annotation-ctrl">
         {cached
-          ? (
-              <button data-testid="annotation-edit-btn" onClick={onEdit}>Edit</button>
-            )
-          : (
-              <button data-testid="annotation-add-btn" onClick={handleAdd}>Add</button>
-            )}
+          ? (<button data-testid="annotation-edit-btn" onClick={onEdit}>Edit</button>)
+          : (<button data-testid="annotation-add-btn" onClick={handleAdd}>Add</button>)}
       </div>
     )
   },
@@ -670,14 +666,6 @@ describe('Operation', () => {
 
       await user.click(thumbUp)
       expect(mockContextValue.onFeedback).toBeUndefined()
-    })
-
-    it('should default target to user in handleFeedback if missing', () => {
-      // Since handleFeedback is internal, we simulate it via a like click that defaults to 'user' handled by handleLikeClick
-      // But wait, the missing branch is `setAdminLocalFeedback` vs `setUserLocalFeedback` if target === 'admin'
-      // We can trigger this by making sure both paths are well covered. They are covered via tests.
-      // The default `target: 'user' | 'admin' = 'user'` signature on handleFeedback.
-      expect(true).toBe(true)
     })
   })
 

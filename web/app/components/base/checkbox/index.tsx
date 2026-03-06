@@ -41,6 +41,9 @@ const Checkbox = ({
         onCheck?.(event)
       }}
       data-testid={`checkbox-${id}`}
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : checked}
+      tabIndex={disabled ? -1 : 0}
     >
       {!checked && indeterminate && <IndeterminateIcon />}
       {checked && <RiCheckLine className="h-3 w-3" data-testid={`check-icon-${id}`} />}

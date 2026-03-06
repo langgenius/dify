@@ -46,34 +46,34 @@ describe('VideoPlayer', () => {
       get() { return 100 },
     })
 
+    type MockVideoElement = HTMLVideoElement & {
+      _currentTime?: number
+      _volume?: number
+      _muted?: boolean
+    }
+
     // Use a descriptor check to avoid re-defining if it exists
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'currentTime')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'currentTime', {
         configurable: true,
-        // eslint-disable-next-line ts/no-explicit-any
-        get() { return (this as any)._currentTime || 0 },
-        // eslint-disable-next-line ts/no-explicit-any
-        set(v) { (this as any)._currentTime = v },
+        get() { return (this as MockVideoElement)._currentTime || 0 },
+        set(v) { (this as MockVideoElement)._currentTime = v },
       })
     }
 
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'volume')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'volume', {
         configurable: true,
-        // eslint-disable-next-line ts/no-explicit-any
-        get() { return (this as any)._volume ?? 1 },
-        // eslint-disable-next-line ts/no-explicit-any
-        set(v) { (this as any)._volume = v },
+        get() { return (this as MockVideoElement)._volume ?? 1 },
+        set(v) { (this as MockVideoElement)._volume = v },
       })
     }
 
     if (!Object.getOwnPropertyDescriptor(window.HTMLVideoElement.prototype, 'muted')) {
       Object.defineProperty(window.HTMLVideoElement.prototype, 'muted', {
         configurable: true,
-        // eslint-disable-next-line ts/no-explicit-any
-        get() { return (this as any)._muted || false },
-        // eslint-disable-next-line ts/no-explicit-any
-        set(v) { (this as any)._muted = v },
+        get() { return (this as MockVideoElement)._muted || false },
+        set(v) { (this as MockVideoElement)._muted = v },
       })
     }
   })

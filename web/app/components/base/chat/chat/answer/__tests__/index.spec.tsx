@@ -30,7 +30,7 @@ describe('Answer Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render basic content asymptotically', async () => {
+    it('should render basic content correctly', async () => {
       render(<Answer {...defaultProps} />)
       expect(screen.getByTestId('markdown-body')).toBeInTheDocument()
     })
@@ -111,6 +111,7 @@ describe('Answer Component', () => {
           } as unknown as ChatItem}
         />,
       )
+      expect(screen.getByTestId('citation-title')).toBeInTheDocument()
     })
   })
 
@@ -281,7 +282,8 @@ describe('Answer Component', () => {
       })
 
       globalThis.ResizeObserver = originalResizeObserver
-      expect(true).toBe(true)
+      // Verify component still renders correctly after resize callback
+      expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
     })
 
     it('should render all component blocks within human inputs layout to cover missing branches', () => {

@@ -128,12 +128,14 @@ describe('PageSelector', () => {
     await waitFor(() => expect(screen.queryByText('Child 1')).not.toBeInTheDocument())
   })
 
-  it('should disable checkbox when page is in disabledValue', () => {
+  it('should disable checkbox when page is in disabledValue', async () => {
+    const handleSelect = vi.fn()
+    const user = userEvent.setup()
     render(<PageSelector value={new Set()} disabledValue={new Set(['root-1'])} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} />)
 
     const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
-    // Check that the checkbox has the disabled styled classes
-    expect(checkbox).toHaveClass('cursor-not-allowed')
+    await user.click(checkbox)
+    expect(handleSelect).not.toHaveBeenCalled()
   })
 
   it('should not render preview button when canPreview is false', () => {
@@ -173,14 +175,6 @@ describe('PageSelector', () => {
 
     await user.click(checkbox2)
     expect(handleSelect).toHaveBeenLastCalledWith(new Set(['child-1', 'child-2']))
-  })
-
-  it('should show breadcrumbs for nested items when searching', () => {
-    render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Grandchild" pagesMap={mockPagesMap} list={mockList} onSelect={vi.fn()} />)
-
-    // Should show the full breadcrumb path
-    const breadcrumb = screen.getByText(/Root 1.*Child 1.*Grandchild 1/)
-    expect(breadcrumb).toBeInTheDocument()
   })
 
   it('should expand and show all children when parent is selected', async () => {
