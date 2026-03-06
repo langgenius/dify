@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -219,14 +219,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = self._app_config.app_model_config_dict.get("text_to_speech")
+        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
         if (
             text_to_speech_dict
             and text_to_speech_dict.get("autoPlay") == "enabled"
             and text_to_speech_dict.get("enabled")
         ):
             publisher = AppGeneratorTTSPublisher(
-                tenant_id, text_to_speech_dict.get("voice", None), text_to_speech_dict.get("language", None)
+                tenant_id, text_to_speech_dict.get("voice", ""), text_to_speech_dict.get("language", None)
             )
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
             while True:

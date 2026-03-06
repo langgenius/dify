@@ -145,9 +145,10 @@ class LLMNode(Node[LLMNodeData]):
         self._memory = memory
 
         if llm_file_saver is None:
+            dify_ctx = self.require_dify_context()
             llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -242,7 +243,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
-                user_id=self.user_id,
+                user_id=self.require_dify_context().user_id,
                 structured_output_enabled=self.node_data.structured_output_enabled,
                 structured_output=self.node_data.structured_output,
                 file_saver=self._llm_file_saver,
@@ -702,7 +703,7 @@ class LLMNode(Node[LLMNodeData]):
                                         filename=upload_file.name,
                                         extension="." + upload_file.extension,
                                         mime_type=upload_file.mime_type,
-                                        tenant_id=self.tenant_id,
+                                        tenant_id=self.require_dify_context().tenant_id,
                                         type=FileType.IMAGE,
                                         transfer_method=FileTransferMethod.LOCAL_FILE,
                                         remote_url=upload_file.source_url,

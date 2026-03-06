@@ -34,8 +34,8 @@ dependencies = [
     "json-repair>=0.55.1",
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
-    "langsmith~=0.7.12",
-    "markdown~=3.10.2",
+    "langsmith~=0.1.77",
+    "markdown~=3.8.1",
     "mlflow-skinny>=3.0.0",
     "numpy~=2.4.2",
     "openpyxl~=3.1.5",
@@ -114,13 +114,13 @@ dev = [
     "faker~=40.8.0",
     "lxml-stubs~=0.5.1",
     "basedpyright~=1.38.2",
-    "ruff~=0.15.4",
-    "pytest~=9.0.2",
-    "pytest-benchmark~=5.2.3",
-    "pytest-cov~=7.0.0",
-    "pytest-env~=1.5.0",
-    "pytest-mock~=3.15.1",
-    "testcontainers~=4.14.1",
+    "ruff~=0.14.0",
+    "pytest~=8.3.2",
+    "pytest-benchmark~=4.0.0",
+    "pytest-cov~=4.1.0",
+    "pytest-env~=1.1.3",
+    "pytest-mock~=3.14.0",
+    "testcontainers~=4.13.2",
     "types-aiofiles~=25.1.0",
     "types-beautifulsoup4~=4.12.0",
     "types-cachetools~=6.2.0",
@@ -172,7 +172,7 @@ dev = [
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.54.0",
+    "pyrefly>=0.55.0",
 ]
 
 ############################################################
@@ -247,3 +247,13 @@ module = [
     "extensions.logstore.repositories.logstore_api_workflow_run_repository",
 ]
 ignore_errors = true
+
+[tool.pyrefly]
+project-includes = ["."]
+project-excludes = [
+    ".venv",
+    "migrations/",
+]
+python-platform = "linux"
+python-version = "3.11.0"
+infer-with-first-use = false
