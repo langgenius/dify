@@ -65,7 +65,7 @@ class ChromaVector(BaseVector):
             self._client.get_or_create_collection(collection_name)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -73,6 +73,7 @@ class ChromaVector(BaseVector):
         collection = self._client.get_or_create_collection(self._collection_name)
         # FIXME: chromadb using numpy array, fix the type error later
         collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
+        return uuids
 
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self._client.get_or_create_collection(self._collection_name)
