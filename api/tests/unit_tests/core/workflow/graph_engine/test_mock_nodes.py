@@ -22,7 +22,7 @@ from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from dify_graph.nodes.llm import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
-from dify_graph.nodes.protocols import HttpClientProtocol
+from dify_graph.nodes.protocols import HttpClientProtocol, ToolFileManagerProtocol
 from dify_graph.nodes.question_classifier import QuestionClassifierNode
 from dify_graph.nodes.template_transform import TemplateTransformNode
 from dify_graph.nodes.template_transform.template_renderer import (
@@ -72,6 +72,11 @@ class MockNodeMixin:
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
             kwargs.setdefault("template_renderer", _TestJinja2Renderer())
+
+        # Provide default tool_file_manager_factory for ToolNode subclasses
+        from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+        if isinstance(self, _ToolNode):
+            kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
 
         super().__init__(
             id=id,
