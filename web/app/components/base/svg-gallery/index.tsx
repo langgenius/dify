@@ -7,10 +7,10 @@ const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [windowSize, setWindowSize] = useState({
-    /* v8 ignore next */
+    /* v8 ignore start */
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    /* v8 ignore next */
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
+    /* v8 ignore stop */
   })
 
   const svgToDataURL = (svgElement: Element): string => {
@@ -29,34 +29,38 @@ const SVGRenderer = ({ content }: { content: string }) => {
   }, [])
 
   useEffect(() => {
-    if (svgRef.current) {
-      try {
-        svgRef.current.innerHTML = ''
-        const draw = SVG().addTo(svgRef.current)
+    /* v8 ignore next 2 - @preserve */
+    if (!svgRef.current)
+      return
 
-        const parser = new DOMParser()
-        const svgDoc = parser.parseFromString(content, 'image/svg+xml')
-        const svgElement = svgDoc.documentElement
+    try {
+      svgRef.current.innerHTML = ''
+      const draw = SVG().addTo(svgRef.current)
 
-        if (!(svgElement instanceof SVGElement))
-          throw new Error('Invalid SVG content')
+      const parser = new DOMParser()
+      const svgDoc = parser.parseFromString(content, 'image/svg+xml')
+      const svgElement = svgDoc.documentElement
 
-        const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
-        const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
-        draw.viewbox(0, 0, originalWidth, originalHeight)
+      if (!(svgElement instanceof SVGElement))
+        throw new Error('Invalid SVG content')
 
-        svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`
+      const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
+      const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
+      draw.viewbox(0, 0, originalWidth, originalHeight)
 
-        const rootElement = draw.svg(DOMPurify.sanitize(content))
+      svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`
 
-        rootElement.click(() => {
-          setImagePreview(svgToDataURL(svgElement as Element))
-        })
-      }
-      catch {
-        if (svgRef.current)
-          svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
-      }
+      const rootElement = draw.svg(DOMPurify.sanitize(content))
+
+      rootElement.click(() => {
+        setImagePreview(svgToDataURL(svgElement as Element))
+      })
+    }
+    catch {
+      /* v8 ignore next 2 - @preserve */
+      if (!svgRef.current)
+        return
+      svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
     }
   }, [content, windowSize])
 
