@@ -570,8 +570,6 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
-        if not current_user:
-            raise ValueError("current_user is required")
 
         upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
             dataset_id=str(dataset_id),
