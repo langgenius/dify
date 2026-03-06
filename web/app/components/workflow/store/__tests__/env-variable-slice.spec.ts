@@ -1,8 +1,8 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { createWorkflowStore } from '../workflow'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 describe('Env Variable Slice', () => {

@@ -4,6 +4,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
+from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -32,7 +33,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig, IconType
+from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -523,7 +524,7 @@ class AppDslService:
             if not app.app_model_config:
                 app_model_config = AppModelConfig(
                     app_id=app.id, created_by=account.id, updated_by=account.id
-                ).from_model_config_dict(model_config)
+                ).from_model_config_dict(cast(AppModelConfigDict, model_config))
                 app_model_config.id = str(uuid4())
                 app.app_model_config_id = app_model_config.id
 

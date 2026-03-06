@@ -2,7 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { ModalContextProvider } from '@/context/modal-context'
+import { ModalContextProvider } from '@/context/modal-context-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 
 vi.mock('@/config', async (importOriginal) => {

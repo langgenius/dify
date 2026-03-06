@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import vinext from 'vinext'
 import { defineConfig } from 'vite'
+import Inspect from 'vite-plugin-inspect'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -70,8 +71,97 @@ const createForceInspectorClientInjectionPlugin = (): Plugin => {
   }
 }
 
+function customI18nHmrPlugin(): Plugin {
+  const injectTarget = inspectorInjectTarget
+  const i18nHmrClientMarker = 'custom-i18n-hmr-client'
+  const i18nHmrClientSnippet = `/* ${i18nHmrClientMarker} */
+if (import.meta.hot) {
+  const getI18nUpdateTarget = (file) => {
+    const match = file.match(/[/\\\\]i18n[/\\\\]([^/\\\\]+)[/\\\\]([^/\\\\]+)\\.json$/)
+    if (!match)
+      return null
+    const [, locale, namespaceFile] = match
+    return { locale, namespaceFile }
+  }
+
+  import.meta.hot.on('i18n-update', async ({ file, content }) => {
+    const target = getI18nUpdateTarget(file)
+    if (!target)
+      return
+
+    const [{ getI18n }, { camelCase }] = await Promise.all([
+      import('react-i18next'),
+      import('es-toolkit/string'),
+    ])
+
+    const i18n = getI18n()
+    if (!i18n)
+      return
+    if (target.locale !== i18n.language)
+      return
+
+    let resources
+    try {
+      resources = JSON.parse(content)
+    }
+    catch {
+      return
+    }
+
+    const namespace = camelCase(target.namespaceFile)
+    i18n.addResourceBundle(target.locale, namespace, resources, true, true)
+    i18n.emit('languageChanged', i18n.language)
+  })
+}
+`
+
+  const injectI18nHmrClient = (code: string) => {
+    if (code.includes(i18nHmrClientMarker))
+      return code
+
+    const useClientMatch = code.match(/(['"])use client\1;?\s*\n/)
+    if (!useClientMatch)
+      return `${i18nHmrClientSnippet}\n${code}`
+
+    const insertAt = (useClientMatch.index ?? 0) + useClientMatch[0].length
+    return `${code.slice(0, insertAt)}\n${i18nHmrClientSnippet}\n${code.slice(insertAt)}`
+  }
+
+  return {
+    name: 'custom-i18n-hmr',
+    apply: 'serve',
+    handleHotUpdate({ file, server }) {
+      if (file.endsWith('.json') && file.includes('/i18n/')) {
+        server.ws.send({
+          type: 'custom',
+          event: 'i18n-update',
+          data: {
+            file,
+            content: fs.readFileSync(file, 'utf-8'),
+          },
+        })
+
+        // return empty array to prevent the default HMR
+        return []
+      }
+    },
+    transform(code, id) {
+      const cleanId = normalizeInspectorModuleId(id)
+      if (cleanId !== injectTarget)
+        return null
+
+      const nextCode = injectI18nHmrClient(code)
+      if (nextCode === code)
+        return null
+      return { code: nextCode, map: null }
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
+  const isStorybook = process.env.STORYBOOK === 'true'
+    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
     plugins: isTest
@@ -88,11 +178,19 @@ export default defineConfig(({ mode }) => {
             },
           } as Plugin,
         ]
-      : [
-          createCodeInspectorPlugin(),
-          createForceInspectorClientInjectionPlugin(),
-          vinext(),
-        ],
+      : isStorybook
+        ? [
+            tsconfigPaths(),
+            react(),
+          ]
+        : [
+            Inspect(),
+            createCodeInspectorPlugin(),
+            createForceInspectorClientInjectionPlugin(),
+            react(),
+            vinext(),
+            customI18nHmrPlugin(),
+          ],
     resolve: {
       alias: {
         '~@': __dirname,
@@ -100,7 +198,7 @@ export default defineConfig(({ mode }) => {
     },
 
     // vinext related config
-    ...(!isTest
+    ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
