@@ -17,8 +17,8 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
-  const hasDedicatedChannel: boolean = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS?.trim())
-  const hasZendeskWidget = !!ZENDESK_WIDGET_KEY?.trim()
+  const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
+  const hasZendeskWidget = Boolean(ZENDESK_WIDGET_KEY.trim())
 
   return (
     <DropdownMenuSub>
