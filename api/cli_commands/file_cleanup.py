@@ -553,4 +553,3 @@ def file_usage(
                 )
             )
             click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
-

@@ -398,4 +398,3 @@ def install_rag_pipeline_plugins(input_file, output_file, workers):
         workers,
     )
     click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))
-
