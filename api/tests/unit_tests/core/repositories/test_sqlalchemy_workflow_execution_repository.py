@@ -2,11 +2,11 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowType
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 

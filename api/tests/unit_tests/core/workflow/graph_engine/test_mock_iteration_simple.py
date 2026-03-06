@@ -2,8 +2,6 @@
 Simple test to verify MockNodeFactory works with iteration nodes.
 """
 
-import sys
-from pathlib import Path
 
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType
