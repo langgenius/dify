@@ -6,7 +6,6 @@ import typing
 import click
 from celery import shared_task
 
-from core.helper.marketplace import record_install_plugin_event
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
