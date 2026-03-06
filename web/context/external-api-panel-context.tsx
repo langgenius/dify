@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
 
 type ExternalApiPanelContextType = {
   showExternalApiPanel: boolean
@@ -13,8 +13,13 @@ const ExternalApiPanelContext = createContext<ExternalApiPanelContextType | unde
 export const ExternalApiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
 
+  const contextValue = useMemo(() => ({
+    showExternalApiPanel,
+    setShowExternalApiPanel,
+  }), [showExternalApiPanel])
+
   return (
-    <ExternalApiPanelContext.Provider value={{ showExternalApiPanel, setShowExternalApiPanel }}>
+    <ExternalApiPanelContext.Provider value={contextValue}>
       {children}
     </ExternalApiPanelContext.Provider>
   )

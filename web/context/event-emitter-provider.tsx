@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from './event-emitter'
 import { useEventEmitter } from 'ahooks'
@@ -14,8 +15,12 @@ export const EventEmitterContextProvider = ({
 }: EventEmitterContextProviderProps) => {
   const eventEmitter = useEventEmitter<EventEmitterValue>()
 
+  const contextValue = useMemo(() => ({
+    eventEmitter,
+  }), [eventEmitter])
+
   return (
-    <EventEmitterContext.Provider value={{ eventEmitter }}>
+    <EventEmitterContext.Provider value={contextValue}>
       {children}
     </EventEmitterContext.Provider>
   )

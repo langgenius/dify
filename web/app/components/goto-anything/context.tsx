@@ -3,8 +3,7 @@
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
-import { createContext, useContext, useEffect, useState } from 'react'
-import { isInWorkflowPage } from '../workflow/constants'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 /**
  * Interface for the GotoAnything context
@@ -60,8 +59,13 @@ export const GotoAnythingProvider: React.FC<GotoAnythingProviderProps> = ({ chil
     setIsRagPipelinePage(isRagPipeline)
   }, [pathname])
 
+  const contextValue = useMemo(() => ({
+    isWorkflowPage,
+    isRagPipelinePage,
+  }), [isWorkflowPage, isRagPipelinePage])
+
   return (
-    <GotoAnythingContext.Provider value={{ isWorkflowPage, isRagPipelinePage }}>
+    <GotoAnythingContext.Provider value={contextValue}>
       {children}
     </GotoAnythingContext.Provider>
   )

@@ -1,4 +1,5 @@
 'use client'
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { createContext, useContext } from 'react'
 
@@ -19,11 +20,15 @@ export const MCPToolAvailabilityProvider = ({
 }: {
   versionSupported?: boolean
   children: ReactNode
-}) => (
-  <MCPToolAvailabilityContext.Provider value={{ versionSupported }}>
-    {children}
-  </MCPToolAvailabilityContext.Provider>
-)
+}) => {
+  const contextValue = useMemo(() => ({ versionSupported }), [versionSupported])
+
+  return (
+    <MCPToolAvailabilityContext.Provider value={contextValue}>
+      {children}
+    </MCPToolAvailabilityContext.Provider>
+  )
+}
 
 export const useMCPToolAvailability = (): MCPToolAvailability => {
   const context = useContext(MCPToolAvailabilityContext)

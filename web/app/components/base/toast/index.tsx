@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { IToastProps } from './context'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import ActionButton from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'
@@ -95,14 +95,20 @@ export const ToastProvider = ({
     }
   }, [defaultDuring, mounted, params.duration])
 
+  const notify = useCallback((props: IToastProps) => {
+    setMounted(true)
+    setParams(props)
+  }, [])
+
+  const close = useCallback(() => setMounted(false), [])
+
+  const contextValue = useMemo(() => ({
+    notify,
+    close,
+  }), [notify, close])
+
   return (
-    <ToastContext.Provider value={{
-      notify: (props) => {
-        setMounted(true)
-        setParams(props)
-      },
-      close: () => setMounted(false),
-    }}
+    <ToastContext.Provider value={contextValue}
     >
       {mounted && <Toast {...params} />}
       {children}

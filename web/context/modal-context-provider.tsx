@@ -12,7 +12,7 @@ import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire
 import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
 
   DEFAULT_ACCOUNT_SETTING_TAB,
@@ -243,22 +243,40 @@ export const ModalContextProvider = ({
     setPricingModalOpen(false)
   }, [setPricingModalOpen])
 
+  const handleSetShowAnnotationFullModal = useCallback(() => setShowAnnotationFullModal(true), [])
+
+  const contextValue = useMemo(() => ({
+    setShowAccountSettingModal,
+    setShowApiBasedExtensionModal,
+    setShowModerationSettingModal,
+    setShowExternalDataToolModal,
+    setShowPricingModal: handleShowPricingModal,
+    setShowAnnotationFullModal: handleSetShowAnnotationFullModal,
+    setShowModelModal,
+    setShowExternalKnowledgeAPIModal,
+    setShowModelLoadBalancingModal,
+    setShowOpeningModal,
+    setShowUpdatePluginModal,
+    setShowEducationExpireNoticeModal,
+    setShowTriggerEventsLimitModal,
+  }), [
+    setShowAccountSettingModal,
+    setShowApiBasedExtensionModal,
+    setShowModerationSettingModal,
+    setShowExternalDataToolModal,
+    handleShowPricingModal,
+    handleSetShowAnnotationFullModal,
+    setShowModelModal,
+    setShowExternalKnowledgeAPIModal,
+    setShowModelLoadBalancingModal,
+    setShowOpeningModal,
+    setShowUpdatePluginModal,
+    setShowEducationExpireNoticeModal,
+    setShowTriggerEventsLimitModal,
+  ])
+
   return (
-    <ModalContext.Provider value={{
-      setShowAccountSettingModal,
-      setShowApiBasedExtensionModal,
-      setShowModerationSettingModal,
-      setShowExternalDataToolModal,
-      setShowPricingModal: handleShowPricingModal,
-      setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
-      setShowModelModal,
-      setShowExternalKnowledgeAPIModal,
-      setShowModelLoadBalancingModal,
-      setShowOpeningModal,
-      setShowUpdatePluginModal,
-      setShowEducationExpireNoticeModal,
-      setShowTriggerEventsLimitModal,
-    }}
+    <ModalContext.Provider value={contextValue}
     >
       <>
         {children}
