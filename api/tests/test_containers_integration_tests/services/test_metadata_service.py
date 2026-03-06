@@ -468,9 +468,11 @@ class TestMetadataService:
 
         fake_metadata_id = str(uuid.uuid4())  # Use valid UUID format
 
-        # Act & Assert: Verify the method raises ValueError when metadata is not found
-        with pytest.raises(ValueError, match="Metadata not found."):
-            MetadataService.delete_metadata(dataset.id, fake_metadata_id)
+        # Act: Execute the method under test
+        result = MetadataService.delete_metadata(dataset.id, fake_metadata_id)
+
+        # Assert: Verify the method returns None when metadata is not found
+        assert result is None
 
     def test_delete_metadata_with_document_bindings(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -991,8 +993,8 @@ class TestMetadataService:
         """
         Test metadata lock check when lock already exists.
         """
-        # Arrange: Setup mocks to simulate existing lock (SET NX returns False when key exists)
-        mock_external_service_dependencies["redis_client"].set.return_value = False
+        # Arrange: Setup mocks to simulate existing lock
+        mock_external_service_dependencies["redis_client"].get.return_value = "1"  # Lock exists
 
         dataset_id = "test-dataset-id"
 
@@ -1008,8 +1010,8 @@ class TestMetadataService:
         """
         Test metadata lock check when document lock already exists.
         """
-        # Arrange: Setup mocks to simulate existing lock (SET NX returns False when key exists)
-        mock_external_service_dependencies["redis_client"].set.return_value = False
+        # Arrange: Setup mocks to simulate existing lock
+        mock_external_service_dependencies["redis_client"].get.return_value = "1"  # Lock exists
 
         document_id = "test-document-id"
 

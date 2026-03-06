@@ -69,7 +69,6 @@ class TestDocumentServiceMetadata:
             doc_form="text_model",
             doc_language="en",
             indexing_technique="high_quality",
-            enable_built_in_metadata=True,
             doc_metadata=doc_metadata_inputs,
         )
 
@@ -121,17 +120,14 @@ class TestDocumentServiceMetadata:
             )
 
             # Assert
-            # 1. Check built-in metadata enabled
-            assert dataset.built_in_field_enabled is True
-
-            # 2. Check custom metadata passed to build_document
+            # 1. Check custom metadata passed to build_document
             call_args = mock_dependencies["build_document"].call_args
             assert call_args is not None
             _, kwargs = call_args
             assert "custom_metadata" in kwargs
             assert kwargs["custom_metadata"] == {"custom_field": "custom_value"}
 
-            # 3. Check DatasetMetadataBinding creation
+            # 2. Check DatasetMetadataBinding creation
             binding_instances = [
                 call.args[0]
                 for call in mock_dependencies["db"].add.call_args_list

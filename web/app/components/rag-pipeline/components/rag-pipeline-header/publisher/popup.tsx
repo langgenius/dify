@@ -1,6 +1,12 @@
 import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
+  RiArrowRightUpLine,
+  RiHammerLine,
+  RiPlayCircleLine,
+  RiTerminalBoxLine,
+} from '@remixicon/react'
+import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
@@ -16,6 +22,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useToastContext } from '@/app/components/base/toast/context'
 import {
@@ -34,7 +41,6 @@ import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalidDatasetMetaData } from '@/service/knowledge/use-metadata'
 import { useInvalid } from '@/service/use-base'
 import {
   publishedPipelineInfoQueryKeyPrefix,
@@ -88,7 +94,6 @@ const Popup = () => {
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
   const invalidDatasetList = useInvalidDatasetList()
-  const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId as string)
 
   const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (publishing)
@@ -135,7 +140,6 @@ const Popup = () => {
           mutateDatasetRes?.()
           invalidPublishedPipelineInfo()
           invalidDatasetList()
-          invalidDatasetMetaData()
         }
       }
     }
@@ -148,7 +152,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, invalidDatasetMetaData, showConfirm, publishedAt, confirmVisible, hidePublishing, showPublishing, hideConfirm, publishing, datasetId])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -203,7 +207,7 @@ const Popup = () => {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, notify, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal, docLink])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, notify, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
 
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
@@ -264,10 +268,10 @@ const Popup = () => {
           disabled={!publishedAt}
         >
           <div className="flex grow items-center">
-            <div className="i-ri-play-circle-line mr-2 h-4 w-4" />
+            <RiPlayCircleLine className="mr-2 h-4 w-4" />
             {t('common.goToAddDocuments', { ns: 'pipeline' })}
           </div>
-          <div className="i-ri-arrow-right-up-line ml-2 h-4 w-4 shrink-0" />
+          <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
         </Button>
         <Link
           href={apiReferenceUrl}
@@ -280,10 +284,10 @@ const Popup = () => {
             disabled={!publishedAt}
           >
             <div className="flex grow items-center">
-              <div className="i-ri-terminal-box-line mr-2 h-4 w-4" />
+              <RiTerminalBoxLine className="mr-2 h-4 w-4" />
               {t('common.accessAPIReference', { ns: 'workflow' })}
             </div>
-            <div className="i-ri-arrow-right-up-line ml-2 h-4 w-4 shrink-0" />
+            <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />
@@ -294,13 +298,13 @@ const Popup = () => {
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <div className="i-ri-hammer-line h-4 w-4 shrink-0" />
+            <RiHammerLine className="h-4 w-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
-                <div className="i-custom-public-common-sparkles-soft flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
+                <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="p-0.5 system-2xs-medium">
                   {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>

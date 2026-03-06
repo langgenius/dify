@@ -63,7 +63,6 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   embedding_model_provider?: string
   keyword_number: number
   retrieval_model: RetrievalSetting
-  enable_built_in_metadata?: boolean
   doc_metadata?: DocMetadataItem[]
   _embeddingModelList?: Model[]
   _rerankModelList?: Model[]

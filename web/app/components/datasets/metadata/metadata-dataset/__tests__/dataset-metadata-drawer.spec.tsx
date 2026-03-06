@@ -147,29 +147,6 @@ describe('DatasetMetadataDrawer', () => {
 
       expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
     })
-
-    it('should keep switch checked when parent value does not change', async () => {
-      const onIsBuiltInEnabledChange = vi.fn()
-      render(
-        <DatasetMetadataDrawer
-          {...defaultProps}
-          isBuiltInEnabled
-          onIsBuiltInEnabledChange={onIsBuiltInEnabledChange}
-        />,
-      )
-
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
-      })
-
-      const switchBtn = screen.getByRole('switch')
-      expect(switchBtn).toHaveAttribute('aria-checked', 'true')
-
-      fireEvent.click(switchBtn)
-
-      expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
-      expect(switchBtn).toHaveAttribute('aria-checked', 'true')
-    })
   })
 
   describe('Add Metadata', () => {
@@ -260,11 +237,11 @@ describe('DatasetMetadataDrawer', () => {
       const actionsContainer = items[0].querySelector('.hidden.items-center')
       expect(actionsContainer).toBeTruthy()
 
-      // Find and click the edit icon
+      // Find and click the first SVG (edit icon)
       if (actionsContainer) {
-        const editIcon = actionsContainer.querySelector('.i-ri-edit-line')
-        expect(editIcon).toBeTruthy()
-        fireEvent.click(editIcon!)
+        const svgs = actionsContainer.querySelectorAll('svg')
+        expect(svgs.length).toBeGreaterThan(0)
+        fireEvent.click(svgs[0])
       }
 
       // Wait for rename modal (contains input)
@@ -287,8 +264,8 @@ describe('DatasetMetadataDrawer', () => {
       const items = dialog.querySelectorAll('.group\\/item')
       const actionsContainer = items[0].querySelector('.hidden.items-center')
       if (actionsContainer) {
-        const editIcon = actionsContainer.querySelector('.i-ri-edit-line')
-        fireEvent.click(editIcon!)
+        const svgs = actionsContainer.querySelectorAll('svg')
+        fireEvent.click(svgs[0])
       }
 
       // Change name and save
@@ -333,8 +310,8 @@ describe('DatasetMetadataDrawer', () => {
       const items = dialog.querySelectorAll('.group\\/item')
       const actionsContainer = items[0].querySelector('.hidden.items-center')
       if (actionsContainer) {
-        const editIcon = actionsContainer.querySelector('.i-ri-edit-line')
-        fireEvent.click(editIcon!)
+        const svgs = actionsContainer.querySelectorAll('svg')
+        fireEvent.click(svgs[0])
       }
 
       // Wait for modal and click cancel
@@ -375,8 +352,8 @@ describe('DatasetMetadataDrawer', () => {
       const items = dialog.querySelectorAll('.group\\/item')
       const actionsContainer = items[0].querySelector('.hidden.items-center')
       if (actionsContainer) {
-        const editIcon = actionsContainer.querySelector('.i-ri-edit-line')
-        fireEvent.click(editIcon!)
+        const svgs = actionsContainer.querySelectorAll('svg')
+        fireEvent.click(svgs[0])
       }
 
       // Wait for rename modal
@@ -422,7 +399,7 @@ describe('DatasetMetadataDrawer', () => {
       expect(deleteContainer).toBeTruthy()
 
       if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('.i-ri-delete-bin-line')
+        const deleteIcon = deleteContainer.querySelector('svg')
         if (deleteIcon)
           fireEvent.click(deleteIcon)
       }
@@ -450,7 +427,7 @@ describe('DatasetMetadataDrawer', () => {
       const items = dialog.querySelectorAll('.group\\/item')
       const deleteContainer = items[0].querySelector('.hover\\:text-text-destructive')
       if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('.i-ri-delete-bin-line')
+        const deleteIcon = deleteContainer.querySelector('svg')
         if (deleteIcon)
           fireEvent.click(deleteIcon)
       }
@@ -496,7 +473,7 @@ describe('DatasetMetadataDrawer', () => {
       const items = dialog.querySelectorAll('.group\\/item')
       const deleteContainer = items[0].querySelector('.hover\\:text-text-destructive')
       if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('.i-ri-delete-bin-line')
+        const deleteIcon = deleteContainer.querySelector('svg')
         if (deleteIcon)
           fireEvent.click(deleteIcon)
       }

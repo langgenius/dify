@@ -104,9 +104,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     onUpdateDocList: invalidDocumentList,
   })
 
-  // Whether to disable add document actions (pipeline mode and not published)
-  const isAddDocumentDisabled = dataset?.runtime_mode === 'rag_pipeline' && !dataset?.is_published
-
   // Route to document creation page
   const routeToDocCreate = useCallback(() => {
     if (dataset?.runtime_mode === 'rag_pipeline') {
@@ -150,7 +147,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
     return (
       <EmptyElement
-        canAdd={embeddingAvailable && !isAddDocumentDisabled}
+        canAdd={embeddingAvailable}
         onClick={routeToDocCreate}
         type={isDataSourceNotion ? 'sync' : 'upload'}
       />
@@ -182,7 +179,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         onDeleteMetaData={handleDeleteMetaData}
         onBuiltInEnabledChange={setBuiltInEnabled}
         onAddDocument={routeToDocCreate}
-        isAddDocumentDisabled={isAddDocumentDisabled}
       />
       <div className="flex h-0 grow flex-col px-6 pt-4">
         {renderContent()}

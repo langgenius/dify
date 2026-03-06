@@ -132,7 +132,6 @@ class KnowledgeConfig(BaseModel):
     embedding_model_provider: str | None = None
     name: str | None = None
     is_multimodal: bool = False
-    enable_built_in_metadata: bool = False
     doc_metadata: list[DocumentMetadataInput] | None = None
 
     @field_validator("doc_form")

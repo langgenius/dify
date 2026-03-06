@@ -1340,9 +1340,6 @@ describe('CommonCreateModal', () => {
         expect(mockCreateBuilder).toHaveBeenCalled()
       })
 
-      // Flush async state update from createBuilder promise resolution
-      await act(async () => {})
-
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {

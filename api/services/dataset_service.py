@@ -1919,13 +1919,7 @@ class DocumentService:
                         else default_retrieval_model
                     )
 
-        # Handle metadata configuration
-        # 1. Enable built-in metadata if requested
-        if knowledge_config.enable_built_in_metadata and not dataset.built_in_field_enabled:
-            dataset.built_in_field_enabled = True
-            db.session.add(dataset)
-
-        # 2. Process custom metadata - validate and build dict
+        # Handle custom metadata configuration
         custom_metadata: dict[str, str | int | float | None] = {}
         metadata_bindings_to_create: list[str] = []
         if knowledge_config.doc_metadata:

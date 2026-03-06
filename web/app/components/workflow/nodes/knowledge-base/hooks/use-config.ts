@@ -248,12 +248,6 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate])
 
-  const handleEnableBuiltInMetadataChange = useCallback((enabled: boolean) => {
-    handleNodeDataUpdate({
-      enable_built_in_metadata: enabled,
-    })
-  }, [handleNodeDataUpdate])
-
   const handleDocMetadataChange = useCallback((docMetadata: DocMetadataItem[]) => {
     handleNodeDataUpdate({
       doc_metadata: docMetadata,
@@ -284,7 +278,6 @@ export const useConfig = (id: string) => {
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
-    handleEnableBuiltInMetadataChange,
     handleDocMetadataChange,
     handleSummaryIndexSettingChange,
   }
