@@ -24,7 +24,7 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({
     notify: mockNotify,
   }),
