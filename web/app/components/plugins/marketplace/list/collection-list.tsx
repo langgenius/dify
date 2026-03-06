@@ -6,13 +6,34 @@ import type { BaseCollection } from './collection-constants'
 import type { Locale } from '@/i18n-config/language'
 import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightSLine } from '@remixicon/react'
+import { useEffect, useMemo, useState } from 'react'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
 import Empty from '../empty'
-import { buildCarouselColumns, getItemKeyByField } from '../utils'
+import { buildCarouselPages, getItemKeyByField } from '../utils'
 import Carousel from './carousel'
-import { CAROUSEL_COLUMN_CLASS, CAROUSEL_MAX_VISIBLE_COLUMNS, GRID_CLASS, GRID_DISPLAY_LIMIT } from './collection-constants'
+import {
+  CAROUSEL_BREAKPOINTS,
+  CAROUSEL_PAGE_CLASS,
+  CAROUSEL_PAGE_GRID_CLASS,
+  CAROUSEL_PAGE_SIZE,
+  GRID_CLASS,
+  GRID_DISPLAY_LIMIT,
+} from './collection-constants'
+
+const getViewportWidth = () => typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
+
+const getCarouselItemsPerPage = (viewportWidth: number) => {
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl)
+    return CAROUSEL_PAGE_SIZE.xl
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg)
+    return CAROUSEL_PAGE_SIZE.lg
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm)
+    return CAROUSEL_PAGE_SIZE.sm
+
+  return CAROUSEL_PAGE_SIZE.base
+}
 
 type ViewMoreButtonProps = {
   searchParams?: SearchParamsFromCollection
@@ -81,25 +102,38 @@ export function CarouselCollection<TItem>({
   renderCard,
   cardContainerClassName,
 }: CarouselCollectionProps<TItem>) {
-  const columns = buildCarouselColumns(items, CAROUSEL_MAX_VISIBLE_COLUMNS)
+  const [viewportWidth, setViewportWidth] = useState(getViewportWidth)
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth)
+
+    window.addEventListener('resize', handleResize)
+
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const itemsPerPage = useMemo(() => getCarouselItemsPerPage(viewportWidth), [viewportWidth])
+  const pages = useMemo(() => buildCarouselPages(items, itemsPerPage), [items, itemsPerPage])
+  const hasMultiplePages = pages.length > 1
 
   return (
     <Carousel
-      className={cardContainerClassName}
-      showNavigation={items.length > 8}
-      showPagination={items.length > 8}
-      autoPlay={items.length > 8}
+      showNavigation={hasMultiplePages}
+      showPagination={hasMultiplePages}
+      autoPlay={hasMultiplePages}
       autoPlayInterval={5000}
     >
-      {columns.map((columnItems, idx) => (
+      {pages.map((pageItems, idx) => (
         <div
-          key={columnItems[0] ? getItemKey(columnItems[0]) : idx}
-          className={CAROUSEL_COLUMN_CLASS}
+          key={pageItems[0] ? getItemKey(pageItems[0]) : idx}
+          className={CAROUSEL_PAGE_CLASS}
           style={{ scrollSnapAlign: 'start' }}
         >
-          {columnItems.map(item => (
-            <div key={getItemKey(item)}>{renderCard(item)}</div>
-          ))}
+          <div className={cn(CAROUSEL_PAGE_GRID_CLASS, cardContainerClassName)}>
+            {pageItems.map(item => (
+              <div key={getItemKey(item)}>{renderCard(item)}</div>
+            ))}
+          </div>
         </div>
       ))}
     </Carousel>

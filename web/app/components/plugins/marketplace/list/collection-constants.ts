@@ -2,10 +2,22 @@ export const GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 
 
 export const GRID_DISPLAY_LIMIT = 4
 
-export const CAROUSEL_COLUMN_CLASS = 'flex w-[calc((100%-0px)/1)] shrink-0 flex-col gap-3 sm:w-[calc((100%-12px)/2)] lg:w-[calc((100%-24px)/3)] xl:w-[calc((100%-36px)/4)]'
+export const CAROUSEL_PAGE_CLASS = 'w-full shrink-0'
 
-/** Max visible columns at the widest (xl) breakpoint; used to decide 1-row vs 2-row carousel layout. */
-export const CAROUSEL_MAX_VISIBLE_COLUMNS = 4
+export const CAROUSEL_PAGE_GRID_CLASS = 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+
+export const CAROUSEL_PAGE_SIZE = {
+  base: 2,
+  sm: 4,
+  lg: 6,
+  xl: 8,
+} as const
+
+export const CAROUSEL_BREAKPOINTS = {
+  sm: 640,
+  lg: 1024,
+  xl: 1280,
+} as const
 
 /** Collection name key that triggers carousel display (plugins: partners, templates: featured) */
 export const CAROUSEL_COLLECTION_NAMES = {

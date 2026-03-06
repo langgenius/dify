@@ -2,34 +2,18 @@
 
 import type { RemixiconComponentType } from '@remixicon/react'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useMemo } from 'react'
+import { Carousel as BaseCarousel, useCarousel } from '@/app/components/base/carousel'
 import { cn } from '@/utils/classnames'
 
 type CarouselProps = {
   children: React.ReactNode
   className?: string
-  itemWidth?: number
   gap?: number
   showNavigation?: boolean
   showPagination?: boolean
   autoPlay?: boolean
   autoPlayInterval?: number
-}
-
-type ScrollState = {
-  canScrollLeft: boolean
-  canScrollRight: boolean
-  currentPage: number
-  totalPages: number
-}
-
-const SCROLL_OVERLAP_RATIO = 0.5
-
-const defaultScrollState: ScrollState = {
-  canScrollLeft: false,
-  canScrollRight: false,
-  currentPage: 0,
-  totalPages: 0,
 }
 
 type NavButtonProps = {
@@ -55,200 +39,89 @@ const NavButton = ({ direction, disabled, onClick, Icon }: NavButtonProps) => (
   </button>
 )
 
+type CarouselControlsProps = {
+  showPagination: boolean
+}
+
+const CarouselControls = ({ showPagination }: CarouselControlsProps) => {
+  const { api, selectedIndex, scrollPrev, scrollNext } = useCarousel()
+  const scrollSnaps = api?.scrollSnapList() ?? []
+  const totalPages = scrollSnaps.length
+
+  if (totalPages <= 1)
+    return null
+
+  return (
+    <div className="absolute -top-10 right-0 flex items-center gap-3">
+      {showPagination && (
+        <div className="flex items-center gap-1">
+          {scrollSnaps.map((snap, index) => (
+            <button
+              key={snap}
+              className={cn(
+                'h-[5px] w-[5px] rounded-full transition-all',
+                selectedIndex === index
+                  ? 'w-4 bg-components-button-primary-bg'
+                  : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
+              )}
+              onClick={() => api?.scrollTo(index)}
+              aria-label={`Go to page ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-1">
+        <NavButton
+          direction="left"
+          disabled={totalPages <= 1}
+          onClick={scrollPrev}
+          Icon={RiArrowLeftSLine}
+        />
+        <NavButton
+          direction="right"
+          disabled={totalPages <= 1}
+          onClick={scrollNext}
+          Icon={RiArrowRightSLine}
+        />
+      </div>
+    </div>
+  )
+}
+
 const Carousel = ({
   children,
   className,
-  itemWidth = 280,
   gap = 12,
   showNavigation = true,
   showPagination = true,
   autoPlay = false,
   autoPlayInterval = 5000,
 }: CarouselProps) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const scrollStateRef = useRef<ScrollState>(defaultScrollState)
-  const [isHovered, setIsHovered] = useState(false)
+  const plugins = useMemo(() => {
+    if (!autoPlay)
+      return []
 
-  const calculateScrollState = useCallback((container: HTMLDivElement): ScrollState => {
-    const { scrollLeft, scrollWidth, clientWidth } = container
-    const canScrollLeft = scrollLeft > 0
-    const canScrollRight = scrollLeft < scrollWidth - clientWidth - 1
-
-    // Calculate total pages based on actual scroll range
-    const maxScrollLeft = scrollWidth - clientWidth
-    const itemsPerPage = Math.floor(clientWidth / (itemWidth + gap))
-    const totalItems = container.children.length
-    const pages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
-
-    // Calculate current page based on scroll position ratio
-    let currentPage = 0
-    if (maxScrollLeft > 0) {
-      const scrollRatio = scrollLeft / maxScrollLeft
-      currentPage = Math.round(scrollRatio * (pages - 1))
-    }
-
-    return {
-      canScrollLeft,
-      canScrollRight,
-      totalPages: pages,
-      currentPage: Math.min(Math.max(0, currentPage), pages - 1),
-    }
-  }, [itemWidth, gap])
-
-  const subscribe = useCallback((onStoreChange: () => void) => {
-    const container = containerRef.current
-    if (!container)
-      return () => { }
-
-    const handleChange = () => {
-      scrollStateRef.current = calculateScrollState(container)
-      onStoreChange()
-    }
-
-    // Initial calculation
-    handleChange()
-
-    const resizeObserver = new ResizeObserver(handleChange)
-    resizeObserver.observe(container)
-    container.addEventListener('scroll', handleChange)
-
-    return () => {
-      resizeObserver.disconnect()
-      container.removeEventListener('scroll', handleChange)
-    }
-  }, [calculateScrollState])
-
-  const getSnapshot = useCallback(() => scrollStateRef.current, [])
-
-  const scrollState = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-
-  // Re-subscribe when children change
-  useEffect(() => {
-    const container = containerRef.current
-    if (container)
-      scrollStateRef.current = calculateScrollState(container)
-  }, [children, calculateScrollState])
-
-  const scrollToPage = useCallback((pageIndex: number, instant = false) => {
-    const container = containerRef.current
-    if (!container)
-      return
-
-    const itemsPerPage = Math.floor(container.clientWidth / (itemWidth + gap))
-    const scrollLeft = pageIndex * itemsPerPage * (itemWidth + gap)
-
-    container.scrollTo({
-      left: scrollLeft,
-      behavior: instant ? 'instant' : 'smooth',
-    })
-  }, [itemWidth, gap])
-
-  const scroll = useCallback((direction: 'left' | 'right') => {
-    const container = containerRef.current
-    if (!container)
-      return
-
-    // Handle looping
-    if (direction === 'left' && !scrollState.canScrollLeft) {
-      // At first page, loop to last page
-      scrollToPage(scrollState.totalPages - 1, true)
-      return
-    }
-    if (direction === 'right' && !scrollState.canScrollRight) {
-      // At last page, loop to first page
-      scrollToPage(0, true)
-      return
-    }
-
-    const scrollAmount = container.clientWidth - (itemWidth * SCROLL_OVERLAP_RATIO)
-    const newScrollLeft = direction === 'left'
-      ? container.scrollLeft - scrollAmount
-      : container.scrollLeft + scrollAmount
-
-    container.scrollTo({
-      left: newScrollLeft,
-      behavior: 'smooth',
-    })
-  }, [itemWidth, scrollState.canScrollLeft, scrollState.canScrollRight, scrollState.totalPages, scrollToPage])
-
-  // Auto-play functionality
-  useEffect(() => {
-    if (!autoPlay || isHovered || scrollState.totalPages <= 1)
-      return
-
-    const interval = setInterval(() => {
-      if (scrollState.canScrollRight) {
-        scrollToPage(scrollState.currentPage + 1)
-      }
-      else {
-        // Loop back to first page instantly (no animation)
-        scrollToPage(0, true)
-      }
-    }, autoPlayInterval)
-
-    return () => clearInterval(interval)
-  }, [autoPlay, autoPlayInterval, isHovered, scrollState.totalPages, scrollState.canScrollRight, scrollState.currentPage, scrollToPage])
-
-  const handleMouseEnter = useCallback(() => setIsHovered(true), [])
-  const handleMouseLeave = useCallback(() => setIsHovered(false), [])
+    return [
+      BaseCarousel.Plugin.Autoplay({
+        delay: autoPlayInterval,
+        stopOnInteraction: false,
+        stopOnMouseEnter: true,
+      }),
+    ]
+  }, [autoPlay, autoPlayInterval])
 
   return (
-    <div
-      className={cn('relative', className)}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+    <BaseCarousel
+      opts={{ align: 'start', containScroll: 'trimSnaps', loop: true }}
+      plugins={plugins}
+      className={className}
+      overlay={showNavigation ? <CarouselControls showPagination={showPagination} /> : null}
     >
-      {/* Navigation arrows */}
-      {showNavigation && (
-        <div className="absolute -top-10 right-0 flex items-center gap-3">
-          {/* Pagination dots */}
-          {showPagination && scrollState.totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: scrollState.totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  className={cn(
-                    'h-[5px] w-[5px] rounded-full transition-all',
-                    scrollState.currentPage === index
-                      ? 'w-4 bg-components-button-primary-bg'
-                      : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
-                  )}
-                  onClick={() => scrollToPage(index)}
-                  aria-label={`Go to page ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-1">
-            <NavButton
-              direction="left"
-              disabled={scrollState.totalPages <= 1}
-              onClick={() => scroll('left')}
-              Icon={RiArrowLeftSLine}
-            />
-            <NavButton
-              direction="right"
-              disabled={scrollState.totalPages <= 1}
-              onClick={() => scroll('right')}
-              Icon={RiArrowRightSLine}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Scrollable container */}
-      <div
-        ref={containerRef}
-        className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth"
-        style={{
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
+      <BaseCarousel.Content style={{ columnGap: `${gap}px` }}>
         {children}
-      </div>
-    </div>
+      </BaseCarousel.Content>
+    </BaseCarousel>
   )
 }
 
