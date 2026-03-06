@@ -67,6 +67,7 @@ class IndexProcessor:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
             dataset_name_value = dataset.name
+            tenant_id_value = dataset.tenant_id
             document_name_value = document.name
             created_at_value = document.created_at
             if summary_index_setting is None:
@@ -117,6 +118,7 @@ class IndexProcessor:
                 self._save_doc_metadata_and_bindings(
                     session=session,
                     dataset_id=dataset_id,
+                    tenant_id=tenant_id_value,
                     document=document,
                     doc_metadata=doc_metadata or {},
                     metadata_binding_ids=metadata_binding_ids or [],
@@ -151,6 +153,7 @@ class IndexProcessor:
         *,
         session: Any,
         dataset_id: str,
+        tenant_id: str,
         document: Document,
         doc_metadata: Mapping[str, Any],
         metadata_binding_ids: list[str],
@@ -163,20 +166,16 @@ class IndexProcessor:
             doc_metadata: dict of {metadata_id: resolved_value}
             metadata_binding_ids: list of metadata IDs to bind
         """
-        from models.dataset import Dataset, DatasetMetadata
+        from models.dataset import DatasetMetadata
 
-        dataset = session.query(Dataset).filter_by(id=dataset_id).first()
-        if not dataset:
-            return
-
-        # Look up metadata names by ID
+        # Look up metadata names by ID (covers both value-write and binding-creation paths)
         metadata_name_map: dict[str, str] = {}
-        if doc_metadata:
-            all_metadata_ids = list(doc_metadata.keys())
+        all_ids_to_check = list({*doc_metadata.keys(), *metadata_binding_ids})
+        if all_ids_to_check:
             dataset_metadatas = session.scalars(
                 select(DatasetMetadata).where(
                     DatasetMetadata.dataset_id == dataset_id,
-                    DatasetMetadata.id.in_(all_metadata_ids),
+                    DatasetMetadata.id.in_(all_ids_to_check),
                 )
             ).all()
             for metadata in dataset_metadatas:
@@ -210,13 +209,23 @@ class IndexProcessor:
             attributes.flag_modified(document, "doc_metadata")
 
         for metadata_id in unique_metadata_ids:
+            if metadata_id not in metadata_name_map:
+                logger.warning(
+                    "[IndexProcessor] metadata_id %s not found in dataset, skipping binding creation",
+                    metadata_id,
+                )
+                continue
             if metadata_id in existing_binding_ids:
                 continue
             if user_id is None:
+                logger.warning(
+                    "[IndexProcessor] user_id is None, cannot create binding for metadata_id=%s, skipping",
+                    metadata_id,
+                )
                 continue
 
             binding = DatasetMetadataBinding(
-                tenant_id=dataset.tenant_id,
+                tenant_id=tenant_id,
                 dataset_id=dataset_id,
                 metadata_id=metadata_id,
                 document_id=document.id,

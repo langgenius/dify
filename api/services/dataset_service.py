@@ -1948,6 +1948,39 @@ class DocumentService:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
             documents.append(document)
             batch = document.batch
+            # Apply custom_metadata and create bindings for the re-indexed document
+            if custom_metadata or metadata_bindings_to_create:
+                if custom_metadata:
+                    doc_metadata_field = document.doc_metadata or {}
+                    doc_metadata_field.update(custom_metadata)
+                    document.doc_metadata = doc_metadata_field
+                    db.session.add(document)
+                if metadata_bindings_to_create:
+                    metadata_ids_deduped = list(dict.fromkeys(metadata_bindings_to_create))
+                    existing_binding_pairs = {
+                        (doc_id, meta_id)
+                        for doc_id, meta_id in db.session.query(
+                            DatasetMetadataBinding.document_id,
+                            DatasetMetadataBinding.metadata_id,
+                        )
+                        .filter(
+                            DatasetMetadataBinding.dataset_id == dataset.id,
+                            DatasetMetadataBinding.document_id == document.id,
+                            DatasetMetadataBinding.metadata_id.in_(metadata_ids_deduped),
+                        )
+                        .all()
+                    }
+                    for metadata_id in metadata_ids_deduped:
+                        if (document.id, metadata_id) not in existing_binding_pairs:
+                            binding = DatasetMetadataBinding(
+                                tenant_id=dataset.tenant_id,
+                                dataset_id=dataset.id,
+                                document_id=document.id,
+                                metadata_id=metadata_id,
+                                created_by=account.id,
+                            )
+                            db.session.add(binding)
+                db.session.commit()
         else:
             # When creating new documents, data_source must be provided
             if not knowledge_config.data_source:

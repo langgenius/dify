@@ -85,7 +85,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
   // Document metadata value handlers
   const handleAddDocMetadata = useCallback(() => {
     if (onDocMetadataChange) {
-      onDocMetadataChange([...docMetadata, { metadata_id: '', value: '' }])
+      onDocMetadataChange([...docMetadata, { metadata_id: '', value: null }])
     }
   }, [docMetadata, onDocMetadataChange])
 
@@ -100,7 +100,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
   const handleDocMetadataIdChange = useCallback((index: number, metadataId: string) => {
     if (onDocMetadataChange) {
       const newMetadata = [...docMetadata]
-      newMetadata[index] = { ...newMetadata[index], metadata_id: metadataId }
+      newMetadata[index] = { metadata_id: metadataId, value: null }
       onDocMetadataChange(newMetadata)
     }
   }, [docMetadata, onDocMetadataChange])
