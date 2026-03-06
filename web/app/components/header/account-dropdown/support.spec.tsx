@@ -191,7 +191,7 @@ describe('Support', () => {
 
       // Assert
       expect(screen.queryByText('common.userProfile.emailSupport')).toBeInTheDocument()
-      expect(screen.getByText('common.userProfile.emailSupport')?.closest('a')?.getAttribute('href')).toMatch(new RegExp(`^mailto:${mockSupportEmailKey.value}`))
+      expect(screen.getByText('common.userProfile.emailSupport')?.closest('a')?.getAttribute('href')?.startsWith(`mailto:${mockSupportEmailKey.value}`)).toBe(true)
     })
   })
 

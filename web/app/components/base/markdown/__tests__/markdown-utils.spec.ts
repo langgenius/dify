@@ -1,6 +1,3 @@
-// app/components/base/markdown/preprocess.spec.ts
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 /**
  * Helper to (re)load the module with a mocked config value.
  * We need to reset modules because the tested module imports
