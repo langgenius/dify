@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class ToolFileManager:
-
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
         """
