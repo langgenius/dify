@@ -534,7 +534,7 @@ class WorkflowDraftVariableService:
                 WorkflowDraftVariable.node_id == node_id,
                 WorkflowDraftVariable.user_id == user_id,
             )
-            .delete()
+            .delete(synchronize_session=False)
         )
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
