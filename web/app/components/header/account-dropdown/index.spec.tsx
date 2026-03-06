@@ -70,6 +70,7 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
     ZENDESK_WIDGET_KEY: '',
+    SUPPORT_EMAIL_ADDRESS: '',
   },
   mockEnv: {
     env: {
@@ -80,6 +81,7 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
   get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+  get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
   IS_DEV: false,
   IS_CE_EDITION: false,
 }))
