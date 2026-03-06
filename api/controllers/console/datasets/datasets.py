@@ -25,12 +25,12 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
-from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
@@ -53,7 +53,7 @@ from fields.dataset_fields import (
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.dataset import DatasetPermissionEnum
+from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -119,6 +119,14 @@ def _validate_indexing_technique(value: str | None) -> str | None:
     return value
 
 
+def _validate_doc_form(value: str | None) -> str | None:
+    if value is None:
+        return value
+    if value not in Dataset.DOC_FORM_LIST:
+        raise ValueError("Invalid doc_form.")
+    return value
+
+
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field("", max_length=400)
@@ -177,6 +185,14 @@ class IndexingEstimatePayload(BaseModel):
         result = _validate_indexing_technique(value)
         if result is None:
             raise ValueError("indexing_technique is required.")
+        return result
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        result = _validate_doc_form(value)
+        if result is None:
+            return "text_model"
         return result
 
 
@@ -323,6 +339,18 @@ class DatasetListApi(Resource):
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
         data = cast(list[dict[str, Any]], marshal(datasets, dataset_detail_fields))
+        dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
+        partial_members_map: dict[str, list[str]] = {}
+        if dataset_ids:
+            permissions = db.session.execute(
+                select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
+                    DatasetPermission.dataset_id.in_(dataset_ids)
+                )
+            ).all()
+
+            for dataset_id, account_id in permissions:
+                partial_members_map.setdefault(dataset_id, []).append(account_id)
+
         for item in data:
             # convert embedding_model_provider to plugin standard format
             if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
@@ -336,8 +364,7 @@ class DatasetListApi(Resource):
                 item["embedding_available"] = True
 
             if item.get("permission") == "partial_members":
-                part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item["id"])
-                item.update({"partial_member_list": part_users_list})
+                item.update({"partial_member_list": partial_members_map.get(item["id"], [])})
             else:
                 item.update({"partial_member_list": []})
 

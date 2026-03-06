@@ -4,13 +4,13 @@ from core.app.entities.app_invoke_entities import (
     ModelConfigWithCredentialsEntity,
 )
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from core.prompt.prompt_transform import PromptTransform
+from dify_graph.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.prompt_transform import PromptTransform
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 
 class AgentHistoryPromptTransform(PromptTransform):
@@ -41,13 +41,15 @@ class AgentHistoryPromptTransform(PromptTransform):
         if not self.memory:
             return prompt_messages
 
-        max_token_limit = self._calculate_rest_token(self.prompt_messages, self.model_config)
+        max_token_limit = self._calculate_rest_token(self.prompt_messages, model_config=self.model_config)
 
         model_type_instance = self.model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         curr_message_tokens = model_type_instance.get_num_tokens(
-            self.memory.model_instance.model, self.memory.model_instance.credentials, self.history_messages
+            self.model_config.model,
+            self.model_config.credentials,
+            self.history_messages,
         )
         if curr_message_tokens <= max_token_limit:
             return self.history_messages
@@ -63,7 +65,9 @@ class AgentHistoryPromptTransform(PromptTransform):
             # a message is start with UserPromptMessage
             if isinstance(prompt_message, UserPromptMessage):
                 curr_message_tokens = model_type_instance.get_num_tokens(
-                    self.memory.model_instance.model, self.memory.model_instance.credentials, prompt_messages
+                    self.model_config.model,
+                    self.model_config.credentials,
+                    prompt_messages,
                 )
                 # if current message token is overflow, drop all the prompts in current message and break
                 if curr_message_tokens > max_token_limit:

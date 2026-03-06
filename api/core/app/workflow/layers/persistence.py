@@ -17,17 +17,17 @@ from typing import Any, Union
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
-from core.workflow.enums import (
+from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
+from dify_graph.enums import (
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events import (
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -42,10 +42,10 @@ from core.workflow.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from libs.datetime_utils import ensure_naive_utc, naive_utc_now
+from dify_graph.node_events import NodeRunResult
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from libs.datetime_utils import naive_utc_now
 
 
 @dataclass(slots=True)
@@ -356,7 +356,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         finished_at = naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
-        start_at = ensure_naive_utc(start_at)
         domain_execution.status = status
         domain_execution.finished_at = finished_at
         domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
@@ -382,8 +381,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 execution.status = WorkflowNodeExecutionStatus.FAILED
                 execution.error = error_message
                 execution.finished_at = now
-                created_at = ensure_naive_utc(execution.created_at)
-                execution.elapsed_time = max((now - created_at).total_seconds(), 0.0)
+                execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
                 self._workflow_node_execution_repository.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:

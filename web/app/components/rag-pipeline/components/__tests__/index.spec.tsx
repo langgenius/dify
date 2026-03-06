@@ -1,5 +1,5 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -8,6 +8,12 @@ import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-mo
 import PublishToast from '../publish-toast'
 import RagPipelineChildren from '../rag-pipeline-children'
 import PipelineScreenShot from '../screenshot'
+
+afterEach(async () => {
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+})
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
