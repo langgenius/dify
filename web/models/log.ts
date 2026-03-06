@@ -1,9 +1,11 @@
 import type { Viewport } from 'reactflow'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
+import type { Metadata, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
+import type { Emoji } from '@/app/components/tools/types'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { VisionFile } from '@/types/app'
 
 export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
@@ -86,7 +88,7 @@ export type MessageContent = {
   }>
   message_files: VisionFile[]
   metadata: Metadata
-  agent_thoughts: any[] // TODO
+  agent_thoughts: ThoughtItem[]
   workflow_run_id: string
   parent_message_id: string | null
 }
@@ -329,12 +331,12 @@ export type ToolCall = {
   status: string
   error?: string | null
   time_cost?: number
-  tool_icon: any
-  tool_input?: any
-  tool_output?: any
+  tool_icon: string | Emoji
+  tool_input?: string | Record<string, unknown>
+  tool_output?: string | Record<string, unknown>
   tool_name?: string
-  tool_label?: any
-  tool_parameters?: any
+  tool_label?: TypeWithI18N<string>
+  tool_parameters?: Record<string, unknown>
 }
 
 export type AgentIteration = {
