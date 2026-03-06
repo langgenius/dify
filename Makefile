@@ -68,8 +68,9 @@ lint:
 	@echo "✅ Linting complete"
 
 type-check:
-	@echo "📝 Running type checks (basedpyright + mypy)..."
+	@echo "📝 Running type checks (basedpyright + pyrefly + mypy)..."
 	@./dev/basedpyright-check $(PATH_TO_CHECK)
+	@./dev/pyrefly-check-local
 	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
@@ -131,7 +132,7 @@ help:
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
-	@echo "  make type-check     - Run type checks (basedpyright, mypy)"
+	@echo "  make type-check     - Run type checks (basedpyright, pyrefly, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"

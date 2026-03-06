@@ -117,7 +117,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
         try:
             results, usage = self._fetch_dataset_retriever(node_data=self._node_data, variables=variables)
-            outputs = {"result": ArrayObjectSegment(value=[item.model_dump() for item in results])}
+            outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
