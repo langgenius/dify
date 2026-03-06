@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models import Account, App, TenantAccountJoin
+from models import Account, App, CustomizedSnippet, TenantAccountJoin
 
 
 def get_service_account_for_app(session: Session, app_id: str) -> Account:
@@ -19,6 +19,34 @@ def get_service_account_for_app(session: Session, app_id: str) -> Account:
     account = session.scalar(select(Account).where(Account.id == app.created_by))
     if not account:
         raise ValueError(f"Creator account not found for app {app_id}")
+
+    current_tenant = (
+        session.query(TenantAccountJoin)
+        .filter_by(account_id=account.id, current=True)
+        .first()
+    )
+    if not current_tenant:
+        raise ValueError(f"Current tenant not found for account {account.id}")
+
+    account.set_tenant_id(current_tenant.tenant_id)
+    return account
+
+
+def get_service_account_for_snippet(session: Session, snippet_id: str) -> Account:
+    """Get the creator account for a snippet with tenant context set up.
+
+    Mirrors :func:`get_service_account_for_app` but queries CustomizedSnippet.
+    """
+    snippet = session.scalar(select(CustomizedSnippet).where(CustomizedSnippet.id == snippet_id))
+    if not snippet:
+        raise ValueError(f"Snippet with id {snippet_id} not found")
+
+    if not snippet.created_by:
+        raise ValueError(f"Snippet with id {snippet_id} has no creator")
+
+    account = session.scalar(select(Account).where(Account.id == snippet.created_by))
+    if not account:
+        raise ValueError(f"Creator account not found for snippet {snippet_id}")
 
     current_tenant = (
         session.query(TenantAccountJoin)

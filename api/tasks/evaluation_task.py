@@ -18,6 +18,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.evaluation.runners.snippet_evaluation_runner import SnippetEvaluationRunner
 from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluationRunner
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -128,6 +129,8 @@ def _create_runner(
             return AgentEvaluationRunner(evaluation_instance, session)
         case EvaluationCategory.WORKFLOW:
             return WorkflowEvaluationRunner(evaluation_instance, session)
+        case EvaluationCategory.SNIPPET:
+            return SnippetEvaluationRunner(evaluation_instance, session)
         case _:
             raise ValueError(f"Unknown evaluation category: {category}")
 
