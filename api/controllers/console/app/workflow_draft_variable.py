@@ -100,6 +100,18 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
     }
 
 
+def _ensure_variable_access(
+    variable: WorkflowDraftVariable | None,
+    app_id: str,
+    variable_id: str,
+) -> WorkflowDraftVariable:
+    if variable is None:
+        raise NotFoundError(description=f"variable not found, id={variable_id}")
+    if variable.app_id != app_id or variable.user_id != current_user.id:
+        raise NotFoundError(description=f"variable not found, id={variable_id}")
+    return variable
+
+
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "id": fields.String,
     "type": fields.String(attribute=lambda model: model.get_variable_type()),
@@ -320,11 +332,11 @@ class VariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
         return variable
 
     @console_ns.doc("update_variable")
@@ -361,11 +373,11 @@ class VariableApi(Resource):
         )
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
 
         new_name = args_model.name
         raw_value = args_model.value
@@ -398,11 +410,11 @@ class VariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
         return Response("", 204)
@@ -428,11 +440,11 @@ class VariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
             )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()
