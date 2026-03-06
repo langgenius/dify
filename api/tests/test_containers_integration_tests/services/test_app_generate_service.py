@@ -1,8 +1,9 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import EndUser
@@ -18,17 +19,22 @@ class TestAppGenerateService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.billing_service.BillingService") as mock_billing_service,
-            patch("services.app_generate_service.WorkflowService") as mock_workflow_service,
-            patch("services.app_generate_service.RateLimit") as mock_rate_limit,
-            patch("services.app_generate_service.CompletionAppGenerator") as mock_completion_generator,
-            patch("services.app_generate_service.ChatAppGenerator") as mock_chat_generator,
-            patch("services.app_generate_service.AgentChatAppGenerator") as mock_agent_chat_generator,
-            patch("services.app_generate_service.AdvancedChatAppGenerator") as mock_advanced_chat_generator,
-            patch("services.app_generate_service.WorkflowAppGenerator") as mock_workflow_generator,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
-            patch("services.app_generate_service.dify_config") as mock_dify_config,
-            patch("configs.dify_config") as mock_global_dify_config,
+            patch("services.billing_service.BillingService", autospec=True) as mock_billing_service,
+            patch("services.app_generate_service.WorkflowService", autospec=True) as mock_workflow_service,
+            patch("services.app_generate_service.RateLimit", autospec=True) as mock_rate_limit,
+            patch("services.app_generate_service.CompletionAppGenerator", autospec=True) as mock_completion_generator,
+            patch("services.app_generate_service.ChatAppGenerator", autospec=True) as mock_chat_generator,
+            patch("services.app_generate_service.AgentChatAppGenerator", autospec=True) as mock_agent_chat_generator,
+            patch(
+                "services.app_generate_service.AdvancedChatAppGenerator", autospec=True
+            ) as mock_advanced_chat_generator,
+            patch("services.app_generate_service.WorkflowAppGenerator", autospec=True) as mock_workflow_generator,
+            patch(
+                "services.app_generate_service.MessageBasedAppGenerator", autospec=True
+            ) as mock_message_based_generator,
+            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
+            patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
+            patch("configs.dify_config", autospec=True) as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.update_tenant_feature_plan_usage.return_value = {
@@ -38,9 +44,13 @@ class TestAppGenerateService:
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_workflow_service_instance.get_published_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_draft_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = MagicMock(spec=Workflow)
+            mock_published_workflow = MagicMock(spec=Workflow)
+            mock_published_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
+            mock_draft_workflow = MagicMock(spec=Workflow)
+            mock_draft_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value
@@ -66,6 +76,8 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
+            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
+            mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
             mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
             mock_workflow_generator_instance = mock_workflow_generator.return_value
@@ -75,6 +87,8 @@ class TestAppGenerateService:
             ]
             mock_workflow_generator_instance.single_loop_generate.return_value = ["workflow_single_loop_response"]
             mock_workflow_generator.convert_to_event_stream.return_value = ["workflow_stream"]
+
+            mock_message_based_generator.retrieve_events.return_value = ["workflow_events"]
 
             # Setup default mock returns for account service
             mock_account_feature_service.get_system_features.return_value.is_allow_register = True
@@ -88,6 +102,7 @@ class TestAppGenerateService:
             mock_global_dify_config.BILLING_ENABLED = False
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
+            mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
 
             yield {
                 "billing_service": mock_billing_service,
@@ -98,12 +113,15 @@ class TestAppGenerateService:
                 "agent_chat_generator": mock_agent_chat_generator,
                 "advanced_chat_generator": mock_advanced_chat_generator,
                 "workflow_generator": mock_workflow_generator,
+                "message_based_generator": mock_message_based_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
                 "global_dify_config": mock_global_dify_config,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies, mode="chat"):
+    def _create_test_app_and_account(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, mode="chat"
+    ):
         """
         Helper method to create a test app and account for testing.
 
@@ -154,7 +172,7 @@ class TestAppGenerateService:
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers, app):
+    def _create_test_workflow(self, db_session_with_containers: Session, app):
         """
         Helper method to create a test workflow for testing.
 
@@ -176,14 +194,14 @@ class TestAppGenerateService:
             status="published",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(workflow)
-        db.session.commit()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
 
         return workflow
 
-    def test_generate_completion_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_completion_mode_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful generation for completion mode app.
         """
@@ -211,7 +229,7 @@ class TestAppGenerateService:
         mock_external_service_dependencies["completion_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["completion_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_chat_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_chat_mode_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful generation for chat mode app.
         """
@@ -235,7 +253,9 @@ class TestAppGenerateService:
         mock_external_service_dependencies["chat_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["chat_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_agent_chat_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_agent_chat_mode_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful generation for agent chat mode app.
         """
@@ -259,7 +279,9 @@ class TestAppGenerateService:
         mock_external_service_dependencies["agent_chat_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_advanced_chat_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_advanced_chat_mode_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful generation for advanced chat mode app.
         """
@@ -280,10 +302,14 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.generate.assert_called_once()
-        mock_external_service_dependencies["advanced_chat_generator"].convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
+        mock_external_service_dependencies[
+            "advanced_chat_generator"
+        ].return_value.convert_to_event_stream.assert_called_once()
 
-    def test_generate_workflow_mode_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_workflow_mode_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful generation for workflow mode app.
         """
@@ -304,10 +330,12 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify workflow generator was called
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once()
         mock_external_service_dependencies["workflow_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_with_specific_workflow_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_specific_workflow_id(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test generation with a specific workflow ID.
         """
@@ -338,7 +366,9 @@ class TestAppGenerateService:
             "workflow_service"
         ].return_value.get_published_workflow_by_id.assert_called_once()
 
-    def test_generate_with_debugger_invoke_from(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_debugger_invoke_from(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test generation with debugger invoke from.
         """
@@ -361,7 +391,9 @@ class TestAppGenerateService:
         # Verify draft workflow was fetched for debugger
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once()
 
-    def test_generate_with_non_streaming_mode(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_non_streaming_mode(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test generation with non-streaming mode.
         """
@@ -384,7 +416,7 @@ class TestAppGenerateService:
         # Verify rate limit exit was called for non-streaming mode
         mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
 
-    def test_generate_with_end_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test generation with EndUser instead of Account.
         """
@@ -404,10 +436,8 @@ class TestAppGenerateService:
             session_id=fake.uuid4(),
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
@@ -421,7 +451,7 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
     def test_generate_with_billing_enabled_sandbox_plan(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation with billing enabled and sandbox plan.
@@ -449,7 +479,9 @@ class TestAppGenerateService:
         # Verify billing service was called to consume quota
         mock_external_service_dependencies["billing_service"].update_tenant_feature_plan_usage.assert_called_once()
 
-    def test_generate_with_invalid_app_mode(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_invalid_app_mode(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test generation with invalid app mode.
         """
@@ -474,7 +506,7 @@ class TestAppGenerateService:
         assert "Invalid app mode" in str(exc_info.value)
 
     def test_generate_with_workflow_id_format_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation with invalid workflow ID format.
@@ -501,7 +533,7 @@ class TestAppGenerateService:
         assert "Invalid workflow_id format" in str(exc_info.value)
 
     def test_generate_with_workflow_not_found_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not found.
@@ -535,7 +567,7 @@ class TestAppGenerateService:
         assert f"Workflow not found with id: {workflow_id}" in str(exc_info.value)
 
     def test_generate_with_workflow_not_initialized_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not initialized for debugger.
@@ -561,7 +593,7 @@ class TestAppGenerateService:
         assert "Workflow not initialized" in str(exc_info.value)
 
     def test_generate_with_workflow_not_published_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not published for non-debugger.
@@ -587,7 +619,7 @@ class TestAppGenerateService:
         assert "Workflow not published" in str(exc_info.value)
 
     def test_generate_single_iteration_advanced_chat_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful single iteration generation for advanced chat mode.
@@ -614,7 +646,7 @@ class TestAppGenerateService:
         ].return_value.single_iteration_generate.assert_called_once()
 
     def test_generate_single_iteration_workflow_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful single iteration generation for workflow mode.
@@ -641,7 +673,7 @@ class TestAppGenerateService:
         ].return_value.single_iteration_generate.assert_called_once()
 
     def test_generate_single_iteration_invalid_mode(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test single iteration generation with invalid app mode.
@@ -664,7 +696,7 @@ class TestAppGenerateService:
         assert "Invalid app mode" in str(exc_info.value)
 
     def test_generate_single_loop_advanced_chat_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful single loop generation for advanced chat mode.
@@ -691,7 +723,7 @@ class TestAppGenerateService:
         ].return_value.single_loop_generate.assert_called_once()
 
     def test_generate_single_loop_workflow_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful single loop generation for workflow mode.
@@ -715,7 +747,9 @@ class TestAppGenerateService:
         # Verify workflow generator was called
         mock_external_service_dependencies["workflow_generator"].return_value.single_loop_generate.assert_called_once()
 
-    def test_generate_single_loop_invalid_mode(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_single_loop_invalid_mode(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test single loop generation with invalid app mode.
         """
@@ -736,7 +770,9 @@ class TestAppGenerateService:
         # Verify error message
         assert "Invalid app mode" in str(exc_info.value)
 
-    def test_generate_more_like_this_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_more_like_this_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful more like this generation.
         """
@@ -761,7 +797,7 @@ class TestAppGenerateService:
         ].return_value.generate_more_like_this.assert_called_once()
 
     def test_generate_more_like_this_with_end_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test more like this generation with EndUser.
@@ -782,10 +818,8 @@ class TestAppGenerateService:
             session_id=fake.uuid4(),
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(end_user)
-        db.session.commit()
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
 
         message_id = fake.uuid4()
 
@@ -798,7 +832,7 @@ class TestAppGenerateService:
         assert result == ["more_like_this_response"]
 
     def test_get_max_active_requests_with_app_limit(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with app-specific limit.
@@ -818,7 +852,7 @@ class TestAppGenerateService:
         assert result == 10
 
     def test_get_max_active_requests_with_config_limit(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with config limit being smaller.
@@ -839,7 +873,7 @@ class TestAppGenerateService:
         assert result <= 100
 
     def test_get_max_active_requests_with_zero_limits(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with zero limits (infinite).
@@ -858,7 +892,9 @@ class TestAppGenerateService:
         # Verify the result (should return config limit when app limit is 0)
         assert result == 100  # dify_config.APP_MAX_ACTIVE_REQUESTS
 
-    def test_generate_with_exception_cleanup(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_exception_cleanup(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test that rate limit exit is called when an exception occurs.
         """
@@ -887,7 +923,9 @@ class TestAppGenerateService:
         # Verify rate limit exit was called for cleanup
         mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
 
-    def test_generate_with_agent_mode_detection(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_agent_mode_detection(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test generation with agent mode detection based on app configuration.
         """
@@ -915,7 +953,7 @@ class TestAppGenerateService:
         mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_with_different_invoke_from_values(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generation with different invoke from values.
@@ -945,7 +983,7 @@ class TestAppGenerateService:
             # Verify the result
             assert result == ["test_response"]
 
-    def test_generate_with_complex_args(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_with_complex_args(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test generation with complex arguments including files and external trace ID.
         """
@@ -970,14 +1008,27 @@ class TestAppGenerateService:
         }
 
         # Execute the method under test
-        result = AppGenerateService.generate(
-            app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-        )
+        with patch("services.app_generate_service.AppExecutionParams", autospec=True) as mock_exec_params:
+            mock_payload = MagicMock()
+            mock_payload.workflow_run_id = fake.uuid4()
+            mock_payload.model_dump_json.return_value = "{}"
+            mock_exec_params.new.return_value = mock_payload
+
+            result = AppGenerateService.generate(
+                app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
+            )
 
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify workflow generator was called with complex args
-        mock_external_service_dependencies["workflow_generator"].return_value.generate.assert_called_once()
-        call_args = mock_external_service_dependencies["workflow_generator"].return_value.generate.call_args
-        assert call_args[1]["args"] == args
+        # Verify payload was built with complex args
+        mock_exec_params.new.assert_called_once()
+        call_kwargs = mock_exec_params.new.call_args.kwargs
+        assert call_kwargs["args"] == args
+
+        # Verify workflow streaming event retrieval was used
+        mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once_with(
+            ANY,
+            mock_payload.workflow_run_id,
+            on_subscribe=ANY,
+        )

@@ -201,8 +201,8 @@ def factory():
 class TestSavedMessageServicePagination:
     """Test saved message pagination operations."""
 
-    @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.pagination_by_last_id", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_pagination_with_account_user(self, mock_db_session, mock_message_pagination, factory):
         """Test pagination with an Account user."""
         # Arrange
@@ -247,8 +247,8 @@ class TestSavedMessageServicePagination:
             include_ids=["msg-0", "msg-1", "msg-2"],
         )
 
-    @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.pagination_by_last_id", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_pagination_with_end_user(self, mock_db_session, mock_message_pagination, factory):
         """Test pagination with an EndUser."""
         # Arrange
@@ -301,8 +301,8 @@ class TestSavedMessageServicePagination:
         with pytest.raises(ValueError, match="User is required"):
             SavedMessageService.pagination_by_last_id(app_model=app, user=None, last_id=None, limit=20)
 
-    @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.pagination_by_last_id", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_pagination_with_last_id(self, mock_db_session, mock_message_pagination, factory):
         """Test pagination with last_id parameter."""
         # Arrange
@@ -340,8 +340,8 @@ class TestSavedMessageServicePagination:
         call_args = mock_message_pagination.call_args
         assert call_args.kwargs["last_id"] == last_id
 
-    @patch("services.saved_message_service.MessageService.pagination_by_last_id")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.pagination_by_last_id", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_pagination_with_empty_saved_messages(self, mock_db_session, mock_message_pagination, factory):
         """Test pagination when user has no saved messages."""
         # Arrange
@@ -377,8 +377,8 @@ class TestSavedMessageServicePagination:
 class TestSavedMessageServiceSave:
     """Test save message operations."""
 
-    @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.get_message", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_save_message_for_account(self, mock_db_session, mock_get_message, factory):
         """Test saving a message for an Account user."""
         # Arrange
@@ -407,8 +407,8 @@ class TestSavedMessageServiceSave:
         assert saved_message.created_by_role == "account"
         mock_db_session.commit.assert_called_once()
 
-    @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.get_message", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_save_message_for_end_user(self, mock_db_session, mock_get_message, factory):
         """Test saving a message for an EndUser."""
         # Arrange
@@ -437,7 +437,7 @@ class TestSavedMessageServiceSave:
         assert saved_message.created_by_role == "end_user"
         mock_db_session.commit.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_save_without_user_does_nothing(self, mock_db_session, factory):
         """Test that saving without user is a no-op."""
         # Arrange
@@ -451,8 +451,8 @@ class TestSavedMessageServiceSave:
         mock_db_session.add.assert_not_called()
         mock_db_session.commit.assert_not_called()
 
-    @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.get_message", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_save_duplicate_message_is_idempotent(self, mock_db_session, mock_get_message, factory):
         """Test that saving an already saved message is idempotent."""
         # Arrange
@@ -480,8 +480,8 @@ class TestSavedMessageServiceSave:
         mock_db_session.commit.assert_not_called()
         mock_get_message.assert_not_called()
 
-    @patch("services.saved_message_service.MessageService.get_message")
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.MessageService.get_message", autospec=True)
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_save_validates_message_exists(self, mock_db_session, mock_get_message, factory):
         """Test that save validates message exists through MessageService."""
         # Arrange
@@ -508,7 +508,7 @@ class TestSavedMessageServiceSave:
 class TestSavedMessageServiceDelete:
     """Test delete saved message operations."""
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_delete_saved_message_for_account(self, mock_db_session, factory):
         """Test deleting a saved message for an Account user."""
         # Arrange
@@ -535,7 +535,7 @@ class TestSavedMessageServiceDelete:
         mock_db_session.delete.assert_called_once_with(saved_message)
         mock_db_session.commit.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_delete_saved_message_for_end_user(self, mock_db_session, factory):
         """Test deleting a saved message for an EndUser."""
         # Arrange
@@ -562,7 +562,7 @@ class TestSavedMessageServiceDelete:
         mock_db_session.delete.assert_called_once_with(saved_message)
         mock_db_session.commit.assert_called_once()
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_delete_without_user_does_nothing(self, mock_db_session, factory):
         """Test that deleting without user is a no-op."""
         # Arrange
@@ -576,7 +576,7 @@ class TestSavedMessageServiceDelete:
         mock_db_session.delete.assert_not_called()
         mock_db_session.commit.assert_not_called()
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_delete_non_existent_saved_message_does_nothing(self, mock_db_session, factory):
         """Test that deleting a non-existent saved message is a no-op."""
         # Arrange
@@ -597,7 +597,7 @@ class TestSavedMessageServiceDelete:
         mock_db_session.delete.assert_not_called()
         mock_db_session.commit.assert_not_called()
 
-    @patch("services.saved_message_service.db.session")
+    @patch("services.saved_message_service.db.session", autospec=True)
     def test_delete_only_affects_user_own_saved_messages(self, mock_db_session, factory):
         """Test that delete only removes the user's own saved message."""
         # Arrange

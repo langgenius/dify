@@ -58,5 +58,15 @@
   "generation.tabs.create": "Bir Kere Çalıştır",
   "generation.tabs.saved": "Kaydedildi",
   "generation.title": "AI Tamamlama",
+  "humanInput.completed": "Bu isteğin başka bir yerde işlendiği görülüyor.",
+  "humanInput.expirationTimeNowOrFuture": "Bu eylem {{relativeTime}} sona erecek.",
+  "humanInput.expired": "Bu isteğin süresi dolmuş gibi görünüyor.",
+  "humanInput.expiredTip": "Bu eylemin süresi doldu.",
+  "humanInput.formNotFound": "Form bulunamadı.",
+  "humanInput.rateLimitExceeded": "Çok fazla istek, lütfen daha sonra tekrar deneyin.",
+  "humanInput.recorded": "Girişiniz kaydedildi.",
+  "humanInput.sorry": "Üzgünüz!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "Teşekkürler!",
   "login.backToHome": "Ana Sayfaya Dön"
 }

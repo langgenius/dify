@@ -1,12 +1,37 @@
 version: 2
+
 updates:
+  - package-ecosystem: "pip"
+    directory: "/api"
+    open-pull-requests-limit: 2
+    schedule:
+      interval: "weekly"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "uv"
+    directory: "/api"
+    open-pull-requests-limit: 2
+    schedule:
+      interval: "weekly"
+    groups:
+      uv-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
-  - package-ecosystem: "uv"
-    directory: "/api"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+    groups:
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
+      npm-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "storybook"
+          - "@storybook/*"

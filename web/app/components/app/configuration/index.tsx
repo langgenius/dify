@@ -49,7 +49,8 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import Toast, { ToastContext } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -66,7 +67,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import ConfigContext from '@/context/debug-configuration'
-import { MittProvider } from '@/context/mitt-context'
+import { MittProvider } from '@/context/mitt-context-provider'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -109,7 +110,7 @@ const Configuration: FC = () => {
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)

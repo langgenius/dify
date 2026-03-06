@@ -15,7 +15,6 @@ from configs import dify_config
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
@@ -31,6 +30,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -378,70 +378,69 @@ class IndexingRunner:
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
-        # load file
-        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
-            return []
-
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
-        if dataset_document.data_source_type == "upload_file":
-            if not data_source_info or "upload_file_id" not in data_source_info:
-                raise ValueError("no upload file found")
-            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-            file_detail = db.session.scalars(stmt).one_or_none()
+        match dataset_document.data_source_type:
+            case "upload_file":
+                if not data_source_info or "upload_file_id" not in data_source_info:
+                    raise ValueError("no upload file found")
+                stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+                file_detail = db.session.scalars(stmt).one_or_none()
 
-            if file_detail:
+                if file_detail:
+                    extract_setting = ExtractSetting(
+                        datasource_type=DatasourceType.FILE,
+                        upload_file=file_detail,
+                        document_model=dataset_document.doc_form,
+                    )
+                    text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case "notion_import":
+                if (
+                    not data_source_info
+                    or "notion_workspace_id" not in data_source_info
+                    or "notion_page_id" not in data_source_info
+                ):
+                    raise ValueError("no notion import info found")
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE,
-                    upload_file=file_detail,
+                    datasource_type=DatasourceType.NOTION,
+                    notion_info=NotionInfo.model_validate(
+                        {
+                            "credential_id": data_source_info.get("credential_id"),
+                            "notion_workspace_id": data_source_info["notion_workspace_id"],
+                            "notion_obj_id": data_source_info["notion_page_id"],
+                            "notion_page_type": data_source_info["type"],
+                            "document": dataset_document,
+                            "tenant_id": dataset_document.tenant_id,
+                        }
+                    ),
                     document_model=dataset_document.doc_form,
                 )
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "notion_import":
-            if (
-                not data_source_info
-                or "notion_workspace_id" not in data_source_info
-                or "notion_page_id" not in data_source_info
-            ):
-                raise ValueError("no notion import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.NOTION,
-                notion_info=NotionInfo.model_validate(
-                    {
-                        "credential_id": data_source_info.get("credential_id"),
-                        "notion_workspace_id": data_source_info["notion_workspace_id"],
-                        "notion_obj_id": data_source_info["notion_page_id"],
-                        "notion_page_type": data_source_info["type"],
-                        "document": dataset_document,
-                        "tenant_id": dataset_document.tenant_id,
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
-        elif dataset_document.data_source_type == "website_crawl":
-            if (
-                not data_source_info
-                or "provider" not in data_source_info
-                or "url" not in data_source_info
-                or "job_id" not in data_source_info
-            ):
-                raise ValueError("no website import info found")
-            extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.WEBSITE,
-                website_info=WebsiteInfo.model_validate(
-                    {
-                        "provider": data_source_info["provider"],
-                        "job_id": data_source_info["job_id"],
-                        "tenant_id": dataset_document.tenant_id,
-                        "url": data_source_info["url"],
-                        "mode": data_source_info["mode"],
-                        "only_main_content": data_source_info["only_main_content"],
-                    }
-                ),
-                document_model=dataset_document.doc_form,
-            )
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case "website_crawl":
+                if (
+                    not data_source_info
+                    or "provider" not in data_source_info
+                    or "url" not in data_source_info
+                    or "job_id" not in data_source_info
+                ):
+                    raise ValueError("no website import info found")
+                extract_setting = ExtractSetting(
+                    datasource_type=DatasourceType.WEBSITE,
+                    website_info=WebsiteInfo.model_validate(
+                        {
+                            "provider": data_source_info["provider"],
+                            "job_id": data_source_info["job_id"],
+                            "tenant_id": dataset_document.tenant_id,
+                            "url": data_source_info["url"],
+                            "mode": data_source_info["mode"],
+                            "only_main_content": data_source_info["only_main_content"],
+                        }
+                    ),
+                    document_model=dataset_document.doc_form,
+                )
+                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+            case _:
+                return []
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,

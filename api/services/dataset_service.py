@@ -18,14 +18,14 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from dify_graph.file import helpers as file_helpers
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -252,7 +252,7 @@ class DatasetService:
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
@@ -384,7 +384,7 @@ class DatasetService:
                 model=model,
             )
             text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
-            model_schema = text_embedding_model.get_model_schema(model_instance.model, model_instance.credentials)
+            model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
             if model_schema.features and ModelFeature.VISION in model_schema.features:
@@ -743,10 +743,12 @@ class DatasetService:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
             )
-            filtered_data["embedding_model"] = embedding_model.model
+            embedding_model_name = embedding_model.model_name
+            filtered_data["embedding_model"] = embedding_model_name
             filtered_data["embedding_model_provider"] = embedding_model.provider
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_model.provider, embedding_model.model
+                embedding_model.provider,
+                embedding_model_name,
             )
             filtered_data["collection_binding_id"] = dataset_collection_binding.id
         except LLMBadRequestError:
@@ -876,10 +878,12 @@ class DatasetService:
             return
 
         # Apply new embedding model settings
-        filtered_data["embedding_model"] = embedding_model.model
+        embedding_model_name = embedding_model.model_name
+        filtered_data["embedding_model"] = embedding_model_name
         filtered_data["embedding_model_provider"] = embedding_model.provider
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-            embedding_model.provider, embedding_model.model
+            embedding_model.provider,
+            embedding_model_name,
         )
         filtered_data["collection_binding_id"] = dataset_collection_binding.id
 
@@ -955,10 +959,12 @@ class DatasetService:
                     knowledge_configuration.embedding_model,
                 )
                 dataset.is_multimodal = is_multimodal
-                dataset.embedding_model = embedding_model.model
+                embedding_model_name = embedding_model.model_name
+                dataset.embedding_model = embedding_model_name
                 dataset.embedding_model_provider = embedding_model.provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                    embedding_model.provider, embedding_model.model
+                    embedding_model.provider,
+                    embedding_model_name,
                 )
                 dataset.collection_binding_id = dataset_collection_binding.id
             elif knowledge_configuration.indexing_technique == "economy":
@@ -989,10 +995,12 @@ class DatasetService:
                             model_type=ModelType.TEXT_EMBEDDING,
                             model=knowledge_configuration.embedding_model,
                         )
-                        dataset.embedding_model = embedding_model.model
+                        embedding_model_name = embedding_model.model_name
+                        dataset.embedding_model = embedding_model_name
                         dataset.embedding_model_provider = embedding_model.provider
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            embedding_model.provider, embedding_model.model
+                            embedding_model.provider,
+                            embedding_model_name,
                         )
                         is_multimodal = DatasetService.check_is_multimodal_model(
                             current_user.current_tenant_id,
@@ -1049,11 +1057,13 @@ class DatasetService:
                                 skip_embedding_update = True
                             if not skip_embedding_update:
                                 if embedding_model:
-                                    dataset.embedding_model = embedding_model.model
+                                    embedding_model_name = embedding_model.model_name
+                                    dataset.embedding_model = embedding_model_name
                                     dataset.embedding_model_provider = embedding_model.provider
                                     dataset_collection_binding = (
                                         DatasetCollectionBindingService.get_dataset_collection_binding(
-                                            embedding_model.provider, embedding_model.model
+                                            embedding_model.provider,
+                                            embedding_model_name,
                                         )
                                     )
                                     dataset.collection_binding_id = dataset_collection_binding.id
@@ -1696,12 +1706,17 @@ class DocumentService:
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        if dataset.doc_form is not None:
-            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
+        # Delete documents first, then dispatch cleanup task after commit
+        # to avoid deadlock between main transaction and async task
         for document in documents:
             db.session.delete(document)
         db.session.commit()
+
+        # Dispatch cleanup task after commit to avoid lock contention
+        # Task cleans up segments, files, and vector indexes
+        if dataset.doc_form is not None:
+            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
@@ -1879,7 +1894,7 @@ class DocumentService:
                     embedding_model = model_manager.get_default_model_instance(
                         tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
                     )
-                    dataset_embedding_model = embedding_model.model
+                    dataset_embedding_model = embedding_model.model_name
                     dataset_embedding_model_provider = embedding_model.provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
@@ -2978,14 +2993,15 @@ class DocumentService:
         """
         now = naive_utc_now()
 
-        if action == "enable":
-            return DocumentService._prepare_enable_update(document, now)
-        elif action == "disable":
-            return DocumentService._prepare_disable_update(document, user, now)
-        elif action == "archive":
-            return DocumentService._prepare_archive_update(document, user, now)
-        elif action == "un_archive":
-            return DocumentService._prepare_unarchive_update(document, now)
+        match action:
+            case "enable":
+                return DocumentService._prepare_enable_update(document, now)
+            case "disable":
+                return DocumentService._prepare_disable_update(document, user, now)
+            case "archive":
+                return DocumentService._prepare_archive_update(document, user, now)
+            case "un_archive":
+                return DocumentService._prepare_unarchive_update(document, now)
 
         return None
 
@@ -3622,56 +3638,57 @@ class SegmentService:
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
-        if action == "enable":
-            segments = db.session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.id.in_(segment_ids),
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.document_id == document.id,
-                    DocumentSegment.enabled == False,
-                )
-            ).all()
-            if not segments:
-                return
-            real_deal_segment_ids = []
-            for segment in segments:
-                indexing_cache_key = f"segment_{segment.id}_indexing"
-                cache_result = redis_client.get(indexing_cache_key)
-                if cache_result is not None:
-                    continue
-                segment.enabled = True
-                segment.disabled_at = None
-                segment.disabled_by = None
-                db.session.add(segment)
-                real_deal_segment_ids.append(segment.id)
-            db.session.commit()
+        match action:
+            case "enable":
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.id.in_(segment_ids),
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.enabled == False,
+                    )
+                ).all()
+                if not segments:
+                    return
+                real_deal_segment_ids = []
+                for segment in segments:
+                    indexing_cache_key = f"segment_{segment.id}_indexing"
+                    cache_result = redis_client.get(indexing_cache_key)
+                    if cache_result is not None:
+                        continue
+                    segment.enabled = True
+                    segment.disabled_at = None
+                    segment.disabled_by = None
+                    db.session.add(segment)
+                    real_deal_segment_ids.append(segment.id)
+                db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
-        elif action == "disable":
-            segments = db.session.scalars(
-                select(DocumentSegment).where(
-                    DocumentSegment.id.in_(segment_ids),
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.document_id == document.id,
-                    DocumentSegment.enabled == True,
-                )
-            ).all()
-            if not segments:
-                return
-            real_deal_segment_ids = []
-            for segment in segments:
-                indexing_cache_key = f"segment_{segment.id}_indexing"
-                cache_result = redis_client.get(indexing_cache_key)
-                if cache_result is not None:
-                    continue
-                segment.enabled = False
-                segment.disabled_at = naive_utc_now()
-                segment.disabled_by = current_user.id
-                db.session.add(segment)
-                real_deal_segment_ids.append(segment.id)
-            db.session.commit()
+                enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
+            case "disable":
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.id.in_(segment_ids),
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.enabled == True,
+                    )
+                ).all()
+                if not segments:
+                    return
+                real_deal_segment_ids = []
+                for segment in segments:
+                    indexing_cache_key = f"segment_{segment.id}_indexing"
+                    cache_result = redis_client.get(indexing_cache_key)
+                    if cache_result is not None:
+                        continue
+                    segment.enabled = False
+                    segment.disabled_at = naive_utc_now()
+                    segment.disabled_by = current_user.id
+                    db.session.add(segment)
+                    real_deal_segment_ids.append(segment.id)
+                db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
+                disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
 
     @classmethod
     def create_child_chunk(

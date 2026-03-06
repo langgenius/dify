@@ -5,13 +5,14 @@ from datetime import datetime
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.tool_label_manager import ToolLabelManager
+from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -62,6 +63,8 @@ class WorkflowToolManageService:
         workflow: Workflow | None = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
+
+        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         workflow_tool_provider = WorkflowToolProvider(
             tenant_id=tenant_id,
@@ -151,6 +154,8 @@ class WorkflowToolManageService:
         workflow: Workflow | None = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
+
+        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         workflow_tool_provider.name = name
         workflow_tool_provider.label = label
