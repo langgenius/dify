@@ -28,17 +28,8 @@ ignore_imports =
     dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_events
     dify_graph.nodes.loop.loop_node -> dify_graph.graph_events
 
-    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
-    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
-    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
-    dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
-
     dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine
-    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph
-    dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine.command_channels
     dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine
-    dify_graph.nodes.loop.loop_node -> dify_graph.graph
-    dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine.command_channels
     # TODO(QuantumGhost): fix the import violation later
     dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
 
@@ -101,13 +92,9 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
     dify_graph.nodes.agent.agent_node -> core.model_manager
     dify_graph.nodes.agent.agent_node -> core.provider_manager
     dify_graph.nodes.agent.agent_node -> core.tools.tool_manager
-    dify_graph.nodes.document_extractor.node -> core.helper.ssrf_proxy
-    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
-    dify_graph.nodes.iteration.iteration_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.llm_utils -> core.model_manager
     dify_graph.nodes.llm.protocols -> core.model_manager
     dify_graph.nodes.llm.llm_utils -> dify_graph.model_runtime.model_providers.__base.large_language_model
@@ -152,7 +139,6 @@ ignore_imports =
     dify_graph.nodes.llm.node -> extensions.ext_database
     dify_graph.nodes.tool.tool_node -> extensions.ext_database
     dify_graph.nodes.agent.agent_node -> models
-    dify_graph.nodes.loop.loop_node -> core.app.workflow.layers.llm_quota
     dify_graph.nodes.llm.node -> models.model
     dify_graph.nodes.agent.agent_node -> services
     dify_graph.nodes.tool.tool_node -> services

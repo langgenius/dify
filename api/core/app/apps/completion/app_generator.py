@@ -275,7 +275,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             raise ValueError("Message app_model_config is None")
         override_model_config_dict = app_model_config.to_dict()
         model_dict = override_model_config_dict["model"]
-        completion_params = model_dict.get("completion_params")
+        completion_params = model_dict.get("completion_params", {})
         completion_params["temperature"] = 0.9
         model_dict["completion_params"] = completion_params
         override_model_config_dict["model"] = model_dict

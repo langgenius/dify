@@ -297,7 +297,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
             tools=tools,
             stop=list(stop),
             stream=False,
-            user=self.user_id,
+            user=self.require_dify_context().user_id,
         )
 
         # handle invoke result
