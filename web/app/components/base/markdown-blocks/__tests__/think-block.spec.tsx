@@ -171,12 +171,7 @@ describe('ThinkBlock', () => {
         </ThinkBlock>,
       )
 
-      // Advance timer
-      act(() => {
-        vi.advanceTimersByTime(2000)
-      })
-
-      // Timer should be stopped — isResponding undefined means not in active response
+      // Timer should be stopped immediately — isResponding undefined means not in active response
       expect(screen.getByText(/Thought/)).toBeInTheDocument()
     })
   })
