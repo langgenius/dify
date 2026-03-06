@@ -124,7 +124,7 @@
   "metadata.datasetMetadata.deleteContent": "Êtes-vous sûr de vouloir supprimer les métadonnées \"{{name}}\" ?",
   "metadata.datasetMetadata.deleteTitle": "Confirmer la suppression",
   "metadata.datasetMetadata.description": "Vous pouvez gérer toutes les métadonnées dans cette connaissance ici. Les modifications seront synchronisées avec chaque document.",
-  "metadata.datasetMetadata.disabled": "handicapés",
+  "metadata.datasetMetadata.disabled": "Désactivé",
   "metadata.datasetMetadata.name": "Nom",
   "metadata.datasetMetadata.namePlaceholder": "Nom de métadonnées",
   "metadata.datasetMetadata.rename": "Renommer",

@@ -281,7 +281,7 @@ class EasyUIBasedAppConfig(AppConfig):
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
     app_model_config_id: str
-    app_model_config_dict: dict
+    app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
     dataset: DatasetEntity | None = None

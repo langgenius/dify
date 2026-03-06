@@ -1,30 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ChatProps } from './index'
-import { createContext, useContext } from 'use-context-selector'
-
-export type ChatContextValue = Pick<ChatProps, 'config'
-  | 'isResponding'
-  | 'chatList'
-  | 'showPromptLog'
-  | 'questionIcon'
-  | 'answerIcon'
-  | 'onSend'
-  | 'onRegenerate'
-  | 'onAnnotationEdited'
-  | 'onAnnotationAdded'
-  | 'onAnnotationRemoved'
-  | 'disableFeedback'
-  | 'onFeedback'
-  | 'getHumanInputNodeData'> & {
-    readonly?: boolean
-  }
-
-const ChatContext = createContext<ChatContextValue>({
-  chatList: [],
-  readonly: false,
-})
+import type { ChatContextValue } from './context'
+import { ChatContext } from './context'
 
 type ChatContextProviderProps = {
   children: ReactNode
@@ -71,7 +49,3 @@ export const ChatContextProvider = ({
     </ChatContext.Provider>
   )
 }
-
-export const useChatContext = () => useContext(ChatContext)
-
-export default ChatContext
