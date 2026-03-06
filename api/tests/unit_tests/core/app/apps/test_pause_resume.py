@@ -4,10 +4,6 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
-API_DIR = str(Path(__file__).resolve().parents[5])
-if API_DIR not in sys.path:
-    sys.path.insert(0, API_DIR)
-
 import dify_graph.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
