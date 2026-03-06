@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
+import models.dataset as dataset_module
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -489,6 +490,15 @@ class TestDocumentModelRelationships:
 class TestDocumentSegmentIndexing:
     """Test suite for DocumentSegment model indexing and operations."""
 
+    @staticmethod
+    def _mock_scalars_result(upload_file_ids: list[str]):
+        class _ScalarsResult:
+            @staticmethod
+            def all() -> list[str]:
+                return upload_file_ids
+
+        return _ScalarsResult()
+
     def test_document_segment_creation_with_required_fields(self):
         """Test creating a document segment with all required fields."""
         # Arrange
@@ -546,6 +556,139 @@ class TestDocumentSegmentIndexing:
         assert segment.index_node_id == index_node_id
         assert segment.index_node_hash == index_node_hash
         assert segment.keywords == keywords
+
+    def test_document_segment_sign_content_strips_absolute_files_host(self):
+        """Test that sign_content strips scheme/host from absolute /files URLs and returns a signed relative URL."""
+        # Arrange
+        upload_file_id = "1602650a-4fe4-423c-85a2-af76c083e3c4"
+        segment = DocumentSegment(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            position=1,
+            content=f"![image](http://internal.docker:5001/files/{upload_file_id}/file-preview)",
+            word_count=1,
+            tokens=1,
+            created_by=str(uuid4()),
+        )
+        mock_scalars_result = self._mock_scalars_result([upload_file_id])
+
+        # Act
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.db.session.scalars", return_value=mock_scalars_result),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
+            signed = segment.get_sign_content()
+
+        # Assert
+        assert "internal.docker:5001" not in signed
+        assert f"/files/{upload_file_id}/file-preview?timestamp=" in signed
+        assert "&nonce=" in signed
+        assert "&sign=" in signed
+
+    def test_document_segment_sign_content_strips_absolute_files_host_for_image_preview(self):
+        """Test that sign_content strips scheme/host from absolute image-preview URLs."""
+        # Arrange
+        upload_file_id = "e2a4f7b1-1234-5678-9abc-def012345678"
+        segment = DocumentSegment(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            position=1,
+            content=f"![image](http://internal.docker:5001/files/{upload_file_id}/image-preview)",
+            word_count=1,
+            tokens=1,
+            created_by=str(uuid4()),
+        )
+        mock_scalars_result = self._mock_scalars_result([upload_file_id])
+
+        # Act
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.db.session.scalars", return_value=mock_scalars_result),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
+            signed = segment.get_sign_content()
+
+        # Assert
+        assert "internal.docker:5001" not in signed
+        assert f"/files/{upload_file_id}/image-preview?timestamp=" in signed
+        assert "&nonce=" in signed
+        assert "&sign=" in signed
+
+    def test_document_segment_sign_content_skips_upload_files_outside_tenant(self):
+        """Test that sign_content only signs upload files belonging to the segment tenant."""
+        # Arrange
+        allowed_upload_file_id = "1602650a-4fe4-423c-85a2-af76c083e3c4"
+        denied_upload_file_id = "f8f35fca-568f-4626-adf0-4f30de96aa32"
+        segment = DocumentSegment(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            position=1,
+            content=(
+                f"allowed: ![image](/files/{allowed_upload_file_id}/file-preview) "
+                f"denied: ![image](/files/{denied_upload_file_id}/file-preview)"
+            ),
+            word_count=1,
+            tokens=1,
+            created_by=str(uuid4()),
+        )
+        mock_scalars_result = self._mock_scalars_result([allowed_upload_file_id])
+
+        # Act
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.db.session.scalars", return_value=mock_scalars_result),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
+            signed = segment.get_sign_content()
+
+        # Assert
+        assert f"/files/{allowed_upload_file_id}/file-preview?timestamp=" in signed
+        assert f"/files/{denied_upload_file_id}/file-preview?timestamp=" not in signed
+        assert f"/files/{denied_upload_file_id}/file-preview)" in signed
+
+    def test_document_segment_sign_content_handles_mixed_preview_order(self):
+        """Test that sign_content preserves content when file-preview appears before image-preview."""
+        # Arrange
+        file_preview_id = "1602650a-4fe4-423c-85a2-af76c083e3c4"
+        image_preview_id = "e2a4f7b1-1234-5678-9abc-def012345678"
+        segment = DocumentSegment(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            position=1,
+            content=(
+                f"file-first: ![file](/files/{file_preview_id}/file-preview) "
+                f"then-image: ![image](/files/{image_preview_id}/image-preview)"
+            ),
+            word_count=1,
+            tokens=1,
+            created_by=str(uuid4()),
+        )
+        mock_scalars_result = self._mock_scalars_result([file_preview_id, image_preview_id])
+
+        # Act
+        with (
+            patch.object(dataset_module.dify_config, "SECRET_KEY", "secret", create=True),
+            patch("models.dataset.db.session.scalars", return_value=mock_scalars_result),
+            patch("models.dataset.time.time", return_value=1700000000),
+            patch("models.dataset.os.urandom", return_value=b"\x00" * 16),
+        ):
+            signed = segment.get_sign_content()
+
+        # Assert
+        file_signed = f"/files/{file_preview_id}/file-preview?timestamp="
+        image_signed = f"/files/{image_preview_id}/image-preview?timestamp="
+        assert file_signed in signed
+        assert image_signed in signed
+        assert signed.index(file_signed) < signed.index(image_signed)
+        assert signed.count("&sign=") == 2
 
     def test_document_segment_with_answer_field(self):
         """Test creating a document segment with answer field for QA model."""

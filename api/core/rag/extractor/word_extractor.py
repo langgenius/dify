@@ -87,7 +87,6 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
@@ -126,7 +125,7 @@ class WordExtractor(BaseExtractor):
                             used_at=naive_utc_now(),
                         )
                         db.session.add(upload_file)
-                        image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+                        image_map[r_id] = f"![image](/files/{upload_file.id}/file-preview)"
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
                     if image_ext is None:
@@ -154,7 +153,7 @@ class WordExtractor(BaseExtractor):
                         used_at=naive_utc_now(),
                     )
                     db.session.add(upload_file)
-                    image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+                    image_map[rel.target_part] = f"![image](/files/{upload_file.id}/file-preview)"
         db.session.commit()
         return image_map
 
