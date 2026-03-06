@@ -50,13 +50,14 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[s
 
     tools = agent_mode.get("tools", []) or []
     for tool in tools:
-        if len(list(tool.keys())) != 1:
-            continue
+        if isinstance(tool, dict):
+            if len(list(tool.keys())) != 1:
+                continue
 
-        tool_type = list(tool.keys())[0]
-        tool_config = list(tool.values())[0]
-        if tool_type == "dataset":
-            dataset_ids.add(tool_config.get("id"))
+            tool_type = list(tool.keys())[0]
+            tool_config = list(tool.values())[0]
+            if tool_type == "dataset":
+                dataset_ids.add(tool_config.get("id"))
 
     # get dataset from dataset_configs
     dataset_configs = app_model_config.dataset_configs_dict
