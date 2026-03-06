@@ -2,7 +2,6 @@
 Simple test to verify MockNodeFactory works with iteration nodes.
 """
 
-
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
