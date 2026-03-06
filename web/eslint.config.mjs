@@ -5,8 +5,8 @@ import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
 import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
@@ -195,6 +195,24 @@ export default antfu(
             '**/base/confirm/index',
           ],
           message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/popover',
+            '**/base/popover/index',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/dropdown',
+            '**/base/dropdown/index',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
+        }, {
+          group: [
+            '**/base/dialog',
+            '**/base/dialog/index',
+          ],
+          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
         }],
       }],
     },
