@@ -53,6 +53,7 @@ Tests available voice retrieval:
 - text_to_speech: Enables TTS functionality
 """
 
+from typing import cast
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -315,7 +316,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(NoAudioUploadedServiceError):
-            AudioService.transcript_asr(app_model=app, file=None)
+            AudioService.transcript_asr(app_model=app, file=cast(FileStorage, None))
 
     def test_transcript_asr_raises_error_for_unsupported_audio_type(self, factory):
         """Test that ASR raises error for unsupported audio file types."""

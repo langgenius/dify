@@ -1,8 +1,9 @@
 import datetime
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
@@ -111,7 +112,7 @@ def create_cleanup(
         "_get_cleanup_whitelist",
         lambda self: whitelist or set(),
     )
-    return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
+    return WorkflowRunCleanup(workflow_run_repo=cast(APIWorkflowRunRepository, repo), **kwargs)
 
 
 def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
