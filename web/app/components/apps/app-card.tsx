@@ -18,7 +18,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import Toast, { ToastContext } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
