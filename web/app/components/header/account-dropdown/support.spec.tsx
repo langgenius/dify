@@ -101,7 +101,7 @@ describe('Support', () => {
 
   const renderSupport = () => {
     return render(
-      <DropdownMenu open={true} onOpenChange={() => {}}>
+      <DropdownMenu open={true} onOpenChange={() => { }}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
           <Support closeAccountDropdown={mockCloseAccountDropdown} />
@@ -185,8 +185,8 @@ describe('Support', () => {
       })
 
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       expect(screen.queryByText('common.userProfile.emailSupport')).toBeInTheDocument()
