@@ -603,13 +603,9 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -679,13 +675,9 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 

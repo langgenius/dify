@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+DIFY_RUN_CONTEXT_KEY = "_dify"
+
 
 class GraphInitParams(BaseModel):
     """GraphInitParams encapsulates the configurations and contextual information
@@ -16,15 +18,7 @@ class GraphInitParams(BaseModel):
     """
 
     # init params
-    tenant_id: str = Field(..., description="tenant / workspace id")
-    app_id: str = Field(..., description="app id")
     workflow_id: str = Field(..., description="workflow id")
     graph_config: Mapping[str, Any] = Field(..., description="graph config")
-    user_id: str = Field(..., description="user id")
-    user_from: str = Field(
-        ..., description="user from, account or end-user"
-    )  # Should be UserFrom enum: 'account' | 'end-user'
-    invoke_from: str = Field(
-        ..., description="invoke from, service-api, web-app, explore or debugger"
-    )  # Should be InvokeFrom enum: 'service-api' | 'web-app' | 'explore' | 'debugger'
+    run_context: Mapping[str, Any] = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")

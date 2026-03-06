@@ -4,8 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.entities import GraphInitParams
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.nodes.knowledge_retrieval.entities import (
@@ -20,17 +19,17 @@ from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol,
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import StringSegment
-from models.enums import UserFrom
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def mock_graph_init_params():
     """Create mock GraphInitParams."""
-    return GraphInitParams(
-        tenant_id=str(uuid.uuid4()),
-        app_id=str(uuid.uuid4()),
+    return build_test_graph_init_params(
         workflow_id=str(uuid.uuid4()),
         graph_config={},
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
         user_id=str(uuid.uuid4()),
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -206,6 +205,7 @@ class TestKnowledgeRetrievalNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "result" in result.outputs
         assert mock_rag_retrieval.knowledge_retrieval.called
+        mock_source.model_dump.assert_called_once_with(by_alias=True)
 
     def test_run_with_query_variable_multiple_mode(
         self,

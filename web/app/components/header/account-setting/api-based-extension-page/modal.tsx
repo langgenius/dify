@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useDocLink } from '@/context/i18n'
 import {
   addApiBasedExtension,
