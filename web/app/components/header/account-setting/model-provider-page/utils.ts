@@ -1,9 +1,11 @@
+import type { ComponentType } from 'react'
 import type {
   CredentialFormSchemaSelect,
   CredentialFormSchemaTextInput,
   FormValue,
   ModelLoadBalancingConfig,
 } from './declarations'
+import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
 import {
   deleteModelProvider,
   setModelProvider,
@@ -22,6 +24,24 @@ import {
 export { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 
 export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
+
+export const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
+  [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
+  [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
+  [ModelProviderQuotaGetPaid.X]: Grok,
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: Deepseek,
+  [ModelProviderQuotaGetPaid.TONGYI]: Tongyi,
+}
+
+export const providerKeyToPluginId: Record<ModelProviderQuotaGetPaid, string> = {
+  [ModelProviderQuotaGetPaid.OPENAI]: 'langgenius/openai',
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'langgenius/anthropic',
+  [ModelProviderQuotaGetPaid.GEMINI]: 'langgenius/gemini',
+  [ModelProviderQuotaGetPaid.X]: 'langgenius/x',
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'langgenius/deepseek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
+}
 
 export const modelNameMap = {
   [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',

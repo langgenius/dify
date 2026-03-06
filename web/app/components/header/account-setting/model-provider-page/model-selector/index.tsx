@@ -5,7 +5,7 @@ import type {
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -41,6 +41,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   showDeprecatedWarnIcon = false,
 }) => {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const {
     currentProvider,
     currentModel,
@@ -70,7 +71,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       placement="bottom-start"
       offset={4}
     >
-      <div className={cn('relative')}>
+      <div ref={triggerRef} className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
           className="block"
@@ -113,6 +114,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             onSelect={handleSelect}
             scopeFeatures={scopeFeatures}
             onHide={() => setOpen(false)}
+            triggerRef={triggerRef}
           />
         </PortalToFollowElemContent>
       </div>

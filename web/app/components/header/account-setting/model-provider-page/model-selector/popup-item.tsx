@@ -7,16 +7,18 @@ import type {
 import { useState } from 'react'
 
 import { useTranslation } from 'react-i18next'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
+  PreferredProviderTypeEnum,
 } from '../declarations'
 import {
   useLanguage,
@@ -45,6 +47,7 @@ const PopupItem: FC<PopupItemProps> = ({
   const [collapsed, setCollapsed] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
+  const { currentWorkspace } = useAppContext()
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -73,14 +76,55 @@ const PopupItem: FC<PopupItemProps> = ({
     })
   }
 
+  const isUsingCredits = currentProvider?.preferred_provider_type === PreferredProviderTypeEnum.system
+  const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
+  const hasCredits = credits > 0
+  const isApiKeyActive = currentProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
+  const credentialName = currentProvider?.custom_configuration.current_credential_name
+
   return (
     <div className="mb-1">
-      <div
-        className="flex h-[22px] cursor-pointer items-center px-3 text-xs font-medium text-text-tertiary"
-        onClick={() => setCollapsed(prev => !prev)}
-      >
-        {model.label[language] || model.label.en_US}
-        <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', collapsed && '-rotate-90')} />
+      <div className="flex h-[22px] items-center justify-between px-3 text-xs font-medium text-text-tertiary">
+        <div
+          className="flex cursor-pointer items-center"
+          onClick={() => setCollapsed(prev => !prev)}
+        >
+          {model.label[language] || model.label.en_US}
+          <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', collapsed && '-rotate-90')} />
+        </div>
+        <div className="flex items-center text-text-tertiary system-xs-medium">
+          {isUsingCredits
+            ? (
+                hasCredits
+                  ? (
+                      <>
+                        <span className="i-ri-globe-line h-3 w-3" />
+                        <span className="ml-1">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
+                      </>
+                    )
+                  : (
+                      <>
+                        <span className="i-ri-alert-fill h-3 w-3 text-text-warning-secondary" />
+                        <span className="ml-1 text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
+                      </>
+                    )
+              )
+            : credentialName
+              ? (
+                  <>
+                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-[2px] border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                    <span className="ml-1 text-text-tertiary">{credentialName}</span>
+                  </>
+                )
+              : (
+                  <>
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-[2px] border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                    <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
+                  </>
+                )}
+          <span className={cn('i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary', collapsed && '-rotate-90')} />
+
+        </div>
       </div>
       {!collapsed && model.models.map(modelItem => (
         <Tooltip
@@ -154,7 +198,7 @@ const PopupItem: FC<PopupItemProps> = ({
             </div>
             {
               defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
-                <Check className="h-4 w-4 shrink-0 text-text-accent" />
+                <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-accent" />
               )
             }
             {

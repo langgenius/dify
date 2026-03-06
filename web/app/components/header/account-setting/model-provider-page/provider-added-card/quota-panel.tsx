@@ -1,50 +1,28 @@
-import type { ComponentType, FC } from 'react'
+import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
-import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap } from '../utils'
-
-// Icon map for each provider - single source of truth for provider icons
-const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
-  [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
-  [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
-  [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
-  [ModelProviderQuotaGetPaid.X]: Grok,
-  [ModelProviderQuotaGetPaid.DEEPSEEK]: Deepseek,
-  [ModelProviderQuotaGetPaid.TONGYI]: Tongyi,
-}
+import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap, providerIconMap, providerKeyToPluginId } from '../utils'
 
 // Derive allProviders from the shared constant
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map(key => ({
   key,
   Icon: providerIconMap[key],
 }))
-
-// Map provider key to plugin ID
-// provider key format: langgenius/provider/model, plugin ID format: langgenius/provider
-const providerKeyToPluginId: Record<ModelProviderQuotaGetPaid, string> = {
-  [ModelProviderQuotaGetPaid.OPENAI]: 'langgenius/openai',
-  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'langgenius/anthropic',
-  [ModelProviderQuotaGetPaid.GEMINI]: 'langgenius/gemini',
-  [ModelProviderQuotaGetPaid.X]: 'langgenius/x',
-  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'langgenius/deepseek',
-  [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
-}
 
 type QuotaPanelProps = {
   providers: ModelProvider[]
