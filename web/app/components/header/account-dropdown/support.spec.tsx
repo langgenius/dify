@@ -89,6 +89,7 @@ describe('Support', () => {
     vi.clearAllMocks()
     window.zE = vi.fn()
     mockZendeskKey.value = 'test-key'
+    mockSupportEmailKey.value = ''
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
