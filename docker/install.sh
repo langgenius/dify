@@ -211,15 +211,25 @@ setup_working_directory() {
             print_error "Directory $clone_dir is not owned by you or root. Aborting for security."
             exit 1
         fi
-        cd "$clone_dir"
-        print_step "Updating Dify repository..."
-        if git pull origin "$GITHUB_BRANCH" 2>/dev/null; then
-            print_ok "Updated Dify repository"
+
+        # Check if it's a complete repository (has docker subdirectory)
+        if [ ! -d "$clone_dir/docker" ] || [ ! -f "$clone_dir/docker/.env.example" ]; then
+            print_warn "Incomplete Dify directory detected, re-cloning..."
+            rm -rf "$clone_dir"
         else
-            print_warn "Could not update, using existing version"
+            cd "$clone_dir"
+            print_step "Updating Dify repository..."
+            if git pull origin "$GITHUB_BRANCH" 2>/dev/null; then
+                print_ok "Updated Dify repository"
+            else
+                print_warn "Could not update, using existing version"
+            fi
+            cd ..
         fi
-        cd ..
-    else
+    fi
+
+    # If directory doesn't exist or was removed, clone it
+    if [ ! -d "$clone_dir" ]; then
         print_header
         echo "Cloning Dify repository (shallow, this will be quick)..."
         echo ""
@@ -333,12 +343,40 @@ print_success() {
 }
 
 # Ask functions
+# For optional fields with default value - shows [default] and accepts empty input
 ask() {
     local prompt="$1"
     local default="$2"
     local result
-    read -p "$prompt [$default] " result
+    # Output directly to terminal to avoid buffering
+    echo -n "$prompt [$default]: " > /dev/tty
+    read result < /dev/tty
     echo "${result:-$default}"
+}
+
+# For required fields - shows * marker, rejects empty input, provides example
+ask_required() {
+    local prompt="$1"
+    local example="$2"
+    local result
+
+    while true; do
+        echo ""
+        echo -n "* $prompt" > /dev/tty
+        if [ -n "$example" ]; then
+            echo "" > /dev/tty
+            echo "  Example: $example" > /dev/tty
+        fi
+        echo -n "  → " > /dev/tty
+        read result < /dev/tty
+
+        if [ -n "$result" ]; then
+            echo "$result"
+            return
+        fi
+
+        print_warn "This field is required. Please enter a value."
+    done
 }
 
 ask_choice() {
@@ -347,13 +385,13 @@ ask_choice() {
     shift 2
     local options=("$@")
 
-    echo "$prompt"
+    echo "$prompt" > /dev/tty
     for i in "${!options[@]}"; do
-        echo "  [$((i+1))] ${options[$i]}"
+        echo "  [$((i+1))] ${options[$i]}" > /dev/tty
     done
 
     local result
-    read -p "Your choice: [$default] " result
+    read -p "Your choice: [$default] " result < /dev/tty
     result="${result:-$default}"
 
     if ! [[ "$result" =~ ^[0-9]+$ ]] || [ "$result" -lt 1 ] || [ "$result" -gt "${#options[@]}" ]; then
@@ -369,7 +407,9 @@ ask_yes_no() {
     local default_display="$([ "$default" = true ] && echo "Y/n" || echo "y/N")"
 
     local result
-    read -p "$prompt [$default_display] " result
+    # Output directly to terminal to avoid buffering
+    echo -n "$prompt [$default_display] " > /dev/tty
+    read result < /dev/tty
     result="${result:-$([ "$default" = true ] && echo "y" || echo "n")}"
 
     case "$result" in
@@ -457,6 +497,50 @@ check_port() {
         fi
     fi
     return 0
+}
+
+# Get process using a port
+get_port_process() {
+    local port=$1
+    if command -v lsof &> /dev/null; then
+        lsof -i :"$port" -t 2>/dev/null | head -1 | xargs ps -p 2>/dev/null | tail -1 || echo ""
+    elif command -v ss &> /dev/null; then
+        local pid=$(ss -tulnp 2>/dev/null | grep ":$port " | grep -oP 'pid=\K[0-9]+' | head -1)
+        if [ -n "$pid" ]; then
+            ps -p "$pid" -o comm= 2>/dev/null || echo "PID $pid"
+        fi
+    fi
+}
+
+# Check and handle port conflicts
+check_and_handle_port() {
+    local port=$1
+    local port_name=$2
+
+    if check_port "$port"; then
+        return 0  # Port is available
+    fi
+
+    local process=$(get_port_process "$port")
+    print_warn "Port $port ($port_name) is already in use"
+    if [ -n "$process" ]; then
+        echo "    Process: $process"
+    fi
+
+    if [ "$INTERACTIVE" = true ]; then
+        echo ""
+        local choice
+        read -p "Enter a different port for $port_name, or press Enter to continue anyway: " choice < /dev/tty
+        if [ -n "$choice" ] && [[ "$choice" =~ ^[0-9]+$ ]]; then
+            eval "${port_name}_PORT=$choice"
+            print_ok "Will use port $choice for $port_name"
+            return 0
+        fi
+        print_warn "Continuing with port conflict. Services may fail to start."
+    else
+        print_warn "Continuing with port conflict. Services may fail to start."
+    fi
+    return 1
 }
 
 # Prerequisite checks
@@ -623,10 +707,7 @@ interactive_config() {
         DEPLOY_TYPE="public"
         print_section "Domain and Network"
 
-        DOMAIN=$(ask "Domain name (e.g., dify.example.com)" "")
-        while [ -z "$DOMAIN" ]; do
-            DOMAIN=$(ask "Domain name (required for public deployment)" "")
-        done
+        DOMAIN=$(ask_required "Domain name (e.g., dify.example.com)" "dify.example.com")
         NGINX_SERVER_NAME="$DOMAIN"
 
         HTTP_PORT=$(ask "HTTP port" "80")
