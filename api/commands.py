@@ -13,9 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
-from cli_commands.file_cleanup import clear_orphaned_file_records, file_usage, remove_orphaned_files_on_storage
-from cli_commands.oauth_plugin import (
+from cli_commands import (
+    clear_orphaned_file_records,
+    file_usage,
     install_rag_pipeline_plugins,
+    remove_orphaned_files_on_storage,
     setup_datasource_oauth_client,
     setup_system_tool_oauth_client,
     setup_system_trigger_oauth_client,
@@ -46,7 +48,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
-from services.plugin.plugin_service import PluginService
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
