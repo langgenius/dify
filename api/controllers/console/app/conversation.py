@@ -378,7 +378,7 @@ class CompletionConversationApi(Resource):
         if args.annotation_status == "annotated":
             query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-            )
+            ).distinct()
         elif args.annotation_status == "not_annotated":
             query = (
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
