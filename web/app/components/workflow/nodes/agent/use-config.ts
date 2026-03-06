@@ -1,4 +1,4 @@
-import type { Memory, Var } from '../../types'
+import type { Memory, Var, VisionSetting } from '../../types'
 import type { ToolVarInputs } from '../tool/types'
 import type { AgentNodeType } from './types'
 import { produce } from 'immer'
@@ -11,6 +11,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useStrategyProviderDetail } from '@/service/use-strategy'
+import { Resolution } from '@/types/app'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -203,7 +204,34 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
   const isChatMode = useIsChatMode()
+
+  const handleVisionEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.vision) {
+        draft.vision = { enabled: false }
+      }
+      draft.vision.enabled = enabled
+      if (enabled && isChatMode) {
+        draft.vision.configs = {
+          detail: Resolution.high,
+          variable_selector: ['sys', 'files'],
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs, isChatMode])
+
+  const handleVisionConfigChange = useCallback((config: VisionSetting) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.vision) {
+        draft.vision = { enabled: true }
+      }
+      draft.vision.configs = config
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
   return {
     readOnly,
     inputs,
@@ -220,6 +248,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     availableNodesWithParent,
     outputSchema,
     handleMemoryChange,
+    handleVisionEnabledChange,
+    handleVisionConfigChange,
     isChatMode,
   }
 }

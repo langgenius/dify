@@ -34,6 +34,7 @@ from dify_graph.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
+from dify_graph.nodes.llm.llm_utils import fetch_files
 from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -272,7 +273,7 @@ def test_fetch_files_with_file_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], file)
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == [file]
 
 
@@ -300,7 +301,7 @@ def test_fetch_files_with_array_file_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayFileSegment(value=files))
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == files
 
 
@@ -308,7 +309,7 @@ def test_fetch_files_with_none_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], NoneSegment())
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
@@ -316,13 +317,13 @@ def test_fetch_files_with_array_any_segment():
     variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayAnySegment(value=[]))
 
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
 def test_fetch_files_with_non_existent_variable():
     variable_pool = VariablePool.empty()
-    result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
+    result = fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 
 
