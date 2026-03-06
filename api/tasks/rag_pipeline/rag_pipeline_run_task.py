@@ -8,7 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import click
-from celery import shared_task  # type: ignore
+from celery import current_app as celery_current_app
+from celery import shared_task
 from flask import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -83,16 +84,22 @@ def rag_pipeline_run_task(
         logger.info("rag pipeline tenant isolation queue %s next files: %s", tenant_id, next_file_ids)
 
         if next_file_ids:
-            for next_file_id in next_file_ids:
-                # Process the next waiting task
-                # Keep the flag set to indicate a task is running
-                tenant_isolated_task_queue.set_task_waiting_time()
-                rag_pipeline_run_task.delay(  # type: ignore
-                    rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
-                    if isinstance(next_file_id, bytes)
-                    else next_file_id,
-                    tenant_id=tenant_id,
-                )
+            with celery_current_app.producer_or_acquire() as producer:  # type: ignore
+                for next_file_id in next_file_ids:
+                    # Process the next waiting task
+                    # Keep the flag set to indicate a task is running
+                    tenant_isolated_task_queue.set_task_waiting_time()
+                    if isinstance(next_file_id, (bytes, bytearray)):
+                        file_id = next_file_id.decode("utf-8")
+                    else:
+                        file_id = next_file_id
+                    rag_pipeline_run_task.apply_async(
+                        kwargs={
+                            "rag_pipeline_invoke_entities_file_id": file_id,
+                            "tenant_id": tenant_id,
+                        },
+                        producer=producer,
+                    )
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
