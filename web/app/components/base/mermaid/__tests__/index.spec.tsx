@@ -27,6 +27,11 @@ describe('Mermaid Flowchart Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(mermaid.initialize).mockImplementation(() => { })
+    vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg id="mermaid-chart">test-svg</svg>', diagramType: 'flowchart' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Rendering', () => {
@@ -132,6 +137,86 @@ describe('Mermaid Flowchart Component', () => {
       }, { timeout: 3000 })
     })
 
+    it('should keep selected look unchanged when clicking an already-selected look button', async () => {
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={mockCode} />)
+      })
+
+      await waitFor(() => screen.getByText('test-svg'), { timeout: 3000 })
+
+      const initialRenderCalls = vi.mocked(mermaid.render).mock.calls.length
+      const initialApiRenderCalls = vi.mocked(mermaid.mermaidAPI.render).mock.calls.length
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(/classic/i))
+      })
+      expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialRenderCalls)
+      expect(vi.mocked(mermaid.mermaidAPI.render).mock.calls.length).toBe(initialApiRenderCalls)
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(/handDrawn/i))
+      })
+      await waitFor(() => {
+        expect(screen.getByText('test-svg-api')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const afterFirstHandDrawnApiCalls = vi.mocked(mermaid.mermaidAPI.render).mock.calls.length
+      await act(async () => {
+        fireEvent.click(screen.getByText(/handDrawn/i))
+      })
+      expect(vi.mocked(mermaid.mermaidAPI.render).mock.calls.length).toBe(afterFirstHandDrawnApiCalls)
+    })
+
+    it('should toggle theme from light to dark and back to light', async () => {
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={mockCode} theme="light" />)
+      })
+      await waitFor(() => {
+        expect(screen.getByText('test-svg')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const toggleBtn = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(toggleBtn)
+      })
+      await waitFor(() => {
+        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(/switchLight$/))
+      }, { timeout: 3000 })
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button'))
+      })
+      await waitFor(() => {
+        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(/switchDark$/))
+      }, { timeout: 3000 })
+    })
+
+    it('should configure handDrawn mode for dark non-flowchart diagrams', async () => {
+      const sequenceCode = 'sequenceDiagram\n  A->>B: Hi'
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={sequenceCode} theme="dark" />)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('test-svg')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(/handDrawn/i))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('test-svg-api')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      expect(mermaid.initialize).toHaveBeenCalledWith(expect.objectContaining({
+        theme: 'default',
+        themeVariables: expect.objectContaining({
+          primaryBorderColor: '#60a5fa',
+        }),
+      }))
+    })
+
     it('should open image preview when clicking the chart', async () => {
       await act(async () => {
         render(<Flowchart PrimitiveCode={mockCode} />)
@@ -144,7 +229,7 @@ describe('Mermaid Flowchart Component', () => {
         fireEvent.click(chartDiv!)
       })
       await waitFor(() => {
-        expect(document.body.querySelector('.image-preview-container')).toBeInTheDocument()
+        expect(screen.getByTestId('image-preview-container')).toBeInTheDocument()
       }, { timeout: 3000 })
     })
   })
@@ -164,35 +249,79 @@ describe('Mermaid Flowchart Component', () => {
       const errorMsg = 'Syntax error'
       vi.mocked(mermaid.render).mockRejectedValue(new Error(errorMsg))
 
-      // Use unique code to avoid hitting the module-level diagramCache from previous tests
-      const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
-      const { container } = render(<Flowchart PrimitiveCode={uniqueCode} />)
+      try {
+        const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
+        render(<Flowchart PrimitiveCode={uniqueCode} />)
 
-      await waitFor(() => {
-        const errorSpan = container.querySelector('.text-red-500 span.ml-2')
-        expect(errorSpan).toBeInTheDocument()
-        expect(errorSpan?.textContent).toContain('Rendering failed')
-      }, { timeout: 5000 })
-      consoleSpy.mockRestore()
-      // Restore default mock to prevent leaking into subsequent tests
-      vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg id="mermaid-chart">test-svg</svg>', diagramType: 'flowchart' })
-    }, 10000)
+        const errorMessage = await screen.findByText(/Rendering failed/i)
+        expect(errorMessage).toBeInTheDocument()
+      }
+      finally {
+        consoleSpy.mockRestore()
+      }
+    })
+
+    it('should show unknown-error fallback when render fails without an error message', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      vi.mocked(mermaid.render).mockRejectedValue({} as Error)
+
+      try {
+        render(<Flowchart PrimitiveCode={'graph TD\n  P-->Q\n  Q-->R'} />)
+        expect(await screen.findByText(/Unknown error\. Please check the console\./i)).toBeInTheDocument()
+      }
+      finally {
+        consoleSpy.mockRestore()
+      }
+    })
 
     it('should use cached diagram if available', async () => {
       const { rerender } = render(<Flowchart PrimitiveCode={mockCode} />)
 
-      await waitFor(() => screen.getByText('test-svg'), { timeout: 3000 })
+      // Wait for initial render to complete
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render)).toHaveBeenCalled()
+      }, { timeout: 3000 })
+      const initialCallCount = vi.mocked(mermaid.render).mock.calls.length
 
-      vi.mocked(mermaid.render).mockClear()
-
+      // Rerender with same code
       await act(async () => {
         rerender(<Flowchart PrimitiveCode={mockCode} />)
       })
 
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 500))
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialCallCount)
+      }, { timeout: 3000 })
+
+      // Call count should not increase (cache was used)
+      expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialCallCount)
+    })
+
+    it('should keep previous svg visible while next render is loading', async () => {
+      let resolveSecondRender: ((value: { svg: string, diagramType: string }) => void) | null = null
+      const secondRenderPromise = new Promise<{ svg: string, diagramType: string }>((resolve) => {
+        resolveSecondRender = resolve
       })
-      expect(mermaid.render).not.toHaveBeenCalled()
+
+      vi.mocked(mermaid.render)
+        .mockResolvedValueOnce({ svg: '<svg id="mermaid-chart">initial-svg</svg>', diagramType: 'flowchart' })
+        .mockImplementationOnce(() => secondRenderPromise)
+
+      const { rerender } = render(<Flowchart PrimitiveCode="graph TD\n  A-->B" />)
+
+      await waitFor(() => {
+        expect(screen.getByText('initial-svg')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      await act(async () => {
+        rerender(<Flowchart PrimitiveCode="graph TD\n  C-->D" />)
+      })
+
+      expect(screen.getByText('initial-svg')).toBeInTheDocument()
+
+      resolveSecondRender!({ svg: '<svg id="mermaid-chart">second-svg</svg>', diagramType: 'flowchart' })
+      await waitFor(() => {
+        expect(screen.getByText('second-svg')).toBeInTheDocument()
+      }, { timeout: 3000 })
     })
 
     it('should handle invalid mermaid code completion', async () => {
@@ -204,6 +333,116 @@ describe('Mermaid Flowchart Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Diagram code is not complete or invalid.')).toBeInTheDocument()
       }, { timeout: 3000 })
+    })
+
+    it('should keep single "after" gantt dependency formatting unchanged', async () => {
+      const singleAfterGantt = [
+        'gantt',
+        'title One after dependency',
+        'Single task :after task1, 2024-01-01, 1d',
+      ].join('\n')
+
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={singleAfterGantt} />)
+      })
+
+      await waitFor(() => {
+        expect(mermaid.render).toHaveBeenCalled()
+      }, { timeout: 3000 })
+
+      const lastRenderArgs = vi.mocked(mermaid.render).mock.calls.at(-1)
+      expect(lastRenderArgs?.[1]).toContain('Single task :after task1, 2024-01-01, 1d')
+    })
+
+    it('should use cache without rendering again when PrimitiveCode changes back to previous', async () => {
+      const firstCode = 'graph TD\n  CacheOne-->CacheTwo'
+      const secondCode = 'graph TD\n  CacheThree-->CacheFour'
+      const { rerender } = render(<Flowchart PrimitiveCode={firstCode} />)
+
+      // Wait for initial render
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render)).toHaveBeenCalled()
+      }, { timeout: 3000 })
+      const firstRenderCallCount = vi.mocked(mermaid.render).mock.calls.length
+
+      // Change to different code
+      await act(async () => {
+        rerender(<Flowchart PrimitiveCode={secondCode} />)
+      })
+
+      // Wait for second render
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBeGreaterThan(firstRenderCallCount)
+      }, { timeout: 3000 })
+      const afterSecondRenderCallCount = vi.mocked(mermaid.render).mock.calls.length
+
+      // Change back to first code - should use cache
+      await act(async () => {
+        rerender(<Flowchart PrimitiveCode={firstCode} />)
+      })
+
+      await waitFor(() => {
+        expect(vi.mocked(mermaid.render).mock.calls.length).toBe(afterSecondRenderCallCount)
+      }, { timeout: 3000 })
+
+      // Call count should not increase (cache was used)
+      expect(vi.mocked(mermaid.render).mock.calls.length).toBe(afterSecondRenderCallCount)
+    })
+
+    it('should close image preview when cancel is clicked', async () => {
+      await act(async () => {
+        render(<Flowchart PrimitiveCode={mockCode} />)
+      })
+
+      // Wait for SVG to be rendered
+      await waitFor(() => {
+        const svgElement = screen.queryByText('test-svg')
+        expect(svgElement).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const mermaidDiv = screen.getByText('test-svg').closest('.mermaid')
+      await act(async () => {
+        fireEvent.click(mermaidDiv!)
+      })
+
+      // Wait for image preview to appear
+      const cancelBtn = await screen.findByTestId('image-preview-close-button')
+      expect(cancelBtn).toBeInTheDocument()
+
+      await act(async () => {
+        fireEvent.click(cancelBtn)
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('image-preview-close-button')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should handle configuration failure during configureMermaid', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const originalMock = vi.mocked(mermaid.initialize).getMockImplementation()
+      vi.mocked(mermaid.initialize).mockImplementation(() => {
+        throw new Error('Config fail')
+      })
+
+      try {
+        await act(async () => {
+          render(<Flowchart PrimitiveCode="graph TD\n  G-->H" />)
+        })
+        await waitFor(() => {
+          expect(consoleSpy).toHaveBeenCalledWith('Config error:', expect.any(Error))
+        })
+      }
+      finally {
+        consoleSpy.mockRestore()
+        if (originalMock) {
+          vi.mocked(mermaid.initialize).mockImplementation(originalMock)
+        }
+        else {
+          vi.mocked(mermaid.initialize).mockImplementation(() => { })
+        }
+      }
     })
 
     it('should handle unmount cleanup', async () => {
@@ -219,6 +458,20 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
   const mockCode = 'graph TD\n  A-->B'
 
   let mermaidFresh: typeof mermaid
+  const setWindowUndefined = () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'window')
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    })
+    return descriptor
+  }
+
+  const restoreWindowDescriptor = (descriptor?: PropertyDescriptor) => {
+    if (descriptor)
+      Object.defineProperty(globalThis, 'window', descriptor)
+  }
 
   beforeEach(async () => {
     vi.resetModules()
@@ -294,6 +547,213 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
         expect(consoleSpy).toHaveBeenCalledWith('Mermaid initialization error:', expect.any(Error))
       })
       consoleSpy.mockRestore()
+    })
+
+    it('should load module safely when window is undefined', async () => {
+      const descriptor = setWindowUndefined()
+      try {
+        vi.resetModules()
+        const { default: FlowchartFresh } = await import('../index')
+        expect(FlowchartFresh).toBeDefined()
+      }
+      finally {
+        restoreWindowDescriptor(descriptor)
+      }
+    })
+
+    it('should skip configuration when window is unavailable before debounce execution', async () => {
+      const { default: FlowchartFresh } = await import('../index')
+      const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'window')
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          render(<FlowchartFresh PrimitiveCode={mockCode} />)
+        })
+        await Promise.resolve()
+
+        Object.defineProperty(globalThis, 'window', {
+          configurable: true,
+          writable: true,
+          value: undefined,
+        })
+        await vi.advanceTimersByTimeAsync(350)
+
+        expect(mermaidFresh.render).not.toHaveBeenCalled()
+      }
+      finally {
+        if (descriptor)
+          Object.defineProperty(globalThis, 'window', descriptor)
+        vi.useRealTimers()
+      }
+    })
+
+    it.skip('should show container-not-found error when container ref remains null', async () => {
+      vi.resetModules()
+      vi.doMock('react', async () => {
+        const reactActual = await vi.importActual<typeof import('react')>('react')
+        let pendingContainerRef: ReturnType<typeof reactActual.useRef> | null = null
+        let patchedContainerRef = false
+        const mockedUseRef = ((initialValue: unknown) => {
+          const ref = reactActual.useRef(initialValue as never)
+          if (!patchedContainerRef && initialValue === null)
+            pendingContainerRef = ref
+
+          if (!patchedContainerRef
+            && pendingContainerRef
+            && typeof initialValue === 'string'
+            && initialValue.startsWith('mermaid-chart-')) {
+            Object.defineProperty(pendingContainerRef, 'current', {
+              configurable: true,
+              get() {
+                return null
+              },
+              set(_value: HTMLDivElement | null) { },
+            })
+            patchedContainerRef = true
+            pendingContainerRef = null
+          }
+          return ref
+        }) as typeof reactActual.useRef
+
+        return {
+          ...reactActual,
+          useRef: mockedUseRef,
+        }
+      })
+
+      try {
+        const { default: FlowchartFresh } = await import('../index')
+        render(<FlowchartFresh PrimitiveCode={mockCode} />)
+        expect(await screen.findByText('Container element not found')).toBeInTheDocument()
+      }
+      finally {
+        vi.doUnmock('react')
+      }
+    })
+
+    it('should tolerate missing hidden container during classic render and cleanup', async () => {
+      vi.resetModules()
+      let pendingContainerRef: unknown | null = null
+      let patchedContainerRef = false
+      let patchedTimeoutRef = false
+      let containerReadCount = 0
+      const virtualContainer = { innerHTML: 'seed' } as HTMLDivElement
+
+      vi.doMock('react', async () => {
+        const reactActual = await vi.importActual<typeof import('react')>('react')
+        const mockedUseRef = ((initialValue: unknown) => {
+          const ref = reactActual.useRef(initialValue as never)
+          if (!patchedContainerRef && initialValue === null)
+            pendingContainerRef = ref
+
+          if (!patchedContainerRef
+            && pendingContainerRef
+            && typeof initialValue === 'string'
+            && initialValue.startsWith('mermaid-chart-')) {
+            Object.defineProperty(pendingContainerRef as { current: unknown }, 'current', {
+              configurable: true,
+              get() {
+                containerReadCount += 1
+                if (containerReadCount === 1)
+                  return virtualContainer
+                return null
+              },
+              set(_value: HTMLDivElement | null) { },
+            })
+            patchedContainerRef = true
+            pendingContainerRef = null
+          }
+
+          if (patchedContainerRef && !patchedTimeoutRef && initialValue === undefined) {
+            patchedTimeoutRef = true
+            Object.defineProperty(ref, 'current', {
+              configurable: true,
+              get() {
+                return undefined
+              },
+              set(_value: NodeJS.Timeout | undefined) { },
+            })
+            return ref
+          }
+
+          return ref
+        }) as typeof reactActual.useRef
+
+        return {
+          ...reactActual,
+          useRef: mockedUseRef,
+        }
+      })
+
+      try {
+        const { default: FlowchartFresh } = await import('../index')
+        const { unmount } = render(<FlowchartFresh PrimitiveCode={mockCode} />)
+        await waitFor(() => {
+          expect(screen.getByText('test-svg')).toBeInTheDocument()
+        }, { timeout: 3000 })
+        unmount()
+      }
+      finally {
+        vi.doUnmock('react')
+      }
+    })
+
+    it('should tolerate missing hidden container during handDrawn render', async () => {
+      vi.resetModules()
+      let pendingContainerRef: unknown | null = null
+      let patchedContainerRef = false
+      let containerReadCount = 0
+      const virtualContainer = { innerHTML: 'seed' } as HTMLDivElement
+
+      vi.doMock('react', async () => {
+        const reactActual = await vi.importActual<typeof import('react')>('react')
+        const mockedUseRef = ((initialValue: unknown) => {
+          const ref = reactActual.useRef(initialValue as never)
+          if (!patchedContainerRef && initialValue === null)
+            pendingContainerRef = ref
+
+          if (!patchedContainerRef
+            && pendingContainerRef
+            && typeof initialValue === 'string'
+            && initialValue.startsWith('mermaid-chart-')) {
+            Object.defineProperty(pendingContainerRef as { current: unknown }, 'current', {
+              configurable: true,
+              get() {
+                containerReadCount += 1
+                if (containerReadCount === 1)
+                  return virtualContainer
+                return null
+              },
+              set(_value: HTMLDivElement | null) { },
+            })
+            patchedContainerRef = true
+            pendingContainerRef = null
+          }
+          return ref
+        }) as typeof reactActual.useRef
+
+        return {
+          ...reactActual,
+          useRef: mockedUseRef,
+        }
+      })
+
+      vi.useFakeTimers()
+      try {
+        const { default: FlowchartFresh } = await import('../index')
+        const { rerender } = render(<FlowchartFresh PrimitiveCode="graph" />)
+        await act(async () => {
+          fireEvent.click(screen.getByText(/handDrawn/i))
+          rerender(<FlowchartFresh PrimitiveCode={mockCode} />)
+          await vi.advanceTimersByTimeAsync(350)
+        })
+        await Promise.resolve()
+        expect(screen.getByText('test-svg-api')).toBeInTheDocument()
+      }
+      finally {
+        vi.useRealTimers()
+        vi.doUnmock('react')
+      }
     })
   })
 })

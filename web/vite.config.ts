@@ -5,8 +5,8 @@ import vinext from 'vinext'
 import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { reactGrabOpenFilePlugin } from './plugins/vite/react-grab-open-file'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
@@ -39,13 +39,20 @@ export default defineConfig(({ mode }) => {
           ]
         : [
             Inspect(),
-            react(),
-            vinext(),
-            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
-            reactGrabOpenFilePlugin({
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
+            react(),
+            vinext(),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
           ],
     resolve: {
       alias: {
