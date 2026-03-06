@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+import builtins
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import delete, select, update
@@ -338,6 +342,91 @@ class PluginService:
                 "package": package,
             },
         )
+
+    @staticmethod
+    def batch_upgrade_plugins_from_marketplace(tenant_id: str) -> dict[str, builtins.list[dict[str, Any]]]:
+        """
+        Batch upgrade all marketplace plugins that have updates available
+
+        Returns a dict with:
+        - success: list of successfully upgraded plugins
+        - failed: list of failed upgrades with error messages
+        - skipped: list of plugins skipped (no updates or errors)
+        """
+        if not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError("marketplace is not enabled")
+
+        manager = PluginInstaller()
+        result: dict[str, builtins.list[dict[str, Any]]] = {
+            "success": [],
+            "failed": [],
+            "skipped": [],
+        }
+
+        # Get all installed plugins
+        plugins = manager.list_plugins(tenant_id)
+
+        # Filter marketplace plugins only
+        marketplace_plugins = [plugin for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
+
+        if not marketplace_plugins:
+            return result
+
+        # Get latest versions for all marketplace plugins
+        plugin_ids = [plugin.plugin_id for plugin in marketplace_plugins]
+        latest_versions = PluginService.fetch_latest_plugin_version(plugin_ids)
+
+        # Upgrade each plugin if newer version is available
+        for plugin in marketplace_plugins:
+            try:
+                latest_info = latest_versions.get(plugin.plugin_id)
+                if not latest_info:
+                    result["skipped"].append(
+                        {
+                            "plugin_id": plugin.plugin_id,
+                            "reason": "no_update_info",
+                            "current_version": plugin.version,
+                        }
+                    )
+                    continue
+
+                # Check if update is needed
+                if latest_info.version == plugin.version:
+                    result["skipped"].append(
+                        {
+                            "plugin_id": plugin.plugin_id,
+                            "reason": "already_latest",
+                            "current_version": plugin.version,
+                        }
+                    )
+                    continue
+
+                # Perform upgrade
+                PluginService.upgrade_plugin_with_marketplace(
+                    tenant_id, plugin.plugin_unique_identifier, latest_info.unique_identifier
+                )
+
+                result["success"].append(
+                    {
+                        "plugin_id": plugin.plugin_id,
+                        "from_version": plugin.version,
+                        "to_version": latest_info.version,
+                        "from_identifier": plugin.plugin_unique_identifier,
+                        "to_identifier": latest_info.unique_identifier,
+                    }
+                )
+
+            except Exception as e:
+                logger.exception("Failed to upgrade plugin %s", plugin.plugin_id)
+                result["failed"].append(
+                    {
+                        "plugin_id": plugin.plugin_id,
+                        "current_version": plugin.version,
+                        "error": str(e),
+                    }
+                )
+
+        return result
 
     @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
