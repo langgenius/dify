@@ -48,41 +48,40 @@ class TestToolTransformService:
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
+                schema='{"openapi": "3.0.0"}',
+                schema_type_str="openapi",
+                tools_str="[]",
+                credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                credentials={"auth_type": "api_key_header", "api_key": "test_key"},
-                provider_type="api",
             )
         elif provider_type == "builtin":
             provider = BuiltinToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon="🔧",
-                icon_dark="🔧",
                 tenant_id="test_tenant_id",
+                user_id="test_user_id",
                 provider="test_provider",
                 credential_type="api_key",
-                credentials={"api_key": "test_key"},
+                encrypted_credentials='{"api_key": "test_key"}',
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
                 name=fake.company(),
+                label="Test Workflow Tool",
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
+                app_id="test_app_id",
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
-                workflow_id="test_workflow_id",
             )
         elif provider_type == "mcp":
             provider = MCPToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                provider_icon='{"background": "#FF6B6B", "content": "🔧"}',
+                icon='{"background": "#FF6B6B", "content": "🔧"}',
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
                 server_url="https://mcp.example.com",
+                server_url_hash="test_server_url_hash",
                 server_identifier="test_server",
                 tools='[{"name": "test_tool", "description": "Test tool"}]',
                 authed=True,
