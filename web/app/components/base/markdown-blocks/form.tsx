@@ -90,6 +90,7 @@ const MarkdownForm = ({ node }: any) => {
     <form
       autoComplete="off"
       className="flex flex-col self-stretch"
+      data-testid="markdown-form"
       onSubmit={(e: any) => {
         e.preventDefault()
         e.stopPropagation()
@@ -102,6 +103,7 @@ const MarkdownForm = ({ node }: any) => {
               key={index}
               htmlFor={child.properties.htmlFor || child.properties.name}
               className="my-2 text-text-secondary system-md-semibold"
+              data-testid="label-field"
             >
               {child.children[0]?.value || ''}
             </label>

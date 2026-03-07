@@ -8,8 +8,8 @@ from typing import Any
 
 from opentelemetry.trace import Span
 
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
 

@@ -5,11 +5,11 @@ from typing import Any
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
-from core.workflow.nodes.llm.entities import ModelConfig
-from core.workflow.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.nodes.llm.entities import ModelConfig
+from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 
 
 class DifyCredentialsProvider:
@@ -83,13 +83,20 @@ def fetch_model_config(
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
     provider_model.raise_for_status()
 
-    stop: list[str] = []
-    if "stop" in node_data_model.completion_params:
-        stop = node_data_model.completion_params.pop("stop")
+    completion_params = dict(node_data_model.completion_params)
+    stop = completion_params.pop("stop", [])
+    if not isinstance(stop, list):
+        stop = []
 
     model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
     if not model_schema:
         raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
+
+    model_instance.provider = node_data_model.provider
+    model_instance.model_name = node_data_model.name
+    model_instance.credentials = credentials
+    model_instance.parameters = completion_params
+    model_instance.stop = tuple(stop)
 
     return model_instance, ModelConfigWithCredentialsEntity(
         provider=node_data_model.provider,
@@ -98,6 +105,6 @@ def fetch_model_config(
         mode=node_data_model.mode,
         provider_model_bundle=provider_model_bundle,
         credentials=credentials,
-        parameters=node_data_model.completion_params,
+        parameters=completion_params,
         stop=stop,
     )

@@ -6,8 +6,9 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.code.limits import CodeNodeLimits
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockCodeNode, MockTemplateTransformNode
@@ -39,18 +40,22 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_default_output(self):
         """Test that MockTemplateTransformNode processes templates with Jinja2."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -98,18 +103,22 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_custom_output(self):
         """Test that MockTemplateTransformNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -158,18 +167,22 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_error_simulation(self):
         """Test that MockTemplateTransformNode can simulate errors."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -215,19 +228,23 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
-        from core.variables import StringVariable
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.variables import StringVariable
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -281,18 +298,22 @@ class TestMockCodeNode:
 
     def test_mock_code_node_default_output(self):
         """Test that MockCodeNode returns default output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -343,18 +364,22 @@ class TestMockCodeNode:
 
     def test_mock_code_node_with_output_schema(self):
         """Test that MockCodeNode generates outputs based on schema."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -413,18 +438,22 @@ class TestMockCodeNode:
 
     def test_mock_code_node_custom_output(self):
         """Test that MockCodeNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -485,18 +514,22 @@ class TestMockNodeFactory:
 
     def test_code_and_template_nodes_mocked_by_default(self):
         """Test that CODE and TEMPLATE_TRANSFORM nodes are mocked by default (they require SSRF proxy)."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -526,18 +559,22 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_template_transform_node(self):
         """Test that MockNodeFactory creates MockTemplateTransformNode for template-transform type."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -577,18 +614,22 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_code_node(self):
         """Test that MockNodeFactory creates MockCodeNode for code type."""
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.runtime import GraphRuntimeState, VariablePool
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
