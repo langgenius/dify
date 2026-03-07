@@ -16,6 +16,7 @@ from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
+from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
 
@@ -376,6 +377,72 @@ def transform_datasource_credentials(environment: str):
         click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
     )
     click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))
+
+
+@click.command("migrate-data-for-plugin", help="Migrate data for plugin.")
+def migrate_data_for_plugin():
+    """
+    Migrate data for plugin.
+    """
+    click.echo(click.style("Starting migrate data for plugin.", fg="white"))
+
+    PluginDataMigration.migrate()
+
+    click.echo(click.style("Migrate data for plugin completed.", fg="green"))
+
+
+@click.command("extract-plugins", help="Extract plugins.")
+@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
+@click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
+def extract_plugins(output_file: str, workers: int):
+    """
+    Extract plugins.
+    """
+    click.echo(click.style("Starting extract plugins.", fg="white"))
+
+    PluginMigration.extract_plugins(output_file, workers)
+
+    click.echo(click.style("Extract plugins completed.", fg="green"))
+
+
+@click.command("extract-unique-identifiers", help="Extract unique identifiers.")
+@click.option(
+    "--output_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="unique_identifiers.json",
+)
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+def extract_unique_plugins(output_file: str, input_file: str):
+    """
+    Extract unique plugins.
+    """
+    click.echo(click.style("Starting extract unique plugins.", fg="white"))
+
+    PluginMigration.extract_unique_plugins_to_file(input_file, output_file)
+
+    click.echo(click.style("Extract unique plugins completed.", fg="green"))
+
+
+@click.command("install-plugins", help="Install plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_plugins(input_file: str, output_file: str, workers: int):
+    """
+    Install plugins.
+    """
+    click.echo(click.style("Starting install plugins.", fg="white"))
+
+    PluginMigration.install_plugins(input_file, output_file, workers)
+
+    click.echo(click.style("Install plugins completed.", fg="green"))
 
 
 @click.command("install-rag-pipeline-plugins", help="Install rag pipeline plugins.")
