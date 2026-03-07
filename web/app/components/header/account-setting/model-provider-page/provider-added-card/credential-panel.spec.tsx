@@ -1,5 +1,6 @@
 import type { ModelProvider } from '../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { changeModelProviderPriority } from '@/service/common'
 import { ConfigurationMethodEnum } from '../declarations'
 import CredentialPanel from './credential-panel'
@@ -24,11 +25,15 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: () => ({
+      notify: mockNotify,
+    }),
+  }
+})
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -93,8 +98,14 @@ describe('CredentialPanel', () => {
     })
   })
 
+  const renderCredentialPanel = (provider: ModelProvider) => render(
+    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+      <CredentialPanel provider={provider} />
+    </ToastContext.Provider>,
+  )
+
   it('should show credential name and configuration actions', () => {
-    render(<CredentialPanel provider={mockProvider} />)
+    renderCredentialPanel(mockProvider)
 
     expect(screen.getByText('test-credential')).toBeInTheDocument()
     expect(screen.getByTestId('config-provider')).toBeInTheDocument()
@@ -103,7 +114,7 @@ describe('CredentialPanel', () => {
 
   it('should show unauthorized status label when credential is missing', () => {
     mockCredentialStatus.hasCredential = false
-    render(<CredentialPanel provider={mockProvider} />)
+    renderCredentialPanel(mockProvider)
 
     expect(screen.getByText(/modelProvider\.auth\.unAuthorized/)).toBeInTheDocument()
   })
@@ -111,7 +122,7 @@ describe('CredentialPanel', () => {
   it('should show removed credential label and priority tip for custom preference', () => {
     mockCredentialStatus.authorized = false
     mockCredentialStatus.authRemoved = true
-    render(<CredentialPanel provider={{ ...mockProvider, preferred_provider_type: 'custom' } as ModelProvider} />)
+    renderCredentialPanel({ ...mockProvider, preferred_provider_type: 'custom' } as ModelProvider)
 
     expect(screen.getByText(/modelProvider\.auth\.authRemoved/)).toBeInTheDocument()
     expect(screen.getByTestId('priority-use-tip')).toBeInTheDocument()
@@ -120,7 +131,7 @@ describe('CredentialPanel', () => {
   it('should change priority and refresh related data after success', async () => {
     const mockChangePriority = changeModelProviderPriority as ReturnType<typeof vi.fn>
     mockChangePriority.mockResolvedValue({ result: 'success' })
-    render(<CredentialPanel provider={mockProvider} />)
+    renderCredentialPanel(mockProvider)
 
     fireEvent.click(screen.getByTestId('priority-selector'))
 
@@ -138,8 +149,70 @@ describe('CredentialPanel', () => {
       ...mockProvider,
       provider_credential_schema: null,
     } as unknown as ModelProvider
-    render(<CredentialPanel provider={providerNoSchema} />)
+    renderCredentialPanel(providerNoSchema)
     expect(screen.getByTestId('priority-selector')).toBeInTheDocument()
     expect(screen.queryByTestId('config-provider')).not.toBeInTheDocument()
+  })
+
+  it('should show gray indicator when notAllowedToUse is true', () => {
+    mockCredentialStatus.notAllowedToUse = true
+    renderCredentialPanel(mockProvider)
+
+    expect(screen.getByTestId('indicator')).toHaveTextContent('gray')
+  })
+
+  it('should not notify or update when priority change returns non-success', async () => {
+    const mockChangePriority = changeModelProviderPriority as ReturnType<typeof vi.fn>
+    mockChangePriority.mockResolvedValue({ result: 'error' })
+    renderCredentialPanel(mockProvider)
+
+    fireEvent.click(screen.getByTestId('priority-selector'))
+
+    await waitFor(() => {
+      expect(mockChangePriority).toHaveBeenCalled()
+    })
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+    expect(mockEventEmitter.emit).not.toHaveBeenCalled()
+  })
+
+  it('should show empty label when authorized is false and authRemoved is false', () => {
+    mockCredentialStatus.authorized = false
+    mockCredentialStatus.authRemoved = false
+    renderCredentialPanel(mockProvider)
+
+    expect(screen.queryByText(/modelProvider\.auth\.unAuthorized/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.auth\.authRemoved/)).not.toBeInTheDocument()
+  })
+
+  it('should not show PriorityUseTip when priorityUseType is system', () => {
+    renderCredentialPanel(mockProvider)
+
+    expect(screen.queryByTestId('priority-use-tip')).not.toBeInTheDocument()
+  })
+
+  it('should not iterate configurateMethods for non-predefinedModel methods', async () => {
+    const mockChangePriority = changeModelProviderPriority as ReturnType<typeof vi.fn>
+    mockChangePriority.mockResolvedValue({ result: 'success' })
+    const providerWithCustomMethod = {
+      ...mockProvider,
+      configurate_methods: [ConfigurationMethodEnum.customizableModel],
+    } as unknown as ModelProvider
+    renderCredentialPanel(providerWithCustomMethod)
+
+    fireEvent.click(screen.getByTestId('priority-selector'))
+
+    await waitFor(() => {
+      expect(mockChangePriority).toHaveBeenCalled()
+      expect(mockNotify).toHaveBeenCalled()
+    })
+    expect(mockUpdateModelList).not.toHaveBeenCalled()
+  })
+
+  it('should show red indicator when hasCredential is false', () => {
+    mockCredentialStatus.hasCredential = false
+    renderCredentialPanel(mockProvider)
+
+    expect(screen.getByTestId('indicator')).toHaveTextContent('red')
   })
 })
