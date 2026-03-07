@@ -9,7 +9,7 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -41,12 +41,12 @@ function AccountMenuRouteItem({
   trailing,
 }: AccountMenuRouteItemProps) {
   return (
-    <DropdownMenuItem
+    <DropdownMenuLinkItem
       className="justify-between"
       render={<Link href={href} />}
     >
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
-    </DropdownMenuItem>
+    </DropdownMenuLinkItem>
   )
 }
 
@@ -64,12 +64,14 @@ function AccountMenuExternalItem({
   trailing,
 }: AccountMenuExternalItemProps) {
   return (
-    <DropdownMenuItem
+    <DropdownMenuLinkItem
       className="justify-between"
-      render={<a href={href} rel="noopener noreferrer" target="_blank" />}
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
     >
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
-    </DropdownMenuItem>
+    </DropdownMenuLinkItem>
   )
 }
 

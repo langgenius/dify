@@ -3,6 +3,15 @@
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
 import * as React from 'react'
+import {
+  menuGroupLabelClassName,
+  menuIndicatorClassName,
+  menuPopupAnimationClassName,
+  menuPopupBaseClassName,
+  menuRowBaseClassName,
+  menuRowStateClassName,
+  menuSeparatorClassName,
+} from '@/app/components/base/ui/menu-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
@@ -12,9 +21,6 @@ export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
 export const DropdownMenuRadioGroup = Menu.RadioGroup
-
-const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-none'
-const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-30'
 
 export function DropdownMenuRadioItem({
   className,
@@ -39,7 +45,7 @@ export function DropdownMenuRadioItemIndicator({
   return (
     <Menu.RadioItemIndicator
       className={cn(
-        'ml-auto flex shrink-0 items-center text-text-accent',
+        menuIndicatorClassName,
         className,
       )}
       {...props}
@@ -72,7 +78,7 @@ export function DropdownMenuCheckboxItemIndicator({
   return (
     <Menu.CheckboxItemIndicator
       className={cn(
-        'ml-auto flex shrink-0 items-center text-text-accent',
+        menuIndicatorClassName,
         className,
       )}
       {...props}
@@ -89,7 +95,7 @@ export function DropdownMenuGroupLabel({
   return (
     <Menu.GroupLabel
       className={cn(
-        'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase',
+        menuGroupLabelClassName,
         className,
       )}
       {...props}
@@ -148,8 +154,8 @@ function renderDropdownMenuPopup({
       >
         <Menu.Popup
           className={cn(
-            'max-h-[var(--available-height)] overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 text-sm text-text-secondary shadow-lg backdrop-blur-[5px]',
-            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
+            menuPopupBaseClassName,
+            menuPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -264,13 +270,37 @@ export function DropdownMenuItem({
   )
 }
 
+type DropdownMenuLinkItemProps = React.ComponentPropsWithoutRef<typeof Menu.LinkItem> & {
+  destructive?: boolean
+}
+
+export function DropdownMenuLinkItem({
+  className,
+  destructive,
+  closeOnClick = true,
+  ...props
+}: DropdownMenuLinkItemProps) {
+  return (
+    <Menu.LinkItem
+      className={cn(
+        menuRowBaseClassName,
+        menuRowStateClassName,
+        destructive && 'text-text-destructive',
+        className,
+      )}
+      closeOnClick={closeOnClick}
+      {...props}
+    />
+  )
+}
+
 export function DropdownMenuSeparator({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof Menu.Separator>) {
   return (
     <Menu.Separator
-      className={cn('my-1 h-px bg-divider-subtle', className)}
+      className={cn(menuSeparatorClassName, className)}
       {...props}
     />
   )
