@@ -597,11 +597,30 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
     vector.add_texts([], [])
     vector._execute_write.assert_not_called()
 
-    vector.add_texts(docs, vectors)
+    added_ids = vector.add_texts(docs, vectors)
+    assert added_ids == ["id-1", "id-2", "id-3"]
     assert vector._execute_write.call_count == 2
+    assert vector._execute_write.call_args_list[0].args == (
+        vector._insert_batch,
+        docs[:2],
+        vectors[:2],
+        ["id-1", "id-2"],
+        0,
+        2,
+        2,
+    )
+    assert vector._execute_write.call_args_list[1].args == (
+        vector._insert_batch,
+        docs[2:],
+        vectors[2:],
+        ["id-3"],
+        2,
+        2,
+        2,
+    )
 
-    vector._insert_batch([], [], 0, 2, 1)
-    vector._insert_batch(docs[:1], vectors, 0, 2, 1)
+    vector._insert_batch([], [], [], 0, 2, 1)
+    vector._insert_batch(docs[:1], vectors, ["id-1"], 0, 2, 1)
 
     bad_doc = Document(page_content="doc-bad", metadata={"doc_id": "id-bad", "bad": {1}})
     good_doc = Document(page_content="doc-good", metadata={"doc_id": "id-good"})
@@ -616,7 +635,14 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
         yield connection
 
     vector.get_connection_context = _ctx
-    vector._insert_batch([bad_doc, good_doc], [[0.1, 0.2], [0.3, 0.4]], 0, 2, 1)
+    vector._insert_batch(
+        [bad_doc, good_doc],
+        [[0.1, 0.2], [0.3, 0.4]],
+        ["id-bad", "id-good"],
+        0,
+        2,
+        1,
+    )
 
     @contextmanager
     def _ctx_error():
@@ -630,7 +656,7 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
 
     vector.get_connection_context = _ctx_error
     with pytest.raises(RuntimeError, match="insert failed"):
-        vector._insert_batch([good_doc], [[0.1, 0.2]], 0, 1, 1)
+        vector._insert_batch([good_doc], [[0.1, 0.2]], ["id-good"], 0, 1, 1)
 
     monkeypatch.setattr(clickzetta_module.uuid, "uuid4", lambda: "generated-id")
     vector._safe_doc_id = clickzetta_module.ClickzettaVector._safe_doc_id.__get__(vector)
@@ -863,6 +889,7 @@ def test_clickzetta_inverted_index_existing_and_insert_non_dict_metadata(clickze
     vector._insert_batch(
         [SimpleNamespace(page_content="content", metadata="not-a-dict")],
         [[0.1, 0.2]],
+        ["doc-1"],
         0,
         1,
         1,
