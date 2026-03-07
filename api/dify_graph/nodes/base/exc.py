@@ -1,10 +1,5 @@
-class BaseNodeError(ValueError):
-    """Base class for node errors."""
+"""Backward-compatible exports for base node exceptions."""
 
-    pass
+from dify_graph.entities.base_node_data import BaseNodeError, DefaultValueTypeError
 
-
-class DefaultValueTypeError(BaseNodeError):
-    """Raised when the default value type is invalid."""
-
-    pass
+__all__ = ["BaseNodeError", "DefaultValueTypeError"]

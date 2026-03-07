@@ -22,7 +22,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType, SystemVariableKey
 from dify_graph.file.file_manager import file_manager
@@ -40,11 +40,13 @@ from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_co
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.nodes.llm.entities import ModelConfig
+from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
@@ -57,6 +59,9 @@ from models.model import Conversation
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
     from dify_graph.runtime import GraphRuntimeState
+
+
+LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(
@@ -156,7 +161,7 @@ class DifyNodeFactory(NodeFactory):
         return DifyRunContext.model_validate(raw_ctx)
 
     @override
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data using the traditional mapping.
 
@@ -164,15 +169,12 @@ class DifyNodeFactory(NodeFactory):
         :return: initialized Node instance
         :raises ValueError: if node type is unknown or configuration is invalid
         """
-        # Get node_id from config
-        node_id = node_config["id"]
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        node_id = typed_node_config["id"]
 
         # Get node type from config
-        node_data = node_config["data"]
-        try:
-            node_type = NodeType(node_data["type"])
-        except ValueError:
-            raise ValueError(f"Unknown node type: {node_data['type']}")
+        node_data = typed_node_config["data"]
+        node_type = node_data.type
 
         # Get node class
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
@@ -180,7 +182,7 @@ class DifyNodeFactory(NodeFactory):
             raise ValueError(f"No class mapping found for node type: {node_type}")
 
         latest_node_class = node_mapping.get(LATEST_VERSION)
-        node_version = str(node_data.get("version", "1"))
+        node_version = str(node_data.version)
         matched_node_class = node_mapping.get(node_version)
         node_class = matched_node_class or latest_node_class
         if not node_class:
@@ -190,7 +192,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.CODE:
             return CodeNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 code_executor=self._code_executor,
@@ -200,7 +202,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.TEMPLATE_TRANSFORM:
             return TemplateTransformNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 template_renderer=self._template_renderer,
@@ -210,7 +212,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.HTTP_REQUEST:
             return HttpRequestNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 http_request_config=self._http_request_config,
@@ -222,7 +224,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.HUMAN_INPUT:
             return HumanInputNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 form_repository=HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
@@ -231,7 +233,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.KNOWLEDGE_INDEX:
             return KnowledgeIndexNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 index_processor=IndexProcessor(),
@@ -239,11 +241,12 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.LLM:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            llm_node_data = LLMNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(llm_node_data)
+            memory = self._build_memory_for_llm_node(node_data=llm_node_data, model_instance=model_instance)
             return LLMNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
@@ -255,7 +258,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.DATASOURCE:
             return DatasourceNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 datasource_manager=DatasourceManager,
@@ -264,7 +267,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
             return KnowledgeRetrievalNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 rag_retrieval=self._rag_retrieval,
@@ -273,7 +276,7 @@ class DifyNodeFactory(NodeFactory):
         if node_type == NodeType.DOCUMENT_EXTRACTOR:
             return DocumentExtractorNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
@@ -281,11 +284,15 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            question_classifier_node_data = QuestionClassifierNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(question_classifier_node_data)
+            memory = self._build_memory_for_llm_node(
+                node_data=question_classifier_node_data,
+                model_instance=model_instance,
+            )
             return QuestionClassifierNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
@@ -295,11 +302,15 @@ class DifyNodeFactory(NodeFactory):
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
+            parameter_extractor_node_data = ParameterExtractorNodeData.model_validate(node_data, from_attributes=True)
+            model_instance = self._build_model_instance_for_llm_node(parameter_extractor_node_data)
+            memory = self._build_memory_for_llm_node(
+                node_data=parameter_extractor_node_data,
+                model_instance=model_instance,
+            )
             return ParameterExtractorNode(
                 id=node_id,
-                config=node_config,
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 credentials_provider=self._llm_credentials_provider,
@@ -310,13 +321,13 @@ class DifyNodeFactory(NodeFactory):
 
         return node_class(
             id=node_id,
-            config=node_config,
+            config=typed_node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )
 
-    def _build_model_instance_for_llm_node(self, node_data: Mapping[str, Any]) -> ModelInstance:
-        node_data_model = ModelConfig.model_validate(node_data["model"])
+    def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
+        node_data_model = node_data.model
         if not node_data_model.mode:
             raise LLMModeRequiredError("LLM mode is required.")
 
@@ -352,14 +363,12 @@ class DifyNodeFactory(NodeFactory):
     def _build_memory_for_llm_node(
         self,
         *,
-        node_data: Mapping[str, Any],
+        node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
     ) -> PromptMessageMemory | None:
-        raw_memory_config = node_data.get("memory")
-        if raw_memory_config is None:
+        if node_data.memory is None:
             return None
 
-        node_memory = MemoryConfig.model_validate(raw_memory_config)
         conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID]
         )
@@ -369,6 +378,6 @@ class DifyNodeFactory(NodeFactory):
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,
-            node_data_memory=node_memory,
+            node_data_memory=node_data.memory,
             model_instance=model_instance,
         )

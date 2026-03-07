@@ -409,14 +409,14 @@ class TestKnowledgeRetrievalNode:
         """Test _extract_variable_selector_to_variable_mapping class method."""
         # Arrange
         node_id = "knowledge_node_1"
-        node_data = {
-            "type": "knowledge-retrieval",
-            "title": "Knowledge Retrieval",
-            "dataset_ids": [str(uuid.uuid4())],
-            "retrieval_mode": "multiple",
-            "query_variable_selector": ["start", "query"],
-            "query_attachment_selector": ["start", "attachments"],
-        }
+        node_data = KnowledgeRetrievalNodeData(
+            type="knowledge-retrieval",
+            title="Knowledge Retrieval",
+            dataset_ids=[str(uuid.uuid4())],
+            retrieval_mode="multiple",
+            query_variable_selector=["start", "query"],
+            query_attachment_selector=["start", "attachments"],
+        )
         graph_config = {}
 
         # Act

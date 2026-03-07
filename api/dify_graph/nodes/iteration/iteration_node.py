@@ -460,21 +460,18 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IterationNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IterationNodeData.model_validate(node_data)
-
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": typed_node_data.iterator_selector,
+            f"{node_id}.input_selector": node_data.iterator_selector,
         }
         iteration_node_ids = set()
 
         # Find all nodes that belong to this loop
         nodes = graph_config.get("nodes", [])
         for node in nodes:
-            node_data = node.get("data", {})
-            if node_data.get("iteration_id") == node_id:
+            node_config_data = node.get("data", {})
+            if node_config_data.get("iteration_id") == node_id:
                 in_iteration_node_id = node.get("id")
                 if in_iteration_node_id:
                     iteration_node_ids.add(in_iteration_node_id)

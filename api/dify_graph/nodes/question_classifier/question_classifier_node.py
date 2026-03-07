@@ -7,6 +7,7 @@ from core.model_manager import ModelInstance
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -61,7 +62,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -248,16 +249,13 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: QuestionClassifierNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
-        # Create typed NodeData from dict
-        typed_node_data = QuestionClassifierNodeData.model_validate(node_data)
-
-        variable_mapping = {"query": typed_node_data.query_variable_selector}
+        variable_mapping = {"query": node_data.query_variable_selector}
         variable_selectors: list[VariableSelector] = []
-        if typed_node_data.instruction:
-            variable_template_parser = VariableTemplateParser(template=typed_node_data.instruction)
+        if node_data.instruction:
+            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = list(variable_selector.value_selector)

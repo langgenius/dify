@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, ge
 from uuid import uuid4
 
 from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import (
     ErrorStrategy,
@@ -241,7 +242,7 @@ class Node(Generic[NodeDataT]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
@@ -254,19 +255,13 @@ class Node(Generic[NodeDataT]):
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
 
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required.")
+        node_id = config["id"]
 
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        raw_node_data = config.get("data") or {}
-        if not isinstance(raw_node_data, Mapping):
-            raise ValueError("Node config data must be a mapping.")
-
-        self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
+        self._node_data = cast(NodeDataT, self._node_data_type.model_validate(config["data"], from_attributes=True))
 
         self.post_init()
 
@@ -342,9 +337,6 @@ class Node(Generic[NodeDataT]):
             return None
         return str(execution_id)
 
-    def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
-        return cast(NodeDataT, self._node_data_type.model_validate(data))
-
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
         """
@@ -388,8 +380,6 @@ class Node(Generic[NodeDataT]):
         if isinstance(self, TriggerEventNode):
             start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from typing import cast
 
         from dify_graph.nodes.agent.agent_node import AgentNode
         from dify_graph.nodes.agent.entities import AgentNodeData
@@ -442,7 +432,7 @@ class Node(Generic[NodeDataT]):
         cls,
         *,
         graph_config: Mapping[str, Any],
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
     ) -> Mapping[str, Sequence[str]]:
         """Extracts references variable selectors from node configuration.
 
@@ -480,13 +470,12 @@ class Node(Generic[NodeDataT]):
         :param config: node config
         :return:
         """
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
-
-        # Pass raw dict data instead of creating NodeData instance
+        node_id = config["id"]
+        node_data = cast(NodeDataT, cls._node_data_type.model_validate(config["data"], from_attributes=True))
         data = cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config, node_id=node_id, node_data=config.get("data", {})
+            graph_config=graph_config,
+            node_id=node_id,
+            node_data=node_data,
         )
         return data
 
@@ -496,7 +485,7 @@ class Node(Generic[NodeDataT]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: NodeDataT,
     ) -> Mapping[str, Sequence[str]]:
         return {}
 

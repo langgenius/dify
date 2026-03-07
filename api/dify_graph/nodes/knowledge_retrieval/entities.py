@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseNodeData
 from dify_graph.nodes.llm.entities import ModelConfig, VisionConfig
 
@@ -113,7 +114,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     Knowledge retrieval Node Data.
     """
 
-    type: str = "knowledge-retrieval"
+    type: NodeType = NodeType.KNOWLEDGE_RETRIEVAL
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]

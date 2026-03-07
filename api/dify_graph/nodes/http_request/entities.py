@@ -8,6 +8,7 @@ import charset_normalizer
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from dify_graph.enums import NodeType
 from dify_graph.nodes.base import BaseNodeData
 
 HTTP_REQUEST_CONFIG_FILTER_KEY = "http_request_config"
@@ -89,6 +90,7 @@ class HttpRequestNodeData(BaseNodeData):
     Code Node Data.
     """
 
+    type: NodeType = NodeType.HTTP_REQUEST
     method: Literal[
         "get",
         "post",
