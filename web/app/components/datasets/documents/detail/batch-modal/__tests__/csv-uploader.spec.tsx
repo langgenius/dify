@@ -25,7 +25,7 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: {
     Provider: ({ children }: { children: ReactNode }) => children,
     Consumer: ({ children }: { children: (ctx: { notify: typeof mockNotify }) => ReactNode }) => children({ notify: mockNotify }),

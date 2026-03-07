@@ -179,7 +179,6 @@ class ToolManager:
 
         :return: the tool
         """
-
         if provider_type == ToolProviderType.BUILT_IN:
             # check if the builtin tool need credentials
             provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
@@ -628,9 +627,9 @@ class ToolManager:
             # MySQL: Use window function to achieve same result
             sql = """
                 SELECT id FROM (
-                    SELECT id, 
+                    SELECT id,
                            ROW_NUMBER() OVER (
-                               PARTITION BY tenant_id, provider 
+                               PARTITION BY tenant_id, provider
                                ORDER BY is_default DESC, created_at DESC
                            ) as rn
                     FROM tool_builtin_providers

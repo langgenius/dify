@@ -119,6 +119,14 @@ def _validate_indexing_technique(value: str | None) -> str | None:
     return value
 
 
+def _validate_doc_form(value: str | None) -> str | None:
+    if value is None:
+        return value
+    if value not in Dataset.DOC_FORM_LIST:
+        raise ValueError("Invalid doc_form.")
+    return value
+
+
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field("", max_length=400)
@@ -177,6 +185,14 @@ class IndexingEstimatePayload(BaseModel):
         result = _validate_indexing_technique(value)
         if result is None:
             raise ValueError("indexing_technique is required.")
+        return result
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        result = _validate_doc_form(value)
+        if result is None:
+            return "text_model"
         return result
 
 
