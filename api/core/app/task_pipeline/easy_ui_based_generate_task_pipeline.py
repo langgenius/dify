@@ -467,11 +467,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
             if message_files:
                 # Fetch all required UploadFile objects in a single query to avoid N+1 problem
-                upload_file_ids = list(dict.fromkeys(
-                    mf.upload_file_id
-                    for mf in message_files
-                    if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
-                ))
+                upload_file_ids = list(
+                    dict.fromkeys(
+                        mf.upload_file_id
+                        for mf in message_files
+                        if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+                    )
+                )
                 upload_files_map = {}
                 if upload_file_ids:
                     upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()

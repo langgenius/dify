@@ -120,9 +120,7 @@ class TestMessageEndStreamResponseFiles:
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch(
-                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
-            ) as mock_get_url,
+            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
@@ -298,10 +296,11 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "tool_file_abc.verylongextension"
 
-        with patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db, \
-             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class, \
-             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool:
-
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
+        ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
@@ -329,9 +328,7 @@ class TestMessageEndStreamResponseFiles:
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch(
-                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
-            ) as mock_get_url,
+            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
@@ -383,9 +380,7 @@ class TestMessageEndStreamResponseFiles:
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch(
-                "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url"
-            ) as mock_get_url,
+            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
