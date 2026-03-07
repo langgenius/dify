@@ -1,6 +1,4 @@
-import fnmatch
 import json
-import re
 
 import click
 import sqlalchemy as sa
@@ -428,6 +426,8 @@ def file_usage(
         # Skip if src filter doesn't match (use fnmatch for wildcard patterns)
         if src:
             if "%" in src or "_" in src:
+                import fnmatch
+
                 # Convert SQL LIKE wildcards to fnmatch wildcards (% -> *, _ -> ?)
                 pattern = src.replace("%", "*").replace("_", "?")
                 if not fnmatch.fnmatch(src_filter, pattern):
@@ -484,6 +484,8 @@ def file_usage(
                         content = str(row[1])
 
                         # Find all UUIDs in the content
+                        import re
+
                         uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
                         matches = uuid_pattern.findall(content)
 
