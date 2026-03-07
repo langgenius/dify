@@ -625,7 +625,7 @@ class ClickzettaVector(BaseVector):
 
             # Execute batch insert through write queue
             self._execute_write(
-                self._insert_batch, batch_docs, batch_embeddings, batch_doc_ids, i, batch_size, total_batches
+                self._insert_batch, batch_docs, batch_embeddings, i, batch_size, total_batches, batch_doc_ids
             )
 
         return added_ids
@@ -634,12 +634,17 @@ class ClickzettaVector(BaseVector):
         self,
         batch_docs: list[Document],
         batch_embeddings: list[list[float]],
-        batch_doc_ids: list[str],
         batch_index: int,
         batch_size: int,
         total_batches: int,
+        batch_doc_ids: list[str] | None = None,
     ):
-        """Insert a batch of documents using parameterized queries (executed in write worker thread)."""
+        """
+        Insert a batch of documents using parameterized queries.
+
+        `batch_doc_ids` is optional to keep compatibility with older internal call sites that only passed
+        `batch_index`, `batch_size`, and `total_batches`.
+        """
         if not batch_docs or not batch_embeddings:
             logger.warning("Empty batch provided, skipping insertion")
             return
@@ -647,6 +652,19 @@ class ClickzettaVector(BaseVector):
         if len(batch_docs) != len(batch_embeddings):
             logger.error("Mismatch between docs (%d) and embeddings (%d)", len(batch_docs), len(batch_embeddings))
             return
+
+        if batch_doc_ids is None or len(batch_doc_ids) != len(batch_docs):
+            if batch_doc_ids is not None:
+                logger.warning(
+                    "Mismatch between docs (%d) and doc ids (%d), regenerating doc ids",
+                    len(batch_docs),
+                    len(batch_doc_ids),
+                )
+
+            batch_doc_ids = []
+            for doc in batch_docs:
+                metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+                batch_doc_ids.append(self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4()))))
 
         # Prepare data for parameterized insertion
         data_rows = []
