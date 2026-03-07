@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models.model import MessageFeedback
 from services.app_service import AppService
@@ -69,7 +70,7 @@ class TestMessageService:
                 # "current_user": mock_current_user,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
@@ -127,11 +128,10 @@ class TestMessageService:
         # mock_external_service_dependencies["current_user"].id = account_id
         # mock_external_service_dependencies["current_user"].current_tenant_id = tenant_id
 
-    def _create_test_conversation(self, app, account, fake):
+    def _create_test_conversation(self, db_session_with_containers: Session, app, account, fake):
         """
         Helper method to create a test conversation with all required fields.
         """
-        from extensions.ext_database import db
         from models.model import Conversation
 
         conversation = Conversation(
@@ -153,17 +153,16 @@ class TestMessageService:
             from_account_id=account.id,
         )
 
-        db.session.add(conversation)
-        db.session.flush()
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.flush()
         return conversation
 
-    def _create_test_message(self, app, conversation, account, fake):
+    def _create_test_message(self, db_session_with_containers: Session, app, conversation, account, fake):
         """
         Helper method to create a test message with all required fields.
         """
         import json
 
-        from extensions.ext_database import db
         from models.model import Message
 
         message = Message(
@@ -192,11 +191,13 @@ class TestMessageService:
             from_account_id=account.id,
         )
 
-        db.session.add(message)
-        db.session.commit()
+        db_session_with_containers.add(message)
+        db_session_with_containers.commit()
         return message
 
-    def test_pagination_by_first_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_first_id_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful pagination by first ID.
         """
@@ -204,10 +205,10 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and multiple messages
-        conversation = self._create_test_conversation(app, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
         for i in range(5):
-            message = self._create_test_message(app, conversation, account, fake)
+            message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 
         # Test pagination by first ID
@@ -228,7 +229,9 @@ class TestMessageService:
         # Verify messages are in ascending order
         assert result.data[0].created_at <= result.data[1].created_at
 
-    def test_pagination_by_first_id_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_first_id_no_user(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test pagination by first ID when no user is provided.
         """
@@ -246,7 +249,7 @@ class TestMessageService:
         assert result.has_more is False
 
     def test_pagination_by_first_id_no_conversation_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by first ID when no conversation ID is provided.
@@ -265,7 +268,7 @@ class TestMessageService:
         assert result.has_more is False
 
     def test_pagination_by_first_id_invalid_first_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by first ID with invalid first_id.
@@ -274,8 +277,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Test pagination with invalid first_id
         with pytest.raises(FirstMessageNotExistsError):
@@ -287,7 +290,9 @@ class TestMessageService:
                 limit=10,
             )
 
-    def test_pagination_by_last_id_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_last_id_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful pagination by last ID.
         """
@@ -295,10 +300,10 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and multiple messages
-        conversation = self._create_test_conversation(app, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
         for i in range(5):
-            message = self._create_test_message(app, conversation, account, fake)
+            message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 
         # Test pagination by last ID
@@ -319,7 +324,7 @@ class TestMessageService:
         assert result.data[0].created_at >= result.data[1].created_at
 
     def test_pagination_by_last_id_with_include_ids(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with include_ids filter.
@@ -328,10 +333,10 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and multiple messages
-        conversation = self._create_test_conversation(app, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
         for i in range(5):
-            message = self._create_test_message(app, conversation, account, fake)
+            message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 
         # Test pagination with include_ids
@@ -347,7 +352,9 @@ class TestMessageService:
         for message in result.data:
             assert message.id in include_ids
 
-    def test_pagination_by_last_id_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_pagination_by_last_id_no_user(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test pagination by last ID when no user is provided.
         """
@@ -363,7 +370,7 @@ class TestMessageService:
         assert result.has_more is False
 
     def test_pagination_by_last_id_invalid_last_id(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with invalid last_id.
@@ -372,8 +379,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Test pagination with invalid last_id
         with pytest.raises(LastMessageNotExistsError):
@@ -385,7 +392,7 @@ class TestMessageService:
                 conversation_id=conversation.id,
             )
 
-    def test_create_feedback_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_feedback_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful creation of feedback.
         """
@@ -393,8 +400,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create feedback
         rating = "like"
@@ -413,7 +420,7 @@ class TestMessageService:
         assert feedback.from_account_id == account.id
         assert feedback.from_end_user_id is None
 
-    def test_create_feedback_no_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_feedback_no_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test creating feedback when no user is provided.
         """
@@ -421,8 +428,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Test creating feedback with no user
         with pytest.raises(ValueError, match="user cannot be None"):
@@ -430,7 +437,9 @@ class TestMessageService:
                 app_model=app, message_id=message.id, user=None, rating="like", content=fake.text(max_nb_chars=100)
             )
 
-    def test_create_feedback_update_existing(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_feedback_update_existing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test updating existing feedback.
         """
@@ -438,8 +447,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create initial feedback
         initial_rating = "like"
@@ -462,7 +471,9 @@ class TestMessageService:
         assert updated_feedback.rating != initial_rating
         assert updated_feedback.content != initial_content
 
-    def test_create_feedback_delete_existing(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_feedback_delete_existing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test deleting existing feedback by setting rating to None.
         """
@@ -470,8 +481,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create initial feedback
         feedback = MessageService.create_feedback(
@@ -482,13 +493,14 @@ class TestMessageService:
         MessageService.create_feedback(app_model=app, message_id=message.id, user=account, rating=None, content=None)
 
         # Verify feedback was deleted
-        from extensions.ext_database import db
 
-        deleted_feedback = db.session.query(MessageFeedback).where(MessageFeedback.id == feedback.id).first()
+        deleted_feedback = (
+            db_session_with_containers.query(MessageFeedback).where(MessageFeedback.id == feedback.id).first()
+        )
         assert deleted_feedback is None
 
     def test_create_feedback_no_rating_when_not_exists(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creating feedback with no rating when feedback doesn't exist.
@@ -497,8 +509,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Test creating feedback with no rating when no feedback exists
         with pytest.raises(ValueError, match="rating cannot be None when feedback not exists"):
@@ -506,7 +518,9 @@ class TestMessageService:
                 app_model=app, message_id=message.id, user=account, rating=None, content=None
             )
 
-    def test_get_all_messages_feedbacks_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_all_messages_feedbacks_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of all message feedbacks.
         """
@@ -516,8 +530,8 @@ class TestMessageService:
         # Create multiple conversations and messages with feedbacks
         feedbacks = []
         for i in range(3):
-            conversation = self._create_test_conversation(app, account, fake)
-            message = self._create_test_message(app, conversation, account, fake)
+            conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+            message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
             feedback = MessageService.create_feedback(
                 app_model=app,
@@ -539,7 +553,7 @@ class TestMessageService:
             assert result[i]["created_at"] >= result[i + 1]["created_at"]
 
     def test_get_all_messages_feedbacks_pagination(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test pagination of message feedbacks.
@@ -549,8 +563,8 @@ class TestMessageService:
 
         # Create multiple conversations and messages with feedbacks
         for i in range(5):
-            conversation = self._create_test_conversation(app, account, fake)
-            message = self._create_test_message(app, conversation, account, fake)
+            conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+            message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
             MessageService.create_feedback(
                 app_model=app, message_id=message.id, user=account, rating="like", content=f"Feedback {i}"
@@ -569,7 +583,7 @@ class TestMessageService:
         page_2_ids = {feedback["id"] for feedback in result_page_2}
         assert len(page_1_ids.intersection(page_2_ids)) == 0
 
-    def test_get_message_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_message_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of message.
         """
@@ -577,8 +591,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Get message
         retrieved_message = MessageService.get_message(app_model=app, user=account, message_id=message.id)
@@ -590,7 +604,7 @@ class TestMessageService:
         assert retrieved_message.from_source == "console"
         assert retrieved_message.from_account_id == account.id
 
-    def test_get_message_not_exists(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_message_not_exists(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting message that doesn't exist.
         """
@@ -601,7 +615,7 @@ class TestMessageService:
         with pytest.raises(MessageNotExistsError):
             MessageService.get_message(app_model=app, user=account, message_id=fake.uuid4())
 
-    def test_get_message_wrong_user(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_message_wrong_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting message with wrong user (different account).
         """
@@ -609,8 +623,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Create another account
         from services.account_service import AccountService, TenantService
@@ -628,7 +642,7 @@ class TestMessageService:
             MessageService.get_message(app_model=app, user=other_account, message_id=message.id)
 
     def test_get_suggested_questions_after_answer_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful generation of suggested questions after answer.
@@ -637,8 +651,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Mock the LLMGenerator to return specific questions
         mock_questions = ["What is AI?", "How does machine learning work?", "Tell me about neural networks"]
@@ -665,7 +679,7 @@ class TestMessageService:
         mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
 
     def test_get_suggested_questions_after_answer_no_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting suggested questions when no user is provided.
@@ -674,8 +688,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Test getting suggested questions with no user
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -686,7 +700,7 @@ class TestMessageService:
             )
 
     def test_get_suggested_questions_after_answer_disabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting suggested questions when feature is disabled.
@@ -695,8 +709,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Mock the feature to be disabled
         mock_external_service_dependencies[
@@ -712,7 +726,7 @@ class TestMessageService:
             )
 
     def test_get_suggested_questions_after_answer_no_workflow(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting suggested questions when no workflow exists.
@@ -721,8 +735,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Mock no workflow
         mock_external_service_dependencies["workflow_service"].return_value.get_published_workflow.return_value = None
@@ -738,7 +752,7 @@ class TestMessageService:
         assert result == []
 
     def test_get_suggested_questions_after_answer_debugger_mode(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting suggested questions in debugger mode.
@@ -747,8 +761,8 @@ class TestMessageService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create a conversation and message
-        conversation = self._create_test_conversation(app, account, fake)
-        message = self._create_test_message(app, conversation, account, fake)
+        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
 
         # Mock questions
         mock_questions = ["Debug question 1", "Debug question 2"]

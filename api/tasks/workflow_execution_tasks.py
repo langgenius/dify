@@ -12,8 +12,8 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities.workflow_execution import WorkflowExecution
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 

@@ -16,11 +16,11 @@ from sqlalchemy import Engine
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
-from core.workflow.entities.workflow_node_execution import (
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 from models import Account, WorkflowNodeExecutionTriggeredFrom
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload

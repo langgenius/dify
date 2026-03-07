@@ -1,6 +1,6 @@
 from flask_restx import fields
 
-from core.workflow.file import File
+from dify_graph.file import File
 
 
 class FilesContainedField(fields.Raw):

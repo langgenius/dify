@@ -9,39 +9,39 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.variables import VariableBase
-from core.variables.variables import Variable
-from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.file import File
-from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.errors import WorkflowNodeRunFailedError
+from dify_graph.file import File
+from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from dify_graph.nodes.human_input.entities import (
     DeliveryChannelConfig,
     HumanInputNodeData,
     apply_debug_email_recipient,
     validate_human_input_submission,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
-from core.workflow.nodes.human_input.human_input_node import HumanInputNode
-from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.repositories.human_input_form_repository import FormCreateParams
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import load_into_variable_pool
-from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.nodes.human_input.enums import HumanInputFormKind
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.repositories.human_input_form_repository import FormCreateParams
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import load_into_variable_pool
+from dify_graph.variables import VariableBase
+from dify_graph.variables.input_entities import VariableEntityType
+from dify_graph.variables.variables import Variable
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -49,7 +49,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import UserFrom
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -438,8 +437,8 @@ class WorkflowService:
         """
         try:
             from core.model_manager import ModelManager
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -558,8 +557,8 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
             provider_manager = ProviderManager()
@@ -1016,7 +1015,7 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id)
         params = FormCreateParams(
             app_id=app_model.id,
             workflow_execution_id=None,
@@ -1064,13 +1063,15 @@ class WorkflowService:
         variable_pool: VariablePool,
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            user_id=account.id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=account.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -1082,6 +1083,7 @@ class WorkflowService:
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
         )
         return node
 
@@ -1360,7 +1362,7 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from core.workflow.nodes.human_input.entities import HumanInputNodeData
+        from dify_graph.nodes.human_input.entities import HumanInputNodeData
 
         try:
             HumanInputNodeData.model_validate(node_data)
