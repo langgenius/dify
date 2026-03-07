@@ -11,6 +11,10 @@ Archived tables:
 - workflow_node_execution_offload
 - workflow_pauses
 - workflow_pause_reasons
+- human_input_forms
+- human_input_form_deliveries
+- human_input_form_recipients
+- execution_extra_contents
 - workflow_trigger_logs
 
 """
@@ -42,6 +46,7 @@ from libs.archive_storage import (
 from models.workflow import WorkflowAppLog, WorkflowRun
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION
@@ -96,6 +101,10 @@ class WorkflowRunArchiver:
             ├── workflow_node_execution_offload.jsonl
             ├── workflow_pauses.jsonl
             ├── workflow_pause_reasons.jsonl
+            ├── human_input_forms.jsonl
+            ├── human_input_form_deliveries.jsonl
+            ├── human_input_form_recipients.jsonl
+            ├── execution_extra_contents.jsonl
             └── workflow_trigger_logs.jsonl
     """
 
@@ -110,6 +119,10 @@ class WorkflowRunArchiver:
         "workflow_node_execution_offload",
         "workflow_pauses",
         "workflow_pause_reasons",
+        "human_input_forms",
+        "human_input_form_deliveries",
+        "human_input_form_recipients",
+        "execution_extra_contents",
         "workflow_trigger_logs",
     ]
 
@@ -398,6 +411,7 @@ class WorkflowRunArchiver:
                         [run],
                         delete_node_executions=self._delete_node_executions,
                         delete_trigger_logs=self._delete_trigger_logs,
+                        delete_execution_extra_contents=self._delete_execution_extra_contents,
                     )
 
                 logger.info(
@@ -448,6 +462,17 @@ class WorkflowRunArchiver:
         )
         table_data["workflow_pauses"] = [self._row_to_dict(row) for row in pause_records]
         table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
+
+        execution_extra_contents = repo.get_execution_extra_contents_by_run_id(session, run.id)
+        human_input_forms = list(repo.get_human_input_forms_by_run_id(session, run.id))
+        form_ids = [form.id for form in human_input_forms]
+        human_input_deliveries = repo.get_human_input_deliveries_by_form_ids(session, form_ids)
+        human_input_recipients = repo.get_human_input_recipients_by_form_ids(session, form_ids)
+        table_data["human_input_forms"] = [self._row_to_dict(row) for row in human_input_forms]
+        table_data["human_input_form_deliveries"] = [self._row_to_dict(row) for row in human_input_deliveries]
+        table_data["human_input_form_recipients"] = [self._row_to_dict(row) for row in human_input_recipients]
+        table_data["execution_extra_contents"] = [self._row_to_dict(row) for row in execution_extra_contents]
+
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         trigger_records = trigger_repo.list_by_run_id(run.id)
         table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
@@ -510,6 +535,12 @@ class WorkflowRunArchiver:
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
         run_ids = [run.id for run in runs]
         return self._get_workflow_node_execution_repo(session).delete_by_runs(session, run_ids)
+
+    def _delete_execution_extra_contents(self, session: Session, run_ids: Sequence[str]) -> int:
+        repo = SQLAlchemyExecutionExtraContentRepository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.delete_by_workflow_run_ids(session, run_ids)
 
     def _get_workflow_node_execution_repo(
         self,

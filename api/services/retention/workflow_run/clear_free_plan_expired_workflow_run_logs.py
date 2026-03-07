@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService, SubscriptionPlan
 
@@ -135,6 +136,7 @@ class WorkflowRunCleanup:
                     free_runs,
                     count_node_executions=self._count_node_executions,
                     count_trigger_logs=self._count_trigger_logs,
+                    count_execution_extra_contents=self._count_execution_extra_contents,
                 )
                 logger.info(
                     "workflow_run_cleanup (batch #%s, dry_run): counted related records in %sms",
@@ -165,6 +167,7 @@ class WorkflowRunCleanup:
                     free_runs,
                     delete_node_executions=self._delete_node_executions,
                     delete_trigger_logs=self._delete_trigger_logs,
+                    delete_execution_extra_contents=self._delete_execution_extra_contents,
                 )
                 delete_ms = int((time.monotonic() - delete_start) * 1000)
             except Exception:
@@ -177,7 +180,11 @@ class WorkflowRunCleanup:
                     f"[batch #{batch_index}] deleted runs: {counts['runs']} "
                     f"(nodes {counts['node_executions']}, offloads {counts['offloads']}, "
                     f"app_logs {counts['app_logs']}, trigger_logs {counts['trigger_logs']}, "
-                    f"pauses {counts['pauses']}, pause_reasons {counts['pause_reasons']}); "
+                    f"pauses {counts['pauses']}, pause_reasons {counts['pause_reasons']}, "
+                    f"human_input_forms {counts['human_input_forms']}, "
+                    f"human_input_form_deliveries {counts['human_input_form_deliveries']}, "
+                    f"human_input_form_recipients {counts['human_input_form_recipients']}, "
+                    f"execution_extra_contents {counts['execution_extra_contents']}); "
                     f"skipped {paid_or_skipped} paid/unknown",
                     fg="green",
                 )
@@ -315,6 +322,10 @@ class WorkflowRunCleanup:
             "trigger_logs": 0,
             "pauses": 0,
             "pause_reasons": 0,
+            "human_input_forms": 0,
+            "human_input_form_deliveries": 0,
+            "human_input_form_recipients": 0,
+            "execution_extra_contents": 0,
         }
 
     @staticmethod
@@ -325,7 +336,11 @@ class WorkflowRunCleanup:
             f"app_logs {counts['app_logs']}, "
             f"trigger_logs {counts['trigger_logs']}, "
             f"pauses {counts['pauses']}, "
-            f"pause_reasons {counts['pause_reasons']}"
+            f"pause_reasons {counts['pause_reasons']}, "
+            f"human_input_forms {counts['human_input_forms']}, "
+            f"human_input_form_deliveries {counts['human_input_form_deliveries']}, "
+            f"human_input_form_recipients {counts['human_input_form_recipients']}, "
+            f"execution_extra_contents {counts['execution_extra_contents']}"
         )
 
     def _count_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
@@ -341,3 +356,17 @@ class WorkflowRunCleanup:
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.delete_by_runs(session, run_ids)
+
+    @staticmethod
+    def _count_execution_extra_contents(session: Session, run_ids: Sequence[str]) -> int:
+        repo = SQLAlchemyExecutionExtraContentRepository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.count_by_workflow_run_ids(session, run_ids)
+
+    @staticmethod
+    def _delete_execution_extra_contents(session: Session, run_ids: Sequence[str]) -> int:
+        repo = SQLAlchemyExecutionExtraContentRepository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.delete_by_workflow_run_ids(session, run_ids)
