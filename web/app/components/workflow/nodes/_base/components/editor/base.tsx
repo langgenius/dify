@@ -124,7 +124,7 @@ const Base: FC<Props> = ({
             )}
             {showVariableInspectButton && nodeId && (
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
                     <RiCrosshairLine className="h-4 w-4" />
                   </ActionButton>
