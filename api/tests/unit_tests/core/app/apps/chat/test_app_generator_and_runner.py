@@ -8,8 +8,8 @@ from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.moderation.base import ModerationError
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from models.model import AppMode
 
 

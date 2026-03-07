@@ -1050,7 +1050,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 _ = kwargs
 
             def run(self):
-                from core.model_runtime.errors.invoke import InvokeAuthorizationError
+                from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 
                 raise InvokeAuthorizationError("bad key")
 

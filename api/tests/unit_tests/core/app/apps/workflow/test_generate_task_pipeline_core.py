@@ -44,9 +44,9 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 

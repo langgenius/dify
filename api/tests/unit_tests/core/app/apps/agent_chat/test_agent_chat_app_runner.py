@@ -2,9 +2,9 @@ import pytest
 
 from core.agent.entities import AgentEntity
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.moderation.base import ModerationError
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 
 
 @pytest.fixture

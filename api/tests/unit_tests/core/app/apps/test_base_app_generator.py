@@ -479,7 +479,7 @@ class TestBaseAppGeneratorExtras:
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from core.workflow.enums import NodeType
+        from dify_graph.enums import NodeType
         from models import Account
 
         base_app_generator = BaseAppGenerator()

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
@@ -16,9 +16,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import NodeType
-from core.workflow.graph_events import (
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import NodeType
+from dify_graph.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
@@ -28,9 +28,8 @@ from core.workflow.graph_events import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
 )
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 class TestWorkflowBasedAppRunner:

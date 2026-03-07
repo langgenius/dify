@@ -42,9 +42,9 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from core.workflow.enums import NodeType
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.enums import NodeType
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
 
@@ -329,12 +329,19 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
 
-        assert list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={}))) == ["finish"]
-        assert list(
+        succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
+        assert len(succeeded_responses) == 2
+        assert isinstance(succeeded_responses[0], MessageEndStreamResponse)
+        assert succeeded_responses[1] == "finish"
+
+        partial_success_responses = list(
             pipeline._handle_workflow_partial_success_event(
                 QueueWorkflowPartialSuccessEvent(exceptions_count=1, outputs={})
             )
-        ) == ["finish"]
+        )
+        assert len(partial_success_responses) == 2
+        assert isinstance(partial_success_responses[0], MessageEndStreamResponse)
+        assert partial_success_responses[1] == "finish"
         assert (
             list(pipeline._handle_workflow_failed_event(QueueWorkflowFailedEvent(error="err", exceptions_count=1)))[0]
             == "finish"

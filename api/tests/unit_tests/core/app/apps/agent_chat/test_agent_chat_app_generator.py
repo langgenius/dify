@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class DummyAccount:

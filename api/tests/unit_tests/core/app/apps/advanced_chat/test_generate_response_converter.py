@@ -10,7 +10,7 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
 )
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 
 
 class TestAdvancedChatGenerateResponseConverter:
