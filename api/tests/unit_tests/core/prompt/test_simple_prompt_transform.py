@@ -400,7 +400,7 @@ def test_get_last_user_message_with_files_and_context_files():
     file = SimpleNamespace()
     context_file = SimpleNamespace()
 
-    with patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content:
+    with patch("core.prompt.simple_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.side_effect = [
             ImagePromptMessageContent(url="https://example.com/a.jpg", format="jpg", mime_type="image/jpg"),
             ImagePromptMessageContent(url="https://example.com/b.jpg", format="jpg", mime_type="image/jpg"),

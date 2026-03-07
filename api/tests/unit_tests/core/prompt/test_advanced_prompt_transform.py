@@ -255,7 +255,7 @@ def test_completion_prompt_jinja2_with_files():
 
     with (
         patch("core.prompt.advanced_prompt_transform.Jinja2Formatter.format", return_value="Hi John"),
-        patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content,
+        patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content,
     ):
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
@@ -387,8 +387,10 @@ def test_chat_prompt_memory_with_files_and_query():
         storage_key="",
     )
 
-    transform._append_chat_histories = MagicMock(side_effect=lambda m, mc, pm, cfg: pm)
-    with patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content:
+    transform._append_chat_histories = MagicMock(
+        side_effect=lambda memory, memory_config, prompt_messages, **kwargs: prompt_messages
+    )
+    with patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
         )
@@ -420,7 +422,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     )
 
     prompt_with_last_user = [ChatModelMessage(text="u", role=PromptMessageRole.USER)]
-    with patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content:
+    with patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
         )
@@ -438,7 +440,7 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     assert messages[-1].content[1].data == "u"
 
     prompt_without_last_user = [ChatModelMessage(text="s", role=PromptMessageRole.SYSTEM)]
-    with patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content:
+    with patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
         )
@@ -469,7 +471,7 @@ def test_chat_prompt_files_with_query_branch():
         storage_key="",
     )
 
-    with patch("core.workflow.file.file_manager.to_prompt_message_content") as to_content:
+    with patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
         )

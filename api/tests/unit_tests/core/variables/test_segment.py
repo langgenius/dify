@@ -2,13 +2,13 @@ import dataclasses
 
 import orjson
 import pytest
-from api.dify_graph.variables.segment_group import SegmentGroup
 from pydantic import BaseModel
 
 from core.helper import encrypter
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segment_group import SegmentGroup
 from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
@@ -28,7 +28,6 @@ from dify_graph.variables.segments import (
 from dify_graph.variables.types import SegmentType
 from dify_graph.variables.utils import (
     dumps_with_segments,
-    get_segment_discriminator,
     segment_orjson_default,
     to_selector,
 )

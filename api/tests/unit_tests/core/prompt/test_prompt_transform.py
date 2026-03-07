@@ -16,6 +16,9 @@ from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
 class TestPromptTransform:
     def test_calculate_rest_token_defaults_when_context_size_missing(self):
         transform = PromptTransform()
+        fake_model_instance = SimpleNamespace(parameters={}, get_llm_num_tokens=lambda _: 0)
+        fake_model_schema = SimpleNamespace(model_properties={}, parameter_rules=[])
+        transform._resolve_model_runtime = MagicMock(return_value=(fake_model_instance, fake_model_schema))
         model_config = SimpleNamespace(
             model_schema=SimpleNamespace(model_properties={}, parameter_rules=[]),
             provider_model_bundle=object(),
@@ -23,24 +26,20 @@ class TestPromptTransform:
             parameters={},
         )
 
-        rest = transform._calculate_rest_token([], model_config)
+        rest = transform._calculate_rest_token([], model_config=model_config)
 
         assert rest == 2000
 
-    def test_calculate_rest_token_uses_max_tokens_and_clamps_to_zero(self, monkeypatch):
+    def test_calculate_rest_token_uses_max_tokens_and_clamps_to_zero(self):
         transform = PromptTransform()
 
-        class FakeModelInstance:
-            def __init__(self, provider_model_bundle, model):
-                self.provider_model_bundle = provider_model_bundle
-                self.model = model
-
-            def get_llm_num_tokens(self, prompt_messages):
-                return 95
-
-        monkeypatch.setattr("core.prompt.prompt_transform.ModelInstance", FakeModelInstance)
-
         parameter_rule = SimpleNamespace(name="max_tokens", use_template=None)
+        fake_model_instance = SimpleNamespace(parameters={"max_tokens": 50}, get_llm_num_tokens=lambda _: 95)
+        fake_model_schema = SimpleNamespace(
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: 100},
+            parameter_rules=[parameter_rule],
+        )
+        transform._resolve_model_runtime = MagicMock(return_value=(fake_model_instance, fake_model_schema))
         model_config = SimpleNamespace(
             model_schema=SimpleNamespace(
                 model_properties={ModelPropertyKey.CONTEXT_SIZE: 100},
@@ -51,24 +50,20 @@ class TestPromptTransform:
             parameters={"max_tokens": 50},
         )
 
-        rest = transform._calculate_rest_token([SimpleNamespace()], model_config)
+        rest = transform._calculate_rest_token([SimpleNamespace()], model_config=model_config)
 
         assert rest == 0
 
-    def test_calculate_rest_token_supports_use_template_parameter(self, monkeypatch):
+    def test_calculate_rest_token_supports_use_template_parameter(self):
         transform = PromptTransform()
 
-        class FakeModelInstance:
-            def __init__(self, provider_model_bundle, model):
-                self.provider_model_bundle = provider_model_bundle
-                self.model = model
-
-            def get_llm_num_tokens(self, prompt_messages):
-                return 20
-
-        monkeypatch.setattr("core.prompt.prompt_transform.ModelInstance", FakeModelInstance)
-
         parameter_rule = SimpleNamespace(name="generation_max", use_template="max_tokens")
+        fake_model_instance = SimpleNamespace(parameters={"max_tokens": 30}, get_llm_num_tokens=lambda _: 20)
+        fake_model_schema = SimpleNamespace(
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: 200},
+            parameter_rules=[parameter_rule],
+        )
+        transform._resolve_model_runtime = MagicMock(return_value=(fake_model_instance, fake_model_schema))
         model_config = SimpleNamespace(
             model_schema=SimpleNamespace(
                 model_properties={ModelPropertyKey.CONTEXT_SIZE: 200},
@@ -79,7 +74,7 @@ class TestPromptTransform:
             parameters={"max_tokens": 30},
         )
 
-        rest = transform._calculate_rest_token([SimpleNamespace()], model_config)
+        rest = transform._calculate_rest_token([SimpleNamespace()], model_config=model_config)
 
         assert rest == 150
 
@@ -136,7 +131,7 @@ class TestPromptTransform:
         memory = MagicMock()
         memory_config = SimpleNamespace(window=SimpleNamespace(enabled=False, size=None))
 
-        monkeypatch.setattr(transform, "_calculate_rest_token", lambda prompt_messages, model_config: 99)
+        monkeypatch.setattr(transform, "_calculate_rest_token", lambda prompt_messages, **kwargs: 99)
         monkeypatch.setattr(
             transform,
             "_get_history_messages_list_from_memory",
