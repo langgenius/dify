@@ -330,6 +330,35 @@ describe('dropdown-menu wrapper', () => {
       expect(link).toHaveAttribute('href', '/account')
       expect(link).toHaveTextContent('Account settings')
     })
+
+    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
+      const handleClick = vi.fn()
+
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              destructive={destructive}
+              href="https://example.com/docs"
+              aria-label="docs link"
+              id={`menu-link-${String(destructive)}`}
+              onClick={handleClick}
+            >
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'docs link' })
+      fireEvent.click(link)
+
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('id', `menu-link-${String(destructive)}`)
+      expect(link).not.toHaveAttribute('destructive')
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('DropdownMenuSeparator', () => {
