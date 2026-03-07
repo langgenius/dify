@@ -18,7 +18,7 @@ import {
   MAX_FILE_UPLOAD_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { TransferMethod } from '@/types/app'

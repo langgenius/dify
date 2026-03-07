@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -187,7 +187,7 @@ class AppService:
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity(**cast(dict[str, Any], tool))
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
@@ -388,7 +388,7 @@ class AppService:
             agent_config = app_model_config.agent_mode_dict
 
             # get all tools
-            tools = agent_config.get("tools", [])
+            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
 

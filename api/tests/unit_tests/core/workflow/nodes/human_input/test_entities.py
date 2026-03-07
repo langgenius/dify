@@ -9,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.node_events import PauseRequestedEvent
 from dify_graph.node_events.node import StreamCompletedEvent
 from dify_graph.nodes.human_input.entities import (
@@ -314,13 +315,17 @@ class TestHumanInputNodeVariableResolution:
         variable_pool.add(("start", "name"), "Jane Doe")
         runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
         graph_init_params = GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
             workflow_id="workflow",
             graph_config={"nodes": [], "edges": []},
-            user_id="user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -384,13 +389,17 @@ class TestHumanInputNodeVariableResolution:
         )
         runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
         graph_init_params = GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
             workflow_id="workflow",
             graph_config={"nodes": [], "edges": []},
-            user_id="user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -439,13 +448,17 @@ class TestHumanInputNodeVariableResolution:
         )
         runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
         graph_init_params = GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
             workflow_id="workflow",
             graph_config={"nodes": [], "edges": []},
-            user_id="user-123",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "user-123",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -550,13 +563,17 @@ class TestHumanInputNodeRenderedContent:
         )
         runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
         graph_init_params = GraphInitParams(
-            tenant_id="tenant",
-            app_id="app",
             workflow_id="workflow",
             graph_config={"nodes": [], "edges": []},
-            user_id="user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 

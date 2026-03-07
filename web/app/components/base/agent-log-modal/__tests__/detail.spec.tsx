@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogDetail from '../detail'
 
