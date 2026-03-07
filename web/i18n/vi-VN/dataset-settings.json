@@ -16,7 +16,7 @@
   "form.indexMethod": "Phương pháp chỉ mục",
   "form.indexMethodChangeToEconomyDisabledTip": "Không khả dụng để hạ cấp từ HQ xuống ECO",
   "form.indexMethodEconomy": "Tiết kiệm",
-  "form.indexMethodEconomyTip": "Sử dụng các công cụ nhúng vector ngoại tuyến, chỉ mục từ khóa, v.v. để giảm độ chính xác mà không tiêu tốn token",
+  "form.indexMethodEconomyTip": "Sử dụng {{count}} từ khóa mỗi đoạn để truy xuất, không tiêu tốn token nhưng giảm độ chính xác.",
   "form.indexMethodHighQuality": "Chất lượng cao",
   "form.indexMethodHighQualityTip": "Sử dụng mô hình Embedding để xử lý, cung cấp độ chính xác cao hơn khi người dùng truy vấn.",
   "form.me": "(Bạn)",
@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Cài đặt truy xuất",
   "form.save": "Lưu",
   "form.searchModel": "Tìm kiếm mô hình",
+  "form.summaryAutoGen": "Tự động Tạo Tóm tắt",
+  "form.summaryAutoGenEnableTip": "Sau khi bật, tóm tắt sẽ được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",
+  "form.summaryAutoGenTip": "Tóm tắt được tạo tự động cho các tài liệu mới được thêm. Các tài liệu hiện có vẫn có thể được tóm tắt thủ công.",
+  "form.summaryInstructions": "Hướng dẫn",
+  "form.summaryInstructionsPlaceholder": "Mô tả các quy tắc hoặc phong cách cho tóm tắt được tạo tự động…",
+  "form.summaryModel": "Mô hình Tóm tắt",
   "form.upgradeHighQualityTip": "Sau khi nâng cấp lên chế độ Chất lượng cao, không thể hoàn nguyên về chế độ Tiết kiệm",
   "title": "Cài đặt Kiến thức"
 }

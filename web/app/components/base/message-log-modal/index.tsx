@@ -57,8 +57,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className="system-xl-semibold shrink-0 px-4 py-1 text-text-primary">{t('runDetail.title', { ns: 'appLog' })}</h1>
-      <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onCancel}>
+      <h1 className="shrink-0 px-4 py-1 text-text-primary system-xl-semibold">{t('runDetail.title', { ns: 'appLog' })}</h1>
+      <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onCancel} data-testid="close-button">
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>
       <Run

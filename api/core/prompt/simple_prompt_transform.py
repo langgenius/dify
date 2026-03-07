@@ -6,9 +6,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.prompt.prompt_transform import PromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentUnionTypes,
@@ -16,13 +19,10 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from dify_graph.file.models import File
 
 
 class ModelMode(StrEnum):
@@ -252,7 +252,7 @@ class SimplePromptTransform(PromptTransform):
         if memory:
             tmp_human_message = UserPromptMessage(content=prompt)
 
-            rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
+            rest_tokens = self._calculate_rest_token([tmp_human_message], model_config=model_config)
             histories = self._get_history_messages_from_memory(
                 memory=memory,
                 memory_config=MemoryConfig(

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -247,7 +247,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             />
           </div>
         </div>
-        {currentDataset && currentDataset.indexing_technique && (
+        {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
               <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>

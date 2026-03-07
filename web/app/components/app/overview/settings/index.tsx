@@ -20,10 +20,9 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -100,7 +99,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -240,16 +238,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className="system-xs-regular mt-0.5 text-text-tertiary">
             <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
-            <Link
-              href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
-                'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
-              })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-text-accent"
-            >
-              {t('operation.learnMore', { ns: 'common' })}
-            </Link>
           </div>
         </div>
         {/* form body */}
@@ -293,7 +281,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={inputInfo.use_icon_as_answer_icon}
+                  value={inputInfo.use_icon_as_answer_icon}
                   onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
@@ -327,7 +315,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
                 <div className="flex items-center justify-between">
                   <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
             </div>
@@ -338,7 +326,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
                 disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
-                defaultValue={inputInfo.show_workflow_steps}
+                value={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
@@ -392,7 +380,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   >
                     <Switch
                       disabled={!webappCopyrightEnabled}
-                      defaultValue={inputInfo.copyrightSwitchValue}
+                      value={inputInfo.copyrightSwitchValue}
                       onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
                   </Tooltip>

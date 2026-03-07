@@ -6,44 +6,21 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
-import Switch from '@/app/components/base/switch'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import Indicator from '@/app/components/header/indicator'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 
 type CardProps = {
-  apiEnabled: boolean
   apiBaseUrl: string
 }
 
 const Card = ({
-  apiEnabled,
   apiBaseUrl,
 }: CardProps) => {
   const { t } = useTranslation()
-  const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
-  const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
-  const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
-
   const apiReferenceUrl = useDatasetApiAccessUrl()
-
-  const onToggle = useCallback(async (state: boolean) => {
-    let result: 'success' | 'fail'
-    if (state)
-      result = (await enableDatasetServiceApi(datasetId ?? '')).result
-    else
-      result = (await disableDatasetServiceApi(datasetId ?? '')).result
-    if (result === 'success')
-      mutateDatasetRes?.()
-  }, [datasetId, enableDatasetServiceApi, disableDatasetServiceApi])
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -68,24 +45,16 @@ const Card = ({
           <div className="flex items-center gap-x-1">
             <Indicator
               className="shrink-0"
-              color={apiEnabled ? 'green' : 'yellow'}
+              color={
+                apiBaseUrl ? 'green' : 'yellow'
+              }
             />
             <div
-              className={cn(
-                'system-xs-semibold-uppercase',
-                apiEnabled ? 'text-text-success' : 'text-text-warning',
-              )}
+              className="system-xs-semibold-uppercase text-text-success"
             >
-              {apiEnabled
-                ? t('serviceApi.enabled', { ns: 'dataset' })
-                : t('serviceApi.disabled', { ns: 'dataset' })}
+              {t('serviceApi.enabled', { ns: 'dataset' })}
             </div>
           </div>
-          <Switch
-            defaultValue={apiEnabled}
-            onChange={onToggle}
-            disabled={!isCurrentWorkspaceManager}
-          />
         </div>
         <div className="flex flex-col">
           <div className="system-xs-regular leading-6 text-text-tertiary">

@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
@@ -163,7 +163,7 @@ const EducationApplyAge = () => {
           <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
             className="system-xs-regular flex items-center text-text-accent"
-            href={docLink('/getting-started/dify-for-education')}
+            href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
             target="_blank"
           >
             {t('learn', { ns: 'education' })}

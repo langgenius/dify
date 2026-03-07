@@ -2,16 +2,12 @@
 import type { CustomCollectionBackend } from '../types'
 import {
   RiAddCircleFill,
-  RiArrowRightUpLine,
-  RiBookOpenLine,
 } from '@remixicon/react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink, useLocale } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
 import { createCustomCollection } from '@/service/tools'
 
 type Props = {
@@ -20,16 +16,7 @@ type Props = {
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const locale = useLocale()
-  const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
-
-  const docLink = useDocLink()
-  const linkUrl = useMemo(() => {
-    return docLink('/guides/tools#how-to-create-custom-tools', {
-      'zh-Hans': '/guides/tools#ru-he-chuang-jian-zi-ding-yi-gong-ju',
-    })
-  }, [language])
 
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
@@ -53,13 +40,6 @@ const Contribute = ({ onRefreshData }: Props) => {
               </div>
               <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
             </div>
-          </div>
-          <div className="rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent">
-            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
-              <RiBookOpenLine className="h-3 w-3 shrink-0" />
-              <div className="system-xs-regular grow truncate" title={t('customToolTip', { ns: 'tools' }) || ''}>{t('customToolTip', { ns: 'tools' })}</div>
-              <RiArrowRightUpLine className="h-3 w-3 shrink-0" />
-            </a>
           </div>
         </div>
       )}

@@ -8,8 +8,6 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -19,28 +17,14 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from factories.file_factory import build_from_mapping
-from libs.login import current_user
 from models import Account, Tenant
 from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
-
-
-def _try_resolve_user_from_request() -> Account | EndUser | None:
-    """
-    Try to resolve user from Flask request context.
-
-    Returns None if not in a request context or if user is not available.
-    """
-    # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-    # Use _get_current_object() to dereference the proxy
-    user = getattr(current_user, "_get_current_object", lambda: current_user)()
-    # Check if we got a valid user object
-    if user is not None and hasattr(user, "id"):
-        return user
-    return None
 
 
 class WorkflowTool(Tool):
@@ -114,6 +98,10 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
+            # NOTE(QuantumGhost): We explicitly set `pause_state_config` to `None`
+            # because workflow pausing mechanisms (such as HumanInput) are not
+            # supported within WorkflowTool execution context.
+            pause_state_config=None,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
@@ -223,12 +211,6 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        # Try to resolve user from request context first
-        user = _try_resolve_user_from_request()
-        if user is not None:
-            return user
-
-        # Fall back to database resolution
         return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:

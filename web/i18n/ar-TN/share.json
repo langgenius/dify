@@ -58,5 +58,15 @@
   "generation.tabs.create": "تشغيل مرة واحدة",
   "generation.tabs.saved": "محفوظ",
   "generation.title": "إكمال الذكاء الاصطناعي",
+  "humanInput.completed": "يبدو أن هذا الطلب تمت معالجته في مكان آخر.",
+  "humanInput.expirationTimeNowOrFuture": "سينتهي هذا الإجراء {{relativeTime}}.",
+  "humanInput.expired": "يبدو أن هذا الطلب قد انتهت صلاحيته.",
+  "humanInput.expiredTip": "انتهت صلاحية هذا الإجراء.",
+  "humanInput.formNotFound": "لم يتم العثور على النموذج.",
+  "humanInput.rateLimitExceeded": "طلبات كثيرة جدًا، يرجى المحاولة مرة أخرى لاحقًا.",
+  "humanInput.recorded": "تم تسجيل مدخلاتك.",
+  "humanInput.sorry": "عذراً!",
+  "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.thanks": "شكراً!",
   "login.backToHome": "العودة إلى الصفحة الرئيسية"
 }

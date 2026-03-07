@@ -77,7 +77,7 @@ const EndpointList = ({ detail }: Props) => {
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{t('detailPanel.endpointsTip', { ns: 'plugin' })}</div>
                 <a
-                  href={docLink('/plugins/schema-definition/endpoint')}
+                  href={docLink('/develop-plugin/getting-started/getting-started-dify-plugin')}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

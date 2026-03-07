@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -10,10 +10,10 @@ from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -107,19 +107,19 @@ class AppService:
 
             if model_instance:
                 if (
-                    model_instance.model == default_model_config["model"]["name"]
+                    model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
                 ):
                     default_model_dict = default_model_config["model"]
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
                     if model_schema is None:
-                        raise ValueError(f"model schema not found for model {model_instance.model}")
+                        raise ValueError(f"model schema not found for model {model_instance.model_name}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
-                        "name": model_instance.model,
+                        "name": model_instance.model_name,
                         "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
                         "completion_params": {},
                     }
@@ -150,10 +150,9 @@ class AppService:
         db.session.flush()
 
         if default_model_config:
-            app_model_config = AppModelConfig(**default_model_config)
-            app_model_config.app_id = app.id
-            app_model_config.created_by = account.id
-            app_model_config.updated_by = account.id
+            app_model_config = AppModelConfig(
+                **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
+            )
             db.session.add(app_model_config)
             db.session.flush()
 
@@ -188,7 +187,7 @@ class AppService:
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity(**cast(dict[str, Any], tool))
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
@@ -389,7 +388,7 @@ class AppService:
             agent_config = app_model_config.agent_mode_dict
 
             # get all tools
-            tools = agent_config.get("tools", [])
+            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
 

@@ -9,6 +9,7 @@ The task is responsible for removing document segments from the search index whe
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models import Account, Dataset, DocumentSegment
 from models import Document as DatasetDocument
@@ -31,7 +32,7 @@ class TestDisableSegmentsFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake=None):
         """
         Helper method to create a test account with realistic data.
 
@@ -70,18 +71,16 @@ class TestDisableSegmentsFromIndexTask:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        from extensions.ext_database import db
-
-        db.session.add(tenant)
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Set the current tenant for the account
         account.current_tenant = tenant
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers, account, fake=None):
+    def _create_test_dataset(self, db_session_with_containers: Session, account, fake=None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -110,14 +109,12 @@ class TestDisableSegmentsFromIndexTask:
             built_in_field_enabled=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers, dataset, account, fake=None):
+    def _create_test_document(self, db_session_with_containers: Session, dataset, account, fake=None):
         """
         Helper method to create a test document with realistic data.
 
@@ -151,21 +148,20 @@ class TestDisableSegmentsFromIndexTask:
         document.cleaning_completed_at = fake.date_time_this_year()
         document.splitting_completed_at = fake.date_time_this_year()
         document.tokens = fake.random_int(min=50, max=500)
-        document.indexing_started_at = fake.date_time_this_year()
-        document.indexing_completed_at = fake.date_time_this_year()
+        document.completed_at = fake.date_time_this_year()
         document.indexing_status = "completed"
         document.enabled = True
         document.archived = False
         document.doc_form = "text_model"  # Use text_model form for testing
         document.doc_language = "en"
-        from extensions.ext_database import db
-
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         return document
 
-    def _create_test_segments(self, db_session_with_containers, document, dataset, account, count=3, fake=None):
+    def _create_test_segments(
+        self, db_session_with_containers: Session, document, dataset, account, count=3, fake=None
+    ):
         """
         Helper method to create test document segments with realistic data.
 
@@ -211,15 +207,13 @@ class TestDisableSegmentsFromIndexTask:
 
             segments.append(segment)
 
-        from extensions.ext_database import db
-
         for segment in segments:
-            db.session.add(segment)
-        db.session.commit()
+            db_session_with_containers.add(segment)
+        db_session_with_containers.commit()
 
         return segments
 
-    def _create_dataset_process_rule(self, db_session_with_containers, dataset, fake=None):
+    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset, fake=None):
         """
         Helper method to create a dataset process rule.
 
@@ -248,14 +242,12 @@ class TestDisableSegmentsFromIndexTask:
         process_rule.created_by = dataset.created_by
         process_rule.updated_by = dataset.updated_by
 
-        from extensions.ext_database import db
-
-        db.session.add(process_rule)
-        db.session.commit()
+        db_session_with_containers.add(process_rule)
+        db_session_with_containers.commit()
 
         return process_rule
 
-    def test_disable_segments_success(self, db_session_with_containers):
+    def test_disable_segments_success(self, db_session_with_containers: Session):
         """
         Test successful disabling of segments from index.
 
@@ -306,7 +298,7 @@ class TestDisableSegmentsFromIndexTask:
                     expected_key = f"segment_{segment.id}_indexing"
                     mock_redis.delete.assert_any_call(expected_key)
 
-    def test_disable_segments_dataset_not_found(self, db_session_with_containers):
+    def test_disable_segments_dataset_not_found(self, db_session_with_containers: Session):
         """
         Test handling when dataset is not found.
 
@@ -329,7 +321,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when dataset is not found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_document_not_found(self, db_session_with_containers):
+    def test_disable_segments_document_not_found(self, db_session_with_containers: Session):
         """
         Test handling when document is not found.
 
@@ -353,7 +345,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when document is not found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_document_invalid_status(self, db_session_with_containers):
+    def test_disable_segments_document_invalid_status(self, db_session_with_containers: Session):
         """
         Test handling when document has invalid status for disabling.
 
@@ -369,9 +361,8 @@ class TestDisableSegmentsFromIndexTask:
 
         # Test case 1: Document not enabled
         document.enabled = False
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         segment_ids = [segment.id for segment in segments]
 
@@ -388,7 +379,7 @@ class TestDisableSegmentsFromIndexTask:
         # Test case 2: Document archived
         document.enabled = True
         document.archived = True
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -402,7 +393,7 @@ class TestDisableSegmentsFromIndexTask:
         document.enabled = True
         document.archived = False
         document.indexing_status = "indexing"
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -412,7 +403,7 @@ class TestDisableSegmentsFromIndexTask:
             assert result is None  # Task should complete without returning a value
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_no_segments_found(self, db_session_with_containers):
+    def test_disable_segments_no_segments_found(self, db_session_with_containers: Session):
         """
         Test handling when no segments are found for the given IDs.
 
@@ -439,7 +430,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when no segments are found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_index_processor_error(self, db_session_with_containers):
+    def test_disable_segments_index_processor_error(self, db_session_with_containers: Session):
         """
         Test handling when index processor encounters an error.
 
@@ -473,13 +464,14 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
 
                 # Verify segments were rolled back to enabled state
-                from extensions.ext_database import db
 
-                db.session.refresh(segments[0])
-                db.session.refresh(segments[1])
+                db_session_with_containers.refresh(segments[0])
+                db_session_with_containers.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
+                updated_segments = (
+                    db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
+                )
 
                 for segment in updated_segments:
                     assert segment.enabled is True
@@ -489,7 +481,7 @@ class TestDisableSegmentsFromIndexTask:
                 # Verify Redis cache cleanup was still called
                 assert mock_redis.delete.call_count == len(segments)
 
-    def test_disable_segments_with_different_doc_forms(self, db_session_with_containers):
+    def test_disable_segments_with_different_doc_forms(self, db_session_with_containers: Session):
         """
         Test disabling segments with different document forms.
 
@@ -512,9 +504,8 @@ class TestDisableSegmentsFromIndexTask:
         for doc_form in doc_forms:
             # Update document form
             document.doc_form = doc_form
-            from extensions.ext_database import db
 
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Mock the index processor factory
             with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
@@ -532,7 +523,7 @@ class TestDisableSegmentsFromIndexTask:
                     assert result is None  # Task should complete without returning a value
                     mock_factory.assert_called_with(doc_form)
 
-    def test_disable_segments_performance_timing(self, db_session_with_containers):
+    def test_disable_segments_performance_timing(self, db_session_with_containers: Session):
         """
         Test that the task properly measures and logs performance timing.
 
@@ -577,7 +568,7 @@ class TestDisableSegmentsFromIndexTask:
                         assert performance_log is not None
                         assert "0.5" in performance_log  # Should log the execution time
 
-    def test_disable_segments_redis_cache_cleanup(self, db_session_with_containers):
+    def test_disable_segments_redis_cache_cleanup(self, db_session_with_containers: Session):
         """
         Test that Redis cache is properly cleaned up for all segments.
 
@@ -619,7 +610,7 @@ class TestDisableSegmentsFromIndexTask:
                 for expected_key in expected_keys:
                     assert expected_key in actual_calls
 
-    def test_disable_segments_database_session_cleanup(self, db_session_with_containers):
+    def test_disable_segments_database_session_cleanup(self, db_session_with_containers: Session):
         """
         Test that database session is properly closed after task execution.
 
@@ -645,17 +636,14 @@ class TestDisableSegmentsFromIndexTask:
             with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
                 mock_redis.delete.return_value = True
 
-                # Mock db.session.close to verify it's called
-                with patch("tasks.disable_segments_from_index_task.db.session.close") as mock_close:
-                    # Act
-                    result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
+                # Act
+                result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
-                    # Assert
-                    assert result is None  # Task should complete without returning a value
-                    # Verify session was closed
-                    mock_close.assert_called()
+                # Assert
+                assert result is None  # Task should complete without returning a value
+                # Session lifecycle is managed by context manager; no explicit close assertion
 
-    def test_disable_segments_empty_segment_ids(self, db_session_with_containers):
+    def test_disable_segments_empty_segment_ids(self, db_session_with_containers: Session):
         """
         Test handling when empty segment IDs list is provided.
 
@@ -681,7 +669,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when no segments are provided
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_mixed_valid_invalid_ids(self, db_session_with_containers):
+    def test_disable_segments_mixed_valid_invalid_ids(self, db_session_with_containers: Session):
         """
         Test handling when some segment IDs are valid and others are invalid.
 

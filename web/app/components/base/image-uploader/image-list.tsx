@@ -1,12 +1,8 @@
+/* eslint-disable next/no-img-element */
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import Tooltip from '@/app/components/base/tooltip'
@@ -48,7 +44,7 @@ const ImageList: FC<ImageListProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap">
+    <div className="flex flex-wrap" data-testid="image-list">
       {list.map(item => (
         <div
           key={item._id}
@@ -61,10 +57,7 @@ const ImageList: FC<ImageListProps> = ({
                 style={{ left: item.progress > -1 ? `${item.progress}%` : 0 }}
               >
                 {item.progress === -1 && (
-                  <RefreshCcw01
-                    className="h-5 w-5 text-white"
-                    onClick={() => onReUpload?.(item._id)}
-                  />
+                  <span className="i-custom-vender-line-arrows-refresh-ccw-01 h-5 w-5 text-white" onClick={() => onReUpload?.(item._id)} data-testid="retry-icon" />
                 )}
               </div>
               {item.progress > -1 && (
@@ -84,9 +77,10 @@ const ImageList: FC<ImageListProps> = ({
               : 'border-transparent bg-black/[0.16]'
             }
                 `}
+              data-testid="image-error-container"
             >
               {item.progress > -1 && (
-                <RiLoader2Line className="h-5 w-5 animate-spin text-white" />
+                <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" data-testid="image-loader" />
               )}
               {item.progress === -1 && (
                 <Tooltip
@@ -124,8 +118,9 @@ const ImageList: FC<ImageListProps> = ({
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove?.(item._id)}
+              data-testid="remove-button"
             >
-              <RiCloseLine className="h-3 w-3 text-text-tertiary" />
+              <span className="i-ri-close-line h-3 w-3 text-text-tertiary" />
             </button>
           )}
         </div>

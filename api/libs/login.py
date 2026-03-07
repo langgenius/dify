@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS
@@ -9,7 +11,11 @@ from werkzeug.local import LocalProxy
 from configs import dify_config
 from libs.token import check_csrf_token
 from models import Account
-from models.model import EndUser
+
+if TYPE_CHECKING:
+    from flask.typing import ResponseReturnValue
+
+    from models.model import EndUser
 
 
 def current_account_with_tenant():
@@ -34,7 +40,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def login_required(func: Callable[P, R]):
+def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]:
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -69,7 +75,7 @@ def login_required(func: Callable[P, R]):
     """
 
     @wraps(func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R | ResponseReturnValue:
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif current_user is not None and not current_user.is_authenticated:

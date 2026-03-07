@@ -1,17 +1,22 @@
 """Tests for execution context module."""
 
 import contextvars
+import threading
+from contextlib import contextmanager
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel
 
-from core.workflow.context.execution_context import (
+from dify_graph.context.execution_context import (
     AppContext,
     ExecutionContext,
     ExecutionContextBuilder,
     IExecutionContext,
     NullAppContext,
+    read_context,
+    register_context,
 )
 
 
@@ -146,6 +151,54 @@ class TestExecutionContext:
 
         assert ctx.user == user
 
+    def test_thread_safe_context_manager(self):
+        """Test shared ExecutionContext works across threads without token mismatch."""
+        test_var = contextvars.ContextVar("thread_safe_test_var")
+
+        class TrackingAppContext(AppContext):
+            def get_config(self, key: str, default: Any = None) -> Any:
+                return default
+
+            def get_extension(self, name: str) -> Any:
+                return None
+
+            @contextmanager
+            def enter(self):
+                token = test_var.set(threading.get_ident())
+                try:
+                    yield
+                finally:
+                    test_var.reset(token)
+
+        ctx = ExecutionContext(app_context=TrackingAppContext())
+        errors: list[Exception] = []
+        barrier = threading.Barrier(2)
+
+        def worker():
+            try:
+                for _ in range(20):
+                    with ctx:
+                        try:
+                            barrier.wait()
+                            barrier.wait()
+                        except threading.BrokenBarrierError:
+                            return
+            except Exception as exc:
+                errors.append(exc)
+                try:
+                    barrier.abort()
+                except Exception:
+                    pass
+
+        t1 = threading.Thread(target=worker)
+        t2 = threading.Thread(target=worker)
+        t1.start()
+        t2.start()
+        t1.join(timeout=5)
+        t2.join(timeout=5)
+
+        assert not errors
+
 
 class TestIExecutionContextProtocol:
     """Test IExecutionContext protocol."""
@@ -233,7 +286,7 @@ class TestCaptureCurrentContext:
 
     def test_capture_current_context_returns_context(self):
         """Test that capture_current_context returns a valid context."""
-        from core.workflow.context.execution_context import capture_current_context
+        from dify_graph.context.execution_context import capture_current_context
 
         result = capture_current_context()
 
@@ -250,9 +303,37 @@ class TestCaptureCurrentContext:
         test_var = contextvars.ContextVar("capture_test_var")
         test_var.set("test_value_123")
 
-        from core.workflow.context.execution_context import capture_current_context
+        from dify_graph.context.execution_context import capture_current_context
 
         result = capture_current_context()
 
         # Context variables should be captured
         assert result.context_vars is not None
+
+
+class TestTenantScopedContextRegistry:
+    def setup_method(self):
+        from dify_graph.context import reset_context_provider
+
+        reset_context_provider()
+
+    def teardown_method(self):
+        from dify_graph.context import reset_context_provider
+
+        reset_context_provider()
+
+    def test_tenant_provider_read_ok(self):
+        class SandboxContext(BaseModel):
+            base_url: str | None = None
+
+        register_context("workflow.sandbox", "t1", lambda: SandboxContext(base_url="http://t1"))
+        register_context("workflow.sandbox", "t2", lambda: SandboxContext(base_url="http://t2"))
+
+        assert read_context("workflow.sandbox", tenant_id="t1").base_url == "http://t1"
+        assert read_context("workflow.sandbox", tenant_id="t2").base_url == "http://t2"
+
+    def test_missing_provider_raises_keyerror(self):
+        from dify_graph.context import ContextProviderNotFoundError
+
+        with pytest.raises(ContextProviderNotFoundError):
+            read_context("missing", tenant_id="unknown")

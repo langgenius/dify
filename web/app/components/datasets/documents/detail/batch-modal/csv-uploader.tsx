@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -126,7 +126,7 @@ const CSVUploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
