@@ -15,10 +15,6 @@ import pytest
 
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 
-# ============================================================
-# Fixtures
-# ============================================================
-
 
 @pytest.fixture
 def mock_action_class(mocker):

@@ -5,25 +5,27 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.message_entities import (
+from core.model_manager import ModelInstance
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from dify_graph.entities import GraphInitParams
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-from core.workflow.entities import GraphInitParams
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.nodes.llm import llm_utils
-from core.workflow.nodes.llm.entities import (
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.nodes.llm import llm_utils
+from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
@@ -31,13 +33,14 @@ from core.workflow.nodes.llm.entities import (
     VisionConfig,
     VisionConfigOptions,
 )
-from core.workflow.nodes.llm.file_saver import LLMFileSaver
-from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from dify_graph.nodes.llm.file_saver import LLMFileSaver
+from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class MockTokenBufferMemory:
@@ -73,11 +76,11 @@ def llm_node_data() -> LLMNodeData:
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    return build_test_graph_init_params(
         workflow_id="1",
         graph_config={},
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
@@ -115,6 +118,7 @@ def llm_node(
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
+        model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
     )
     return node
@@ -194,11 +198,10 @@ def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsE
             provider_model_bundle.configuration.__class__,
             "get_provider_model",
             return_value=provider_model,
+            autospec=True,
         ),
         mock.patch.object(
-            model_type_instance.__class__,
-            "get_model_schema",
-            return_value=model_config.model_schema,
+            model_type_instance.__class__, "get_model_schema", return_value=model_config.model_schema, autospec=True
         ),
     ):
         fetch_model_config(
@@ -585,6 +588,41 @@ def test_handle_list_messages_basic(llm_node):
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
 
 
+def test_handle_memory_completion_mode_uses_prompt_message_interface():
+    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+    memory.get_history_prompt_messages.return_value = [
+        UserPromptMessage(
+            content=[
+                TextPromptMessageContent(data="first question"),
+                ImagePromptMessageContent(
+                    format="png",
+                    url="https://example.com/image.png",
+                    mime_type="image/png",
+                ),
+            ]
+        ),
+        AssistantPromptMessage(content="first answer"),
+    ]
+
+    model_instance = mock.MagicMock(spec=ModelInstance)
+
+    memory_config = MemoryConfig(
+        role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
+        window=MemoryConfig.WindowConfig(enabled=True, size=3),
+    )
+
+    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = _handle_memory_completion_mode(
+            memory=memory,
+            memory_config=memory_config,
+            model_instance=model_instance,
+        )
+
+    assert memory_text == "Human: first question\n[image]\nAssistant: first answer"
+    mock_rest_token.assert_called_once_with(prompt_messages=[], model_instance=model_instance)
+    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=3)
+
+
 @pytest.fixture
 def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_state) -> tuple[LLMNode, LLMFileSaver]:
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
@@ -601,6 +639,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
+        model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
     )
     return node, mock_file_saver

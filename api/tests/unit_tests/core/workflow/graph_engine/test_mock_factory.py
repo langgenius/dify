@@ -8,9 +8,9 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.enums import NodeType
-from core.workflow.nodes.base.node import Node
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.enums import NodeType
+from dify_graph.nodes.base.node import Node
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -28,8 +28,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -112,7 +112,6 @@ class MockNodeFactory(DifyNodeFactory):
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
                     code_executor=self._code_executor,
-                    code_providers=self._code_providers,
                     code_limits=self._code_limits,
                 )
             elif node_type == NodeType.HTTP_REQUEST:
@@ -123,6 +122,9 @@ class MockNodeFactory(DifyNodeFactory):
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
                     http_request_config=self._http_request_config,
+                    http_client=self._http_request_http_client,
+                    tool_file_manager_factory=self._http_request_tool_file_manager_factory,
+                    file_manager=self._http_request_file_manager,
                 )
             elif node_type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER, NodeType.PARAMETER_EXTRACTOR}:
                 mock_instance = mock_class(

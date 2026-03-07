@@ -7,14 +7,14 @@ import pytest
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 
 # ==============================
 # Dummy Helper Classes
@@ -93,6 +93,7 @@ def runner(mocker):
     queue_manager = MagicMock()
     model_instance = MagicMock()
     model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
 
     message = MagicMock(id="msg1")
     conversation = MagicMock(id="conv1")

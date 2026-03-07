@@ -5,8 +5,8 @@ import pytest
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.nodes.agent.exc import AgentMaxIterationError
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 
 
 class DummyRunner(CotAgentRunner):
@@ -47,6 +47,7 @@ def runner(mocker):
 
     model_instance = MagicMock()
     model_instance.model = "test-model"
+    model_instance.model_name = "test-model"
     model_instance.invoke_llm.return_value = []
 
     model_config = MagicMock()
@@ -386,7 +387,7 @@ class TestRun:
         runner.update_prompt_message_tool.assert_called_once()
 
     def test_historic_with_assistant_and_tool_calls(self, runner):
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage, ToolPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, ToolPromptMessage
 
         assistant = AssistantPromptMessage(content="thinking")
         assistant.tool_calls = [MagicMock(function=MagicMock(name="tool", arguments='{"a":1}'))]
@@ -399,7 +400,7 @@ class TestRun:
         assert isinstance(result, list)
 
     def test_historic_final_flush_branch(self, runner):
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         assistant = AssistantPromptMessage(content="final")
         runner.history_prompt_messages = [assistant]
@@ -457,7 +458,7 @@ class TestFillInputsEdgeCases:
 
 class TestOrganizeHistoricPromptMessagesExtended:
     def test_user_message_flushes_scratchpad(self, runner, mocker):
-        from core.model_runtime.entities.message_entities import UserPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import UserPromptMessage
 
         user_message = UserPromptMessage(content="Hi")
 
@@ -472,7 +473,7 @@ class TestOrganizeHistoricPromptMessagesExtended:
         assert result == ["final"]
 
     def test_tool_message_without_scratchpad_raises(self, runner):
-        from core.model_runtime.entities.message_entities import ToolPromptMessage
+        from dify_graph.model_runtime.entities.message_entities import ToolPromptMessage
 
         runner.history_prompt_messages = [ToolPromptMessage(content="obs", tool_call_id="1")]
 
