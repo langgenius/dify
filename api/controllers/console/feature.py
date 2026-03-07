@@ -1,6 +1,7 @@
 from flask_restx import Resource, fields
 from werkzeug.exceptions import Unauthorized
 
+from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant, current_user, login_required
 from services.feature_service import FeatureService
 
@@ -36,7 +37,7 @@ class SystemFeatureApi(Resource):
         200,
         "Success",
         console_ns.model(
-            "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
+            "SystemFeatureResponse", {"d": fields.String(description="Base64-encoded JSON feature payload")}
         ),
     )
     def get(self):
@@ -57,4 +58,6 @@ class SystemFeatureApi(Resource):
             is_authenticated = current_user.is_authenticated
         except Unauthorized:
             is_authenticated = False
-        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        return FieldEncryption.encode_response(
+            FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        )

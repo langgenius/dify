@@ -1,4 +1,5 @@
-import type { ModelProviderQuotaGetPaid } from './model-provider'
+import * as z from 'zod'
+import { ModelProviderQuotaGetPaid } from './model-provider'
 
 export enum SSOProtocol {
   SAML = 'saml',
@@ -22,49 +23,59 @@ export enum InstallationScope {
   OFFICIAL_AND_PARTNER = 'official_and_specific_partners',
 }
 
-type License = {
-  status: LicenseStatus
-  expired_at: string | null
-}
+const ssoProtocolOrEmptySchema = z.nativeEnum(SSOProtocol).or(z.literal(''))
 
-export type SystemFeatures = {
-  trial_models: ModelProviderQuotaGetPaid[]
-  plugin_installation_permission: {
-    plugin_installation_scope: InstallationScope
-    restrict_to_marketplace_only: boolean
-  }
-  sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: SSOProtocol | ''
-  sso_enforced_for_web: boolean
-  sso_enforced_for_web_protocol: SSOProtocol | ''
-  enable_marketplace: boolean
-  enable_change_email: boolean
-  enable_email_code_login: boolean
-  enable_email_password_login: boolean
-  enable_social_oauth_login: boolean
-  is_allow_create_workspace: boolean
-  is_allow_register: boolean
-  is_email_setup: boolean
-  license: License
-  branding: {
-    enabled: boolean
-    login_page_logo: string
-    workspace_logo: string
-    favicon: string
-    application_title: string
-  }
-  webapp_auth: {
-    enabled: boolean
-    allow_sso: boolean
-    sso_config: {
-      protocol: SSOProtocol | ''
-    }
-    allow_email_code_login: boolean
-    allow_email_password_login: boolean
-  }
-  enable_trial_app: boolean
-  enable_explore_banner: boolean
-}
+// Zod schema is the single source of truth for SystemFeatures.
+// The TypeScript type is derived from it via z.infer<> so they can never diverge.
+// Uses .passthrough() on nested objects to allow forward-compatible API additions.
+export const systemFeaturesSchema = z
+  .object({
+    trial_models: z.array(z.nativeEnum(ModelProviderQuotaGetPaid)),
+    plugin_installation_permission: z
+      .object({
+        plugin_installation_scope: z.nativeEnum(InstallationScope),
+        restrict_to_marketplace_only: z.boolean(),
+      })
+      .passthrough(),
+    sso_enforced_for_signin: z.boolean(),
+    sso_enforced_for_signin_protocol: ssoProtocolOrEmptySchema,
+    sso_enforced_for_web: z.boolean(),
+    sso_enforced_for_web_protocol: ssoProtocolOrEmptySchema,
+    enable_marketplace: z.boolean(),
+    enable_change_email: z.boolean(),
+    enable_email_code_login: z.boolean(),
+    enable_email_password_login: z.boolean(),
+    enable_social_oauth_login: z.boolean(),
+    is_allow_create_workspace: z.boolean(),
+    is_allow_register: z.boolean(),
+    is_email_setup: z.boolean(),
+    license: z
+      .object({ status: z.nativeEnum(LicenseStatus), expired_at: z.string().nullable() })
+      .passthrough(),
+    branding: z
+      .object({
+        enabled: z.boolean(),
+        login_page_logo: z.string(),
+        workspace_logo: z.string(),
+        favicon: z.string(),
+        application_title: z.string(),
+      })
+      .passthrough(),
+    webapp_auth: z
+      .object({
+        enabled: z.boolean(),
+        allow_sso: z.boolean(),
+        sso_config: z.object({ protocol: ssoProtocolOrEmptySchema }).passthrough(),
+        allow_email_code_login: z.boolean(),
+        allow_email_password_login: z.boolean(),
+      })
+      .passthrough(),
+    enable_trial_app: z.boolean(),
+    enable_explore_banner: z.boolean(),
+  })
+  .passthrough()
+
+export type SystemFeatures = z.infer<typeof systemFeaturesSchema>
 
 export const defaultSystemFeatures: SystemFeatures = {
   trial_models: [],
