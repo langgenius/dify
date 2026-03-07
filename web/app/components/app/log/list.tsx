@@ -16,7 +16,7 @@ import { get } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
@@ -957,6 +957,11 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     )
   }
 
+  const drawerContextValue = useMemo(() => ({
+    onClose: onCloseDrawer,
+    appDetail,
+  }), [onCloseDrawer, appDetail])
+
   if (!logs)
     return <Loading />
 
@@ -1040,10 +1045,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         footer={null}
         panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
       >
-        <DrawerContext.Provider value={useMemo(() => ({
-          onClose: onCloseDrawer,
-          appDetail,
-        }), [onCloseDrawer, appDetail])}
+        <DrawerContext.Provider value={drawerContextValue}
         >
           {isChatMode
             ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />

@@ -169,16 +169,6 @@ const Configuration: FC = () => {
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<FormValue>({})
   const [_, setTempStop, getTempStop] = useGetState<string[]>([])
-  const setCompletionParams = useCallback((value: FormValue) => {
-    const params = { ...value }
-
-    // eslint-disable-next-line ts/no-use-before-define
-    if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
-      params.stop = getTempStop()
-      setTempStop([])
-    }
-    doSetCompletionParams(params)
-  }, [getTempStop, setTempStop])
 
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
     provider: 'langgenius/openai/openai',
@@ -211,6 +201,23 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
+
+  const modelModeType = modelConfig.mode
+  const modeModeTypeRef = useRef(modelModeType)
+  useEffect(() => {
+    modeModeTypeRef.current = modelModeType
+  }, [modelModeType])
+
+  const setCompletionParams = useCallback((value: FormValue) => {
+    const params = { ...value }
+
+    if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
+      params.stop = getTempStop()
+      setTempStop([])
+    }
+    doSetCompletionParams(params)
+  }, [getTempStop, setTempStop])
+
   const isAgent = mode === AppModeEnum.AGENT_CHAT
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
@@ -238,12 +245,6 @@ const Configuration: FC = () => {
   const setModelConfig = useCallback((newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
   }, [])
-
-  const modelModeType = modelConfig.mode
-  const modeModeTypeRef = useRef(modelModeType)
-  useEffect(() => {
-    modeModeTypeRef.current = modelModeType
-  }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
@@ -395,32 +396,6 @@ const Configuration: FC = () => {
   const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
-  const setPromptMode = useCallback(async (mode: PromptMode) => {
-    if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line ts/no-use-before-define
-      await migrateToDefaultPrompt()
-      setCanReturnToSimpleMode(true)
-    }
-
-    doSetPromptMode(mode)
-  }, [migrateToDefaultPrompt])
-  const [visionConfig, doSetVisionConfig] = useState({
-    enabled: false,
-    number_limits: 2,
-    detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
-  })
-
-  const handleSetVisionConfig = useCallback((config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
-    doSetVisionConfig({
-      enabled: config.enabled || false,
-      number_limits: config.number_limits || 2,
-      detail: config.detail || Resolution.low,
-      transfer_methods: config.transfer_methods || [TransferMethod.local_file],
-    })
-    if (!notNoticeFormattingChanged)
-      formattingChangedDispatcher()
-  }, [formattingChangedDispatcher])
 
   const {
     chatPromptConfig,
@@ -446,6 +421,34 @@ const Configuration: FC = () => {
     setCompletionParams,
     setStop: setTempStop,
   })
+
+  const setPromptMode = useCallback(async (mode: PromptMode) => {
+    if (mode === PromptMode.advanced) {
+      await migrateToDefaultPrompt()
+      setCanReturnToSimpleMode(true)
+    }
+
+    doSetPromptMode(mode)
+  }, [migrateToDefaultPrompt])
+
+  const [visionConfig, doSetVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+
+  const handleSetVisionConfig = useCallback((config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
+    doSetVisionConfig({
+      enabled: config.enabled || false,
+      number_limits: config.number_limits || 2,
+      detail: config.detail || Resolution.low,
+      transfer_methods: config.transfer_methods || [TransferMethod.local_file],
+    })
+    if (!notNoticeFormattingChanged)
+      formattingChangedDispatcher()
+  }, [formattingChangedDispatcher])
+
   const setModel = async ({
     modelId,
     provider,
@@ -874,13 +877,6 @@ const Configuration: FC = () => {
     setAppSidebarExpand('collapse')
   }
 
-  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
-      </div>
-    )
-  }
   const value = useMemo(() => ({
     appId,
     isAPIKeySet,
@@ -1010,6 +1006,15 @@ const Configuration: FC = () => {
     isShowAudioConfig,
     rerankSettingModalOpen,
   ])
+
+  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading type="area" />
+      </div>
+    )
+  }
+
   return (
     <ConfigContext.Provider value={value}>
       <FeaturesProvider features={featuresData}>
