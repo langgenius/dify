@@ -45,12 +45,12 @@ const InputsFormContent = ({ showTip }: Props) => {
   return (
     <div className="space-y-4">
       {visibleInputsForms.map(form => (
-        <div key={form.variable} className="space-y-1">
+        <div key={form.variable} className="space-y-1" data-testid={`inputs-form-item-${form.variable}`}>
           {form.type !== InputVarType.checkbox && (
             <div className="flex h-6 items-center gap-1">
-              <div className="system-md-semibold text-text-secondary">{form.label}</div>
+              <div className="text-text-secondary system-md-semibold">{form.label}</div>
               {!form.required && (
-                <div className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</div>
+                <div className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</div>
               )}
             </div>
           )}
@@ -125,7 +125,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={v => handleFormChange(form.variable, v)}
               noWrapper
-              className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+              className="h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
               placeholder={
                 <div className="whitespace-pre">{form.json_schema}</div>
               }
@@ -134,7 +134,7 @@ const InputsFormContent = ({ showTip }: Props) => {
         </div>
       ))}
       {showTip && (
-        <div className="system-xs-regular text-text-tertiary">{t('chat.chatFormTip', { ns: 'share' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t('chat.chatFormTip', { ns: 'share' })}</div>
       )}
     </div>
   )
