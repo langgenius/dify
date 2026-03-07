@@ -12,16 +12,29 @@ This module provides a robust table-driven testing framework with support for:
 
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from core.app.workflow.node_factory import DifyNodeFactory
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.variables import (
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import (
+    GraphEngineEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -30,22 +43,52 @@ from core.variables import (
     ObjectVariable,
     StringVariable,
 )
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_events import (
-    GraphEngineEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-)
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
 
 logger = logging.getLogger(__name__)
+
+
+class _TableTestChildEngineBuilder:
+    def __init__(self, *, use_mock_factory: bool, mock_config: MockConfig | None) -> None:
+        self._use_mock_factory = use_mock_factory
+        self._mock_config = mock_config
+
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: Mapping[str, Any],
+        root_node_id: str,
+        layers: Sequence[object] = (),
+    ) -> GraphEngine:
+        if self._use_mock_factory:
+            node_factory = MockNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state,
+                mock_config=self._mock_config,
+            )
+        else:
+            node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
+
+        child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
+        if not child_graph:
+            raise ValueError("child graph not found")
+
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
+            child_engine_builder=self,
+        )
+        for layer in layers:
+            child_engine.layer(cast(GraphEngineLayer, layer))
+        return child_engine
 
 
 @dataclass
@@ -149,19 +192,23 @@ class WorkflowRunner:
             raise ValueError("Fixture missing workflow.graph configuration")
 
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config=graph_config,
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",  # Set to debugger to avoid conversation_id requirement
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,  # Set to debugger to avoid conversation_id requirement
+                }
+            },
             call_depth=0,
         )
 
         system_variables = SystemVariable(
-            user_id=graph_init_params.user_id,
-            app_id=graph_init_params.app_id,
+            user_id="test_user",
+            app_id="test_app",
             workflow_id=graph_init_params.workflow_id,
             files=[],
             query=query,
@@ -314,6 +361,10 @@ class TableTestRunner:
                     max_workers=self.graph_engine_max_workers,
                     scale_up_threshold=self.graph_engine_scale_up_threshold,
                     scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                ),
+                child_engine_builder=_TableTestChildEngineBuilder(
+                    use_mock_factory=test_case.use_auto_mock,
+                    mock_config=test_case.mock_config,
                 ),
             )
 
@@ -547,8 +598,22 @@ class TableTestRunner:
         """Run tests in parallel."""
         results = []
 
+        flask_app: Any = None
+        try:
+            from flask import current_app
+
+            flask_app = current_app._get_current_object()  # type: ignore[attr-defined]
+        except RuntimeError:
+            flask_app = None
+
+        def _run_test_case_with_context(test_case: WorkflowTestCase) -> WorkflowTestResult:
+            if flask_app is None:
+                return self.run_test_case(test_case)
+            with flask_app.app_context():
+                return self.run_test_case(test_case)
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_test = {executor.submit(self.run_test_case, tc): tc for tc in test_cases}
+            future_to_test = {executor.submit(_run_test_case_with_context, tc): tc for tc in test_cases}
 
             for future in as_completed(future_to_test):
                 test_case = future_to_test[future]

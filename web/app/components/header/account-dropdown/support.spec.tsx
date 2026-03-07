@@ -1,6 +1,7 @@
 import type { AppContextValue } from '@/context/app-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
@@ -8,6 +9,10 @@ import Support from './support'
 
 const { mockZendeskKey } = vi.hoisted(() => ({
   mockZendeskKey: { value: 'test-key' },
+}))
+
+const { mockSupportEmailKey } = vi.hoisted(() => ({
+  mockSupportEmailKey: { value: '' },
 }))
 
 vi.mock('@/context/app-context', async (importOriginal) => {
@@ -32,6 +37,7 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     IS_CE_EDITION: false,
     get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
+    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value },
   }
 })
 
@@ -83,6 +89,7 @@ describe('Support', () => {
     vi.clearAllMocks()
     window.zE = vi.fn()
     mockZendeskKey.value = 'test-key'
+    mockSupportEmailKey.value = ''
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
@@ -93,10 +100,21 @@ describe('Support', () => {
     })
   })
 
+  const renderSupport = () => {
+    return render(
+      <DropdownMenu open={true} onOpenChange={() => { }}>
+        <DropdownMenuTrigger>open</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <Support closeAccountDropdown={mockCloseAccountDropdown} />
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    )
+  }
+
   describe('Rendering', () => {
     it('should render support menu trigger', () => {
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
+      renderSupport()
 
       // Assert
       expect(screen.getByText('common.userProfile.support')).toBeInTheDocument()
@@ -104,8 +122,8 @@ describe('Support', () => {
 
     it('should show forum and community links when opened', () => {
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
@@ -113,11 +131,11 @@ describe('Support', () => {
     })
   })
 
-  describe('Plan-based Channels', () => {
+  describe('Dedicated Channels', () => {
     it('should show "Contact Us" when ZENDESK_WIDGET_KEY is present', () => {
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
@@ -134,8 +152,8 @@ describe('Support', () => {
       })
 
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
@@ -147,20 +165,41 @@ describe('Support', () => {
       mockZendeskKey.value = ''
 
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
       expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
+    })
+
+    it('should show email support if specified in the config', () => {
+      // Arrange
+      mockZendeskKey.value = ''
+      mockSupportEmailKey.value = 'support@example.com'
+      vi.mocked(useProviderContext).mockReturnValue({
+        ...baseProviderContextValue,
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.sandbox,
+        },
+      })
+
+      // Act
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.emailSupport')).toBeInTheDocument()
+      expect(screen.getByText('common.userProfile.emailSupport')?.closest('a')?.getAttribute('href')?.startsWith(`mailto:${mockSupportEmailKey.value}`)).toBe(true)
     })
   })
 
   describe('Interactions and Links', () => {
     it('should call toggleZendeskWindow and closeAccountDropdown when "Contact Us" is clicked', () => {
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
       fireEvent.click(screen.getByText('common.userProfile.contactUs'))
 
       // Assert
@@ -170,8 +209,8 @@ describe('Support', () => {
 
     it('should have correct forum and community links', () => {
       // Act
-      render(<Support closeAccountDropdown={mockCloseAccountDropdown} />)
-      fireEvent.click(screen.getByRole('button'))
+      renderSupport()
+      fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
       const forumLink = screen.getByText('common.userProfile.forum').closest('a')

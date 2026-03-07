@@ -12,9 +12,17 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged():
     conversation.id = "conversation-id"
 
     with (
-        patch("controllers.console.app.conversation.current_account_with_tenant", return_value=(account, None)),
-        patch("controllers.console.app.conversation.naive_utc_now", return_value=datetime(2026, 2, 9, 0, 0, 0)),
-        patch("controllers.console.app.conversation.db.session") as mock_session,
+        patch(
+            "controllers.console.app.conversation.current_account_with_tenant",
+            return_value=(account, None),
+            autospec=True,
+        ),
+        patch(
+            "controllers.console.app.conversation.naive_utc_now",
+            return_value=datetime(2026, 2, 9, 0, 0, 0),
+            autospec=True,
+        ),
+        patch("controllers.console.app.conversation.db.session", autospec=True) as mock_session,
     ):
         mock_session.query.return_value.where.return_value.first.return_value = conversation
 
