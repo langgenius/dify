@@ -234,6 +234,7 @@ class TestWorkflowService:
             workflow=workflow,
             node_config={"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}},
             manual_inputs={"#node-0.result#": "LLM output"},
+            user_id="account-1",
         )
 
         node.render_form_content_with_outputs.assert_called_once()
