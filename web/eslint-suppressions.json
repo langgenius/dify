@@ -4796,9 +4796,6 @@
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
@@ -8197,9 +8194,6 @@
   "app/components/workflow/nodes/llm/panel.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
