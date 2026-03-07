@@ -1,7 +1,7 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TransferMethod } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { vi } from 'vitest'
@@ -52,6 +52,8 @@ vi.mock('@/app/components/base/file-uploader/store', () => ({
 // ---------------------------------------------------------------------------
 // File-uploader hooks – provide stable drag/drop handlers
 // ---------------------------------------------------------------------------
+let mockIsDragActive = false
+
 vi.mock('@/app/components/base/file-uploader/hooks', () => ({
   useFile: () => ({
     handleDragFileEnter: vi.fn(),
@@ -59,7 +61,7 @@ vi.mock('@/app/components/base/file-uploader/hooks', () => ({
     handleDragFileOver: vi.fn(),
     handleDropFile: vi.fn(),
     handleClipboardPasteFile: vi.fn(),
-    isDragActive: false,
+    isDragActive: mockIsDragActive,
   }),
 }))
 
@@ -210,6 +212,7 @@ describe('ChatInputArea', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFileStore.files = []
+    mockIsDragActive = false
     mockIsMultipleLine = false
   })
 
@@ -234,6 +237,12 @@ describe('ChatInputArea', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
       const disabledWrapper = container.querySelector('.pointer-events-none')
       expect(disabledWrapper).toBeInTheDocument()
+    })
+
+    it('should apply drag-active styles when a file is being dragged over the input', () => {
+      mockIsDragActive = true
+      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
+      expect(container.querySelector('.border-dashed')).toBeInTheDocument()
     })
 
     it('should render the operation section inline when single-line', () => {
@@ -330,6 +339,30 @@ describe('ChatInputArea', () => {
       await user.click(screen.getByTestId('send-button'))
 
       expect(onSend).toHaveBeenCalledWith('With attachment', [uploadedFile])
+    })
+
+    it('should not send on Enter while IME composition is active, then send after composition ends', () => {
+      vi.useFakeTimers()
+      try {
+        const onSend = vi.fn()
+        render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+        const textarea = getTextarea()
+
+        fireEvent.change(textarea, { target: { value: 'Composed text' } })
+        fireEvent.compositionStart(textarea)
+        fireEvent.keyDown(textarea, { key: 'Enter' })
+
+        expect(onSend).not.toHaveBeenCalled()
+
+        fireEvent.compositionEnd(textarea)
+        vi.advanceTimersByTime(60)
+        fireEvent.keyDown(textarea, { key: 'Enter' })
+
+        expect(onSend).toHaveBeenCalledWith('Composed text', [])
+      }
+      finally {
+        vi.useRealTimers()
+      }
     })
   })
 
