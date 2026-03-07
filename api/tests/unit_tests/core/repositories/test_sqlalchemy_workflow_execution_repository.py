@@ -17,6 +17,7 @@ def mock_session_factory():
     """Mock SQLAlchemy session factory."""
     session_factory = MagicMock(spec=sessionmaker)
     session = MagicMock()
+    session.get.return_value = None
     session_factory.return_value.__enter__.return_value = session
     return session_factory
 

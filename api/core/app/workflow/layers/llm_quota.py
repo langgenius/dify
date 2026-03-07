@@ -75,8 +75,9 @@ class LLMQuotaLayer(GraphEngineLayer):
             return
 
         try:
+            dify_ctx = node.require_dify_context()
             deduct_llm_quota(
-                tenant_id=node.tenant_id,
+                tenant_id=dify_ctx.tenant_id,
                 model_instance=model_instance,
                 usage=result_event.node_run_result.llm_usage,
             )

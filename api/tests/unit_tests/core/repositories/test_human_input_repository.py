@@ -186,18 +186,16 @@ class _FakeSession:
         return None
 
 
-def _session_factory(session: _FakeSession):
-    class _SessionContext:
-        def __enter__(self) -> _FakeSession:
-            return session
+class _SessionFactoryStub:
+    def __init__(self, session: _FakeSession):
+        self._session = session
 
-        def __exit__(self, exc_type, exc, tb) -> None:
-            return None
+    def create_session(self) -> _FakeSession:
+        return self._session
 
-    def _factory(*_args: Any, **_kwargs: Any) -> _SessionContext:
-        return _SessionContext()
 
-    return _factory
+def _patch_session_factory(monkeypatch: pytest.MonkeyPatch, session: _FakeSession) -> None:
+    monkeypatch.setattr("core.repositories.human_input_repository.session_factory", _SessionFactoryStub(session))
 
 
 def test_recipient_entity_token_raises_when_missing() -> None:
@@ -297,7 +295,7 @@ def test_create_email_recipients_from_resolved_dedupes_and_skips_blank(monkeypat
 
     monkeypatch.setattr("core.repositories.human_input_repository.HumanInputFormRecipient.new", classmethod(fake_new))
 
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     recipients = repo._create_email_recipients_from_resolved(  # type: ignore[attr-defined]
         form_id="f",
         delivery_id="d",
@@ -312,13 +310,13 @@ def test_create_email_recipients_from_resolved_dedupes_and_skips_blank(monkeypat
 
 
 def test_query_workspace_members_by_ids_empty_returns_empty() -> None:
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     assert repo._query_workspace_members_by_ids(session=MagicMock(), restrict_to_user_ids=["", ""]) == []
 
 
 def test_query_workspace_members_by_ids_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com"), ("u2", "b@example.com")])
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     rows = repo._query_workspace_members_by_ids(session=session, restrict_to_user_ids=["u1", "u2"])
     assert rows == [
         _WorkspaceMemberInfo(user_id="u1", email="a@example.com"),
@@ -328,22 +326,18 @@ def test_query_workspace_members_by_ids_maps_rows() -> None:
 
 def test_query_all_workspace_members_maps_rows() -> None:
     session = _FakeSession(execute_rows=[("u1", "a@example.com")])
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     rows = repo._query_all_workspace_members(session=session)
     assert rows == [_WorkspaceMemberInfo(user_id="u1", email="a@example.com")]
 
 
-def test_repository_init_accepts_engine_session_factory() -> None:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    engine = create_engine("sqlite:///:memory:")
-    repo = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id="tenant")
-    assert isinstance(repo._session_factory, sessionmaker)
+def test_repository_init_sets_tenant_id() -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    assert repo._tenant_id == "tenant"
 
 
 def test_delivery_method_to_model_webapp_creates_delivery_and_recipient(monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
     result = repo._delivery_method_to_model(
         session=MagicMock(), form_id="form-1", delivery_method=WebAppDeliveryMethod()
@@ -355,7 +349,7 @@ def test_delivery_method_to_model_webapp_creates_delivery_and_recipient(monkeypa
 
 
 def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
     called: dict[str, Any] = {}
 
@@ -383,7 +377,7 @@ def test_delivery_method_to_model_email_uses_build_email_recipients(monkeypatch:
 
 
 def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     monkeypatch.setattr(
         repo,
         "_query_all_workspace_members",
@@ -400,7 +394,7 @@ def test_build_email_recipients_uses_all_members_when_whole_workspace(monkeypatc
 
 
 def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = HumanInputFormRepositoryImpl(session_factory=MagicMock(), tenant_id="tenant")
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
 
     def fake_query(*, session: Any, restrict_to_user_ids: Sequence[str]) -> list[_WorkspaceMemberInfo]:
         assert restrict_to_user_ids == ["u1"]
@@ -420,8 +414,9 @@ def test_build_email_recipients_uses_selected_members_when_not_whole_workspace(m
     assert recipients == ["ok"]
 
 
-def test_get_form_returns_entity_and_none_when_missing() -> None:
-    repo = HumanInputFormRepositoryImpl(_session_factory(_FakeSession(scalars_results=[None])), tenant_id="tenant")
+def test_get_form_returns_entity_and_none_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_results=[None]))
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     assert repo.get_form("run", "node") is None
 
     form = _DummyForm(
@@ -441,7 +436,8 @@ def test_get_form_returns_entity_and_none_when_missing() -> None:
         access_token="tok",
     )
     session = _FakeSession(scalars_results=[form, [recipient]])
-    repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant")
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
     entity = repo.get_form("run", "node")
     assert entity is not None
     assert entity.id == "f1"
@@ -457,7 +453,8 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
     monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: next(ids))
 
     session = _FakeSession()
-    repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant")
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
 
     form_config = HumanInputNodeData(
         title="Title",
@@ -489,25 +486,23 @@ def test_create_form_adds_console_and_backstage_recipients(monkeypatch: pytest.M
     assert len(entity.recipients) == 3
 
 
-def test_submission_get_by_token_returns_none_when_missing_or_form_missing() -> None:
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(scalars_result=None)))
+def test_submission_get_by_token_returns_none_when_missing_or_form_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_result=None))
+    repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_token("tok") is None
 
     recipient = SimpleNamespace(form=None)
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(scalars_result=recipient)))
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_result=recipient))
+    repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_token("tok") is None
 
 
-def test_submission_repository_init_accepts_engine_session_factory() -> None:
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    engine = create_engine("sqlite:///:memory:")
-    repo = HumanInputFormSubmissionRepository(session_factory=engine)
-    assert isinstance(repo._session_factory, sessionmaker)
+def test_submission_repository_init_no_args() -> None:
+    repo = HumanInputFormSubmissionRepository()
+    assert isinstance(repo, HumanInputFormSubmissionRepository)
 
 
-def test_submission_get_by_token_and_get_by_form_id_success_paths() -> None:
+def test_submission_get_by_token_and_get_by_form_id_success_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f1",
         workflow_run_id=None,
@@ -526,19 +521,22 @@ def test_submission_get_by_token_and_get_by_form_id_success_paths() -> None:
         form=form,
     )
 
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(scalars_result=recipient)))
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_result=recipient))
+    repo = HumanInputFormSubmissionRepository()
     record = repo.get_by_token("tok")
     assert record is not None
     assert record.access_token == "tok"
 
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(scalars_result=recipient)))
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_result=recipient))
+    repo = HumanInputFormSubmissionRepository()
     record = repo.get_by_form_id_and_recipient_type(form_id=form.id, recipient_type=RecipientType.STANDALONE_WEB_APP)
     assert record is not None
     assert record.recipient_id == "r1"
 
 
-def test_submission_get_by_form_id_returns_none_on_missing() -> None:
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(scalars_result=None)))
+def test_submission_get_by_form_id_returns_none_on_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_session_factory(monkeypatch, _FakeSession(scalars_result=None))
+    repo = HumanInputFormSubmissionRepository()
     assert repo.get_by_form_id_and_recipient_type(form_id="f", recipient_type=RecipientType.CONSOLE) is None
 
 
@@ -547,7 +545,8 @@ def test_mark_submitted_updates_and_raises_when_missing(monkeypatch: pytest.Monk
     monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
 
     missing_session = _FakeSession(forms={})
-    repo = HumanInputFormSubmissionRepository(_session_factory(missing_session))
+    _patch_session_factory(monkeypatch, missing_session)
+    repo = HumanInputFormSubmissionRepository()
     with pytest.raises(FormNotFoundError, match="form not found"):
         repo.mark_submitted(
             form_id="missing",
@@ -570,7 +569,8 @@ def test_mark_submitted_updates_and_raises_when_missing(monkeypatch: pytest.Monk
     )
     recipient = _DummyRecipient(id="r", form_id=form.id, recipient_type=RecipientType.CONSOLE, access_token="tok")
     session = _FakeSession(forms={form.id: form}, recipients={recipient.id: recipient})
-    repo = HumanInputFormSubmissionRepository(_session_factory(session))
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormSubmissionRepository()
     record = repo.mark_submitted(
         form_id=form.id,
         recipient_id=recipient.id,
@@ -584,7 +584,7 @@ def test_mark_submitted_updates_and_raises_when_missing(monkeypatch: pytest.Monk
     assert record.submitted_data == {"k": "v"}
 
 
-def test_mark_timeout_invalid_status_raises() -> None:
+def test_mark_timeout_invalid_status_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f",
         workflow_run_id=None,
@@ -596,12 +596,13 @@ def test_mark_timeout_invalid_status_raises() -> None:
         expiration_time=naive_utc_now(),
     )
     session = _FakeSession(forms={form.id: form})
-    repo = HumanInputFormSubmissionRepository(_session_factory(session))
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormSubmissionRepository()
     with pytest.raises(_InvalidTimeoutStatusError, match="invalid timeout status"):
         repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.SUBMITTED)  # type: ignore[arg-type]
 
 
-def test_mark_timeout_already_timed_out_returns_record() -> None:
+def test_mark_timeout_already_timed_out_returns_record(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f",
         workflow_run_id=None,
@@ -614,12 +615,13 @@ def test_mark_timeout_already_timed_out_returns_record() -> None:
         status=HumanInputFormStatus.TIMEOUT,
     )
     session = _FakeSession(forms={form.id: form})
-    repo = HumanInputFormSubmissionRepository(_session_factory(session))
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormSubmissionRepository()
     record = repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.TIMEOUT, reason="r")
     assert record.status == HumanInputFormStatus.TIMEOUT
 
 
-def test_mark_timeout_submitted_raises_form_not_found() -> None:
+def test_mark_timeout_submitted_raises_form_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f",
         workflow_run_id=None,
@@ -632,12 +634,13 @@ def test_mark_timeout_submitted_raises_form_not_found() -> None:
         status=HumanInputFormStatus.SUBMITTED,
     )
     session = _FakeSession(forms={form.id: form})
-    repo = HumanInputFormSubmissionRepository(_session_factory(session))
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormSubmissionRepository()
     with pytest.raises(FormNotFoundError, match="form already submitted"):
         repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
 
 
-def test_mark_timeout_updates_fields() -> None:
+def test_mark_timeout_updates_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     form = _DummyForm(
         id="f",
         workflow_run_id=None,
@@ -655,7 +658,8 @@ def test_mark_timeout_updates_fields() -> None:
         status=HumanInputFormStatus.WAITING,
     )
     session = _FakeSession(forms={form.id: form})
-    repo = HumanInputFormSubmissionRepository(_session_factory(session))
+    _patch_session_factory(monkeypatch, session)
+    repo = HumanInputFormSubmissionRepository()
     record = repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
     assert form.status == HumanInputFormStatus.EXPIRED
     assert form.selected_action_id is None
@@ -666,7 +670,8 @@ def test_mark_timeout_updates_fields() -> None:
     assert record.status == HumanInputFormStatus.EXPIRED
 
 
-def test_mark_timeout_raises_when_form_missing() -> None:
-    repo = HumanInputFormSubmissionRepository(_session_factory(_FakeSession(forms={})))
+def test_mark_timeout_raises_when_form_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_session_factory(monkeypatch, _FakeSession(forms={}))
+    repo = HumanInputFormSubmissionRepository()
     with pytest.raises(FormNotFoundError, match="form not found"):
         repo.mark_timeout(form_id="missing", timeout_status=HumanInputFormStatus.TIMEOUT)
