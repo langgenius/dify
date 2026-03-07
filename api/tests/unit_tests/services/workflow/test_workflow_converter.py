@@ -429,3 +429,562 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     for v in default_variables:
         template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
     assert llm_node["data"]["prompt_template"]["text"] == template
+
+
+# === Merged from test_workflow_converter_additional.py ===
+
+
+import json
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+
+from core.app.app_config.entities import (
+    AdvancedCompletionPromptTemplateEntity,
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    ExternalDataVariableEntity,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.nodes import NodeType
+from models.model import AppMode
+from services.workflow import workflow_converter as converter_module
+from services.workflow.workflow_converter import WorkflowConverter
+
+
+@pytest.fixture
+def converter() -> WorkflowConverter:
+    return WorkflowConverter()
+
+
+def _build_start_graph() -> dict[str, Any]:
+    return {
+        "nodes": [
+            {
+                "id": "start",
+                "position": None,
+                "data": {"type": NodeType.START, "variables": [{"variable": "name"}, {"variable": "city"}]},
+            }
+        ],
+        "edges": [],
+    }
+
+
+def _build_model_config(mode: str | LLMMode) -> ModelConfigEntity:
+    return ModelConfigEntity(provider="openai", model="gpt-4", mode=mode, parameters={}, stop=[])
+
+
+def test_convert_to_workflow_should_raise_when_app_model_config_is_missing(converter: WorkflowConverter) -> None:
+    # Arrange
+    app_model = SimpleNamespace(app_model_config=None)
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="App model config is required"):
+        converter.convert_to_workflow(
+            app_model=app_model,
+            account=SimpleNamespace(id="account-1"),
+            name="new-app",
+            icon_type="emoji",
+            icon="robot",
+            icon_background="#fff",
+        )
+
+
+@pytest.mark.parametrize(
+    ("source_mode", "expected_mode"),
+    [
+        (AppMode.CHAT, AppMode.ADVANCED_CHAT),
+        (AppMode.COMPLETION, AppMode.WORKFLOW),
+    ],
+)
+def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: AppMode,
+    expected_mode: AppMode,
+) -> None:
+    # Arrange
+    class FakeApp:
+        def __init__(self) -> None:
+            self.id = "new-app-id"
+
+    workflow = SimpleNamespace(app_id=None)
+    convert_mock = MagicMock(return_value=workflow)
+    monkeypatch.setattr(converter, "convert_app_model_config_to_workflow", convert_mock)
+    monkeypatch.setattr(converter_module, "App", FakeApp)
+    db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), commit=MagicMock())
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+    monkeypatch.setattr(converter_module.app_was_created, "send", MagicMock())
+    account = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(
+        tenant_id="tenant-1",
+        name="Source App",
+        mode=source_mode,
+        icon_type="emoji",
+        icon="sparkles",
+        icon_background="#123456",
+        enable_site=True,
+        enable_api=True,
+        api_rpm=10,
+        api_rph=100,
+        is_public=False,
+        app_model_config=SimpleNamespace(id="config-1"),
+    )
+
+    # Act
+    new_app = converter.convert_to_workflow(
+        app_model=app_model,
+        account=account,
+        name="",
+        icon_type="",
+        icon="",
+        icon_background="",
+    )
+
+    # Assert
+    assert new_app.name == "Source App(workflow)"
+    assert new_app.mode == expected_mode
+    assert new_app.icon_type == "emoji"
+    assert new_app.icon == "sparkles"
+    assert new_app.icon_background == "#123456"
+    assert new_app.created_by == "account-1"
+    assert workflow.app_id == "new-app-id"
+    db_session.add.assert_called_once()
+    db_session.flush.assert_called_once()
+    db_session.commit.assert_called_once()
+    converter_module.app_was_created.send.assert_called_once_with(new_app, account=account)
+
+
+def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_and_features(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
+    app_config = SimpleNamespace(
+        variables=[SimpleNamespace(variable="name")],
+        external_data_variables=[SimpleNamespace(variable="ext")],
+        dataset=SimpleNamespace(id="dataset"),
+        model=SimpleNamespace(),
+        prompt_template=SimpleNamespace(),
+        additional_features=SimpleNamespace(file_upload=SimpleNamespace()),
+        app_model_config_dict={
+            "opening_statement": "hello",
+            "suggested_questions": ["q1"],
+            "suggested_questions_after_answer": True,
+            "speech_to_text": True,
+            "text_to_speech": {"enabled": True},
+            "file_upload": {"enabled": True},
+            "sensitive_word_avoidance": {"enabled": True},
+            "retriever_resource": {"enabled": True},
+        },
+    )
+
+    class FakeWorkflow:
+        VERSION_DRAFT = "draft"
+
+        def __init__(self, **kwargs: Any) -> None:
+            self.__dict__.update(kwargs)
+
+    monkeypatch.setattr(converter, "_get_new_app_mode", MagicMock(return_value=AppMode.ADVANCED_CHAT))
+    monkeypatch.setattr(converter, "_convert_to_app_config", MagicMock(return_value=app_config))
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_start_node",
+        MagicMock(return_value={"id": "start", "position": None, "data": {"type": NodeType.START, "variables": []}}),
+    )
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_http_request_node",
+        MagicMock(
+            return_value=(
+                [{"id": "http", "position": None, "data": {"type": NodeType.HTTP_REQUEST}}],
+                {"ext": "code_1"},
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_knowledge_retrieval_node",
+        MagicMock(return_value={"id": "knowledge", "position": None, "data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}),
+    )
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_llm_node",
+        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": NodeType.LLM}}),
+    )
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_answer_node",
+        MagicMock(return_value={"id": "answer", "position": None, "data": {"type": NodeType.ANSWER}}),
+    )
+    monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
+    db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+
+    # Act
+    workflow = converter.convert_app_model_config_to_workflow(
+        app_model=app_model,
+        app_model_config=SimpleNamespace(id="cfg"),
+        account_id="account-1",
+    )
+
+    # Assert
+    graph = json.loads(workflow.graph)
+    node_ids = [node["id"] for node in graph["nodes"]]
+    assert node_ids == ["start", "http", "knowledge", "llm", "answer"]
+    features = json.loads(workflow.features)
+    assert "opening_statement" in features
+    assert "retriever_resource" in features
+    db_session.add.assert_called_once()
+    db_session.commit.assert_called_once()
+
+
+def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_end_node(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_config = SimpleNamespace(
+        variables=[SimpleNamespace(variable="name")],
+        external_data_variables=[],
+        dataset=SimpleNamespace(id="dataset"),
+        model=SimpleNamespace(),
+        prompt_template=SimpleNamespace(),
+        additional_features=None,
+        app_model_config_dict={
+            "text_to_speech": {"enabled": False},
+            "file_upload": {"enabled": False},
+            "sensitive_word_avoidance": {"enabled": False},
+        },
+    )
+
+    class FakeWorkflow:
+        VERSION_DRAFT = "draft"
+
+        def __init__(self, **kwargs: Any) -> None:
+            self.__dict__.update(kwargs)
+
+    monkeypatch.setattr(converter, "_get_new_app_mode", MagicMock(return_value=AppMode.WORKFLOW))
+    monkeypatch.setattr(converter, "_convert_to_app_config", MagicMock(return_value=app_config))
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_start_node",
+        MagicMock(return_value={"id": "start", "position": None, "data": {"type": NodeType.START, "variables": []}}),
+    )
+    monkeypatch.setattr(converter, "_convert_to_knowledge_retrieval_node", MagicMock(return_value=None))
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_llm_node",
+        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": NodeType.LLM}}),
+    )
+    monkeypatch.setattr(
+        converter,
+        "_convert_to_end_node",
+        MagicMock(return_value={"id": "end", "position": None, "data": {"type": NodeType.END}}),
+    )
+    monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
+    db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+
+    # Act
+    workflow = converter.convert_app_model_config_to_workflow(
+        app_model=app_model,
+        app_model_config=SimpleNamespace(id="cfg"),
+        account_id="account-1",
+    )
+
+    # Assert
+    graph = json.loads(workflow.graph)
+    node_ids = [node["id"] for node in graph["nodes"]]
+    assert node_ids == ["start", "llm", "end"]
+    features = json.loads(workflow.features)
+    assert set(features.keys()) == {"text_to_speech", "file_upload", "sensitive_word_avoidance"}
+
+
+def test_convert_to_app_config_should_route_to_correct_manager(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    agent_result = SimpleNamespace(kind="agent")
+    chat_result = SimpleNamespace(kind="chat")
+    completion_result = SimpleNamespace(kind="completion")
+    monkeypatch.setattr(converter_module.AgentChatAppConfigManager, "get_app_config", MagicMock(return_value=agent_result))
+    monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", MagicMock(return_value=chat_result))
+    monkeypatch.setattr(
+        converter_module.CompletionAppConfigManager,
+        "get_app_config",
+        MagicMock(return_value=completion_result),
+    )
+
+    # Act
+    from_agent_mode = converter._convert_to_app_config(
+        app_model=SimpleNamespace(mode=AppMode.AGENT_CHAT, is_agent=False),
+        app_model_config=SimpleNamespace(id="cfg-1"),
+    )
+    from_agent_flag = converter._convert_to_app_config(
+        app_model=SimpleNamespace(mode=AppMode.CHAT, is_agent=True),
+        app_model_config=SimpleNamespace(id="cfg-2"),
+    )
+    from_chat_mode = converter._convert_to_app_config(
+        app_model=SimpleNamespace(mode=AppMode.CHAT, is_agent=False),
+        app_model_config=SimpleNamespace(id="cfg-3"),
+    )
+    from_completion_mode = converter._convert_to_app_config(
+        app_model=SimpleNamespace(mode=AppMode.COMPLETION, is_agent=False),
+        app_model_config=SimpleNamespace(id="cfg-4"),
+    )
+
+    # Assert
+    assert from_agent_mode is agent_result
+    assert from_agent_flag is agent_result
+    assert from_chat_mode is chat_result
+    assert from_completion_mode is completion_result
+
+
+def test_convert_to_app_config_should_raise_for_invalid_app_mode(converter: WorkflowConverter) -> None:
+    # Arrange
+    app_model = SimpleNamespace(mode=AppMode.WORKFLOW, is_agent=False)
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="Invalid app mode"):
+        converter._convert_to_app_config(app_model=app_model, app_model_config=SimpleNamespace(id="cfg"))
+
+
+def test_convert_to_http_request_node_should_skip_non_api_and_missing_extension_id(
+    converter: WorkflowConverter,
+) -> None:
+    # Arrange
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
+    external_data_variables = [
+        ExternalDataVariableEntity(variable="skip_type", type="dataset", config={"api_based_extension_id": "x"}),
+        ExternalDataVariableEntity(variable="skip_config", type="api", config={}),
+    ]
+
+    # Act
+    nodes, mapping = converter._convert_to_http_request_node(
+        app_model=app_model,
+        variables=[],
+        external_data_variables=external_data_variables,
+    )
+
+    # Assert
+    assert nodes == []
+    assert mapping == {}
+
+
+def test_convert_to_knowledge_retrieval_node_should_return_none_for_workflow_without_query_variable(
+    converter: WorkflowConverter,
+) -> None:
+    # Arrange
+    dataset_config = DatasetEntity(
+        dataset_ids=["ds-1"],
+        retrieve_config=DatasetRetrieveConfigEntity(
+            query_variable=None,
+            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
+        ),
+    )
+    model_config = _build_model_config(mode=LLMMode.CHAT)
+
+    # Act
+    node = converter._convert_to_knowledge_retrieval_node(
+        new_app_mode=AppMode.WORKFLOW,
+        dataset_config=dataset_config,
+        model_config=model_config,
+    )
+
+    # Assert
+    assert node is None
+
+
+def test_convert_to_llm_node_should_raise_when_simple_chat_template_missing(
+    converter: WorkflowConverter,
+) -> None:
+    # Arrange
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.CHAT)
+    prompt_template = PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE)
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="Simple prompt template is required"):
+        converter._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            graph=graph,
+            model_config=model_config,
+            prompt_template=prompt_template,
+        )
+
+
+def test_convert_to_llm_node_should_raise_when_prompt_template_parser_type_is_invalid_for_chat(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.CHAT)
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+        simple_prompt_template="Hello {{name}}",
+    )
+    monkeypatch.setattr(
+        converter_module.SimplePromptTransform,
+        "get_prompt_template",
+        lambda self, **kwargs: {"prompt_template": "invalid"},
+    )
+
+    # Act / Assert
+    with pytest.raises(TypeError, match="Expected PromptTemplateParser"):
+        converter._convert_to_llm_node(
+            original_app_mode=AppMode.CHAT,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            graph=graph,
+            model_config=model_config,
+            prompt_template=prompt_template,
+        )
+
+
+def test_convert_to_llm_node_should_raise_when_simple_completion_template_missing(
+    converter: WorkflowConverter,
+) -> None:
+    # Arrange
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.COMPLETION)
+    prompt_template = PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE)
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="Simple prompt template is required"):
+        converter._convert_to_llm_node(
+            original_app_mode=AppMode.COMPLETION,
+            new_app_mode=AppMode.WORKFLOW,
+            graph=graph,
+            model_config=model_config,
+            prompt_template=prompt_template,
+        )
+
+
+def test_convert_to_llm_node_should_raise_when_completion_prompt_rules_type_is_invalid(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.COMPLETION)
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+        simple_prompt_template="Hello {{name}}",
+    )
+    monkeypatch.setattr(
+        converter_module.SimplePromptTransform,
+        "get_prompt_template",
+        lambda self, **kwargs: {"prompt_template": PromptTemplateParser("Hello {{name}}"), "prompt_rules": "invalid"},
+    )
+
+    # Act / Assert
+    with pytest.raises(TypeError, match="Expected dict for prompt_rules"):
+        converter._convert_to_llm_node(
+            original_app_mode=AppMode.COMPLETION,
+            new_app_mode=AppMode.ADVANCED_CHAT,
+            graph=graph,
+            model_config=model_config,
+            prompt_template=prompt_template,
+        )
+
+
+def test_convert_to_llm_node_should_use_empty_text_for_advanced_completion_without_template(
+    converter: WorkflowConverter,
+) -> None:
+    # Arrange
+    graph = _build_start_graph()
+    model_config = _build_model_config(mode=LLMMode.COMPLETION)
+    prompt_template = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
+        advanced_completion_prompt_template=None,
+    )
+
+    # Act
+    llm_node = converter._convert_to_llm_node(
+        original_app_mode=AppMode.COMPLETION,
+        new_app_mode=AppMode.WORKFLOW,
+        graph=graph,
+        model_config=model_config,
+        prompt_template=prompt_template,
+    )
+
+    # Assert
+    assert llm_node["data"]["prompt_template"]["text"] == ""
+    assert llm_node["data"]["memory"] is None
+
+
+def test_replace_template_variables_should_replace_start_and_external_references(converter: WorkflowConverter) -> None:
+    # Arrange
+    template = "Hello {{name}} from {{city}} with {{weather}}"
+    variables = [{"variable": "name"}, {"variable": "city"}]
+    external_mapping = {"weather": "code_1"}
+
+    # Act
+    result = converter._replace_template_variables(template, variables, external_mapping)
+
+    # Assert
+    assert result == "Hello {{#start.name#}} from {{#start.city#}} with {{#code_1.result#}}"
+
+
+def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converter: WorkflowConverter) -> None:
+    # Arrange
+    graph = {"nodes": [{"id": "start", "position": None, "data": {"type": NodeType.START}}], "edges": []}
+    node = {"id": "llm", "position": None, "data": {"type": NodeType.LLM}}
+
+    # Act
+    edge = converter._create_edge("start", "llm")
+    updated_graph = converter._append_node(graph, node)
+    workflow_mode = converter._get_new_app_mode(SimpleNamespace(mode=AppMode.COMPLETION))
+    advanced_chat_mode = converter._get_new_app_mode(SimpleNamespace(mode=AppMode.CHAT))
+
+    # Assert
+    assert edge == {"id": "start-llm", "source": "start", "target": "llm"}
+    assert updated_graph["nodes"][-1]["id"] == "llm"
+    assert updated_graph["edges"][-1]["source"] == "start"
+    assert workflow_mode == AppMode.WORKFLOW
+    assert advanced_chat_mode == AppMode.ADVANCED_CHAT
+
+
+def test_get_api_based_extension_should_raise_when_extension_not_found(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    query_mock = MagicMock()
+    query_mock.where.return_value = query_mock
+    query_mock.first.return_value = None
+    db_session = SimpleNamespace(query=MagicMock(return_value=query_mock))
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="API Based Extension not found"):
+        converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
+
+
+def test_get_api_based_extension_should_return_entity_when_found(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Arrange
+    extension = SimpleNamespace(id="ext-1")
+    query_mock = MagicMock()
+    query_mock.where.return_value = query_mock
+    query_mock.first.return_value = extension
+    db_session = SimpleNamespace(query=MagicMock(return_value=query_mock))
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+
+    # Act
+    result = converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
+
+    # Assert
+    assert result is extension
