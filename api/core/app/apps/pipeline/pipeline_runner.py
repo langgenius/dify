@@ -14,7 +14,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.graph_init_params import GraphConfigDict, GraphInitParams, RunContextDict
+from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.enums import WorkflowType
 from dify_graph.graph import Graph
 from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
@@ -257,20 +257,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["edges"] = real_edges
         # init graph
         # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
-            workflow_id=workflow.id,
-            graph_config=cast(GraphConfigDict, graph_config),
-            run_context=cast(
-                RunContextDict,
-                build_dify_run_context(
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": workflow.id,
+                "graph_config": graph_config,
+                "run_context": build_dify_run_context(
                     tenant_id=workflow.tenant_id,
                     app_id=self._app_id,
                     user_id=self.application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=invoke_from,
                 ),
-            ),
-            call_depth=0,
+                "call_depth": 0,
+            }
         )
 
         node_factory = DifyNodeFactory(

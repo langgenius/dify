@@ -588,15 +588,16 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         from dify_graph.entities import GraphInitParams
-        from dify_graph.entities.graph_init_params import RunContextDict
         from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState
 
         # Create GraphInitParams for child graph execution.
-        graph_init_params = GraphInitParams(
-            workflow_id=self.workflow_id,
-            graph_config=self.graph_config,
-            run_context=cast(RunContextDict, self.run_context),
-            call_depth=self.workflow_call_depth,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": self.workflow_id,
+                "graph_config": self.graph_config,
+                "run_context": self.run_context,
+                "call_depth": self.workflow_call_depth,
+            }
         )
         # Create a deep copy of the variable pool for each iteration
         variable_pool_copy = self.graph_runtime_state.variable_pool.model_copy(deep=True)

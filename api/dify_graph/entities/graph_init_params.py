@@ -1,14 +1,15 @@
 import sys
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, Final, Literal
 
-from pydantic import BaseModel, Field, with_config
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, with_config
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
 else:
     from typing_extensions import TypedDict
 
-DIFY_RUN_CONTEXT_KEY = "_dify"
+DIFY_RUN_CONTEXT_KEY: Final[Literal["_dify"]] = "_dify"
 
 
 class GraphEdgeConfigDict(TypedDict, total=False):
@@ -50,3 +51,17 @@ class GraphInitParams(BaseModel):
     graph_config: GraphConfigDict = Field(..., description="graph config")
     run_context: RunContextDict = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")
+
+    @field_validator("graph_config", mode="before")
+    @classmethod
+    def _validate_graph_config(cls, value: Mapping[str, Any]) -> GraphConfigDict:
+        return GraphConfigDictAdapter.validate_python(value)
+
+    @field_validator("run_context", mode="before")
+    @classmethod
+    def _validate_run_context(cls, value: Mapping[str, Any]) -> RunContextDict:
+        return RunContextDictAdapter.validate_python(value)
+
+
+GraphConfigDictAdapter = TypeAdapter(GraphConfigDict)
+RunContextDictAdapter = TypeAdapter(RunContextDict)

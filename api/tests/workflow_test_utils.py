@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.entities.graph_init_params import GraphInitParams, RunContextDict
 
 
 def build_test_run_context(
@@ -12,8 +12,8 @@ def build_test_run_context(
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
+    extra_context: RunContextDict | None = None,
+) -> RunContextDict:
     normalized_user_from = user_from if isinstance(user_from, UserFrom) else UserFrom(user_from)
     normalized_invoke_from = invoke_from if isinstance(invoke_from, InvokeFrom) else InvokeFrom(invoke_from)
     return build_dify_run_context(
@@ -36,7 +36,7 @@ def build_test_graph_init_params(
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: Mapping[str, Any] | None = None,
+    extra_context: RunContextDict | None = None,
 ) -> GraphInitParams:
     return GraphInitParams(
         workflow_id=workflow_id,
