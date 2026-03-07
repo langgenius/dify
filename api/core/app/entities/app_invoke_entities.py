@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, RunContextDict, validate_run_context
 from dify_graph.file import File, FileUploadConfig
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity
 
@@ -60,7 +60,7 @@ def build_dify_run_context(
     user_from: UserFrom,
     invoke_from: InvokeFrom,
     extra_context: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> RunContextDict:
     """
     Build graph run_context with the reserved Dify runtime payload.
 
@@ -75,7 +75,7 @@ def build_dify_run_context(
         user_from=user_from,
         invoke_from=invoke_from,
     )
-    return run_context
+    return validate_run_context(run_context)
 
 
 class ModelConfigWithCredentialsEntity(BaseModel):

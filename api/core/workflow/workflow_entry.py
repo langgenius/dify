@@ -10,8 +10,8 @@ from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.entities.graph_init_params import GraphInitParams, validate_graph_config
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
 from dify_graph.graph import Graph
@@ -217,7 +217,7 @@ class WorkflowEntry:
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
             workflow_id=workflow.id,
-            graph_config=workflow.graph_dict,
+            graph_config=validate_graph_config(workflow.graph_dict),
             run_context=build_dify_run_context(
                 tenant_id=workflow.tenant_id,
                 app_id=workflow.app_id,
@@ -358,7 +358,7 @@ class WorkflowEntry:
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
             workflow_id="",
-            graph_config=graph_dict,
+            graph_config=validate_graph_config(graph_dict),
             run_context=build_dify_run_context(
                 tenant_id=tenant_id,
                 app_id="",
