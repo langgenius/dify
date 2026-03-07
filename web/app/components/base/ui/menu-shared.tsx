@@ -1,5 +1,3 @@
-'use client'
-
 export const menuRowBaseClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-none focus-visible:ring-1 focus-visible:ring-components-input-border-hover'
 export const menuRowStateClassName = 'data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-30'
 export const menuIndicatorClassName = 'ml-auto flex shrink-0 items-center text-text-accent'
