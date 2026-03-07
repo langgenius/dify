@@ -1,6 +1,18 @@
-import type { ChatItemInTree } from '../types'
+import type { IChatItem } from '../chat/type'
+import type { ChatItem, ChatItemInTree } from '../types'
 import { get } from 'es-toolkit/compat'
-import { buildChatItemTree, getThreadMessages } from '../utils'
+import { UUID_NIL } from '../constants'
+import {
+  buildChatItemTree,
+  getLastAnswer,
+  getProcessedInputsFromUrlParams,
+  getProcessedSystemVariablesFromUrlParams,
+  getProcessedUserVariablesFromUrlParams,
+  getRawInputsFromUrlParams,
+  getRawUserVariablesFromUrlParams,
+  getThreadMessages,
+  isValidGeneratedAnswer,
+} from '../utils'
 import branchedTestMessages from './branchedTestMessages.json'
 import legacyTestMessages from './legacyTestMessages.json'
 import mixedTestMessages from './mixedTestMessages.json'
@@ -11,6 +23,15 @@ import realWorldMessages from './realWorldMessages.json'
 
 function visitNode(tree: ChatItemInTree | ChatItemInTree[], path: string): ChatItemInTree {
   return get(tree, path)
+}
+
+class MockDecompressionStream {
+  readable: unknown
+  writable: unknown
+  constructor() {
+    this.readable = {}
+    this.writable = {}
+  }
 }
 
 describe('build chat item tree and get thread messages', () => {
@@ -247,12 +268,12 @@ describe('build chat item tree and get thread messages', () => {
     expect(tree6).toMatchSnapshot()
   })
 
-  it ('should get thread messages from tree6, using the last message as target', () => {
+  it('should get thread messages from tree6, using the last message as target', () => {
     const threadMessages6_1 = getThreadMessages(tree6)
     expect(threadMessages6_1).toMatchSnapshot()
   })
 
-  it ('should get thread messages from tree6, using specified message as target', () => {
+  it('should get thread messages from tree6, using specified message as target', () => {
     const threadMessages6_2 = getThreadMessages(tree6, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
     expect(threadMessages6_2).toMatchSnapshot()
   })
@@ -267,5 +288,287 @@ describe('build chat item tree and get thread messages', () => {
   const tree8 = buildChatItemTree(partialMessages2)
   it('should work with partial messages 2', () => {
     expect(tree8).toMatchSnapshot()
+  })
+})
+
+describe('chat utils - url params and answer helpers', () => {
+  const setSearch = (search: string) => {
+    window.history.replaceState({}, '', `${window.location.pathname}${search}`)
+  }
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('DecompressionStream', MockDecompressionStream)
+    vi.stubGlobal('TextDecoder', class {
+      decode() { return 'decompressed_text' }
+    })
+
+    const mockPipeThrough = vi.fn().mockReturnValue({})
+    vi.stubGlobal('Response', class {
+      body = { pipeThrough: mockPipeThrough }
+      arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8))
+    })
+    setSearch('')
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  describe('URL Parameter Extractors', () => {
+    it('getRawInputsFromUrlParams extracts inputs except sys. and user.', async () => {
+      setSearch('?custom=123&sys.param=456&user.param=789&encoded=a%20b')
+      const res = await getRawInputsFromUrlParams()
+      expect(res).toEqual({ custom: '123', encoded: 'a b' })
+    })
+
+    it('getRawUserVariablesFromUrlParams extracts only user. prefixed params', async () => {
+      setSearch('?custom=123&sys.param=456&user.param=789&user.encoded=a%20b')
+      const res = await getRawUserVariablesFromUrlParams()
+      expect(res).toEqual({ param: '789', encoded: 'a b' })
+    })
+
+    it('getProcessedInputsFromUrlParams decompresses base64 inputs', async () => {
+      setSearch('?custom=123&sys.param=456&user.param=789')
+      const res = await getProcessedInputsFromUrlParams()
+      expect(res).toEqual({ custom: 'decompressed_text' })
+    })
+
+    it('getProcessedSystemVariablesFromUrlParams decompresses sys. prefixed params', async () => {
+      setSearch('?custom=123&sys.param=456&user.param=789')
+      const res = await getProcessedSystemVariablesFromUrlParams()
+      expect(res).toEqual({ param: 'decompressed_text' })
+    })
+
+    it('getProcessedSystemVariablesFromUrlParams parses redirect_url without query string', async () => {
+      setSearch(`?redirect_url=${encodeURIComponent('http://example.com')}&sys.param=456`)
+      const res = await getProcessedSystemVariablesFromUrlParams()
+      expect(res).toEqual({ param: 'decompressed_text' })
+    })
+
+    it('getProcessedSystemVariablesFromUrlParams parses redirect_url', async () => {
+      setSearch(`?redirect_url=${encodeURIComponent('http://example.com?sys.redirected=abc')}&sys.param=456`)
+      const res = await getProcessedSystemVariablesFromUrlParams()
+      expect(res).toEqual({ param: 'decompressed_text', redirected: 'decompressed_text' })
+    })
+
+    it('getProcessedUserVariablesFromUrlParams decompresses user. prefixed params', async () => {
+      setSearch('?custom=123&sys.param=456&user.param=789')
+      const res = await getProcessedUserVariablesFromUrlParams()
+      expect(res).toEqual({ param: 'decompressed_text' })
+    })
+
+    it('decodeBase64AndDecompress failure returns undefined softly', async () => {
+      vi.stubGlobal('atob', () => {
+        throw new Error('invalid')
+      })
+      setSearch('?custom=invalid_base64')
+      const res = await getProcessedInputsFromUrlParams()
+      expect(res).toEqual({ custom: undefined })
+    })
+  })
+
+  describe('Answer Validation', () => {
+    it('isValidGeneratedAnswer returns true for typical answers', () => {
+      expect(isValidGeneratedAnswer({ isAnswer: true, id: '123', isOpeningStatement: false } as ChatItem)).toBe(true)
+    })
+
+    it('isValidGeneratedAnswer returns false for placeholders', () => {
+      expect(isValidGeneratedAnswer({ isAnswer: true, id: 'answer-placeholder-123', isOpeningStatement: false } as ChatItem)).toBe(false)
+    })
+
+    it('isValidGeneratedAnswer returns false for opening statements', () => {
+      expect(isValidGeneratedAnswer({ isAnswer: true, id: '123', isOpeningStatement: true } as ChatItem)).toBe(false)
+    })
+
+    it('isValidGeneratedAnswer returns false for questions', () => {
+      expect(isValidGeneratedAnswer({ isAnswer: false, id: '123', isOpeningStatement: false } as ChatItem)).toBe(false)
+    })
+
+    it('isValidGeneratedAnswer returns false for falsy items', () => {
+      expect(isValidGeneratedAnswer(undefined)).toBe(false)
+    })
+
+    it('getLastAnswer returns the last valid answer from a list', () => {
+      const list = [
+        { isAnswer: false, id: 'q1', isOpeningStatement: false },
+        { isAnswer: true, id: 'a1', isOpeningStatement: false },
+        { isAnswer: false, id: 'q2', isOpeningStatement: false },
+        { isAnswer: true, id: 'answer-placeholder-2', isOpeningStatement: false },
+      ] as ChatItem[]
+      expect(getLastAnswer(list)?.id).toBe('a1')
+    })
+
+    it('getLastAnswer returns null if no valid answer', () => {
+      const list = [
+        { isAnswer: false, id: 'q1', isOpeningStatement: false },
+        { isAnswer: true, id: 'answer-placeholder-2', isOpeningStatement: false },
+      ] as ChatItem[]
+      expect(getLastAnswer(list)).toBeNull()
+    })
+  })
+
+  describe('ChatItem Tree Builders', () => {
+    it('buildChatItemTree builds a flat tree for legacy messages (parentMessageId = UUID_NIL)', () => {
+      const list: IChatItem[] = [
+        { id: 'q1', isAnswer: false, parentMessageId: UUID_NIL } as IChatItem,
+        { id: 'a1', isAnswer: true, parentMessageId: UUID_NIL } as IChatItem,
+        { id: 'q2', isAnswer: false, parentMessageId: UUID_NIL } as IChatItem,
+        { id: 'a2', isAnswer: true, parentMessageId: UUID_NIL } as IChatItem,
+      ]
+
+      const tree = buildChatItemTree(list)
+      expect(tree.length).toBe(1)
+      expect(tree[0].id).toBe('q1')
+      expect(tree[0].children?.[0].id).toBe('a1')
+      expect(tree[0].children?.[0].children?.[0].id).toBe('q2')
+      expect(tree[0].children?.[0].children?.[0].children?.[0].id).toBe('a2')
+      expect(tree[0].children?.[0].children?.[0].children?.[0].siblingIndex).toBe(0)
+    })
+
+    it('buildChatItemTree builds nested tree based on parentMessageId', () => {
+      const list: IChatItem[] = [
+        { id: 'q1', isAnswer: false, parentMessageId: null } as IChatItem,
+        { id: 'a1', isAnswer: true } as IChatItem,
+        { id: 'q2', isAnswer: false, parentMessageId: 'a1' } as IChatItem,
+        { id: 'a2', isAnswer: true } as IChatItem,
+        { id: 'q3', isAnswer: false, parentMessageId: 'a1' } as IChatItem,
+        { id: 'a3', isAnswer: true } as IChatItem,
+        { id: 'q4', isAnswer: false, parentMessageId: 'missing-parent' } as IChatItem,
+        { id: 'a4', isAnswer: true } as IChatItem,
+      ]
+
+      const tree = buildChatItemTree(list)
+      expect(tree.length).toBe(2)
+      expect(tree[0].id).toBe('q1')
+      expect(tree[1].id).toBe('q4')
+
+      const a1 = tree[0].children![0]
+      expect(a1.id).toBe('a1')
+      expect(a1.children?.length).toBe(2)
+      expect(a1.children![0].id).toBe('q2')
+      expect(a1.children![1].id).toBe('q3')
+      expect(a1.children![0].children![0].siblingIndex).toBe(0)
+      expect(a1.children![1].children![0].siblingIndex).toBe(1)
+    })
+
+    it('getThreadMessages node without children', () => {
+      const tree = [{ id: 'q1', isAnswer: false }]
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'q1')
+      expect(thread.length).toBe(1)
+      expect(thread[0].id).toBe('q1')
+    })
+
+    it('getThreadMessages target not found', () => {
+      const tree = [{ id: 'q1', isAnswer: false, children: [] }]
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'missing')
+      expect(thread.length).toBe(0)
+    })
+
+    it('getThreadMessages target not found with undefined children', () => {
+      const tree = [{ id: 'q1', isAnswer: false }]
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'missing')
+      expect(thread.length).toBe(0)
+    })
+
+    it('getThreadMessages flat path logic', () => {
+      const tree = [{
+        id: 'q1',
+        isAnswer: false,
+        children: [{
+          id: 'a1',
+          isAnswer: true,
+          siblingIndex: 0,
+          children: [{
+            id: 'q2',
+            isAnswer: false,
+            children: [{
+              id: 'a2',
+              isAnswer: true,
+              siblingIndex: 0,
+              children: [],
+            }],
+          }],
+        }],
+      }]
+
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[])
+      expect(thread.length).toBe(4)
+      expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q2', 'a2'])
+      expect(thread[1].siblingCount).toBe(1)
+      expect(thread[3].siblingCount).toBe(1)
+    })
+
+    it('getThreadMessages to specific target', () => {
+      const tree = [{
+        id: 'q1',
+        isAnswer: false,
+        children: [{
+          id: 'a1',
+          isAnswer: true,
+          siblingIndex: 0,
+          children: [{
+            id: 'q2',
+            isAnswer: false,
+            children: [{
+              id: 'a2',
+              isAnswer: true,
+              siblingIndex: 0,
+              children: [],
+            }],
+          }, {
+            id: 'q3',
+            isAnswer: false,
+            children: [{
+              id: 'a3',
+              isAnswer: true,
+              siblingIndex: 1,
+              children: [],
+            }],
+          }],
+        }],
+      }]
+
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'a3')
+      expect(thread.length).toBe(4)
+      expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
+      expect(thread[3].prevSibling).toBe('a2')
+      expect(thread[3].nextSibling).toBeUndefined()
+    })
+
+    it('getThreadMessages targetNode has descendants', () => {
+      const tree = [{
+        id: 'q1',
+        isAnswer: false,
+        children: [{
+          id: 'a1',
+          isAnswer: true,
+          siblingIndex: 0,
+          children: [{
+            id: 'q2',
+            isAnswer: false,
+            children: [{
+              id: 'a2',
+              isAnswer: true,
+              siblingIndex: 0,
+              children: [],
+            }],
+          }, {
+            id: 'q3',
+            isAnswer: false,
+            children: [{
+              id: 'a3',
+              isAnswer: true,
+              siblingIndex: 1,
+              children: [],
+            }],
+          }],
+        }],
+      }]
+
+      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'a1')
+      expect(thread.length).toBe(4)
+      expect(thread.map(t => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
+      expect(thread[3].prevSibling).toBe('a2')
+    })
   })
 })
