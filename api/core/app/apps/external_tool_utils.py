@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ToolResult
-from core.model_runtime.entities import PromptMessageTool
+from dify_graph.model_runtime.entities.message_entities import PromptMessageTool
 
 
 def resolve_tools(args: Mapping[str, Any]) -> list[PromptMessageTool] | None:

@@ -317,7 +317,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             </Tooltip>
             <Switch
               className="ml-2"
-              defaultValue={!!inputs.structured_output_enabled}
+              value={!!inputs.structured_output_enabled}
               onChange={handleStructureOutputEnableChange}
               size="md"
               disabled={readOnly}

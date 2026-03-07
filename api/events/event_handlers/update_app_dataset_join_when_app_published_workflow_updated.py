@@ -2,8 +2,8 @@ from typing import cast
 
 from sqlalchemy import select
 
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from dify_graph.nodes import NodeType
+from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin

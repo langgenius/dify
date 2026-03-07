@@ -5,9 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.file import file_manager
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -16,8 +17,7 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile
@@ -165,26 +165,24 @@ class TokenBufferMemory:
                 # Build ToolPromptMessages for each tool_call from the previous round.
                 # The query may contain structured JSON tool results or plain text.
                 query_text = message.query or ""
-                tool_msgs_added = False
-
-                # Try structured JSON: [{"tool_call_id": "...", "output": "..."}]
-                parsed_results: dict[str, str] = {}
-                try:
-                    parsed = json.loads(query_text)
-                    if isinstance(parsed, list):
-                        for item in parsed:
-                            if isinstance(item, dict) and "tool_call_id" in item:
-                                parsed_results[item["tool_call_id"]] = str(item.get("output", ""))
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                parsed_tool_msgs: list[ToolPromptMessage] = []
 
                 for tc in prev_tool_calls:
                     tc_id = tc.get("id", "")
-                    content = parsed_results.get(tc_id, query_text)
-                    prompt_messages.append(ToolPromptMessage(content=content, tool_call_id=tc_id))
-                    tool_msgs_added = True
+                    prefix = f"[{tc_id}] "
+                    if prefix in query_text:
+                        start = query_text.index(prefix) + len(prefix)
+                        next_bracket = query_text.find("\n[call_", start)
+                        output = query_text[start:next_bracket] if next_bracket != -1 else query_text[start:]
+                        parsed_tool_msgs.append(ToolPromptMessage(content=output.strip(), tool_call_id=tc_id))
 
-                if not tool_msgs_added:
+                if parsed_tool_msgs:
+                    prompt_messages.extend(parsed_tool_msgs)
+                elif len(prev_tool_calls) == 1:
+                    prompt_messages.append(
+                        ToolPromptMessage(content=query_text, tool_call_id=prev_tool_calls[0].get("id", ""))
+                    )
+                else:
                     prompt_messages.append(UserPromptMessage(content=message.query))
             else:
                 # Process user message with files

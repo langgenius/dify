@@ -20,8 +20,8 @@ from core.app.apps.external_tool_utils import resolve_tool_results, resolve_tool
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ToolCallMode
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account

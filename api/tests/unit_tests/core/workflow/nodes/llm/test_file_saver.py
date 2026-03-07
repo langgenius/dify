@@ -6,11 +6,11 @@ import httpx
 import pytest
 from sqlalchemy import Engine
 
-from core.file import FileTransferMethod, FileType, models
 from core.helper import ssrf_proxy
 from core.tools import signature
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.nodes.llm.file_saver import (
+from dify_graph.file import FileTransferMethod, FileType, models
+from dify_graph.nodes.llm.file_saver import (
     FileSaverImpl,
     _extract_content_type_and_extension,
     _get_extension,

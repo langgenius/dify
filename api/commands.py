@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -53,6 +54,8 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+DB_UPGRADE_LOCK_TTL_SECONDS = 60
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -727,8 +730,15 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
 @click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
-    lock = redis_client.lock(name="db_upgrade_lock", timeout=60)
+    lock = DbMigrationAutoRenewLock(
+        redis_client=redis_client,
+        name="db_upgrade_lock",
+        ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,
+        logger=logger,
+        log_context="db_migration",
+    )
     if lock.acquire(blocking=False):
+        migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
 
@@ -737,6 +747,7 @@ def upgrade_db():
 
             flask_migrate.upgrade()
 
+            migration_succeeded = True
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception as e:
@@ -744,7 +755,8 @@ def upgrade_db():
             click.echo(click.style(f"Database migration failed: {e}", fg="red"))
             raise SystemExit(1)
         finally:
-            lock.release()
+            status = "successful" if migration_succeeded else "failed"
+            lock.release_safely(status=status)
     else:
         click.echo("Database migration skipped")
 
@@ -2656,3 +2668,77 @@ def clean_expired_messages(
         raise
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
+
+
+@click.command("export-app-messages", help="Export messages for an app to JSONL.GZ.")
+@click.option("--app-id", required=True, help="Application ID to export messages for.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option(
+    "--filename",
+    required=True,
+    help="Base filename (relative path). Do not include suffix like .jsonl.gz.",
+)
+@click.option("--use-cloud-storage", is_flag=True, default=False, help="Upload to cloud storage instead of local file.")
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for cursor pagination.")
+@click.option("--dry-run", is_flag=True, default=False, help="Scan only, print stats without writing any file.")
+def export_app_messages(
+    app_id: str,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+    filename: str,
+    use_cloud_storage: bool,
+    batch_size: int,
+    dry_run: bool,
+):
+    if start_from and start_from >= end_before:
+        raise click.UsageError("--start-from must be before --end-before.")
+
+    from services.retention.conversation.message_export_service import AppMessageExportService
+
+    try:
+        validated_filename = AppMessageExportService.validate_export_filename(filename)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--filename") from e
+
+    click.echo(click.style(f"export_app_messages: starting export for app {app_id}.", fg="green"))
+    start_at = time.perf_counter()
+
+    try:
+        service = AppMessageExportService(
+            app_id=app_id,
+            end_before=end_before,
+            filename=validated_filename,
+            start_from=start_from,
+            batch_size=batch_size,
+            use_cloud_storage=use_cloud_storage,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        elapsed = time.perf_counter() - start_at
+        click.echo(
+            click.style(
+                f"export_app_messages: completed in {elapsed:.2f}s\n"
+                f"  - Batches: {stats.batches}\n"
+                f"  - Total messages: {stats.total_messages}\n"
+                f"  - Messages with feedback: {stats.messages_with_feedback}\n"
+                f"  - Total feedbacks: {stats.total_feedbacks}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        elapsed = time.perf_counter() - start_at
+        logger.exception("export_app_messages failed")
+        click.echo(click.style(f"export_app_messages: failed after {elapsed:.2f}s - {e}", fg="red"))
+        raise
