@@ -16,7 +16,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
-from dify_graph.entities.graph_init_params import GraphConfigDict, RunContextDict
+from dify_graph.entities.graph_init_params import validate_graph_config
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -1065,16 +1065,13 @@ class WorkflowService:
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
             workflow_id=workflow.id,
-            graph_config=cast(GraphConfigDict, workflow.graph_dict),
-            run_context=cast(
-                RunContextDict,
-                build_dify_run_context(
-                    tenant_id=workflow.tenant_id,
-                    app_id=workflow.app_id,
-                    user_id=account.id,
-                    user_from=UserFrom.ACCOUNT,
-                    invoke_from=InvokeFrom.DEBUGGER,
-                ),
+            graph_config=validate_graph_config(workflow.graph_dict),
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=account.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
         )

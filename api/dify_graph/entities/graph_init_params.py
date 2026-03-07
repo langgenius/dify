@@ -1,7 +1,8 @@
 import sys
+from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, Field, with_config
+from pydantic import BaseModel, Field, TypeAdapter, with_config
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
@@ -50,3 +51,15 @@ class GraphInitParams(BaseModel):
     graph_config: GraphConfigDict = Field(..., description="graph config")
     run_context: RunContextDict = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")
+
+
+GraphConfigDictAdapter = TypeAdapter(GraphConfigDict)
+RunContextDictAdapter = TypeAdapter(RunContextDict)
+
+
+def validate_graph_config(value: Mapping[str, Any]) -> GraphConfigDict:
+    return GraphConfigDictAdapter.validate_python(value)
+
+
+def validate_run_context(value: Mapping[str, Any]) -> RunContextDict:
+    return RunContextDictAdapter.validate_python(value)
