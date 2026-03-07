@@ -4,8 +4,8 @@ from core.entities.execution_extra_content import (
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
-from core.workflow.nodes.human_input.enums import FormInputType
+from dify_graph.nodes.human_input.entities import FormInput, UserAction
+from dify_graph.nodes.human_input.enums import FormInputType
 from models.execution_extra_content import ExecutionContentType
 
 

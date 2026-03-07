@@ -24,9 +24,9 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FieldModelSchema,

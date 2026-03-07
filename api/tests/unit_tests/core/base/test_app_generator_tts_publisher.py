@@ -307,8 +307,8 @@ class TestAppGeneratorTTSPublisher:
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from core.model_runtime.entities.message_entities import (
+        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from dify_graph.model_runtime.entities.message_entities import (
             AssistantPromptMessage,
             ImagePromptMessageContent,
             TextPromptMessageContent,
@@ -342,8 +342,8 @@ class TestAppGeneratorTTSPublisher:
         publisher.executor = MagicMock()
 
         from core.app.entities.queue_entities import QueueAgentMessageEvent
-        from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
+        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
 
         chunk = LLMResultChunk(
             model="model",

@@ -16,9 +16,9 @@ from core.entities.model_entities import (
     ProviderModelWithStatusEntity,
     SimpleModelProviderEntity,
 )
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import FetchFrom, ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 
 def _build_model_with_status(status: ModelStatus) -> ProviderModelWithStatusEntity:
