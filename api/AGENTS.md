@@ -12,10 +12,10 @@ Look for:
 
 ### What to write where
 
-- Keep notes scoped: module notes cover module-wide context, class notes cover class-wide context, function/method notes cover behavioural contracts, and paragraph/block comments cover local “why�? Avoid duplicating the same content across scopes unless repetition prevents misuse.
-- **Module (file) docstring**: purpose, boundaries, key invariants, and “gotchas�?that a new reader must know before editing.
+- Keep notes scoped: module notes cover module-wide context, class notes cover class-wide context, function/method notes cover behavioural contracts, and paragraph/block comments cover local “why”. Avoid duplicating the same content across scopes unless repetition prevents misuse.
+- **Module (file) docstring**: purpose, boundaries, key invariants, and “gotchas” that a new reader must know before editing.
   - Include cross-links to the key collaborators (modules/services) when discovery is otherwise hard.
-  - Prefer stable facts (invariants, contracts) over ephemeral “today we…�?notes.
+  - Prefer stable facts (invariants, contracts) over ephemeral “today we…” notes.
 - **Class docstring**: responsibility, lifecycle, invariants, and how it should be used (or not used).
   - If the class is intentionally stateful, note what state exists and what methods mutate it.
   - If concurrency/async assumptions matter, state them explicitly.
@@ -27,7 +27,7 @@ Look for:
 
 ### Rules (must follow)
 
-In this section, “notes�?means module/class/function docstrings plus any relevant paragraph/block comments.
+In this section, “notes” means module/class/function docstrings plus any relevant paragraph/block comments.
 
 - **Before working**
   - Read the notes in the area you’ll touch; treat them as part of the spec.
@@ -35,9 +35,9 @@ In this section, “notes�?means module/class/function docstrings plus any rel
   - If important intent/invariants/edge cases are missing, add them in the closest docstring or comment (module for overall scope, function for behaviour).
 - **During working**
   - Keep the notes in sync as you discover constraints, make decisions, or change approach.
-  - If you move/rename responsibilities across modules/classes, update the affected docstrings and comments so readers can still find the “why�?and the invariants.
+  - If you move/rename responsibilities across modules/classes, update the affected docstrings and comments so readers can still find the “why” and the invariants.
   - Record non-obvious edge cases, trade-offs, and the test/verification plan in the nearest docstring or comment that will stay correct.
-  - Keep the notes **coherent**: integrate new findings into the relevant docstrings and comments; avoid append-only “recent fix�?/ changelog-style additions.
+  - Keep the notes **coherent**: integrate new findings into the relevant docstrings and comments; avoid append-only “recent fix” / changelog-style additions.
 - **When finishing**
   - Update the notes to reflect what changed, why, and any new edge cases/tests.
   - Remove or rewrite any comments that could be mistaken as current guidance but no longer apply.
@@ -60,8 +60,8 @@ This is the default standard for backend code in this repo. Follow it for new co
 
 ### Typing & Class Layout
 
-- Code should usually include type annotations that match the repo's current Python version (avoid untyped public APIs and "mystery" values).
-- Prefer modern typing forms (e.g. `list[str]`) and avoid `Any` unless there's a strong reason.
+- Code should usually include type annotations that match the repo’s current Python version (avoid untyped public APIs and “mystery” values).
+- Prefer modern typing forms (e.g. `list[str]`, `dict[str, int]`) and avoid `Any` unless there’s a strong reason.
 - For dictionary-like data with known keys and value types, prefer `TypedDict` over `dict[...]` or `Mapping[...]`.
 - For optional keys in typed payloads, use `NotRequired[...]` (or `total=False` when most fields are optional).
 - Keep `dict[...]` / `Mapping[...]` for truly dynamic key spaces where the key set is unknown.
@@ -94,9 +94,10 @@ class Example:
 ```
 
 ### General Rules
+
 - Use Pydantic v2 conventions.
 - Use `uv` for Python package management in this repo (usually with `--project api`).
-- Prefer simple functions over small “utility classes�?for lightweight helpers.
+- Prefer simple functions over small “utility classes” for lightweight helpers.
 - Avoid implementing dunder methods unless it’s clearly needed and matches existing patterns.
 - Never start long-running services as part of agent work (`uv run app.py`, `flask run`, etc.); running tests is allowed.
 - Keep files below ~800 lines; split when necessary.
@@ -104,7 +105,7 @@ class Example:
 
 ### Architecture & Boundaries
 
-- Mirror the layered architecture: controller �?service �?core/domain.
+- Mirror the layered architecture: controller → service → core/domain.
 - Reuse existing helpers in `core/`, `services/`, and `libs/` before creating new abstractions.
 - Optimise for observability: deterministic control flow, clear logging, actionable errors.
 
