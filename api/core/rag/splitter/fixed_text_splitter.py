@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import codecs
 import re
 from typing import Any
 
@@ -53,7 +52,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     def __init__(self, fixed_separator: str = "\n\n", separators: list[str] | None = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
-        self._fixed_separator = codecs.decode(fixed_separator, "unicode_escape")
+        self._fixed_separator = fixed_separator.encode("raw_unicode_escape").decode("unicode_escape")
         self._separators = separators or ["\n\n", "\n", "。", ". ", " ", ""]
 
     def split_text(self, text: str) -> list[str]:
