@@ -376,9 +376,13 @@ class CompletionConversationApi(Resource):
 
         # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
-            query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
-                MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-            ).distinct()
+            query = (
+                query.options(selectinload(Conversation.message_annotations))
+                .join(  # type: ignore
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                )
+                .distinct()
+            )
         elif args.annotation_status == "not_annotated":
             query = (
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
@@ -511,9 +515,13 @@ class ChatConversationApi(Resource):
 
         match args.annotation_status:
             case "annotated":
-                query = query.options(selectinload(Conversation.message_annotations)).join(  # type: ignore
-                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                ).distinct()
+                query = (
+                    query.options(selectinload(Conversation.message_annotations))
+                    .join(  # type: ignore
+                        MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                    )
+                    .distinct()
+                )
             case "not_annotated":
                 query = (
                     query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
