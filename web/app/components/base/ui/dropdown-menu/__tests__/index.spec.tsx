@@ -1,5 +1,7 @@
+import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import Link from 'next/link'
 import { describe, expect, it, vi } from 'vitest'
 import {
   DropdownMenu,
@@ -15,6 +17,21 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../index'
+
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string
+    children?: ReactNode
+  } & Omit<ComponentPropsWithoutRef<'a'>, 'href'>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 describe('dropdown-menu wrapper', () => {
   describe('alias exports', () => {
@@ -291,6 +308,27 @@ describe('dropdown-menu wrapper', () => {
       expect(link.tagName.toLowerCase()).toBe('a')
       expect(link).toHaveAttribute('href', 'https://example.com/docs')
       expect(link).not.toHaveAttribute('closeOnClick')
+    })
+
+    it('should preserve link semantics when render prop uses a custom link component', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              render={<Link href="/account" />}
+              aria-label="account link"
+            >
+              Account settings
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'account link' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', '/account')
+      expect(link).toHaveTextContent('Account settings')
     })
   })
 
