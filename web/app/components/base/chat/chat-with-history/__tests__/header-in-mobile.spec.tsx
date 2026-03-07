@@ -1,9 +1,9 @@
+import type { i18n } from 'i18next'
 import type { ChatConfig } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
-import type { AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { AppData, AppMeta } from '@/models/share'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as ReactI18next from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
@@ -80,7 +80,14 @@ vi.mock('@/app/components/base/modal', () => ({
 
 // Sidebar mock removed to use real component
 
-const mockAppData = { site: { title: 'Test Chat', chat_color_theme: 'blue' } } as unknown as AppData
+const mockAppData: AppData = {
+  app_id: 'test-app',
+  custom_config: null,
+  site: {
+    title: 'Test Chat',
+    chat_color_theme: 'blue',
+  },
+}
 const defaultContextValue: ChatWithHistoryContextValue = {
   appData: mockAppData,
   currentConversationId: '',
@@ -104,18 +111,27 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   currentChatInstanceRef: { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
-  appParams: { system_parameters: { vision_config: { enabled: false } } } as unknown as ChatConfig,
-  appMeta: {} as AppMeta,
+  appParams: {
+    system_parameters: {
+      audio_file_size_limit: 10,
+      file_size_limit: 10,
+      image_file_size_limit: 10,
+      video_file_size_limit: 10,
+      workflow_file_upload_limit: 10,
+    },
+    more_like_this: { enabled: false },
+  } as ChatConfig,
+  appMeta: { tool_icons: {} } as AppMeta,
   appPrevChatTree: [],
   newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+  newConversationInputsRef: { current: {} },
   appChatListDataLoading: false,
   chatShouldReloadKey: '',
   isMobile: true,
   currentConversationInputs: null,
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,
-  conversationRenaming: false, // Added missing property
+  conversationRenaming: false,
 }
 
 describe('HeaderInMobile', () => {
@@ -134,7 +150,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
     })
 
     render(<HeaderInMobile />)
@@ -270,7 +286,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handlePinConversation: handlePin,
       pinnedConversationList: [],
     })
@@ -292,9 +308,9 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleUnpinConversation: handleUnpin,
-      pinnedConversationList: [{ id: '1' }] as unknown as ConversationItem[],
+      pinnedConversationList: [{ id: '1', name: 'Conv 1', inputs: null, introduction: '' }],
     })
 
     render(<HeaderInMobile />)
@@ -314,7 +330,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleRenameConversation: handleRename,
       pinnedConversationList: [],
     })
@@ -342,7 +358,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleRenameConversation: handleRename,
       pinnedConversationList: [],
     })
@@ -373,7 +389,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleRenameConversation: vi.fn(),
       conversationRenaming: true, // Loading state
       pinnedConversationList: [],
@@ -396,7 +412,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleDeleteConversation: handleDelete,
       pinnedConversationList: [],
     })
@@ -422,7 +438,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleDeleteConversation: handleDelete,
       pinnedConversationList: [],
     })
@@ -454,7 +470,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: '' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: '', inputs: null, introduction: '' },
     })
 
     render(<HeaderInMobile />)
@@ -485,16 +501,17 @@ describe('HeaderInMobile', () => {
   })
 
   it('should render app icon and title correctly', () => {
-    const appDataWithIcon = {
+    const appDataWithIcon: AppData = {
+      app_id: 'test-app',
+      custom_config: null,
       site: {
         title: 'My App',
         icon: 'emoji',
         icon_type: 'emoji',
         icon_url: '',
         icon_background: '#FF0000',
-        chat_color_theme: 'blue',
       },
-    } as unknown as AppData
+    }
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -512,7 +529,7 @@ describe('HeaderInMobile', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       currentConversationId: '1',
-      currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
+      currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
       handleRenameConversation: handleRename,
       handleDeleteConversation: handleDelete,
       pinnedConversationList: [],
@@ -523,5 +540,60 @@ describe('HeaderInMobile', () => {
     // Initially no modals
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
+  })
+
+  it('should use empty string fallback for delete content translation', async () => {
+    const handleDelete = vi.fn()
+    const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation')
+    useTranslationSpy.mockReturnValue({
+      t: (key: string) => key === 'chat.deleteConversation.content' ? '' : key,
+      i18n: {} as unknown as i18n,
+      ready: true,
+      tReady: true,
+    } as unknown as ReturnType<typeof ReactI18next.useTranslation>)
+
+    try {
+      vi.mocked(useChatWithHistoryContext).mockReturnValue({
+        ...defaultContextValue,
+        currentConversationId: '1',
+        currentConversationItem: { id: '1', name: 'Conv 1', inputs: null, introduction: '' },
+        handleDeleteConversation: handleDelete,
+        pinnedConversationList: [],
+      })
+
+      render(<HeaderInMobile />)
+      fireEvent.click(await screen.findByText('Conv 1'))
+      fireEvent.click(await screen.findByText(/sidebar\.action\.delete/i))
+
+      expect(await screen.findByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))
+      expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
+    }
+    finally {
+      useTranslationSpy.mockRestore()
+    }
+  })
+
+  it('should use empty string fallback for rename modal name', async () => {
+    const handleRename = vi.fn()
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '1',
+      currentConversationItem: { id: '1', name: '', inputs: null, introduction: '' },
+      handleRenameConversation: handleRename,
+      pinnedConversationList: [],
+    })
+
+    const { container } = render(<HeaderInMobile />)
+    const operationTrigger = container.querySelector('.system-md-semibold')?.parentElement as HTMLElement
+    fireEvent.click(operationTrigger)
+    fireEvent.click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
+
+    const input = await screen.findByRole('textbox')
+    expect(input).toHaveValue('')
+
+    fireEvent.change(input, { target: { value: 'Renamed from empty' } })
+    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+    expect(handleRename).toHaveBeenCalledWith('1', 'Renamed from empty', expect.any(Object))
   })
 })
