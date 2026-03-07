@@ -1,7 +1,7 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TryAppSelection } from '@/types/try-app'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import AppListContext from '@/context/app-list-context'
@@ -26,13 +26,13 @@ const Apps = () => {
   const hideTryAppPanel = useCallback(() => {
     setIsShowTryAppPanel(false)
   }, [])
-  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: TryAppSelection) => {
+  const setShowTryAppPanel = useCallback((showTryAppPanel: boolean, params?: TryAppSelection) => {
     if (showTryAppPanel)
       setCurrentTryAppParams(params)
     else
       setCurrentTryAppParams(undefined)
     setIsShowTryAppPanel(showTryAppPanel)
-  }
+  }, [])
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const handleShowFromTryApp = useCallback(() => {
@@ -92,14 +92,15 @@ const Apps = () => {
     })
   }
 
+  const contextValue = useMemo(() => ({
+    currentApp: currentTryAppParams,
+    isShowTryAppPanel,
+    setShowTryAppPanel,
+    controlHideCreateFromTemplatePanel,
+  }), [currentTryAppParams, isShowTryAppPanel, setShowTryAppPanel, controlHideCreateFromTemplatePanel])
+
   return (
-    <AppListContext.Provider value={{
-      currentApp: currentTryAppParams,
-      isShowTryAppPanel,
-      setShowTryAppPanel,
-      controlHideCreateFromTemplatePanel,
-    }}
-    >
+    <AppListContext.Provider value={contextValue}>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         <List controlRefreshList={controlRefreshList} />
         {isShowTryAppPanel && (

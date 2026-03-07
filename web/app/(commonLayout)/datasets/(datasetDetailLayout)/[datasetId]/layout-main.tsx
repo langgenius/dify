@@ -115,6 +115,12 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])
 
+  const datasetDetailContextValue = useMemo(() => ({
+    indexingTechnique: datasetRes?.indexing_technique,
+    dataset: datasetRes,
+    mutateDatasetRes,
+  }), [datasetRes, mutateDatasetRes])
+
   if (!datasetRes && !error)
     return <Loading type="app" />
 
@@ -125,11 +131,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
-      <DatasetDetailContext.Provider value={{
-        indexingTechnique: datasetRes?.indexing_technique,
-        dataset: datasetRes,
-        mutateDatasetRes,
-      }}
+      <DatasetDetailContext.Provider value={datasetDetailContextValue}
       >
         {!hideSideBar && (
           <AppSideBar
