@@ -15,7 +15,7 @@ import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
@@ -123,10 +123,13 @@ const Base: FC<Props> = ({
               </div>
             )}
             {showVariableInspectButton && nodeId && (
-              <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
-                <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
-                  <RiCrosshairLine className="h-4 w-4" />
-                </ActionButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
+                    <RiCrosshairLine className="h-4 w-4" />
+                  </ActionButton>
+                </TooltipTrigger>
+                <TooltipContent>{t('debug.variableInspect.view', { ns: 'workflow' })}</TooltipContent>
               </Tooltip>
             )}
             <ActionButton className="ml-1" onClick={handleCopy}>
