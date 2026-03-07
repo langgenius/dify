@@ -146,6 +146,7 @@ class ToolFileManager:
 
             session.add(tool_file)
             session.commit()
+            session.refresh(tool_file)
 
         return tool_file
 
