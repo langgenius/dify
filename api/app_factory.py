@@ -1,13 +1,17 @@
 import logging
 import time
 
+from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +34,38 @@ def create_flask_app_with_configs() -> DifyApp:
         # Initialize logging context for this request
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
+
+        # Enterprise license validation for API endpoints (both console and webapp)
+        # When license expires, block all API access except bootstrap endpoints needed
+        # for the frontend to load the license expiration page without infinite reloads.
+        if dify_config.ENTERPRISE_ENABLED:
+            is_console_api = request.path.startswith("/console/api/")
+            is_webapp_api = request.path.startswith("/api/") and not is_console_api
+
+            if is_console_api or is_webapp_api:
+                if is_console_api:
+                    console_exempt_prefixes = (
+                        "/console/api/system-features",
+                        "/console/api/setup",
+                        "/console/api/version",
+                        "/console/api/activate/check",
+                    )
+                    is_exempt = any(request.path.startswith(p) for p in console_exempt_prefixes)
+                else:  # webapp API
+                    is_exempt = request.path.startswith("/api/system-features")
+
+                if not is_exempt:
+                    try:
+                        # Check license status with caching (10 min TTL)
+                        license_status = EnterpriseService.get_cached_license_status()
+                        if license_status in (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST):
+                            raise UnauthorizedAndForceLogout(
+                                f"Enterprise license is {license_status}. Please contact your administrator."
+                            )
+                    except UnauthorizedAndForceLogout:
+                        raise
+                    except Exception:
+                        logger.exception("Failed to check enterprise license status")
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
