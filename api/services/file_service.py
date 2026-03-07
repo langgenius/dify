@@ -58,9 +58,10 @@ class FileService:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
-        # check if filename contains invalid characters
-        if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
-            raise ValueError("Filename contains invalid characters")
+        # sanitize filename by replacing invalid characters instead of raising an exception
+        INVALID_CHARS = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
+        for c in INVALID_CHARS:
+            filename = filename.replace(c, "_")
 
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
