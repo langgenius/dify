@@ -4,11 +4,11 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from core.model_runtime.entities.model_entities import ModelFeature
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 
 class TestParagraphIndexProcessor:
@@ -404,7 +404,7 @@ class TestParagraphIndexProcessor:
                 return_value=model_instance,
             ),
             patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.llm_utils.deduct_llm_quota",
+                "core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota",
                 side_effect=RuntimeError("quota"),
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
@@ -445,7 +445,7 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.file_manager.to_prompt_message_content",
                 return_value=image_content,
             ),
-            patch("core.rag.index_processor.processor.paragraph_index_processor.llm_utils.deduct_llm_quota"),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota"),
         ):
             mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
             summary, _ = ParagraphIndexProcessor.generate_summary(

@@ -14,9 +14,9 @@ import numpy as np
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from core.rag.embedding.cached_embedding import CacheEmbedding
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from models.dataset import Embedding
 
 

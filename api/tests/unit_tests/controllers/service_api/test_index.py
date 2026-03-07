@@ -12,7 +12,7 @@ from controllers.service_api.index import IndexApi
 class TestIndexApi:
     """Test suite for IndexApi resource."""
 
-    @patch("controllers.service_api.index.dify_config")
+    @patch("controllers.service_api.index.dify_config", autospec=True)
     def test_get_returns_api_info(self, mock_config, app):
         """Test that GET returns API metadata with correct structure."""
         # Arrange

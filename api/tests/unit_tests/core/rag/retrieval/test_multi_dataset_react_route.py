@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.rag.retrieval.output_parser.react_output import ReactAction, ReactFinish
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 
 
 class TestReactMultiDatasetRouter:
@@ -162,7 +162,7 @@ class TestReactMultiDatasetRouter:
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([chunk])
 
-        with patch("core.rag.retrieval.router.multi_dataset_react_route.llm_utils.deduct_llm_quota") as mock_deduct:
+        with patch("core.rag.retrieval.router.multi_dataset_react_route.deduct_llm_quota") as mock_deduct:
             text, returned_usage = router._invoke_llm(
                 completion_param={"temperature": 0.1},
                 model_instance=model_instance,

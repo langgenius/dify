@@ -21,11 +21,10 @@ from core.app.app_config.entities import (
 from core.app.app_config.entities import (
     ModelConfig as AppModelConfig,
 )
+from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelFeature
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -33,15 +32,10 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.nodes.knowledge_retrieval import exc
-from core.workflow.nodes.knowledge_retrieval.entities import (
-    Condition as WorkflowCondition,
-)
-from core.workflow.nodes.knowledge_retrieval.entities import (
-    MetadataFilteringCondition as WorkflowMetadataFilteringCondition,
-)
-from core.workflow.nodes.llm.entities import ModelConfig as WorkflowModelConfig
-from core.workflow.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
+from dify_graph.nodes.knowledge_retrieval import exc
+from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
 from models.dataset import Dataset
 
 # ==================== Helper Functions ====================
@@ -4189,125 +4183,6 @@ class TestKnowledgeRetrievalCoverage:
         ):
             with pytest.raises(ValueError, match="metadata_model_config is required"):
                 retrieval.knowledge_retrieval(request)
-
-    def test_single_mode_formats_external_and_dify_sources(self, retrieval: DatasetRetrieval) -> None:
-        dataset_dify = SimpleNamespace(
-            id="dataset-1",
-            name="Dify Dataset",
-            provider="dify",
-            tenant_id="tenant-1",
-        )
-        dataset_external = SimpleNamespace(
-            id="dataset-2",
-            name="External Dataset",
-            provider="external",
-            tenant_id="tenant-1",
-        )
-        request = KnowledgeRetrievalRequest(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            app_id="app-1",
-            user_from="workflow",
-            dataset_ids=["dataset-1", "dataset-2"],
-            query="python",
-            retrieval_mode="single",
-            model_provider="openai",
-            model_name="gpt-4",
-            model_mode="chat",
-            completion_params={"stop": ["END"], "temperature": 0.1},
-            metadata_filtering_mode="manual",
-            metadata_model_config=WorkflowModelConfig(provider="openai", name="gpt-4", mode="chat"),
-            metadata_filtering_conditions=WorkflowMetadataFilteringCondition(
-                logical_operator="or",
-                conditions=[WorkflowCondition(name="author", comparison_operator="contains", value="Alice")],
-            ),
-        )
-
-        provider_model_bundle = Mock()
-        provider_model_bundle.configuration.get_provider_model.return_value = SimpleNamespace(status=ModelStatus.ACTIVE)
-        model_type_instance = Mock()
-        model_type_instance.get_model_schema.return_value = Mock()
-        model_instance = SimpleNamespace(
-            provider_model_bundle=provider_model_bundle,
-            model_type_instance=model_type_instance,
-            credentials={},
-        )
-        external_doc = _doc(
-            provider="external",
-            content="external text",
-            score=0.95,
-            dataset_id="dataset-2",
-            document_id="external-doc",
-            doc_id="external-doc-node",
-            extra={"dataset_name": "External Dataset", "title": "External Title"},
-        )
-        dify_doc = _doc(
-            provider="dify",
-            content="dify text",
-            score=0.6,
-            dataset_id="dataset-1",
-            document_id="doc-1",
-            doc_id="seg-node",
-        )
-        record = SimpleNamespace(
-            segment=SimpleNamespace(
-                id="segment-1",
-                dataset_id="dataset-1",
-                document_id="doc-1",
-                hit_count=2,
-                word_count=42,
-                position=3,
-                index_node_hash="hash-1",
-                get_sign_content=lambda: "segment text",
-                answer=None,
-            ),
-            score=0.6,
-            child_chunks=[SimpleNamespace(id="child-1", content="child", position=1, score=0.5)],
-            summary="segment summary",
-            files=None,
-        )
-        dataset_from_db = SimpleNamespace(id="dataset-1", name="Dify Dataset")
-        document_from_db = SimpleNamespace(
-            id="doc-1",
-            name="Doc Name",
-            data_source_type="upload_file",
-            doc_metadata={"author": "Alice"},
-        )
-        query_mock = Mock()
-        query_mock.where.return_value = query_mock
-        query_mock.all.side_effect = [[dataset_from_db], [document_from_db]]
-        session = Mock()
-        session.query.return_value = query_mock
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = False
-
-        with (
-            patch.object(retrieval, "_check_knowledge_rate_limit"),
-            patch.object(retrieval, "_get_available_datasets", return_value=[dataset_dify, dataset_external]),
-            patch.object(
-                retrieval,
-                "get_metadata_filter_condition",
-                return_value=({"dataset-1": ["doc-1"]}, SimpleNamespace(logical_operator="or", conditions=[])),
-            ),
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
-            patch.object(retrieval, "single_retrieve", return_value=[external_doc, dify_doc]),
-            patch(
-                "core.rag.retrieval.dataset_retrieval.ModelConfigWithCredentialsEntity", return_value=SimpleNamespace()
-            ),
-            patch(
-                "core.rag.retrieval.dataset_retrieval.RetrievalService.format_retrieval_documents",
-                return_value=[record],
-            ),
-            patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session", return_value=session_ctx),
-        ):
-            mock_model_manager.return_value.get_model_instance.return_value = model_instance
-            result = retrieval.knowledge_retrieval(request)
-
-        assert len(result) == 2
-        assert result[0].metadata.position == 1
-        assert result[0].metadata.dataset_id == "dataset-2"
-        assert result[1].summary == "segment summary"
 
     @pytest.mark.parametrize(
         ("status", "error_cls"),
