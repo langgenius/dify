@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'

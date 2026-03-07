@@ -2,9 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -18,7 +18,9 @@ class TestEnableSegmentsToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch(
+                "tasks.enable_segments_to_index_task.IndexProcessorFactory", autospec=True
+            ) as mock_index_processor_factory,
         ):
             # Setup mock index processor
             mock_processor = MagicMock()
@@ -29,7 +31,9 @@ class TestEnableSegmentsToIndexTask:
                 "index_processor": mock_processor,
             }
 
-    def _create_test_dataset_and_document(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_dataset_and_document(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Helper method to create a test dataset and document for testing.
 
@@ -49,15 +53,15 @@ class TestEnableSegmentsToIndexTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -66,8 +70,8 @@ class TestEnableSegmentsToIndexTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -79,8 +83,8 @@ class TestEnableSegmentsToIndexTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create document
         document = Document(
@@ -97,16 +101,16 @@ class TestEnableSegmentsToIndexTask:
             enabled=True,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property works correctly
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, document
 
     def _create_test_segments(
-        self, db_session_with_containers, document, dataset, count=3, enabled=False, status="completed"
+        self, db_session_with_containers: Session, document, dataset, count=3, enabled=False, status="completed"
     ):
         """
         Helper method to create test document segments.
@@ -142,14 +146,14 @@ class TestEnableSegmentsToIndexTask:
                 status=status,
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return segments
 
     def test_enable_segments_to_index_with_different_index_type(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test segments indexing with different index types.
@@ -167,10 +171,10 @@ class TestEnableSegmentsToIndexTask:
 
         # Update document to use different index type
         document.doc_form = IndexStructureType.QA_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -202,7 +206,7 @@ class TestEnableSegmentsToIndexTask:
             assert redis_client.exists(indexing_cache_key) == 0
 
     def test_enable_segments_to_index_dataset_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling of non-existent dataset.
@@ -227,7 +231,7 @@ class TestEnableSegmentsToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_enable_segments_to_index_document_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling of non-existent document.
@@ -254,7 +258,7 @@ class TestEnableSegmentsToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_enable_segments_to_index_invalid_document_status(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling of document with invalid status.
@@ -282,12 +286,12 @@ class TestEnableSegmentsToIndexTask:
             document.enabled = True
             document.archived = False
             document.indexing_status = "completed"
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Set invalid status
             for attr, value in status_attrs.items():
                 setattr(document, attr, value)
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Create segments
             segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -302,11 +306,11 @@ class TestEnableSegmentsToIndexTask:
 
             # Clean up segments for next iteration
             for segment in segments:
-                db.session.delete(segment)
-            db.session.commit()
+                db_session_with_containers.delete(segment)
+            db_session_with_containers.commit()
 
     def test_enable_segments_to_index_segments_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling when no segments are found.
@@ -336,7 +340,7 @@ class TestEnableSegmentsToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_enable_segments_to_index_with_parent_child_structure(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test segments indexing with parent-child structure.
@@ -355,10 +359,10 @@ class TestEnableSegmentsToIndexTask:
 
         # Update document to use parent-child index type
         document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments with mock child chunks
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -370,7 +374,7 @@ class TestEnableSegmentsToIndexTask:
             redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Mock the get_child_chunks method for each segment
-        with patch.object(DocumentSegment, "get_child_chunks") as mock_get_child_chunks:
+        with patch.object(DocumentSegment, "get_child_chunks", autospec=True) as mock_get_child_chunks:
             # Setup mock to return child chunks for each segment
             mock_child_chunks = []
             for i in range(2):  # Each segment has 2 child chunks
@@ -408,7 +412,7 @@ class TestEnableSegmentsToIndexTask:
                 assert redis_client.exists(indexing_cache_key) == 0
 
     def test_enable_segments_to_index_general_exception_handling(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test general exception handling during indexing process.
@@ -441,7 +445,7 @@ class TestEnableSegmentsToIndexTask:
 
         # Assert: Verify error handling
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is False
             assert segment.status == "error"
             assert segment.error is not None

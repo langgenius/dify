@@ -23,7 +23,7 @@ vi.mock('use-context-selector', () => ({
   useContext: () => ({ notify: mockNotify }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: {},
 }))
 
