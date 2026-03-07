@@ -435,6 +435,52 @@ class TestDifyNodeFactoryModelInstance:
         factory._llm_model_factory = MagicMock()
         return factory
 
+    @pytest.fixture
+    def llm_model_setup(self, monkeypatch, factory):
+        def _configure(
+            *,
+            completion_params=None,
+            has_provider_model=True,
+            model_schema=sentinel.model_schema,
+        ):
+            credentials = {"api_key": "secret"}
+            node_data_model = SimpleNamespace(
+                provider="provider",
+                name="model",
+                mode="chat",
+                completion_params=completion_params or {},
+            )
+            provider_model = MagicMock() if has_provider_model else None
+            provider_model_bundle = SimpleNamespace(
+                configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=provider_model))
+            )
+            model_type_instance = MagicMock()
+            model_type_instance.get_model_schema.return_value = model_schema
+            model_instance = SimpleNamespace(
+                provider_model_bundle=provider_model_bundle,
+                model_type_instance=model_type_instance,
+                provider=None,
+                model_name=None,
+                credentials=None,
+                parameters=None,
+                stop=None,
+            )
+            monkeypatch.setattr(
+                node_factory.ModelConfig,
+                "model_validate",
+                MagicMock(return_value=node_data_model),
+            )
+            factory._llm_credentials_provider.fetch.return_value = credentials
+            factory._llm_model_factory.init_model_instance.return_value = model_instance
+            return SimpleNamespace(
+                credentials=credentials,
+                provider_model=provider_model,
+                model_type_instance=model_type_instance,
+                model_instance=model_instance,
+            )
+
+        return _configure
+
     def test_requires_llm_mode(self, monkeypatch, factory):
         monkeypatch.setattr(
             node_factory.ModelConfig,
@@ -452,101 +498,36 @@ class TestDifyNodeFactoryModelInstance:
         with pytest.raises(node_factory.LLMModeRequiredError, match="LLM mode is required"):
             factory._build_model_instance_for_llm_node({"model": {}})
 
-    def test_raises_when_provider_model_is_missing(self, monkeypatch, factory):
-        node_data_model = SimpleNamespace(
-            provider="provider",
-            name="model",
-            mode="chat",
-            completion_params={},
-        )
-        provider_model_bundle = SimpleNamespace(
-            configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=None))
-        )
-        model_instance = SimpleNamespace(
-            provider_model_bundle=provider_model_bundle,
-            model_type_instance=MagicMock(),
-        )
-        monkeypatch.setattr(
-            node_factory.ModelConfig,
-            "model_validate",
-            MagicMock(return_value=node_data_model),
-        )
-        factory._llm_credentials_provider.fetch.return_value = {"api_key": "secret"}
-        factory._llm_model_factory.init_model_instance.return_value = model_instance
+    def test_raises_when_provider_model_is_missing(self, factory, llm_model_setup):
+        llm_model_setup(has_provider_model=False)
 
         with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
             factory._build_model_instance_for_llm_node({"model": {}})
 
-    def test_raises_when_model_schema_is_missing(self, monkeypatch, factory):
-        node_data_model = SimpleNamespace(
-            provider="provider",
-            name="model",
-            mode="chat",
-            completion_params={},
-        )
-        provider_model = MagicMock()
-        provider_model_bundle = SimpleNamespace(
-            configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=provider_model))
-        )
-        model_type_instance = MagicMock()
-        model_type_instance.get_model_schema.return_value = None
-        model_instance = SimpleNamespace(
-            provider_model_bundle=provider_model_bundle,
-            model_type_instance=model_type_instance,
-        )
-        monkeypatch.setattr(
-            node_factory.ModelConfig,
-            "model_validate",
-            MagicMock(return_value=node_data_model),
-        )
-        factory._llm_credentials_provider.fetch.return_value = {"api_key": "secret"}
-        factory._llm_model_factory.init_model_instance.return_value = model_instance
+    def test_raises_when_model_schema_is_missing(self, factory, llm_model_setup):
+        setup = llm_model_setup(model_schema=None)
 
         with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
             factory._build_model_instance_for_llm_node({"model": {}})
 
-        provider_model.raise_for_status.assert_called_once()
+        setup.provider_model.raise_for_status.assert_called_once()
 
-    def test_builds_model_instance_and_normalizes_stop_tokens(self, monkeypatch, factory):
-        node_data_model = SimpleNamespace(
-            provider="provider",
-            name="model",
-            mode="chat",
+    def test_builds_model_instance_and_normalizes_stop_tokens(self, factory, llm_model_setup):
+        setup = llm_model_setup(
             completion_params={"temperature": 0.3, "stop": "not-a-list"},
+            model_schema={"schema": "value"},
         )
-        provider_model = MagicMock()
-        provider_model_bundle = SimpleNamespace(
-            configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=provider_model))
-        )
-        model_type_instance = MagicMock()
-        model_type_instance.get_model_schema.return_value = {"schema": "value"}
-        model_instance = SimpleNamespace(
-            provider_model_bundle=provider_model_bundle,
-            model_type_instance=model_type_instance,
-            provider=None,
-            model_name=None,
-            credentials=None,
-            parameters=None,
-            stop=None,
-        )
-        monkeypatch.setattr(
-            node_factory.ModelConfig,
-            "model_validate",
-            MagicMock(return_value=node_data_model),
-        )
-        factory._llm_credentials_provider.fetch.return_value = {"api_key": "secret"}
-        factory._llm_model_factory.init_model_instance.return_value = model_instance
 
         result = factory._build_model_instance_for_llm_node({"model": {}})
 
-        assert result is model_instance
+        assert result is setup.model_instance
         assert result.provider == "provider"
         assert result.model_name == "model"
-        assert result.credentials == {"api_key": "secret"}
+        assert result.credentials == setup.credentials
         assert result.parameters == {"temperature": 0.3}
         assert result.stop == ()
-        assert result.model_type_instance is model_type_instance
-        provider_model.raise_for_status.assert_called_once()
+        assert result.model_type_instance is setup.model_type_instance
+        setup.provider_model.raise_for_status.assert_called_once()
 
 
 class TestDifyNodeFactoryMemory:
