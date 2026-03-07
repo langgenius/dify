@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -67,7 +67,6 @@ from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from models.enums import UserFrom
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -119,13 +118,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=tenant_id or "",
-            app_id=self._app_id,
             workflow_id=workflow_id,
             graph_config=graph_config,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
+            run_context=build_dify_run_context(
+                tenant_id=tenant_id or "",
+                app_id=self._app_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
@@ -267,13 +268,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id="",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id="",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
 

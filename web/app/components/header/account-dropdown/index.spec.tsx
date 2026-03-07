@@ -29,6 +29,10 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: () => <div data-testid="github-star">GithubStar</div>,
 }))
 
+vi.mock('@/app/components/base/theme-switcher', () => ({
+  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
@@ -65,6 +69,8 @@ vi.mock('@/context/i18n', () => ({
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
     IS_CLOUD_EDITION: false,
+    ZENDESK_WIDGET_KEY: '',
+    SUPPORT_EMAIL_ADDRESS: '',
   },
   mockEnv: {
     env: {
@@ -74,6 +80,8 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
 }))
 vi.mock('@/config', () => ({
   get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+  get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
   IS_DEV: false,
   IS_CE_EDITION: false,
 }))
@@ -187,6 +195,14 @@ describe('AccountDropdown', () => {
       expect(screen.getByText('test@example.com')).toBeInTheDocument()
     })
 
+    it('should set an accessible label on avatar trigger when menu trigger is rendered', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    })
+
     it('should show EDU badge for education accounts', () => {
       // Arrange
       vi.mocked(useProviderContext).mockReturnValue({
@@ -265,6 +281,16 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
+    })
+
+    it('should keep account dropdown open when clicking the theme switcher', () => {
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+      fireEvent.click(screen.getByTestId('theme-switcher-button'))
+
+      // Assert
+      expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
     })
   })
 
