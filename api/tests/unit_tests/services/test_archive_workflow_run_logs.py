@@ -15,8 +15,8 @@ from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
 
-    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config")
-    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage")
+    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config", autospec=True)
+    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage", autospec=True)
     def test_archiver_initialization(self, mock_get_storage, mock_config):
         """Test archiver can be initialized with various options."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver

@@ -29,7 +29,7 @@ from controllers.service_api.app.error import (
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (

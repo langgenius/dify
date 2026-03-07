@@ -77,14 +77,7 @@ jobs:
             }
 
             const body = diff.trim()
-              ? `### Pyrefly Diff
-<details>
-<summary>base → PR</summary>
-
-\`\`\`diff
-${diff}
-\`\`\`
-</details>`
+              ? '### Pyrefly Diff\n<details>\n<summary>base → PR</summary>\n\n```diff\n' + diff + '\n```\n</details>'
               : '### Pyrefly Diff\nNo changes detected.';
 
             await github.rest.issues.createComment({

@@ -7,9 +7,9 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
-from core.workflow.entities.workflow_start_reason import WorkflowStartReason
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.account import Account
 from models.model import AppMode
 

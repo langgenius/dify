@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.providers.audio.audio import AudioToolProvider
@@ -26,7 +25,8 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
-from core.workflow.file.enums import FileType
+from dify_graph.file.enums import FileType
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:

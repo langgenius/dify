@@ -14,15 +14,15 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.errors.invoke import (
+from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 
 
 def _mock_model_instance(*, schema: dict | None = None) -> SimpleNamespace:
