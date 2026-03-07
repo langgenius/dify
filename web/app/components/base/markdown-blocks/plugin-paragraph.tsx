@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
  */
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import { getMarkdownImageURL } from './utils'
+import { getMarkdownImageURL, hasImageChild } from './utils'
 
 type PluginParagraphProps = {
   pluginInfo?: SimplePluginInfo
@@ -66,5 +66,10 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
       </div>
     )
   }
+  // Use <div> instead of <p> when any child is an image to avoid invalid
+  // HTML nesting (<div> inside <p>) which causes React hydration warnings.
+  if (hasImageChild(childrenNode))
+    return <div className="markdown-p" data-testid="standard-paragraph">{children}</div>
+
   return <p data-testid="standard-paragraph">{children}</p>
 }
