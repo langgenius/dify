@@ -22,8 +22,9 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   const PortalContext = React.createContext({ open: false })
 
   const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
+    const contextValue = React.useMemo(() => ({ open: !!open }), [open])
     return (
-      <PortalContext.Provider value={{ open: !!open }}>
+      <PortalContext.Provider value={contextValue}>
         <div data-testid="portal">{children}</div>
       </PortalContext.Provider>
     )

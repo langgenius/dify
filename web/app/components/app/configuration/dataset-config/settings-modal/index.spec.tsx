@@ -182,14 +182,22 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 }
 
 const renderWithProviders = (dataset: DataSet) => {
+  const Provider = ({ children }: { children: React.ReactNode }) => {
+    const contextValue = React.useMemo(() => ({ notify: mockNotify, close: vi.fn() }), [])
+    return (
+      <ToastContext.Provider value={contextValue}>
+        {children}
+      </ToastContext.Provider>
+    )
+  }
   return render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <Provider>
       <SettingsModal
         currentDataset={dataset}
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
-    </ToastContext.Provider>,
+    </Provider>,
   )
 }
 
