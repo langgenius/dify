@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuSeparator,
@@ -247,6 +248,49 @@ describe('dropdown-menu wrapper', () => {
       expect(item).toHaveAttribute('id', `menu-item-${String(destructive)}`)
       expect(item).not.toHaveAttribute('destructive')
       expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('DropdownMenuLinkItem', () => {
+    it('should render as anchor and keep href/target attributes when link props are provided', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'Docs' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it('should keep link semantics and not leak closeOnClick prop when closeOnClick is false', () => {
+      render(
+        <DropdownMenu open>
+          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLinkItem
+              href="https://example.com/docs"
+              closeOnClick={false}
+              aria-label="docs link"
+            >
+              Docs
+            </DropdownMenuLinkItem>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'docs link' })
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).not.toHaveAttribute('closeOnClick')
     })
   })
 
