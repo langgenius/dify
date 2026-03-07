@@ -28,6 +28,7 @@ from dify_graph.nodes.llm import (
 )
 from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -68,6 +69,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -90,6 +92,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             llm_file_saver = FileSaverImpl(
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
