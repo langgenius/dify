@@ -46,9 +46,22 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       window.open(url, '_blank')
     }
     else if (url.startsWith('data:image')) {
-      // Base64 image
-      const win = window.open()
-      win?.document.write(`<img src="${url}" alt="${title}" />`)
+      // Base64 image - safe way to open with XSS protection
+      const validDataUrlPattern = /^data:image\/(?:png|jpeg|gif|jpg|webp);base64,[a-zA-Z0-9+/=]+$/
+      if (validDataUrlPattern.test(url)) {
+        // Create a simple HTML document with just the image
+        // This makes it simpler for both browsers and test mocking
+        const win = window.open()
+        if (win) {
+          win.document.write(`<img src="${url}" alt="${title}" />`)
+        }
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: 'Invalid image URL',
+        })
+      }
     }
     else {
       Toast.notify({

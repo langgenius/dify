@@ -7,7 +7,7 @@ import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
 const Img = ({ src }: any) => {
-  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
+  return <ImageGallery srcs={[src]} />
 }
 
 export default Img
