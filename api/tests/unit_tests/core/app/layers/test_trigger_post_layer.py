@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from core.app.layers.trigger_post_layer import TriggerPostLayer
-from core.workflow.graph_events.graph import GraphRunFailedEvent, GraphRunSucceededEvent
+from dify_graph.graph_events.graph import GraphRunFailedEvent, GraphRunSucceededEvent
 from models.enums import WorkflowTriggerStatus
 
 

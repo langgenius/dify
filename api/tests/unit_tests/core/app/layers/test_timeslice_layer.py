@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
 from core.app.layers.timeslice_layer import TimeSliceLayer
-from core.workflow.graph_engine.entities.commands import CommandType, GraphEngineCommand
+from dify_graph.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import SchedulerCommand
 

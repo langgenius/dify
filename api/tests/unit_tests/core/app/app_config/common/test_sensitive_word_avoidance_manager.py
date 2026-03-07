@@ -62,7 +62,7 @@ class TestSensitiveWordAvoidanceConfigManagerConvert:
         result = SensitiveWordAvoidanceConfigManager.convert(config)
 
         # Assert
-        patched.assert_called_once_with(type=None, config=None)
+        patched.assert_called_once_with(type=None, config={})
         assert result == mock_entity
 
 

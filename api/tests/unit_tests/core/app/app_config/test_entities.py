@@ -3,9 +3,8 @@ import pytest
 from core.app.app_config.entities import (
     DatasetRetrieveConfigEntity,
     PromptTemplateEntity,
-    VariableEntity,
-    VariableEntityType,
 )
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
 class TestAppConfigEntities:

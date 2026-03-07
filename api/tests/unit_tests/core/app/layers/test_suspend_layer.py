@@ -1,5 +1,5 @@
 from core.app.layers.suspend_layer import SuspendLayer
-from core.workflow.graph_events.graph import GraphRunPausedEvent
+from dify_graph.graph_events.graph import GraphRunPausedEvent
 
 
 class TestSuspendLayer:

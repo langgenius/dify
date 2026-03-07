@@ -7,16 +7,16 @@ import pytest
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
-from core.workflow.enums import (
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
+from dify_graph.enums import (
     NodeType,
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from core.workflow.graph_events.graph import (
+from dify_graph.graph_events.graph import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -24,7 +24,7 @@ from core.workflow.graph_events.graph import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.graph_events.node import (
+from dify_graph.graph_events.node import (
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -32,9 +32,9 @@ from core.workflow.graph_events.node import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events.base import NodeRunResult
-from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.node_events import NodeRunResult
+from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 class _RepoRecorder:
@@ -47,6 +47,10 @@ class _RepoRecorder:
 
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
+
+
+def _naive_utc_now() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _make_layer(
@@ -141,7 +145,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.START,
             title="Start",
-            created_at=datetime.now(UTC),
+            created_at=_naive_utc_now(),
         )
         layer._node_execution_cache[execution.id] = execution
 
@@ -201,7 +205,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.START,
             title="Start",
-            created_at=datetime.now(UTC),
+            created_at=_naive_utc_now(),
         )
         layer._node_execution_cache[running.id] = running
 
@@ -243,7 +247,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.START,
             node_title="Start",
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
             predecessor_node_id="prev",
             in_iteration_id="iter",
             in_loop_id="loop",
@@ -259,7 +263,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.START,
             node_title="Start",
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
             error="retry",
             retry_index=1,
         )
@@ -275,7 +279,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.LLM,
             node_title="LLM",
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
         )
         layer._handle_node_started(start_event)
 
@@ -284,7 +288,7 @@ class TestWorkflowPersistenceLayer:
             id="exec",
             node_id="node",
             node_type=NodeType.LLM,
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
             node_run_result=result,
         )
         layer._handle_node_succeeded(success_event)
@@ -293,7 +297,7 @@ class TestWorkflowPersistenceLayer:
             id="exec",
             node_id="node",
             node_type=NodeType.LLM,
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
             error="boom",
             node_run_result=result,
         )
@@ -303,7 +307,7 @@ class TestWorkflowPersistenceLayer:
             id="exec",
             node_id="node",
             node_type=NodeType.LLM,
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
             error="err",
             node_run_result=result,
         )
@@ -319,7 +323,7 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=NodeType.LLM,
             node_title="LLM",
-            start_at=datetime.now(UTC),
+            start_at=_naive_utc_now(),
         )
         layer._handle_node_started(start_event)
 
@@ -384,7 +388,7 @@ class TestWorkflowPersistenceLayer:
         layer._handle_node_pause_requested = _record("node_paused")
 
         node_result = NodeRunResult()
-        now = datetime.now(UTC)
+        now = _naive_utc_now()
         events = [
             GraphRunStartedEvent(),
             GraphRunSucceededEvent(outputs={"ok": True}),
@@ -482,7 +486,7 @@ class TestWorkflowPersistenceLayer:
                 node_id="node",
                 node_type=NodeType.START,
                 node_title="Start",
-                start_at=datetime.now(UTC),
+                start_at=_naive_utc_now(),
                 error="retry",
                 retry_index=1,
             )

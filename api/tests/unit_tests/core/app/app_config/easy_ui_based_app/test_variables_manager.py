@@ -3,7 +3,7 @@ import pytest
 from core.app.app_config.easy_ui_based_app.variables.manager import (
     BasicVariablesConfigManager,
 )
-from core.app.app_config.entities import VariableEntityType
+from dify_graph.variables.input_entities import VariableEntityType
 
 
 class TestBasicVariablesConfigManagerConvert:

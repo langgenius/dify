@@ -38,9 +38,9 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
-from core.workflow.file.enums import FileTransferMethod
+from dify_graph.file.enums import FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.model import AppMode
 
 
@@ -391,15 +391,16 @@ class TestEasyUiBasedGenerateTaskPipeline:
             SimpleNamespace(engine=object()),
         )
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url",
+            "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
             lambda **kwargs: "signed-url",
         )
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sign_tool_file",
+            "core.app.task_pipeline.message_file_utils.sign_tool_file",
             lambda **kwargs: "signed-tool",
         )
 
-        files = pipeline._record_files()
+        response = pipeline._message_end_to_stream_response()
+        files = response.files
 
         assert files
         assert len(files) == 3
@@ -986,7 +987,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         with pytest.raises(ValueError, match="Conversation conv not found"):
             pipeline._save_message(session=session)
 
-    def test_message_end_to_stream_response_includes_usage_metadata(self):
+    def test_message_end_to_stream_response_includes_usage_metadata(self, monkeypatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
         message = SimpleNamespace(id="msg", created_at=datetime.now(UTC))
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -997,6 +998,29 @@ class TestEasyUiBasedGenerateTaskPipeline:
             stream=False,
         )
         pipeline._task_state.llm_result.usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 2})
+
+        class _Result:
+            def all(self):
+                return []
+
+        class _Session:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def scalars(self, *args, **kwargs):
+                return _Result()
+
+        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
+            SimpleNamespace(engine=object()),
+        )
 
         response = pipeline._message_end_to_stream_response()
 
@@ -1037,7 +1061,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             SimpleNamespace(engine=object()),
         )
 
-        assert pipeline._record_files() is None
+        response = pipeline._message_end_to_stream_response()
+
+        assert response.files is None
 
     def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch):
         conversation = SimpleNamespace(id="conv", mode=AppMode.CHAT)
@@ -1103,15 +1129,16 @@ class TestEasyUiBasedGenerateTaskPipeline:
             SimpleNamespace(engine=object()),
         )
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.file_helpers.get_signed_file_url",
+            "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
             lambda **kwargs: "local-fallback-signed",
         )
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sign_tool_file",
+            "core.app.task_pipeline.message_file_utils.sign_tool_file",
             lambda **kwargs: "tool-signed",
         )
 
-        files = pipeline._record_files()
+        response = pipeline._message_end_to_stream_response()
+        files = response.files
 
         assert files is not None
         assert files[0]["url"] == "local-fallback-signed"

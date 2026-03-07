@@ -4,7 +4,7 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     StreamEvent,
 )
-from core.workflow.enums import WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 
 
 class TestTaskEntities:
