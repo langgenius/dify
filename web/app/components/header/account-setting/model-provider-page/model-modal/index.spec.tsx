@@ -1,5 +1,5 @@
 import type { Credential, CredentialFormSchema, ModelProvider } from '../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -243,9 +243,10 @@ describe('ModelModal', () => {
     const credential: Credential = { credential_id: 'cred-1' }
     const { onCancel } = renderModal({ credential })
 
-    expect(screen.getByText('common.modelProvider.confirmDelete')).toBeInTheDocument()
+    const alertDialog = screen.getByRole('alertdialog', { hidden: true })
+    expect(alertDialog).toHaveTextContent('common.modelProvider.confirmDelete')
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    fireEvent.click(within(alertDialog).getByRole('button', { hidden: true, name: 'common.operation.confirm' }))
 
     expect(mockHandlers.handleConfirmDelete).toHaveBeenCalledTimes(1)
     expect(onCancel).toHaveBeenCalledTimes(1)

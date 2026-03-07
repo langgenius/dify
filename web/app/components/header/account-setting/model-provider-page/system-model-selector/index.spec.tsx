@@ -26,6 +26,7 @@ vi.mock('react-i18next', async () => {
 
 const mockNotify = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
+const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 
 let mockIsCurrentWorkspaceManager = true
@@ -57,6 +58,7 @@ vi.mock('../hooks', () => ({
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
+  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
 }))
 
 vi.mock('@/service/common', () => ({
@@ -99,7 +101,7 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeInTheDocument()
   })
 
-  it('should open modal when button is clicked', async () => {
+  it('should open dialog when button is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     const button = screen.getByRole('button', { name: /system model settings/i })
     fireEvent.click(button)
@@ -113,7 +115,7 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should close modal when cancel is clicked', async () => {
+  it('should close dialog when cancel is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
@@ -144,6 +146,7 @@ describe('SystemModel', () => {
         type: 'success',
         message: 'Modified successfully',
       })
+      expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
   })

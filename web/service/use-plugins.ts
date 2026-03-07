@@ -47,6 +47,7 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 const NAME_SPACE = 'plugins'
 
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
+const useCheckInstalledKey = [NAME_SPACE, 'checkInstalled'] as const
 export const useCheckInstalled = ({
   pluginIds,
   enabled,
@@ -55,7 +56,7 @@ export const useCheckInstalled = ({
   enabled: boolean
 }) => {
   return useQuery<{ plugins: PluginDetail[] }>({
-    queryKey: [NAME_SPACE, 'checkInstalled', pluginIds],
+    queryKey: [...useCheckInstalledKey, pluginIds],
     queryFn: () => post<{ plugins: PluginDetail[] }>('/workspaces/current/plugin/list/installations/ids', {
       body: {
         plugin_ids: pluginIds,
@@ -64,6 +65,17 @@ export const useCheckInstalled = ({
     enabled,
     staleTime: 0, // always fresh
   })
+}
+
+export const useInvalidateCheckInstalled = () => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: useCheckInstalledKey,
+      },
+    )
+  }
 }
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']

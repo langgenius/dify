@@ -100,10 +100,10 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancel }: { activeTab?: string, onCancel?: () => void }) => (
+  default: ({ activeTab, onCancelAction }: { activeTab?: string, onCancelAction?: () => void }) => (
     <div data-testid="account-setting">
       <span data-testid="active-tab">{activeTab}</span>
-      <button onClick={onCancel} data-testid="close-setting">Close</button>
+      <button onClick={onCancelAction} data-testid="close-setting">Close</button>
     </div>
   ),
 }))

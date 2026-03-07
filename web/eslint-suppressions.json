@@ -2955,16 +2955,6 @@
       "count": 2
     }
   },
-  "app/components/billing/pricing/header.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -4572,11 +4562,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/key-validator/declarations.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4655,11 +4640,8 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
@@ -4684,14 +4666,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/authorized/authorized-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-auth/authorized/credential-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4743,11 +4717,6 @@
       "count": 3
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-badge/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -4765,15 +4734,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -4877,11 +4837,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/add-model-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4890,24 +4845,8 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/credential-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-added-card/model-list-item.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -4943,22 +4882,9 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/header/account-setting/model-provider-page/provider-icon/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/plugin-page/utils.ts": {
@@ -5358,11 +5284,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header/components/header-modals.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/detail-header/components/plugin-source-badge.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5450,14 +5371,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/operation-dropdown.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
@@ -5791,27 +5704,6 @@
   "app/components/plugins/types.ts": {
     "ts/no-explicit-any": {
       "count": 30
-    }
-  },
-  "app/components/plugins/update-plugin/downgrade-warning.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/update-plugin/from-market-place.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/update-plugin/plugin-version-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/rag-pipeline/components/chunk-card-list/chunk-card.tsx": {
