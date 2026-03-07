@@ -1,6 +1,7 @@
 'use client'
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
+import type { PluginPageTab } from './context'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -15,10 +16,9 @@ import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
-import { getDocsUrl } from '@/app/components/plugins/utils'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useLocale } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -28,15 +28,23 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
-import {
-  PluginPageContextProvider,
-  usePluginPageContext,
-} from './context'
+import { usePluginPageContext } from './context'
+import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
+
+const pluginPageTabSet = new Set<string>([
+  PLUGIN_PAGE_TABS_MAP.plugins,
+  PLUGIN_PAGE_TABS_MAP.marketplace,
+  ...Object.values(PLUGIN_TYPE_SEARCH_MAP),
+])
+
+const isPluginPageTab = (value: string): value is PluginPageTab => {
+  return pluginPageTabSet.has(value)
+}
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -47,7 +55,7 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const locale = useLocale()
+  const docLink = useDocLink()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
@@ -155,7 +163,10 @@ const PluginPage = ({
           <div className="flex-1">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
-              onChange={setActiveTab}
+              onChange={(nextTab) => {
+                if (isPluginPageTab(nextTab))
+                  setActiveTab(nextTab)
+              }}
               options={options}
             />
           </div>
@@ -175,7 +186,7 @@ const PluginPage = ({
                     </Button>
                   </Link>
                   <Link
-                    href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
+                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
                     target="_blank"
                   >
                     <Button

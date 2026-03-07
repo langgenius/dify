@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from pydantic import TypeAdapter
-from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_events.base import GraphEngineEvent
-from core.workflow.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
+from core.db.session_factory import session_factory
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events.base import GraphEngineEvent
+from dify_graph.graph_events.graph import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
@@ -31,13 +31,11 @@ class TriggerPostLayer(GraphEngineLayer):
         cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
         start_time: datetime,
         trigger_log_id: str,
-        session_maker: sessionmaker[Session],
     ):
         super().__init__()
         self.trigger_log_id = trigger_log_id
         self.start_time = start_time
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
-        self.session_maker = session_maker
 
     def on_graph_start(self):
         pass
@@ -47,7 +45,7 @@ class TriggerPostLayer(GraphEngineLayer):
         Update trigger log with success or failure.
         """
         if isinstance(event, tuple(self._STATUS_MAP.keys())):
-            with self.session_maker() as session:
+            with session_factory.create_session() as session:
                 repo = SQLAlchemyWorkflowTriggerLogRepository(session)
                 trigger_log = repo.get_by_id(self.trigger_log_id)
                 if not trigger_log:

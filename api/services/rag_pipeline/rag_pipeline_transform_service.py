@@ -44,7 +44,7 @@ class RagPipelineTransformService:
         doc_form = dataset.doc_form
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset)
-        retrieval_model = dataset.retrieval_model
+        retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
         self._deal_dependencies(pipeline_yaml, dataset.tenant_id)
@@ -63,7 +63,12 @@ class RagPipelineTransformService:
             ):
                 node = self._deal_file_extensions(node)
             if node.get("data", {}).get("type") == "knowledge-index":
-                node = self._deal_knowledge_index(dataset, doc_form, indexing_technique, retrieval_model, node)
+                knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+                if dataset.tenant_id != current_user.current_tenant_id:
+                    raise ValueError("Unauthorized")
+                node = self._deal_knowledge_index(
+                    knowledge_configuration, dataset, indexing_technique, retrieval_model, node
+                )
             new_nodes.append(node)
         if new_nodes:
             graph["nodes"] = new_nodes
@@ -154,21 +159,28 @@ class RagPipelineTransformService:
         return node
 
     def _deal_knowledge_index(
-        self, dataset: Dataset, doc_form: str, indexing_technique: str | None, retrieval_model: dict, node: dict
+        self,
+        knowledge_configuration: KnowledgeConfiguration,
+        dataset: Dataset,
+        indexing_technique: str | None,
+        retrieval_model: RetrievalSetting | None,
+        node: dict,
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            retrieval_setting = RetrievalSetting.model_validate(retrieval_model)
             if indexing_technique == "economy":
-                retrieval_setting.search_method = RetrievalMethod.KEYWORD_SEARCH
-            knowledge_configuration.retrieval_model = retrieval_setting
+                retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
+            knowledge_configuration.retrieval_model = retrieval_model
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
+
+        # Copy summary_index_setting from dataset to knowledge_index node configuration
+        if dataset.summary_index_setting:
+            knowledge_configuration.summary_index_setting = dataset.summary_index_setting
 
         knowledge_configuration_dict.update(knowledge_configuration.model_dump())
         node["data"] = knowledge_configuration_dict

@@ -1,97 +1,47 @@
 # API Agent Guide
 
-## Agent Notes (must-check)
+## Notes for Agent (must-check)
 
-Before you start work on any backend file under `api/`, you MUST check whether a related note exists under:
+Before changing any backend code under `api/`, you MUST read the surrounding docstrings and comments. These notes contain required context (invariants, edge cases, trade-offs) and are treated as part of the spec.
 
-- `agent-notes/<same-relative-path-as-target-file>.md`
+Look for:
 
-Rules:
+- The module (file) docstring at the top of a source code file
+- Docstrings on classes and functions/methods
+- Paragraph/block comments for non-obvious logic
 
-- **Path mapping**: for a target file `<path>/<name>.py`, the note must be `agent-notes/<path>/<name>.py.md` (same folder structure, same filename, plus `.md`).
-- **Before working**:
-  - If the note exists, read it first and follow any constraints/decisions recorded there.
-  - If the note conflicts with the current code, or references an "origin" file/path that has been deleted, renamed, or migrated, treat the **code as the single source of truth** and update the note to match reality.
-  - If the note does not exist, create it with a short architecture/intent summary and any relevant invariants/edge cases.
-- **During working**:
-  - Keep the note in sync as you discover constraints, make decisions, or change approach.
-  - If you move/rename a file, migrate its note to the new mapped path (and fix any outdated references inside the note).
-  - Record non-obvious edge cases, trade-offs, and the test/verification plan as you go (not just at the end).
-  - Keep notes **coherent**: integrate new findings into the relevant sections and rewrite for clarity; avoid append-only “recent fix” / changelog-style additions unless the note is explicitly intended to be a changelog.
-- **When finishing work**:
-  - Update the related note(s) to reflect what changed, why, and any new edge cases/tests.
-  - If a file is deleted, remove or clearly deprecate the corresponding note so it cannot be mistaken as current guidance.
-  - Keep notes concise and accurate; they are meant to prevent repeated rediscovery.
+### What to write where
 
-## Skill Index
+- Keep notes scoped: module notes cover module-wide context, class notes cover class-wide context, function/method notes cover behavioural contracts, and paragraph/block comments cover local “why”. Avoid duplicating the same content across scopes unless repetition prevents misuse.
+- **Module (file) docstring**: purpose, boundaries, key invariants, and “gotchas” that a new reader must know before editing.
+  - Include cross-links to the key collaborators (modules/services) when discovery is otherwise hard.
+  - Prefer stable facts (invariants, contracts) over ephemeral “today we…” notes.
+- **Class docstring**: responsibility, lifecycle, invariants, and how it should be used (or not used).
+  - If the class is intentionally stateful, note what state exists and what methods mutate it.
+  - If concurrency/async assumptions matter, state them explicitly.
+- **Function/method docstring**: behavioural contract.
+  - Document arguments, return shape, side effects (DB writes, external I/O, task dispatch), and raised domain exceptions.
+  - Add examples only when they prevent misuse.
+- **Paragraph/block comments**: explain *why* (trade-offs, historical constraints, surprising edge cases), not what the code already states.
+  - Keep comments adjacent to the logic they justify; delete or rewrite comments that no longer match reality.
 
-Start with the section that best matches your need. Each entry lists the problems it solves plus key files/concepts so you know what to expect before opening it.
+### Rules (must follow)
 
-### Platform Foundations
+In this section, “notes” means module/class/function docstrings plus any relevant paragraph/block comments.
 
-#### [Infrastructure Overview](agent_skills/infra.md)
-
-- **When to read this**
-  - You need to understand where a feature belongs in the architecture.
-  - You’re wiring storage, Redis, vector stores, or OTEL.
-  - You’re about to add CLI commands or async jobs.
-- **What it covers**
-  - Configuration stack (`configs/app_config.py`, remote settings)
-  - Storage entry points (`extensions/ext_storage.py`, `core/file/file_manager.py`)
-  - Redis conventions (`extensions/ext_redis.py`)
-  - Plugin runtime topology
-  - Vector-store factory (`core/rag/datasource/vdb/*`)
-  - Observability hooks
-  - SSRF proxy usage
-  - Core CLI commands
-
-### Plugin & Extension Development
-
-#### [Plugin Systems](agent_skills/plugin.md)
-
-- **When to read this**
-  - You’re building or debugging a marketplace plugin.
-  - You need to know how manifests, providers, daemons, and migrations fit together.
-- **What it covers**
-  - Plugin manifests (`core/plugin/entities/plugin.py`)
-  - Installation/upgrade flows (`services/plugin/plugin_service.py`, CLI commands)
-  - Runtime adapters (`core/plugin/impl/*` for tool/model/datasource/trigger/endpoint/agent)
-  - Daemon coordination (`core/plugin/entities/plugin_daemon.py`)
-  - How provider registries surface capabilities to the rest of the platform
-
-#### [Plugin OAuth](agent_skills/plugin_oauth.md)
-
-- **When to read this**
-  - You must integrate OAuth for a plugin or datasource.
-  - You’re handling credential encryption or refresh flows.
-- **Topics**
-  - Credential storage
-  - Encryption helpers (`core/helper/provider_encryption.py`)
-  - OAuth client bootstrap (`services/plugin/oauth_service.py`, `services/plugin/plugin_parameter_service.py`)
-  - How console/API layers expose the flows
-
-### Workflow Entry & Execution
-
-#### [Trigger Concepts](agent_skills/trigger.md)
-
-- **When to read this**
-  - You’re debugging why a workflow didn’t start.
-  - You’re adding a new trigger type or hook.
-  - You need to trace async execution, draft debugging, or webhook/schedule pipelines.
-- **Details**
-  - Start-node taxonomy
-  - Webhook & schedule internals (`core/workflow/nodes/trigger_*`, `services/trigger/*`)
-  - Async orchestration (`services/async_workflow_service.py`, Celery queues)
-  - Debug event bus
-  - Storage/logging interactions
-
-## General Reminders
-
-- All skill docs assume you follow the coding style rules below—run the lint/type/test commands before submitting changes.
-- When you cannot find an answer in these briefs, search the codebase using the paths referenced (e.g., `core/plugin/impl/tool.py`, `services/dataset_service.py`).
-- If you run into cross-cutting concerns (tenancy, configuration, storage), check the infrastructure guide first; it links to most supporting modules.
-- Keep multi-tenancy and configuration central: everything flows through `configs.dify_config` and `tenant_id`.
-- When touching plugins or triggers, consult both the system overview and the specialised doc to ensure you adjust lifecycle, storage, and observability consistently.
+- **Before working**
+  - Read the notes in the area you’ll touch; treat them as part of the spec.
+  - If a docstring or comment conflicts with the current code, treat the **code as the single source of truth** and update the docstring or comment to match reality.
+  - If important intent/invariants/edge cases are missing, add them in the closest docstring or comment (module for overall scope, function for behaviour).
+- **During working**
+  - Keep the notes in sync as you discover constraints, make decisions, or change approach.
+  - If you move/rename responsibilities across modules/classes, update the affected docstrings and comments so readers can still find the “why” and the invariants.
+  - Record non-obvious edge cases, trade-offs, and the test/verification plan in the nearest docstring or comment that will stay correct.
+  - Keep the notes **coherent**: integrate new findings into the relevant docstrings and comments; avoid append-only “recent fix” / changelog-style additions.
+- **When finishing**
+  - Update the notes to reflect what changed, why, and any new edge cases/tests.
+  - Remove or rewrite any comments that could be mistaken as current guidance but no longer apply.
+  - Keep docstrings and comments concise and accurate; they are meant to prevent repeated rediscovery.
 
 ## Coding Style
 
@@ -226,7 +176,7 @@ Before opening a PR / submitting:
 
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
-- Document non-obvious behaviour with concise comments.
+- Document non-obvious behaviour with concise docstrings and comments.
 
 ### Miscellaneous
 

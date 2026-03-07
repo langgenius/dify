@@ -11,8 +11,8 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
+import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useDocLink } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { activateMember } from '@/service/common'
@@ -23,7 +23,6 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
@@ -57,7 +56,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language, false)
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
+        const redirectUrl = resolvePostLoginRedirect()
         router.replace(redirectUrl || '/apps')
       }
     }
@@ -73,7 +72,7 @@ export default function InviteSettingsPage() {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-          <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
+          <h2 className="text-text-primary title-4xl-semi-bold">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
           <Button variant="primary" className="w-full !text-sm">
@@ -90,11 +89,11 @@ export default function InviteSettingsPage() {
         <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('setYourAccount', { ns: 'login' })}</h2>
+        <h2 className="text-text-primary title-4xl-semi-bold">{t('setYourAccount', { ns: 'login' })}</h2>
       </div>
       <form onSubmit={noop}>
         <div className="mb-5">
-          <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+          <label htmlFor="name" className="my-2 text-text-secondary system-md-semibold">
             {t('name', { ns: 'login' })}
           </label>
           <div className="mt-1">
@@ -115,7 +114,7 @@ export default function InviteSettingsPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+          <label htmlFor="name" className="my-2 text-text-secondary system-md-semibold">
             {t('interfaceLanguage', { ns: 'login' })}
           </label>
           <div className="mt-1">
@@ -130,7 +129,7 @@ export default function InviteSettingsPage() {
         </div>
         {/* timezone */}
         <div className="mb-5">
-          <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
+          <label htmlFor="timezone" className="text-text-secondary system-md-semibold">
             {t('timezone', { ns: 'login' })}
           </label>
           <div className="mt-1">
@@ -154,14 +153,14 @@ export default function InviteSettingsPage() {
         </div>
       </form>
       {!systemFeatures.branding.enabled && (
-        <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+        <div className="mt-2 block w-full text-text-tertiary system-xs-regular">
           {t('license.tip', { ns: 'login' })}
       &nbsp;
           <Link
-            className="system-xs-medium text-text-accent-secondary"
+            className="text-text-accent-secondary system-xs-medium"
             target="_blank"
             rel="noopener noreferrer"
-            href={docLink('/policies/open-source')}
+            href={LICENSE_LINK}
           >
             {t('license.link', { ns: 'login' })}
           </Link>

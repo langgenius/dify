@@ -14,6 +14,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
 import { ChunkContainer, QAPreview } from '../../../chunk'
 import PreviewDocumentPicker from '../../../common/document-picker/preview-document-picker'
+import SummaryLabel from '../../../documents/detail/completed/common/summary-label'
 import { PreviewSlice } from '../../../formatted-text/flavours/preview-slice'
 import { FormattedText } from '../../../formatted-text/formatted'
 import PreviewContainer from '../../../preview/container'
@@ -99,6 +100,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
               characterCount={item.content.length}
             >
               {item.content}
+              {item.summary && <SummaryLabel summary={item.summary} />}
             </ChunkContainer>
           ))
         )}
@@ -131,6 +133,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
                     )
                   })}
                 </FormattedText>
+                {item.summary && <SummaryLabel summary={item.summary} />}
               </ChunkContainer>
             )
           })

@@ -14,13 +14,17 @@ import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
 
-const i18n = getI18n()
-
 export const slashAction: ActionItem = {
   key: '/',
   shortcut: '/',
-  title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
-  description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
+  get title() {
+    const i18n = getI18n()
+    return i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' })
+  },
+  get description() {
+    const i18n = getI18n()
+    return i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' })
+  },
   action: (result) => {
     if (result.type !== 'command')
       return
@@ -28,6 +32,7 @@ export const slashAction: ActionItem = {
     executeCommand(command, args)
   },
   search: async (query, _searchTerm = '') => {
+    const i18n = getI18n()
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)
   },

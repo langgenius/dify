@@ -61,7 +61,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 <span>{t('connectHelper.helper1', { ns: 'dataset' })}</span>
                 <span className="system-sm-medium text-text-secondary">{t('connectHelper.helper2', { ns: 'dataset' })}</span>
                 <span>{t('connectHelper.helper3', { ns: 'dataset' })}</span>
-                <a className="system-sm-regular self-stretch text-text-accent" href={docLink('/guides/knowledge-base/connect-external-knowledge-base')} target="_blank" rel="noopener noreferrer">
+                <a className="system-sm-regular self-stretch text-text-accent" href={docLink('/use-dify/knowledge/connect-external-knowledge-base')} target="_blank" rel="noopener noreferrer">
                   {t('connectHelper.helper4', { ns: 'dataset' })}
                 </a>
                 <span>

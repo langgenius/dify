@@ -13,7 +13,7 @@ import FormGeneration from '@/app/components/base/features/new-feature-panel/mod
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -240,7 +240,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
               {t('apiBasedExtension.selector.title', { ns: 'common' })}
               <a
-                href={docLink('/guides/extension/api-based-extension/README')}
+                href={docLink('/use-dify/workspace/api-extension/api-extension')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"

@@ -140,7 +140,7 @@
   "stepTwo.preview": "ยืนยันและดูตัวอย่าง",
   "stepTwo.previewButton": "การเปลี่ยนไปใช้รูปแบบ Q&A",
   "stepTwo.previewChunk": "ดูตัวอย่าง Chunk",
-  "stepTwo.previewChunkCount": "{{นับ}} ก้อนโดยประมาณ",
+  "stepTwo.previewChunkCount": "{{count}} ก้อนโดยประมาณ",
   "stepTwo.previewChunkTip": "คลิกปุ่ม 'Preview Chunk' ทางด้านซ้ายเพื่อโหลดตัวอย่าง",
   "stepTwo.previewSwitchTipEnd": "ใช้โทเค็นเพิ่มเติม",
   "stepTwo.previewSwitchTipStart": "การแสดงตัวอย่างส่วนปัจจุบันอยู่ในรูปแบบข้อความ การเปลี่ยนไปใช้ตัวอย่างรูปแบบคําถามและคําตอบจะ",

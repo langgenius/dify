@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.model import Account, Tenant
@@ -17,10 +18,12 @@ class TestModelLoadBalancingService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.model_load_balancing_service.ProviderManager") as mock_provider_manager,
-            patch("services.model_load_balancing_service.LBModelManager") as mock_lb_model_manager,
-            patch("services.model_load_balancing_service.ModelProviderFactory") as mock_model_provider_factory,
-            patch("services.model_load_balancing_service.encrypter") as mock_encrypter,
+            patch("services.model_load_balancing_service.ProviderManager", autospec=True) as mock_provider_manager,
+            patch("services.model_load_balancing_service.LBModelManager", autospec=True) as mock_lb_model_manager,
+            patch(
+                "services.model_load_balancing_service.ModelProviderFactory", autospec=True
+            ) as mock_model_provider_factory,
+            patch("services.model_load_balancing_service.encrypter", autospec=True) as mock_encrypter,
         ):
             # Setup default mock returns
             mock_provider_manager_instance = mock_provider_manager.return_value
@@ -65,7 +68,7 @@ class TestModelLoadBalancingService:
                 "credential_schema": mock_credential_schema,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -86,18 +89,16 @@ class TestModelLoadBalancingService:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -106,8 +107,8 @@ class TestModelLoadBalancingService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -115,7 +116,7 @@ class TestModelLoadBalancingService:
         return account, tenant
 
     def _create_test_provider_and_setting(
-        self, db_session_with_containers, tenant_id, mock_external_service_dependencies
+        self, db_session_with_containers: Session, tenant_id, mock_external_service_dependencies
     ):
         """
         Helper method to create a test provider and provider model setting.
@@ -130,8 +131,6 @@ class TestModelLoadBalancingService:
         """
         fake = Faker()
 
-        from extensions.ext_database import db
-
         # Create provider
         provider = Provider(
             tenant_id=tenant_id,
@@ -139,8 +138,8 @@ class TestModelLoadBalancingService:
             provider_type="custom",
             is_valid=True,
         )
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Create provider model setting
         provider_model_setting = ProviderModelSetting(
@@ -151,12 +150,14 @@ class TestModelLoadBalancingService:
             enabled=True,
             load_balancing_enabled=False,
         )
-        db.session.add(provider_model_setting)
-        db.session.commit()
+        db_session_with_containers.add(provider_model_setting)
+        db_session_with_containers.commit()
 
         return provider, provider_model_setting
 
-    def test_enable_model_load_balancing_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_enable_model_load_balancing_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful model load balancing enablement.
 
@@ -191,14 +192,15 @@ class TestModelLoadBalancingService:
         assert call_args.kwargs["model_type"].value == "llm"  # ModelType enum value
 
         # Verify database state
-        from extensions.ext_database import db
 
-        db.session.refresh(provider)
-        db.session.refresh(provider_model_setting)
+        db_session_with_containers.refresh(provider)
+        db_session_with_containers.refresh(provider_model_setting)
         assert provider.id is not None
         assert provider_model_setting.id is not None
 
-    def test_disable_model_load_balancing_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_disable_model_load_balancing_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful model load balancing disablement.
 
@@ -233,15 +235,14 @@ class TestModelLoadBalancingService:
         assert call_args.kwargs["model_type"].value == "llm"  # ModelType enum value
 
         # Verify database state
-        from extensions.ext_database import db
 
-        db.session.refresh(provider)
-        db.session.refresh(provider_model_setting)
+        db_session_with_containers.refresh(provider)
+        db_session_with_containers.refresh(provider_model_setting)
         assert provider.id is not None
         assert provider_model_setting.id is not None
 
     def test_enable_model_load_balancing_provider_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when provider does not exist.
@@ -273,11 +274,12 @@ class TestModelLoadBalancingService:
         assert "Provider nonexistent_provider does not exist." in str(exc_info.value)
 
         # Verify no database state changes occurred
-        from extensions.ext_database import db
 
-        db.session.rollback()
+        db_session_with_containers.rollback()
 
-    def test_get_load_balancing_configs_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_load_balancing_configs_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of load balancing configurations.
 
@@ -296,7 +298,6 @@ class TestModelLoadBalancingService:
         )
 
         # Create load balancing config
-        from extensions.ext_database import db
 
         load_balancing_config = LoadBalancingModelConfig(
             tenant_id=tenant.id,
@@ -307,11 +308,11 @@ class TestModelLoadBalancingService:
             encrypted_config='{"api_key": "test_key"}',
             enabled=True,
         )
-        db.session.add(load_balancing_config)
-        db.session.commit()
+        db_session_with_containers.add(load_balancing_config)
+        db_session_with_containers.commit()
 
         # Verify the config was created
-        db.session.refresh(load_balancing_config)
+        db_session_with_containers.refresh(load_balancing_config)
         assert load_balancing_config.id is not None
 
         # Setup mocks for get_load_balancing_configs method
@@ -356,11 +357,11 @@ class TestModelLoadBalancingService:
         assert configs[0]["ttl"] == 0
 
         # Verify database state
-        db.session.refresh(load_balancing_config)
+        db_session_with_containers.refresh(load_balancing_config)
         assert load_balancing_config.id is not None
 
     def test_get_load_balancing_configs_provider_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when provider does not exist in get_load_balancing_configs.
@@ -392,12 +393,11 @@ class TestModelLoadBalancingService:
         assert "Provider nonexistent_provider does not exist." in str(exc_info.value)
 
         # Verify no database state changes occurred
-        from extensions.ext_database import db
 
-        db.session.rollback()
+        db_session_with_containers.rollback()
 
     def test_get_load_balancing_configs_with_inherit_config(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test load balancing configs retrieval with inherit configuration.
@@ -417,7 +417,6 @@ class TestModelLoadBalancingService:
         )
 
         # Create load balancing config
-        from extensions.ext_database import db
 
         load_balancing_config = LoadBalancingModelConfig(
             tenant_id=tenant.id,
@@ -428,8 +427,8 @@ class TestModelLoadBalancingService:
             encrypted_config='{"api_key": "test_key"}',
             enabled=True,
         )
-        db.session.add(load_balancing_config)
-        db.session.commit()
+        db_session_with_containers.add(load_balancing_config)
+        db_session_with_containers.commit()
 
         # Setup mocks for inherit config scenario
         mock_provider_config = mock_external_service_dependencies["provider_config"]
@@ -465,11 +464,11 @@ class TestModelLoadBalancingService:
         assert configs[1]["name"] == "config1"
 
         # Verify database state
-        db.session.refresh(load_balancing_config)
+        db_session_with_containers.refresh(load_balancing_config)
         assert load_balancing_config.id is not None
 
         # Verify inherit config was created in database
-        inherit_configs = db.session.scalars(
+        inherit_configs = db_session_with_containers.scalars(
             select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
         ).all()
         assert len(inherit_configs) == 1

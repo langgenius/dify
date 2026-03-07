@@ -25,6 +25,7 @@ import Dot from './common/dot'
 import Keywords from './common/keywords'
 import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
+import SummaryText from './common/summary-text'
 import { useSegmentListContext } from './index'
 
 type ISegmentDetailProps = {
@@ -35,6 +36,7 @@ type ISegmentDetailProps = {
     a: string,
     k: string[],
     attachments: FileEntity[],
+    summary?: string,
     needRegenerate?: boolean,
   ) => void
   onCancel: () => void
@@ -57,6 +59,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
+  const [summary, setSummary] = useState(segInfo?.summary || '')
   const [attachments, setAttachments] = useState<FileEntity[]>(() => {
     return segInfo?.attachments?.map(item => ({
       id: uuid4(),
@@ -91,8 +94,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [onCancel])
 
   const handleSave = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords, attachments)
-  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments, summary, false)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments, summary])
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
@@ -111,8 +114,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [onCancel, onModalStateChange])
 
   const onConfirmRegeneration = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords, attachments, true)
-  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments, summary, true)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments, summary])
 
   const onAttachmentsChange = useCallback((attachments: FileEntity[]) => {
     setAttachments(attachments)
@@ -196,6 +199,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             disabled={!isEditMode}
             value={attachments}
             onChange={onAttachmentsChange}
+          />
+          <SummaryText
+            value={summary}
+            onChange={summary => setSummary(summary)}
+            disabled={!isEditMode}
           />
           {isECOIndexing && (
             <Keywords

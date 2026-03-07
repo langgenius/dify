@@ -387,7 +387,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 // Mock toast context
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: vi.fn(() => ({
     notify: vi.fn(),
   })),
@@ -465,8 +465,8 @@ vi.mock('@/app/components/base/chat/chat', () => ({
             </div>
           ))}
         </div>
-        {questionIcon && <div data-testid="question-icon">{questionIcon}</div>}
-        {answerIcon && <div data-testid="answer-icon">{answerIcon}</div>}
+        {!!questionIcon && <div data-testid="question-icon">{questionIcon}</div>}
+        {!!answerIcon && <div data-testid="answer-icon">{answerIcon}</div>}
         <textarea
           data-testid="chat-input"
           placeholder="Type a message"

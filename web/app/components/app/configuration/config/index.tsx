@@ -18,6 +18,7 @@ import ConfigDocument from './config-document'
 
 const Config: FC = () => {
   const {
+    readonly,
     mode,
     isAdvancedMode,
     modelModeType,
@@ -27,6 +28,7 @@ const Config: FC = () => {
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
+    dataSets,
   } = useContext(ConfigContext)
   const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
@@ -65,19 +67,27 @@ const Config: FC = () => {
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
           onChange={handlePromptChange}
+          readonly={readonly}
         />
 
         {/* Variables */}
-        <ConfigVar
-          promptVariables={promptVariables}
-          onPromptVariablesChange={handlePromptVariablesNameChange}
-        />
+        {!(readonly && promptVariables.length === 0) && (
+          <ConfigVar
+            promptVariables={promptVariables}
+            onPromptVariablesChange={handlePromptVariablesNameChange}
+            readonly={readonly}
+          />
+        )}
 
         {/* Dataset */}
-        <DatasetConfig />
-
+        {!(readonly && dataSets.length === 0) && (
+          <DatasetConfig
+            readonly={readonly}
+            hideMetadataFilter={readonly}
+          />
+        )}
         {/* Tools */}
-        {isAgent && (
+        {isAgent && !(readonly && modelConfig.agentConfig.tools.length === 0) && (
           <AgentTools />
         )}
 
@@ -88,7 +98,7 @@ const Config: FC = () => {
         <ConfigAudio />
 
         {/* Chat History */}
-        {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
+        {!readonly && isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
           <HistoryPanel
             showWarning={!hasSetBlockStatus.history}
             onShowEditModal={showHistoryModal}

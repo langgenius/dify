@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { IConfigVarProps } from './index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
@@ -237,10 +237,13 @@ describe('ConfigVar', () => {
       expect(actionButtons).toHaveLength(2)
       fireEvent.click(actionButtons[0])
 
-      const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })
+      const editDialog = await screen.findByRole('dialog')
+      const saveButton = within(editDialog).getByRole('button', { name: 'common.operation.save' })
       fireEvent.click(saveButton)
 
-      expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+      await waitFor(() => {
+        expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should show error when variable key is duplicated', async () => {

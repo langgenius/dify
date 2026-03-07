@@ -165,7 +165,7 @@ const Editor: FC<Props> = ({
                 {' '}
                 {required && <span className="text-text-destructive">*</span>}
               </div>
-              {titleTooltip && <Tooltip popupContent={titleTooltip} />}
+              {!!titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className="flex items-center">
               <div className="text-xs font-medium leading-[18px] text-text-tertiary">{value?.length || 0}</div>
@@ -196,7 +196,7 @@ const Editor: FC<Props> = ({
                       <Jinja className="h-3 w-6 text-text-quaternary" />
                       <Switch
                         size="sm"
-                        defaultValue={editionType === EditionType.jinja2}
+                        value={editionType === EditionType.jinja2}
                         onChange={(checked) => {
                           onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
                         }}

@@ -192,7 +192,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 </div>
                 <div className="shrink-0">
                   <Switch
-                    defaultValue={trigger.status === 'enabled'}
+                    value={trigger.status === 'enabled'}
                     onChange={enabled => onToggleTrigger(trigger, enabled)}
                     disabled={!isCurrentWorkspaceEditor}
                   />
@@ -208,7 +208,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
               {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
               {' '}
               <Link
-                href={docLink('/guides/workflow/node/trigger')}
+                href={docLink('/use-dify/nodes/trigger/overview')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-accent hover:underline"

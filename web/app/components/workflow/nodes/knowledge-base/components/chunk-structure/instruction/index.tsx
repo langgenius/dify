@@ -31,7 +31,7 @@ const Instruction = ({
         <div className="system-xs-regular">
           <p className="text-text-tertiary">{t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}</p>
           <a
-            href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
+            href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
             target="_blank"
             rel="noopener noreferrer"
             className="text-text-accent"

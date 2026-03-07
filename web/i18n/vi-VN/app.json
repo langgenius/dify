@@ -83,7 +83,7 @@
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Không tìm thấy cơ sở kiến thức",
   "gotoAnything.emptyState.noPluginsFound": "Không tìm thấy plugin",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Không tìm thấy nút quy trình làm việc",
-  "gotoAnything.emptyState.tryDifferentTerm": "Thử từ khóa tìm kiếm khác hoặc xóa bộ lọc {{mode}}",
+  "gotoAnything.emptyState.tryDifferentTerm": "Thử từ khóa tìm kiếm khác",
   "gotoAnything.emptyState.trySpecificSearch": "Thử {{shortcuts}} để tìm kiếm cụ thể",
   "gotoAnything.groups.apps": "Ứng dụng",
   "gotoAnything.groups.commands": "Lệnh",
