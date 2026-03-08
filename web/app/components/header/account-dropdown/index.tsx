@@ -103,7 +103,7 @@ type AccountMenuSectionProps = {
 }
 
 function AccountMenuSection({ children }: AccountMenuSectionProps) {
-  return <DropdownMenuGroup className="p-1">{children}</DropdownMenuGroup>
+  return <DropdownMenuGroup className="py-1">{children}</DropdownMenuGroup>
 }
 
 export default function AppSelector() {
@@ -146,8 +146,8 @@ export default function AppSelector() {
           sideOffset={6}
           popupClassName="w-60 max-w-80 !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
         >
-          <DropdownMenuGroup className="px-1 py-1">
-            <div className="flex flex-nowrap items-center py-2 pl-3 pr-2">
+          <DropdownMenuGroup className="py-1">
+            <div className="mx-1 flex flex-nowrap items-center py-2 pl-3 pr-2">
               <div className="grow">
                 <div className="break-all text-text-primary system-md-medium">
                   {userProfile.name}

@@ -31,7 +31,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
       <DropdownMenuSubContent
         popupClassName="w-[216px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
       >
-        <DropdownMenuGroup className="p-1">
+        <DropdownMenuGroup className="py-1">
           {hasDedicatedChannel && hasZendeskWidget && (
             <DropdownMenuItem
               className="justify-between"
