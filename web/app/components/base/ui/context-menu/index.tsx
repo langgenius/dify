@@ -4,12 +4,12 @@ import type { Placement } from '@/app/components/base/ui/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import * as React from 'react'
 import {
+  menuBackdropClassName,
   menuGroupLabelClassName,
   menuIndicatorClassName,
   menuPopupAnimationClassName,
   menuPopupBaseClassName,
-  menuRowBaseClassName,
-  menuRowStateClassName,
+  menuRowClassName,
   menuSeparatorClassName,
 } from '@/app/components/base/ui/menu-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -67,12 +67,7 @@ function renderContextMenuPopup({
   return (
     <BaseContextMenu.Portal>
       {withBackdrop && (
-        <BaseContextMenu.Backdrop
-          className={cn(
-            'fixed inset-0 z-50 bg-transparent',
-            'transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
-          )}
-        />
+        <BaseContextMenu.Backdrop className={menuBackdropClassName} />
       )}
       <BaseContextMenu.Positioner
         side={side}
@@ -131,12 +126,7 @@ export function ContextMenuItem({
 }: ContextMenuItemProps) {
   return (
     <BaseContextMenu.Item
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     />
   )
@@ -154,12 +144,7 @@ export function ContextMenuLinkItem({
 }: ContextMenuLinkItemProps) {
   return (
     <BaseContextMenu.LinkItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       closeOnClick={closeOnClick}
       {...props}
     />
@@ -172,11 +157,7 @@ export function ContextMenuRadioItem({
 }: React.ComponentPropsWithoutRef<typeof BaseContextMenu.RadioItem>) {
   return (
     <BaseContextMenu.RadioItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        className,
-      )}
+      className={cn(menuRowClassName, className)}
       {...props}
     />
   )
@@ -188,11 +169,7 @@ export function ContextMenuCheckboxItem({
 }: React.ComponentPropsWithoutRef<typeof BaseContextMenu.CheckboxItem>) {
   return (
     <BaseContextMenu.CheckboxItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        className,
-      )}
+      className={cn(menuRowClassName, className)}
       {...props}
     />
   )
@@ -258,12 +235,7 @@ export function ContextMenuSubTrigger({
 }: ContextMenuSubTriggerProps) {
   return (
     <BaseContextMenu.SubmenuTrigger
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     >
       {children}

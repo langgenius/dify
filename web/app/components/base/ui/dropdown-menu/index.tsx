@@ -8,8 +8,7 @@ import {
   menuIndicatorClassName,
   menuPopupAnimationClassName,
   menuPopupBaseClassName,
-  menuRowBaseClassName,
-  menuRowStateClassName,
+  menuRowClassName,
   menuSeparatorClassName,
 } from '@/app/components/base/ui/menu-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
@@ -28,11 +27,7 @@ export function DropdownMenuRadioItem({
 }: React.ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
   return (
     <Menu.RadioItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        className,
-      )}
+      className={cn(menuRowClassName, className)}
       {...props}
     />
   )
@@ -44,10 +39,7 @@ export function DropdownMenuRadioItemIndicator({
 }: Omit<React.ComponentPropsWithoutRef<typeof Menu.RadioItemIndicator>, 'children'>) {
   return (
     <Menu.RadioItemIndicator
-      className={cn(
-        menuIndicatorClassName,
-        className,
-      )}
+      className={cn(menuIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -61,11 +53,7 @@ export function DropdownMenuCheckboxItem({
 }: React.ComponentPropsWithoutRef<typeof Menu.CheckboxItem>) {
   return (
     <Menu.CheckboxItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        className,
-      )}
+      className={cn(menuRowClassName, className)}
       {...props}
     />
   )
@@ -77,10 +65,7 @@ export function DropdownMenuCheckboxItemIndicator({
 }: Omit<React.ComponentPropsWithoutRef<typeof Menu.CheckboxItemIndicator>, 'children'>) {
   return (
     <Menu.CheckboxItemIndicator
-      className={cn(
-        menuIndicatorClassName,
-        className,
-      )}
+      className={cn(menuIndicatorClassName, className)}
       {...props}
     >
       <span aria-hidden className="i-ri-check-line h-4 w-4" />
@@ -94,10 +79,7 @@ export function DropdownMenuGroupLabel({
 }: React.ComponentPropsWithoutRef<typeof Menu.GroupLabel>) {
   return (
     <Menu.GroupLabel
-      className={cn(
-        menuGroupLabelClassName,
-        className,
-      )}
+      className={cn(menuGroupLabelClassName, className)}
       {...props}
     />
   )
@@ -201,12 +183,7 @@ export function DropdownMenuSubTrigger({
 }: DropdownMenuSubTriggerProps) {
   return (
     <Menu.SubmenuTrigger
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     >
       {children}
@@ -259,12 +236,7 @@ export function DropdownMenuItem({
 }: DropdownMenuItemProps) {
   return (
     <Menu.Item
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       {...props}
     />
   )
@@ -282,12 +254,7 @@ export function DropdownMenuLinkItem({
 }: DropdownMenuLinkItemProps) {
   return (
     <Menu.LinkItem
-      className={cn(
-        menuRowBaseClassName,
-        menuRowStateClassName,
-        destructive && 'text-text-destructive',
-        className,
-      )}
+      className={cn(menuRowClassName, destructive && 'text-text-destructive', className)}
       closeOnClick={closeOnClick}
       {...props}
     />

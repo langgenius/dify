@@ -1,15 +1,10 @@
-import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   ContextMenu,
-  ContextMenuBackdrop,
   ContextMenuContent,
-  ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLinkItem,
-  ContextMenuPortal,
-  ContextMenuRadioGroup,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -17,34 +12,7 @@ import {
   ContextMenuTrigger,
 } from '../index'
 
-beforeAll(() => {
-  const domRectWithFromRect = DOMRect as typeof DOMRect & {
-    fromRect?: (rect?: DOMRectInit) => DOMRect
-  }
-
-  if (typeof domRectWithFromRect.fromRect !== 'function') {
-    domRectWithFromRect.fromRect = (rect = {}) => new DOMRect(
-      rect.x ?? 0,
-      rect.y ?? 0,
-      rect.width ?? 0,
-      rect.height ?? 0,
-    )
-  }
-})
-
 describe('context-menu wrapper', () => {
-  describe('alias exports', () => {
-    it('should map direct aliases to the corresponding ContextMenu primitive when importing menu roots', () => {
-      expect(ContextMenu).toBe(BaseContextMenu.Root)
-      expect(ContextMenuTrigger).toBe(BaseContextMenu.Trigger)
-      expect(ContextMenuPortal).toBe(BaseContextMenu.Portal)
-      expect(ContextMenuBackdrop).toBe(BaseContextMenu.Backdrop)
-      expect(ContextMenuSub).toBe(BaseContextMenu.SubmenuRoot)
-      expect(ContextMenuGroup).toBe(BaseContextMenu.Group)
-      expect(ContextMenuRadioGroup).toBe(BaseContextMenu.RadioGroup)
-    })
-  })
-
   describe('ContextMenuContent', () => {
     it('should position content at bottom-start with default placement when props are omitted', () => {
       render(

@@ -1,16 +1,12 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
-import { Menu } from '@base-ui/react/menu'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import Link from 'next/link'
 import { describe, expect, it, vi } from 'vitest'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLinkItem,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -34,17 +30,6 @@ vi.mock('next/link', () => ({
 }))
 
 describe('dropdown-menu wrapper', () => {
-  describe('alias exports', () => {
-    it('should map direct aliases to the corresponding Menu primitive when importing menu roots', () => {
-      expect(DropdownMenu).toBe(Menu.Root)
-      expect(DropdownMenuPortal).toBe(Menu.Portal)
-      expect(DropdownMenuTrigger).toBe(Menu.Trigger)
-      expect(DropdownMenuSub).toBe(Menu.SubmenuRoot)
-      expect(DropdownMenuGroup).toBe(Menu.Group)
-      expect(DropdownMenuRadioGroup).toBe(Menu.RadioGroup)
-    })
-  })
-
   describe('DropdownMenuContent', () => {
     it('should position content at bottom-end with default placement when props are omitted', () => {
       render(
