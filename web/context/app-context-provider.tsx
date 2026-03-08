@@ -144,6 +144,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     userProfile,
     mutateUserProfile,
     langGeniusVersionInfo,
+    useSelector,
     currentWorkspace,
     isCurrentWorkspaceManager,
     isCurrentWorkspaceOwner,

@@ -16,7 +16,7 @@ export const ExternalApiPanelProvider: React.FC<{ children: React.ReactNode }> =
   const contextValue = useMemo(() => ({
     showExternalApiPanel,
     setShowExternalApiPanel,
-  }), [showExternalApiPanel])
+  }), [showExternalApiPanel, setShowExternalApiPanel])
 
   return (
     <ExternalApiPanelContext.Provider value={contextValue}>
