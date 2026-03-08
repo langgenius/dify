@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Literal
+from typing import Any, Literal, Union
 from uuid import UUID
 
 from flask import request
@@ -48,6 +48,32 @@ class CompletionRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
 
 
+class ChatToolFunction(BaseModel):
+    name: str
+    description: str | None = None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatToolDefinition(BaseModel):
+    type: Literal["function"] = "function"
+    function: ChatToolFunction
+
+
+class ChatToolChoiceFunction(BaseModel):
+    name: str
+
+
+class ChatToolChoice(BaseModel):
+    type: Literal["function"] = "function"
+    function: ChatToolChoiceFunction
+
+
+class ChatToolResult(BaseModel):
+    tool_call_id: str
+    output: Any
+    is_error: bool | None = None
+
+
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str
@@ -57,6 +83,10 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    tools: list[ChatToolDefinition] | None = None
+    tool_choice: Union[Literal["auto", "none", "required"], ChatToolChoice, None] = None
+    tool_results: list[ChatToolResult] | None = None
+    tool_call_mode: Literal["structured", "openclaw_text"] | None = None
 
     @field_validator("conversation_id", mode="before")
     @classmethod
