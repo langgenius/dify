@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { isInWorkflowPage } from '@/utils/workflow'
+import { isInWorkflowPage } from '@/app/components/workflow/constants'
 
 /**
  * Interface for the GotoAnything context
