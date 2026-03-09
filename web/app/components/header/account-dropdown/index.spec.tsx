@@ -247,6 +247,23 @@ describe('AccountDropdown', () => {
       // Assert
       expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
     })
+
+    // Compound AND middle-false: IS_CLOUD_EDITION=true but isCurrentWorkspaceOwner=false
+    it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
+      // Arrange
+      mockConfig.IS_CLOUD_EDITION = true
+      vi.mocked(useAppContext).mockReturnValue({
+        ...baseAppContextValue,
+        isCurrentWorkspaceOwner: false,
+      })
+
+      // Act
+      renderWithRouter(<AppSelector />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.queryByText('common.userProfile.compliance')).not.toBeInTheDocument()
+    })
   })
 
   describe('Actions', () => {

@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now
 from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
@@ -2611,14 +2612,28 @@ def migrate_oss(
 @click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    required=True,
+    required=False,
+    default=None,
     help="Lower bound (inclusive) for created_at.",
 )
 @click.option(
     "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    required=True,
+    required=False,
+    default=None,
     help="Upper bound (exclusive) for created_at.",
+)
+@click.option(
+    "--from-days-ago",
+    type=int,
+    default=None,
+    help="Relative lower bound in days ago (inclusive). Must be used with --before-days.",
+)
+@click.option(
+    "--before-days",
+    type=int,
+    default=None,
+    help="Relative upper bound in days ago (exclusive). Required for relative mode.",
 )
 @click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
 @click.option(
@@ -2637,8 +2652,10 @@ def migrate_oss(
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
-    start_from: datetime.datetime,
-    end_before: datetime.datetime,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    from_days_ago: int | None,
+    before_days: int | None,
     dry_run: bool,
     task_label: str,
 ):
@@ -2652,19 +2669,73 @@ def clean_expired_messages(
     start_at = time.perf_counter()
 
     try:
+        abs_mode = start_from is not None and end_before is not None
+        rel_mode = before_days is not None
+
+        if abs_mode and rel_mode:
+            raise click.UsageError(
+                "Options are mutually exclusive: use either (--start-from,--end-before) "
+                "or (--from-days-ago,--before-days)."
+            )
+
+        if from_days_ago is not None and before_days is None:
+            raise click.UsageError("--from-days-ago must be used together with --before-days.")
+
+        if (start_from is None) ^ (end_before is None):
+            raise click.UsageError("Both --start-from and --end-before are required when using absolute time range.")
+
+        if not abs_mode and not rel_mode:
+            raise click.UsageError(
+                "You must provide either (--start-from,--end-before) or (--before-days [--from-days-ago])."
+            )
+
+        if rel_mode:
+            assert before_days is not None
+            if before_days < 0:
+                raise click.UsageError("--before-days must be >= 0.")
+            if from_days_ago is not None:
+                if from_days_ago < 0:
+                    raise click.UsageError("--from-days-ago must be >= 0.")
+                if from_days_ago <= before_days:
+                    raise click.UsageError("--from-days-ago must be greater than --before-days.")
+
         # Create policy based on billing configuration
         # NOTE: graceful_period will be ignored when billing is disabled.
         policy = create_message_clean_policy(graceful_period_days=graceful_period)
 
         # Create and run the cleanup service
-        service = MessagesCleanService.from_time_range(
-            policy=policy,
-            start_from=start_from,
-            end_before=end_before,
-            batch_size=batch_size,
-            dry_run=dry_run,
-            task_label=task_label,
-        )
+        if abs_mode:
+            assert start_from is not None
+            assert end_before is not None
+            service = MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                batch_size=batch_size,
+                dry_run=dry_run,
+                task_label=task_label,
+            )
+        elif from_days_ago is None:
+            assert before_days is not None
+            service = MessagesCleanService.from_days(
+                policy=policy,
+                days=before_days,
+                batch_size=batch_size,
+                dry_run=dry_run,
+                task_label=task_label,
+            )
+        else:
+            assert before_days is not None
+            assert from_days_ago is not None
+            now = naive_utc_now()
+            service = MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=now - datetime.timedelta(days=from_days_ago),
+                end_before=now - datetime.timedelta(days=before_days),
+                batch_size=batch_size,
+                dry_run=dry_run,
+                task_label=task_label,
+            )
         stats = service.run()
 
         end_at = time.perf_counter()
