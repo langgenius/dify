@@ -56,6 +56,8 @@ class ToolNode(Node[ToolNodeData]):
         """
         from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 
+        dify_ctx = self.require_dify_context()
+
         # fetch tool icon
         tool_info = {
             "provider_type": self.node_data.provider_type.value,
@@ -75,7 +77,12 @@ class ToolNode(Node[ToolNodeData]):
             if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
+                dify_ctx.tenant_id,
+                dify_ctx.app_id,
+                self._node_id,
+                self.node_data,
+                dify_ctx.invoke_from,
+                variable_pool,
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(
@@ -109,10 +116,10 @@ class ToolNode(Node[ToolNodeData]):
             message_stream = ToolEngine.generic_invoke(
                 tool=tool_runtime,
                 tool_parameters=parameters,
-                user_id=self.user_id,
+                user_id=dify_ctx.user_id,
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
-                app_id=self.app_id,
+                app_id=dify_ctx.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
             )
         except ToolNodeError as e:
@@ -133,8 +140,8 @@ class ToolNode(Node[ToolNodeData]):
                 messages=message_stream,
                 tool_info=tool_info,
                 parameters_for_log=parameters_for_log,
-                user_id=self.user_id,
-                tenant_id=self.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
                 node_id=self._node_id,
                 tool_runtime=tool_runtime,
             )

@@ -10,7 +10,6 @@ from controllers.common.file_response import enforce_download_for_html
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from extensions.ext_database import db as global_db
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -57,7 +56,7 @@ class ToolFileApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            tool_file_manager = ToolFileManager(engine=global_db.engine)
+            tool_file_manager = ToolFileManager()
             stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )

@@ -5,18 +5,18 @@ from urllib.parse import urlencode
 import pytest
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities import GraphInitParams
-from dify_graph.enums import UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph import Graph
 from dify_graph.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
+from tests.workflow_test_utils import build_test_graph_init_params
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -41,11 +41,11 @@ def init_http_node(config: dict):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -685,11 +685,11 @@ def test_nested_object_variable_selector(setup_http_mock):
         ],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,

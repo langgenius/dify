@@ -69,6 +69,7 @@ class TriggerWebhookNode(Node[WebhookData]):
         )
 
     def generate_file_var(self, param_name: str, file: dict):
+        dify_ctx = self.require_dify_context()
         related_id = file.get("related_id")
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -84,7 +85,7 @@ class TriggerWebhookNode(Node[WebhookData]):
             try:
                 file_obj = file_factory.build_from_mapping(
                     mapping=file,
-                    tenant_id=self.tenant_id,
+                    tenant_id=dify_ctx.tenant_id,
                 )
                 file_segment = build_segment_with_type(SegmentType.FILE, file_obj)
                 return FileVariable(name=param_name, value=file_segment.value, selector=[self.id, param_name])

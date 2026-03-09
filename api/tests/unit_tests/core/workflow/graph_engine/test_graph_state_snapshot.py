@@ -21,6 +21,7 @@ from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.nodes.start.start_node import StartNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -73,11 +74,11 @@ def _build_llm_node(
 
 def _build_graph(runtime_state: GraphRuntimeState) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
         user_from="account",
         invoke_from="debugger",

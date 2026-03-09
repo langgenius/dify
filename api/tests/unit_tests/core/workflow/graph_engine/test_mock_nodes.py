@@ -22,6 +22,7 @@ from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from dify_graph.nodes.llm import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.nodes.question_classifier import QuestionClassifierNode
 from dify_graph.nodes.template_transform import TemplateTransformNode
 from dify_graph.nodes.template_transform.template_renderer import (
@@ -65,6 +66,8 @@ class MockNodeMixin:
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
             kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+            # LLM-like nodes now require an http_client; provide a mock by default for tests.
+            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
@@ -603,13 +606,9 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -679,13 +678,9 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
