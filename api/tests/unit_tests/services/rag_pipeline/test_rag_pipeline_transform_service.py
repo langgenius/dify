@@ -5,7 +5,7 @@ from typing import cast
 import pytest
 
 from models.dataset import Dataset
-from services.entities.knowledge_entities.rag_pipeline_entities import RetrievalSetting
+from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 
 
@@ -260,8 +260,11 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
         model_dump=lambda: {"search_method": "semantic_search"},
     )
 
+    # Create KnowledgeConfiguration from node data
+    knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+
     result = service._deal_knowledge_index(
-        cast(Dataset, dataset), "text_model", "high_quality", cast(RetrievalSetting, retrieval_model), node
+        knowledge_configuration, cast(Dataset, dataset), "high_quality", cast(RetrievalSetting, retrieval_model), node
     )
 
     assert result["data"]["embedding_model"] == "text-embedding-ada-002"
@@ -365,6 +368,10 @@ def test_transform_dataset_full_flow(mocker) -> None:
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_deal_document_data")
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.db.session.commit")
+
+    # Mock current_user to have the same tenant_id as dataset
+    mock_current_user = SimpleNamespace(current_tenant_id="t1")
+    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.current_user", mock_current_user)
 
     pipeline = SimpleNamespace(id="p-new")
     mocker.patch.object(service, "_create_pipeline", return_value=pipeline)
