@@ -1,6 +1,6 @@
 import logging
 
-from celery import group, shared_task
+from celery import current_app, group, shared_task
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -29,31 +29,27 @@ def poll_workflow_schedules() -> None:
     with session_factory() as session:
         total_dispatched = 0
 
-        # Process in batches until we've handled all due schedules or hit the limit
         while True:
             due_schedules = _fetch_due_schedules(session)
 
             if not due_schedules:
                 break
 
-            dispatched_count = _process_schedules(session, due_schedules)
-            total_dispatched += dispatched_count
+            with current_app.producer_or_acquire() as producer:  # type: ignore
+                dispatched_count = _process_schedules(session, due_schedules, producer)
+                total_dispatched += dispatched_count
 
-            logger.debug("Batch processed: %d dispatched", dispatched_count)
+                logger.debug("Batch processed: %d dispatched", dispatched_count)
 
-            # Circuit breaker: check if we've hit the per-tick limit (if enabled)
-            if (
-                dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK > 0
-                and total_dispatched >= dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK
-            ):
-                logger.warning(
-                    "Circuit breaker activated: reached dispatch limit (%d), will continue next tick",
-                    dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK,
-                )
-                break
-
+                # Circuit breaker: check if we've hit the per-tick limit (if enabled)
+                if 0 < dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK <= total_dispatched:
+                    logger.warning(
+                        "Circuit breaker activated: reached dispatch limit (%d), will continue next tick",
+                        dify_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK,
+                    )
+                    break
         if total_dispatched > 0:
-            logger.info("Total processed: %d dispatched", total_dispatched)
+            logger.info("Total processed: %d workflow schedule(s) dispatched", total_dispatched)
 
 
 def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
@@ -90,7 +86,7 @@ def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
     return list(due_schedules)
 
 
-def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan]) -> int:
+def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], producer=None) -> int:
     """Process schedules: check quota, update next run time and dispatch to Celery in parallel."""
     if not schedules:
         return 0
@@ -107,7 +103,7 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan]) 
 
     if tasks_to_dispatch:
         job = group(run_schedule_trigger.s(schedule_id) for schedule_id in tasks_to_dispatch)
-        job.apply_async()
+        job.apply_async(producer=producer)
 
         logger.debug("Dispatched %d tasks in parallel", len(tasks_to_dispatch))
 

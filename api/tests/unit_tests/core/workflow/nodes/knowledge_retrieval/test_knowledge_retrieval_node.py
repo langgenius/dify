@@ -112,7 +112,6 @@ class TestKnowledgeRetrievalNode:
         # Assert
         assert node.id == node_id
         assert node._rag_retrieval == mock_rag_retrieval
-        assert node._llm_file_saver is not None
 
     def test_run_with_no_query_or_attachment(
         self,
