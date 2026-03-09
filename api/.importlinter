@@ -44,9 +44,7 @@ forbidden_modules =
 allow_indirect_imports = True
 ignore_imports =
     dify_graph.nodes.agent.agent_node -> extensions.ext_database
-    dify_graph.nodes.llm.file_saver -> extensions.ext_database
     dify_graph.nodes.llm.node -> extensions.ext_database
-    dify_graph.nodes.tool.tool_node -> extensions.ext_database
     dify_graph.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
     dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
 
@@ -112,9 +110,7 @@ ignore_imports =
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
     dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
-    dify_graph.nodes.tool.tool_node -> models
     dify_graph.nodes.agent.agent_node -> models.model
-    dify_graph.nodes.llm.file_saver -> core.helper.ssrf_proxy
     dify_graph.nodes.llm.node -> core.helper.code_executor
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
@@ -135,9 +131,7 @@ ignore_imports =
     dify_graph.nodes.llm.file_saver -> core.tools.tool_file_manager
     dify_graph.nodes.tool.tool_node -> core.tools.errors
     dify_graph.nodes.agent.agent_node -> extensions.ext_database
-    dify_graph.nodes.llm.file_saver -> extensions.ext_database
     dify_graph.nodes.llm.node -> extensions.ext_database
-    dify_graph.nodes.tool.tool_node -> extensions.ext_database
     dify_graph.nodes.agent.agent_node -> models
     dify_graph.nodes.llm.node -> models.model
     dify_graph.nodes.agent.agent_node -> services
