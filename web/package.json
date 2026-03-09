@@ -261,7 +261,6 @@
       "array.prototype.flatmap": "npm:@nolyfill/array.prototype.flatmap@^1.0.44",
       "array.prototype.tosorted": "npm:@nolyfill/array.prototype.tosorted@^1.0.44",
       "assert": "npm:@nolyfill/assert@^1.0.26",
-      "brace-expansion": "~2.0.2",
       "brace-expansion@<2.0.2": "2.0.2",
       "canvas": "^3.2.1",
       "devalue@<5.3.2": "5.3.2",
