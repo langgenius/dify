@@ -13,17 +13,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
-  PreferredProviderTypeEnum,
 } from '../declarations'
 import {
   useLanguage,
@@ -58,7 +55,6 @@ const PopupItem: FC<PopupItemProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
-  const { currentWorkspace } = useAppContext()
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -87,14 +83,13 @@ const PopupItem: FC<PopupItemProps> = ({
     })
   }
 
-  const isUsingCredits = currentProvider?.preferred_provider_type === PreferredProviderTypeEnum.system
-  const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
-  const hasCredits = credits > 0
-  const isApiKeyActive = currentProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
-  const credentialName = currentProvider?.custom_configuration.current_credential_name
-
   const state = useCredentialPanelState(currentProvider)
   const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
+
+  const isUsingCredits = state.priority === 'credits'
+  const hasCredits = !state.isCreditsExhausted
+  const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
+  const { credentialName } = state
 
   const handleCloseDropdown = useCallback(() => {
     setDropdownOpen(false)
