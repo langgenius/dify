@@ -18,3 +18,7 @@ class EnterpriseFeatureConfig(BaseSettings):
         description="Allow customization of the enterprise logo.",
         default=False,
     )
+
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )
