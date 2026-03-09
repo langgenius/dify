@@ -16,7 +16,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType
 from dify_graph.file.models import FileTransferMethod
 from dify_graph.nodes.trigger_webhook.entities import (
@@ -136,7 +136,7 @@ class WebhookService:
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 
-            node_config = NodeConfigDictAdapter.validate_python(workflow.get_node_config_by_id(webhook_trigger.node_id))
+            node_config = workflow.get_node_config_by_id(webhook_trigger.node_id)
 
             return webhook_trigger, workflow, node_config
 

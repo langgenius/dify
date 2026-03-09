@@ -11,7 +11,7 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH

@@ -6,7 +6,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable

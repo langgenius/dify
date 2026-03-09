@@ -3,8 +3,9 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
+from dify_graph.nodes.base import BaseLoopNodeData, BaseLoopState
 from dify_graph.utils.condition.entities import Condition
 from dify_graph.variables.types import SegmentType
 

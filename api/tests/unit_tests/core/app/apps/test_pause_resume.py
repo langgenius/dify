@@ -8,6 +8,7 @@ from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
@@ -23,7 +24,7 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.node_events import NodeRunResult, PauseRequestedEvent
-from dify_graph.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
+from dify_graph.nodes.base.entities import OutputVariableEntity
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.end.entities import EndNodeData
 from dify_graph.nodes.start.entities import StartNodeData

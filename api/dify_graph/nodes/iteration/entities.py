@@ -3,8 +3,9 @@ from typing import Any
 
 from pydantic import Field
 
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
+from dify_graph.nodes.base import BaseIterationNodeData, BaseIterationState
 
 
 class ErrorHandleMode(StrEnum):

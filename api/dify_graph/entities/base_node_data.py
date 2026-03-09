@@ -8,21 +8,10 @@ from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from dify_graph.entities.exc import DefaultValueTypeError
 from dify_graph.enums import ErrorStrategy, NodeType
 
 _NumberType = Union[int, float]
-
-
-class BaseNodeError(ValueError):
-    """Base class for node errors."""
-
-    pass
-
-
-class DefaultValueTypeError(BaseNodeError):
-    """Raised when the default value type is invalid."""
-
-    pass
 
 
 class RetryConfig(BaseModel):

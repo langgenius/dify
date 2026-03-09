@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
 
 
 class AgentNodeData(BaseNodeData):

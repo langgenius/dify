@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, ge
 from uuid import uuid4
 
 from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
+from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import (
@@ -62,8 +63,6 @@ from dify_graph.node_events import (
 )
 from dify_graph.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
-
-from .entities import BaseNodeData, RetryConfig
 
 NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
 _MISSING_RUN_CONTEXT_VALUE = object()
