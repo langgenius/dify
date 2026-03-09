@@ -250,6 +250,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.DATASOURCE:
@@ -292,6 +293,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:

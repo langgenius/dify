@@ -1,14 +1,11 @@
 import mimetypes
 import typing as tp
 
-from sqlalchemy import Engine
-
 from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
-from core.helper import ssrf_proxy
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.file import File, FileTransferMethod, FileType
-from extensions.ext_database import db as global_db
+from dify_graph.nodes.protocols import HttpClientProtocol
 
 
 class LLMFileSaver(tp.Protocol):
@@ -59,30 +56,20 @@ class LLMFileSaver(tp.Protocol):
         raise NotImplementedError()
 
 
-EngineFactory: tp.TypeAlias = tp.Callable[[], Engine]
-
-
 class FileSaverImpl(LLMFileSaver):
-    _engine_factory: EngineFactory
     _tenant_id: str
     _user_id: str
 
-    def __init__(self, user_id: str, tenant_id: str, engine_factory: EngineFactory | None = None):
-        if engine_factory is None:
-
-            def _factory():
-                return global_db.engine
-
-            engine_factory = _factory
-        self._engine_factory = engine_factory
+    def __init__(self, user_id: str, tenant_id: str, http_client: HttpClientProtocol):
         self._user_id = user_id
         self._tenant_id = tenant_id
+        self._http_client = http_client
 
     def _get_tool_file_manager(self):
-        return ToolFileManager(engine=self._engine_factory())
+        return ToolFileManager()
 
     def save_remote_url(self, url: str, file_type: FileType) -> File:
-        http_response = ssrf_proxy.get(url)
+        http_response = self._http_client.get(url)
         http_response.raise_for_status()
         data = http_response.content
         mime_type_from_header = http_response.headers.get("Content-Type")

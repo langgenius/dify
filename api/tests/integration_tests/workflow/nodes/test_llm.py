@@ -11,6 +11,7 @@ from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamCompletedEvent
 from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
@@ -74,6 +75,7 @@ def init_llm_node(config: dict) -> LLMNode:
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
+        http_client=MagicMock(spec=HttpClientProtocol),
     )
 
     return node
