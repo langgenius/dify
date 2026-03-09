@@ -14,10 +14,10 @@ import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useModelParameterRules } from '@/service/use-common'
@@ -129,118 +129,118 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement={isInWorkflow ? 'left' : 'bottom-end'}
-      offset={4}
+      onOpenChange={(newOpen) => {
+        if (readonly)
+          return
+        setOpen(newOpen)
+      }}
     >
-      <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => {
-            if (readonly)
-              return
-            setOpen(v => !v)
-          }}
-          className="block"
-        >
-          {
-            renderTrigger
-              ? renderTrigger({
-                  open,
-                  disabled,
-                  modelDisabled,
-                  hasDeprecated,
-                  currentProvider,
-                  currentModel,
-                  providerName: provider,
-                  modelId,
-                })
-              : (
-                  <Trigger
-                    disabled={disabled}
-                    isInWorkflow={isInWorkflow}
-                    modelDisabled={modelDisabled}
-                    hasDeprecated={hasDeprecated}
-                    currentProvider={currentProvider}
-                    currentModel={currentModel}
-                    providerName={provider}
-                    modelId={modelId}
-                  />
-                )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={cn('z-[60]', portalToFollowElemContentClassName)}>
-          <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
-            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className="relative">
-                <div className={cn('mb-1 flex h-6 items-center text-text-secondary system-sm-semibold')}>
-                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
-                </div>
-                <ModelSelector
-                  defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
-                  modelList={activeTextGenerationModelList}
-                  onSelect={handleChangeModel}
-                  onHide={() => setOpen(false)}
-                />
-              </div>
-              {
-                !!parameterRules.length && (
-                  <div className="my-3 h-px bg-divider-subtle" />
-                )
-              }
-              {
-                isLoading && (
-                  <div className="mt-5"><Loading /></div>
-                )
-              }
-              {
-                !isLoading && !!parameterRules.length && (
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className={cn('flex h-6 items-center text-text-secondary system-sm-semibold')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
-                    {
-                      PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                        <PresetsParameter onSelect={handleSelectPresetParameter} />
-                      )
-                    }
-                  </div>
-                )
-              }
-              {
-                !isLoading && !!parameterRules.length && (
-                  [
-                    ...parameterRules,
-                    ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-                  ].map(parameter => (
-                    <ParameterItem
-                      key={`${modelId}-${parameter.name}`}
-                      parameterRule={parameter}
-                      value={completionParams?.[parameter.name]}
-                      onChange={v => handleParamChange(parameter.name, v)}
-                      onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
+      <PopoverTrigger
+        render={(
+          <div className="block">
+            {
+              renderTrigger
+                ? renderTrigger({
+                    open,
+                    disabled,
+                    modelDisabled,
+                    hasDeprecated,
+                    currentProvider,
+                    currentModel,
+                    providerName: provider,
+                    modelId,
+                  })
+                : (
+                    <Trigger
+                      disabled={disabled}
                       isInWorkflow={isInWorkflow}
+                      modelDisabled={modelDisabled}
+                      hasDeprecated={hasDeprecated}
+                      currentProvider={currentProvider}
+                      currentModel={currentModel}
+                      providerName={provider}
+                      modelId={modelId}
                     />
-                  ))
-                )
-              }
-            </div>
-            {!hideDebugWithMultipleModel && (
-              <div
-                className="bg-components-section-burn flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent system-sm-regular"
-                onClick={() => onDebugWithMultipleModelChange?.()}
-              >
-                {
-                  debugWithMultipleModel
-                    ? t('debugAsSingleModel', { ns: 'appDebug' })
-                    : t('debugAsMultipleModel', { ns: 'appDebug' })
-                }
-                <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
-              </div>
-            )}
+                  )
+            }
           </div>
-        </PortalToFollowElemContent>
-      </div>
-    </PortalToFollowElem>
+        )}
+      />
+      <PopoverContent
+        placement={isInWorkflow ? 'left' : 'bottom-end'}
+        sideOffset={4}
+        className={portalToFollowElemContentClassName}
+        popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
+      >
+        <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
+          <div className="relative">
+            <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">
+              {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
+            </div>
+            <ModelSelector
+              defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
+              modelList={activeTextGenerationModelList}
+              onSelect={handleChangeModel}
+              onHide={() => setOpen(false)}
+            />
+          </div>
+          {
+            !!parameterRules.length && (
+              <div className="my-3 h-px bg-divider-subtle" />
+            )
+          }
+          {
+            isLoading && (
+              <div className="mt-5"><Loading /></div>
+            )
+          }
+          {
+            !isLoading && !!parameterRules.length && (
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex h-6 items-center text-text-secondary system-sm-semibold">{t('modelProvider.parameters', { ns: 'common' })}</div>
+                {
+                  PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+                    <PresetsParameter onSelect={handleSelectPresetParameter} />
+                  )
+                }
+              </div>
+            )
+          }
+          {
+            !isLoading && !!parameterRules.length && (
+              [
+                ...parameterRules,
+                ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
+              ].map(parameter => (
+                <ParameterItem
+                  key={`${modelId}-${parameter.name}`}
+                  parameterRule={parameter}
+                  value={completionParams?.[parameter.name]}
+                  onChange={v => handleParamChange(parameter.name, v)}
+                  onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
+                  isInWorkflow={isInWorkflow}
+                />
+              ))
+            )
+          }
+        </div>
+        {!hideDebugWithMultipleModel && (
+          <div
+            className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent system-sm-regular"
+            onClick={() => onDebugWithMultipleModelChange?.()}
+          >
+            {
+              debugWithMultipleModel
+                ? t('debugAsSingleModel', { ns: 'appDebug' })
+                : t('debugAsMultipleModel', { ns: 'appDebug' })
+            }
+            <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 

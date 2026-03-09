@@ -7,12 +7,12 @@ import type {
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
@@ -114,7 +114,7 @@ const PopupItem: FC<PopupItemProps> = ({
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
             render={(
-              <div className="flex cursor-pointer items-center text-text-tertiary system-xs-medium">
+              <div className="flex cursor-pointer items-center rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
                   ? (
                       hasCredits
@@ -144,10 +144,16 @@ const PopupItem: FC<PopupItemProps> = ({
                           <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
-                <span className={cn('i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary', collapsed && '-rotate-90')} />
+                <span className="i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary" />
               </div>
             )}
           />
+          {/*
+           * TODO(overlay-migration): temporary layering hack.
+           * This nested provider-settings dropdown opens from inside ModelSelector
+           * (z-[1002]), so it must stay one level higher until all related modals
+           * are unified on the new overlay stack.
+           */}
           <PopoverContent placement="bottom-end" className="z-[1003]">
             <DropdownContent
               provider={currentProvider}
@@ -160,11 +166,47 @@ const PopupItem: FC<PopupItemProps> = ({
         </Popover>
       </div>
       {!collapsed && model.models.map(modelItem => (
-        <Tooltip
-          key={modelItem.model}
-          position="right"
-          popupClassName="p-3 !w-[206px] bg-components-panel-bg-blur backdrop-blur-sm border-[0.5px] border-components-panel-border rounded-xl"
-          popupContent={(
+        <Tooltip key={modelItem.model}>
+          <TooltipTrigger
+            render={(
+              <div
+                className={cn('group relative flex h-8 items-center gap-1 rounded-lg px-3 py-1.5', modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt')}
+                onClick={() => handleSelect(model.provider, modelItem)}
+              >
+                <div className="flex items-center gap-2">
+                  <ModelIcon
+                    className={cn('h-5 w-5 shrink-0')}
+                    provider={model}
+                    modelName={modelItem.model}
+                  />
+                  <ModelName
+                    className={cn('text-text-secondary system-sm-medium', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                    modelItem={modelItem}
+                  />
+                </div>
+                {
+                  defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
+                    <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-accent" />
+                  )
+                }
+                {
+                  modelItem.status === ModelStatusEnum.noConfigure && (
+                    <div
+                      className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
+                      onClick={handleOpenModelModal}
+                    >
+                      {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
+                    </div>
+                  )
+                }
+              </div>
+            )}
+          />
+          <TooltipContent
+            placement="right"
+            variant="plain"
+            popupClassName="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-sm"
+          >
             <div className="flex flex-col gap-1">
               <div className="flex flex-col items-start gap-2">
                 <ModelIcon
@@ -174,9 +216,6 @@ const PopupItem: FC<PopupItemProps> = ({
                 />
                 <div className="text-wrap break-words text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
               </div>
-              {/* {currentProvider?.description && (
-                <div className='text-text-tertiary system-xs-regular'>{currentProvider?.description?.[language] || currentProvider?.description?.en_US}</div>
-              )} */}
               <div className="flex flex-wrap gap-1">
                 {!!modelItem.model_type && (
                   <ModelBadge>
@@ -211,40 +250,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   </div>
                 )}
             </div>
-          )}
-        >
-          <div
-            key={modelItem.model}
-            className={cn('group relative flex h-8 items-center gap-1 rounded-lg px-3 py-1.5', modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt')}
-            onClick={() => handleSelect(model.provider, modelItem)}
-          >
-            <div className="flex items-center gap-2">
-              <ModelIcon
-                className={cn('h-5 w-5 shrink-0')}
-                provider={model}
-                modelName={modelItem.model}
-              />
-              <ModelName
-                className={cn('text-text-secondary system-sm-medium', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
-                modelItem={modelItem}
-              />
-            </div>
-            {
-              defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
-                <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-accent" />
-              )
-            }
-            {
-              modelItem.status === ModelStatusEnum.noConfigure && (
-                <div
-                  className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
-                  onClick={handleOpenModelModal}
-                >
-                  {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
-                </div>
-              )
-            }
-          </div>
+          </TooltipContent>
         </Tooltip>
       ))}
     </div>

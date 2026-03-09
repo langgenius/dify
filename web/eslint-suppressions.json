@@ -800,12 +800,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4182,9 +4176,6 @@
   "app/components/datasets/settings/summary-index-setting.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 11
     }
   },
   "app/components/develop/code.tsx": {
@@ -4655,11 +4646,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4700,30 +4686,7 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-selector/deprecated-model-trigger.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-selector/feature-icon.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-selector/popup.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5211,12 +5174,6 @@
     }
   },
   "app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
