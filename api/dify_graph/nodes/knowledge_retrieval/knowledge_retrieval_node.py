@@ -23,7 +23,11 @@ from dify_graph.variables import (
 )
 from dify_graph.variables.segments import ArrayObjectSegment
 
-from .entities import KnowledgeRetrievalNodeData
+from .entities import (
+    Condition,
+    KnowledgeRetrievalNodeData,
+    MetadataFilteringCondition,
+)
 from .exc import (
     KnowledgeRetrievalNodeError,
     RateLimitExceededError,
@@ -171,6 +175,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if node_data.metadata_filtering_mode is not None:
             metadata_filtering_mode = node_data.metadata_filtering_mode
 
+        resolved_metadata_conditions = (
+            self._resolve_metadata_filtering_conditions(node_data.metadata_filtering_conditions)
+            if node_data.metadata_filtering_conditions
+            else None
+        )
+
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
@@ -189,7 +199,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     model_mode=model.mode,
                     model_name=model.name,
                     metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=node_data.metadata_filtering_conditions,
+                    metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     query=query,
                 )
@@ -247,7 +257,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     weights=weights,
                     reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                     metadata_model_config=node_data.metadata_model_config,
-                    metadata_filtering_conditions=node_data.metadata_filtering_conditions,
+                    metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
                 )
@@ -255,6 +265,48 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
         usage = self._rag_retrieval.llm_usage
         return retrieval_resource_list, usage
+
+    def _resolve_metadata_filtering_conditions(
+        self, conditions: MetadataFilteringCondition
+    ) -> MetadataFilteringCondition:
+        if conditions.conditions is None:
+            return MetadataFilteringCondition(
+                logical_operator=conditions.logical_operator,
+                conditions=None,
+            )
+
+        variable_pool = self.graph_runtime_state.variable_pool
+        resolved_conditions: list[Condition] = []
+        for cond in (conditions.conditions or []):
+            value = cond.value
+            if isinstance(value, str):
+                segment_group = variable_pool.convert_template(value)
+                if len(segment_group.value) == 1:
+                    resolved_value = segment_group.value[0].to_object()
+                else:
+                    resolved_value = segment_group.text
+            elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
+                resolved_values = []
+                for v in value:  # type: ignore
+                    segment_group = variable_pool.convert_template(v)
+                    if len(segment_group.value) == 1:
+                        resolved_values.append(segment_group.value[0].to_object())
+                    else:
+                        resolved_values.append(segment_group.text)
+                resolved_value = resolved_values
+            else:
+                resolved_value = value
+            resolved_conditions.append(
+                Condition(
+                    name=cond.name,
+                    comparison_operator=cond.comparison_operator,
+                    value=resolved_value,
+                )
+            )
+        return MetadataFilteringCondition(
+            logical_operator=conditions.logical_operator or "and",
+            conditions=resolved_conditions,
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
