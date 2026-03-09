@@ -1298,9 +1298,7 @@ class TestWorkflowServiceCredentialValidation:
         workflow = self._make_workflow(nodes)
 
         # Act + Assert
-        with patch(
-            "core.helper.credential_utils.check_credential_policy_compliance"
-        ) as mock_check:
+        with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
             # Should not raise; mock allows the call
             service._validate_workflow_credentials(workflow)
             mock_check.assert_called_once()
@@ -1404,9 +1402,7 @@ class TestWorkflowServiceCredentialValidation:
             with pytest.raises(ValueError, match="boom"):
                 service._validate_workflow_credentials(workflow)
 
-    def test_validate_workflow_credentials_should_validate_agent_node_model(
-        self, service: WorkflowService
-    ) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_node_model(self, service: WorkflowService) -> None:
         # Arrange
         nodes = [
             {
@@ -1432,9 +1428,7 @@ class TestWorkflowServiceCredentialValidation:
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
 
-    def test_validate_workflow_credentials_should_validate_agent_tools(
-        self, service: WorkflowService
-    ) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_tools(self, service: WorkflowService) -> None:
         """Each agent tool with a provider should be checked for credential compliance."""
         # Arrange
         nodes = [
@@ -1469,9 +1463,7 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _validate_llm_model_config ---
 
-    def test_validate_llm_model_config_should_raise_value_error_on_failure(
-        self, service: WorkflowService
-    ) -> None:
+    def test_validate_llm_model_config_should_raise_value_error_on_failure(self, service: WorkflowService) -> None:
         """If ModelManager raises any exception it must be wrapped into ValueError."""
         # Arrange
         with patch("core.model_manager.ModelManager.get_model_instance", side_effect=RuntimeError("no key")):
@@ -1484,19 +1476,19 @@ class TestWorkflowServiceCredentialValidation:
         mock_model = MagicMock()
         mock_model.model = "gpt-4"
         mock_model.provider.provider = "openai"
-        
+
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = [mock_model]
-        
+
         with (
             patch("core.model_manager.ModelManager.get_model_instance"),
             patch("core.provider_manager.ProviderManager") as mock_pm_cls,
         ):
             mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-            
+
             # Act
             service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
-            
+
             # Assert
             mock_model.raise_for_status.assert_called_once()
 
@@ -1504,13 +1496,13 @@ class TestWorkflowServiceCredentialValidation:
         """Test ValueError when model is not found in provider configurations."""
         mock_configs = MagicMock()
         mock_configs.get_models.return_value = []  # No models
-        
+
         with (
             patch("core.model_manager.ModelManager.get_model_instance"),
             patch("core.provider_manager.ProviderManager") as mock_pm_cls,
         ):
             mock_pm_cls.return_value.get_configurations.return_value = mock_configs
-            
+
             # Act + Assert
             with pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"):
                 service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
@@ -1528,9 +1520,7 @@ class TestWorkflowServiceCredentialValidation:
             # Act + Assert (should NOT raise)
             service._check_default_tool_credential("tenant-1", "some-provider")
 
-    def test_check_default_tool_credential_should_raise_when_compliance_fails(
-        self, service: WorkflowService
-    ) -> None:
+    def test_check_default_tool_credential_should_raise_when_compliance_fails(self, service: WorkflowService) -> None:
         # Arrange
         mock_provider = MagicMock()
         mock_provider.id = "builtin-cred-id"
@@ -1566,9 +1556,7 @@ class TestWorkflowServiceCredentialValidation:
         # Assert
         assert result is False
 
-    def test_is_load_balancing_enabled_should_return_true_when_setting_enabled(
-        self, service: WorkflowService
-    ) -> None:
+    def test_is_load_balancing_enabled_should_return_true_when_setting_enabled(self, service: WorkflowService) -> None:
         # Arrange
         with patch("core.provider_manager.ProviderManager.get_configurations") as mock_get_configs:
             mock_provider_config = MagicMock()
@@ -1586,9 +1574,7 @@ class TestWorkflowServiceCredentialValidation:
         # Assert
         assert result is True
 
-    def test_is_load_balancing_enabled_should_return_false_on_exception(
-        self, service: WorkflowService
-    ) -> None:
+    def test_is_load_balancing_enabled_should_return_false_on_exception(self, service: WorkflowService) -> None:
         """Any exception should be swallowed and return False."""
         # Arrange
         with patch("core.provider_manager.ProviderManager.get_configurations", side_effect=RuntimeError("db down")):
@@ -1600,9 +1586,7 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _get_load_balancing_configs ---
 
-    def test_get_load_balancing_configs_should_return_empty_list_on_exception(
-        self, service: WorkflowService
-    ) -> None:
+    def test_get_load_balancing_configs_should_return_empty_list_on_exception(self, service: WorkflowService) -> None:
         """Any exception during LB config retrieval should return an empty list."""
         # Arrange
         with patch(
@@ -1615,9 +1599,7 @@ class TestWorkflowServiceCredentialValidation:
         # Assert
         assert result == []
 
-    def test_get_load_balancing_configs_should_merge_predefined_and_custom(
-        self, service: WorkflowService
-    ) -> None:
+    def test_get_load_balancing_configs_should_merge_predefined_and_custom(self, service: WorkflowService) -> None:
         # Arrange
         predefined = [{"credential_id": "cred-a"}, {"credential_id": None}]
         custom = [{"credential_id": "cred-b"}]
@@ -1699,9 +1681,7 @@ class TestWorkflowServiceExecutionHelpers:
 
     # --- _apply_error_strategy ---
 
-    def test_apply_error_strategy_should_return_exception_status_noderunresult(
-        self, service: WorkflowService
-    ) -> None:
+    def test_apply_error_strategy_should_return_exception_status_noderunresult(self, service: WorkflowService) -> None:
         # Arrange
         node = MagicMock()
         node.error_strategy = ErrorStrategy.FAIL_BRANCH
@@ -1799,9 +1779,7 @@ class TestWorkflowServiceExecutionHelpers:
 
     # --- _execute_node_safely ---
 
-    def test_execute_node_safely_should_return_succeeded_result_on_happy_path(
-        self, service: WorkflowService
-    ) -> None:
+    def test_execute_node_safely_should_return_succeeded_result_on_happy_path(self, service: WorkflowService) -> None:
         # Arrange
         node = MagicMock()
         node.error_strategy = None
@@ -1815,6 +1793,7 @@ class TestWorkflowServiceExecutionHelpers:
         def invoke_fn():
             def _gen():
                 yield succeeded_event
+
             return node, _gen()
 
         # Act
@@ -1825,9 +1804,7 @@ class TestWorkflowServiceExecutionHelpers:
         assert run_succeeded is True
         assert error is None
 
-    def test_execute_node_safely_should_return_failed_result_on_failed_event(
-        self, service: WorkflowService
-    ) -> None:
+    def test_execute_node_safely_should_return_failed_result_on_failed_event(self, service: WorkflowService) -> None:
         # Arrange
         node = MagicMock()
         node.error_strategy = None
@@ -1841,6 +1818,7 @@ class TestWorkflowServiceExecutionHelpers:
         def invoke_fn():
             def _gen():
                 yield failed_event
+
             return node, _gen()
 
         # Act
@@ -1850,9 +1828,7 @@ class TestWorkflowServiceExecutionHelpers:
         assert run_succeeded is False
         assert error == "node exploded"
 
-    def test_execute_node_safely_should_handle_workflow_node_run_failed_error(
-        self, service: WorkflowService
-    ) -> None:
+    def test_execute_node_safely_should_handle_workflow_node_run_failed_error(self, service: WorkflowService) -> None:
         # Arrange
         node = MagicMock()
         exc = WorkflowNodeRunFailedError(node, "runtime failure")
@@ -1869,9 +1845,7 @@ class TestWorkflowServiceExecutionHelpers:
         assert run_succeeded is False
         assert error == "runtime failure"
 
-    def test_execute_node_safely_should_raise_when_no_result_event(
-        self, service: WorkflowService
-    ) -> None:
+    def test_execute_node_safely_should_raise_when_no_result_event(self, service: WorkflowService) -> None:
         """If the generator produces no NodeRunSucceededEvent/NodeRunFailedEvent, ValueError is expected."""
         # Arrange
         node = MagicMock()
@@ -1880,6 +1854,7 @@ class TestWorkflowServiceExecutionHelpers:
         def invoke_fn():
             def _gen():
                 yield from []
+
             return node, _gen()
 
         # Act + Assert
@@ -1888,9 +1863,7 @@ class TestWorkflowServiceExecutionHelpers:
 
     # --- _apply_error_strategy with FAIL_BRANCH strategy ---
 
-    def test_execute_node_safely_should_apply_error_strategy_on_failed_status(
-        self, service: WorkflowService
-    ) -> None:
+    def test_execute_node_safely_should_apply_error_strategy_on_failed_status(self, service: WorkflowService) -> None:
         # Arrange
         node = MagicMock()
         node.error_strategy = ErrorStrategy.FAIL_BRANCH
@@ -1908,6 +1881,7 @@ class TestWorkflowServiceExecutionHelpers:
         def invoke_fn():
             def _gen():
                 yield failed_event
+
             return node, _gen()
 
         # Act
@@ -1932,9 +1906,7 @@ class TestWorkflowServiceGetNodeLastRun:
         with patch("services.workflow_service.db"):
             return WorkflowService()
 
-    def test_get_node_last_run_should_delegate_to_repository(
-        self, service: WorkflowService
-    ) -> None:
+    def test_get_node_last_run_should_delegate_to_repository(self, service: WorkflowService) -> None:
         # Arrange
         app = MagicMock(spec=App)
         app.tenant_id = "tenant-1"
@@ -1958,9 +1930,7 @@ class TestWorkflowServiceGetNodeLastRun:
             node_id="node-42",
         )
 
-    def test_get_node_last_run_should_return_none_when_repository_returns_none(
-        self, service: WorkflowService
-    ) -> None:
+    def test_get_node_last_run_should_return_none_when_repository_returns_none(self, service: WorkflowService) -> None:
         # Arrange
         app = MagicMock(spec=App)
         app.tenant_id = "t"
@@ -2288,24 +2258,24 @@ class TestWorkflowServiceDraftExecution:
         app.tenant_id = "tenant-1"
         account = MagicMock()
         account.id = "user-1"
-        
+
         draft_workflow = MagicMock(spec=Workflow)
         draft_workflow.id = "wf-1"
         draft_workflow.tenant_id = "tenant-1"
         draft_workflow.app_id = "app-1"
         draft_workflow.graph_dict = {"nodes": []}
-        
+
         node_id = "start-node"
         node_config = {"id": node_id, "data": {"type": "start"}}
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
-        
+
         service.get_draft_workflow = MagicMock(return_value=draft_workflow)
-        
+
         node_execution = MagicMock(spec=WorkflowNodeExecution)
         node_execution.id = "exec-1"
         node_execution.process_data = {}
-        
+
         # Mocking complex dependencies
         with (
             patch("services.workflow_service.db"),
@@ -2314,7 +2284,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.StartNodeData") as mock_start_data,
             patch(
                 "services.workflow_service._rebuild_file_for_user_inputs_in_start_node",
-                side_effect=lambda **kwargs: kwargs["user_inputs"]
+                side_effect=lambda **kwargs: kwargs["user_inputs"],
             ),
             patch("services.workflow_service._setup_variable_pool"),
             patch("services.workflow_service.DraftVarLoader"),
@@ -2327,22 +2297,20 @@ class TestWorkflowServiceDraftExecution:
             mock_node.node_type = NodeType.START
             mock_node.title = "Start Node"
             mock_run_result = NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={},
-                outputs={"result": "ok"}
+                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
             )
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id="start-node",
                 node_type=NodeType.START,
                 node_run_result=mock_run_result,
-                start_at=naive_utc_now()
+                start_at=naive_utc_now(),
             )
             mock_run.return_value = (mock_node, [mock_event])
-            
+
             mock_repo = MagicMock()
             mock_repo_factory.create_workflow_node_execution_repository.return_value = mock_repo
-            
+
             service._node_execution_service_repo = MagicMock()
             mock_execution_record = MagicMock()
             mock_execution_record.node_type = "start"
@@ -2358,7 +2326,7 @@ class TestWorkflowServiceDraftExecution:
                 node_id=node_id,
                 user_inputs={"key": "val"},
                 query="hi",
-                files=[]
+                files=[],
             )
 
             # Assert
@@ -2378,11 +2346,11 @@ class TestWorkflowServiceDraftExecution:
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
         service.get_draft_workflow = MagicMock(return_value=draft_workflow)
-        
+
         node_execution = MagicMock(spec=WorkflowNodeExecution)
         node_execution.id = "exec-1"
         node_execution.process_data = {}
-        
+
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.Session"),
@@ -2398,19 +2366,17 @@ class TestWorkflowServiceDraftExecution:
             mock_node.node_type = NodeType.LLM
             mock_node.title = "LLM Node"
             mock_run_result = NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={},
-                outputs={"result": "ok"}
+                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
             )
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id="llm-node",
                 node_type=NodeType.LLM,
                 node_run_result=mock_run_result,
-                start_at=naive_utc_now()
+                start_at=naive_utc_now(),
             )
             mock_run.return_value = (mock_node, [mock_event])
-            
+
             service._node_execution_service_repo = MagicMock()
             mock_execution_record = MagicMock()
             mock_execution_record.node_type = "llm"
@@ -2426,7 +2392,7 @@ class TestWorkflowServiceDraftExecution:
                 node_id=node_id,
                 user_inputs={},
                 query="",
-                files=None
+                files=None,
             )
 
             # Assert
@@ -2465,10 +2431,10 @@ class TestWorkflowServiceHumanInputOperations:
         app_model = MagicMock(spec=App)
         app_model.id = "app-1"
         app_model.tenant_id = "tenant-1"
-        
+
         account = MagicMock()
         account.id = "user-1"
-        
+
         draft = MagicMock()
         draft.id = "wf-1"
         draft.tenant_id = "tenant-1"
@@ -2476,13 +2442,13 @@ class TestWorkflowServiceHumanInputOperations:
         draft.graph_dict = {"nodes": []}
         draft.get_node_config_by_id.return_value = {"data": {"type": "human-input"}}
         service.get_draft_workflow = MagicMock(return_value=draft)
-        
+
         mock_node = MagicMock()
         mock_node.render_form_content_before_submission.return_value = "rendered"
         mock_node.resolve_default_values.return_value = {"def": 1}
         mock_node.title = "Form Title"
         mock_node.node_data = MagicMock()
-        
+
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
@@ -2499,10 +2465,10 @@ class TestWorkflowServiceHumanInputOperations:
         app_model = MagicMock(spec=App)
         app_model.id = "app-1"
         app_model.tenant_id = "tenant-1"
-        
+
         account = MagicMock()
         account.id = "user-1"
-        
+
         draft = MagicMock()
         draft.id = "wf-1"
         draft.tenant_id = "tenant-1"
@@ -2510,11 +2476,11 @@ class TestWorkflowServiceHumanInputOperations:
         draft.graph_dict = {"nodes": []}
         draft.get_node_config_by_id.return_value = {"id": "node-1", "data": {"type": "human-input"}}
         service.get_draft_workflow = MagicMock(return_value=draft)
-        
+
         mock_node = MagicMock()
         mock_node.node_data = MagicMock()
         mock_node.node_data.outputs_field_names.return_value = ["field1"]
-        
+
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
@@ -2526,11 +2492,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
         ):
             result = service.submit_human_input_form_preview(
-                app_model=app_model,
-                account=account,
-                node_id="node-1",
-                form_inputs={"field1": "val1"},
-                action="submit"
+                app_model=app_model, account=account, node_id="node-1", form_inputs={"field1": "val1"}, action="submit"
             )
             assert result["__action_id"] == "submit"
             mock_saver_cls.return_value.save.assert_called_once()
@@ -2539,7 +2501,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft = MagicMock()
         draft.get_node_config_by_id.return_value = {"data": {"type": "human-input"}}
         service.get_draft_workflow = MagicMock(return_value=draft)
-        
+
         with (
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
@@ -2552,10 +2514,7 @@ class TestWorkflowServiceHumanInputOperations:
         ):
             mock_resolve.return_value = MagicMock()
             service.test_human_input_delivery(
-                app_model=MagicMock(),
-                account=MagicMock(),
-                node_id="node-1",
-                delivery_method_id="method-1"
+                app_model=MagicMock(), account=MagicMock(), node_id="node-1", delivery_method_id="method-1"
             )
             mock_test_srv.return_value.send_test.assert_called_once()
 
@@ -2563,7 +2522,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft = MagicMock()
         draft.get_node_config_by_id.return_value = {"data": {"type": "human-input"}}
         service.get_draft_workflow = MagicMock(return_value=draft)
-        
+
         with (
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
@@ -2571,10 +2530,7 @@ class TestWorkflowServiceHumanInputOperations:
         ):
             with pytest.raises(ValueError, match="Delivery method not found"):
                 service.test_human_input_delivery(
-                    app_model=MagicMock(),
-                    account=MagicMock(),
-                    node_id="node-1",
-                    delivery_method_id="none"
+                    app_model=MagicMock(), account=MagicMock(), node_id="node-1", delivery_method_id="none"
                 )
 
     def test_load_email_recipients_parsing_failure(self, service: WorkflowService) -> None:
@@ -2582,7 +2538,7 @@ class TestWorkflowServiceHumanInputOperations:
         mock_recipient = MagicMock()
         mock_recipient.recipient_payload = "invalid json"
         mock_recipient.recipient_type = RecipientType.EMAIL_MEMBER
-        
+
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
@@ -2594,11 +2550,11 @@ class TestWorkflowServiceHumanInputOperations:
             # sqlalchemy assertions check for .bind
             mock_session.bind = MagicMock()  # removed spec=Engine to avoid import issues for now
             mock_session.scalars.return_value.all.return_value = [mock_recipient]
-            
+
             # Act
             # _load_email_recipients(form_id: str) is a static method
             result = WorkflowService._load_email_recipients("form-1")
-            
+
             # Assert
             assert result == []  # Should fall back to empty list on parsing error
 
@@ -2606,7 +2562,7 @@ class TestWorkflowServiceHumanInputOperations:
         workflow = MagicMock()
         workflow.environment_variables = []
         workflow.graph_dict = {}
-        
+
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.Session"),
@@ -2618,10 +2574,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
         ):
             service._build_human_input_variable_pool(
-                app_model=MagicMock(),
-                workflow=workflow,
-                node_config={},
-                manual_inputs={}
+                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}
             )
             mock_pool_cls.assert_called_once()
 
@@ -2651,7 +2604,7 @@ class TestWorkflowServiceFreeNodeExecution:
         graph = {
             "nodes": [
                 {"data": {"type": "start"}},
-                {"data": {"type": "trigger-webhook"}}  # is_trigger_node=True
+                {"data": {"type": "trigger-webhook"}},  # is_trigger_node=True
             ]
         }
         with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
@@ -2673,8 +2626,7 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
         with patch(
-            "dify_graph.nodes.human_input.entities.HumanInputNodeData.model_validate",
-            side_effect=Exception("error")
+            "dify_graph.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
         ):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
@@ -2694,7 +2646,7 @@ class TestWorkflowServiceFreeNodeExecution:
         account.id = "u-1"
         node_config = {"id": "n-1"}
         variable_pool = MagicMock()
-        
+
         with (
             patch("services.workflow_service.GraphInitParams"),
             patch("services.workflow_service.GraphRuntimeState"),
@@ -2702,11 +2654,7 @@ class TestWorkflowServiceFreeNodeExecution:
             patch("services.workflow_service.HumanInputFormRepositoryImpl"),
         ):
             node = service._build_human_input_node(
-                workflow=workflow,
-                account=account,
-                node_config=node_config,
-                variable_pool=variable_pool
+                workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value
             mock_node_cls.assert_called_once()
-

@@ -123,9 +123,7 @@ class TestCreateWorkflowTool:
         # Arrange
         workflow = DummyWorkflow(graph_dict={"nodes": [{"id": "n1", "data": {"type": "human-input"}}]})
         app = SimpleNamespace(workflow=workflow)
-        fake_session = SimpleNamespace(
-            query=lambda m: FakeQuery(None) if m is WorkflowToolProvider else FakeQuery(app)
-        )
+        fake_session = SimpleNamespace(query=lambda m: FakeQuery(None) if m is WorkflowToolProvider else FakeQuery(app))
         monkeypatch.setattr(workflow_tools_manage_service.db, "session", fake_session)
         mock_from_db = MagicMock()
         monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", mock_from_db)
@@ -271,9 +269,7 @@ class TestCreateWorkflowTool:
         monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
         dummy_session = DummySession()
         monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
-        monkeypatch.setattr(
-            workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock()
-        )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
 
         icon = {"type": "emoji", "emoji": "🔧"}
 
@@ -314,9 +310,7 @@ class TestCreateWorkflowTool:
         monkeypatch.setattr(workflow_tools_manage_service, "db", fake_db)
         dummy_session = DummySession()
         monkeypatch.setattr(workflow_tools_manage_service, "Session", lambda *_, **__: dummy_session)
-        monkeypatch.setattr(
-            workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock()
-        )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
         mock_label_mgr = MagicMock()
         monkeypatch.setattr(workflow_tools_manage_service.ToolLabelManager, "update_tool_labels", mock_label_mgr)
         mock_to_ctrl = MagicMock()
@@ -518,9 +512,7 @@ class TestUpdateWorkflowTool:
             "session",
             SimpleNamespace(query=query, commit=mock_commit),
         )
-        monkeypatch.setattr(
-            workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock()
-        )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
 
         icon = {"type": "emoji", "emoji": "🛠"}
 
@@ -563,9 +555,7 @@ class TestUpdateWorkflowTool:
             "session",
             SimpleNamespace(query=query, commit=MagicMock()),
         )
-        monkeypatch.setattr(
-            workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock()
-        )
+        monkeypatch.setattr(workflow_tools_manage_service.WorkflowToolProviderController, "from_db", MagicMock())
         mock_label_mgr = MagicMock()
         monkeypatch.setattr(workflow_tools_manage_service.ToolLabelManager, "update_tool_labels", mock_label_mgr)
         monkeypatch.setattr(
@@ -646,9 +636,7 @@ class TestListTenantWorkflowTools:
         monkeypatch.setattr(
             workflow_tools_manage_service.ToolTransformService, "workflow_provider_to_user_provider", mock_to_user
         )
-        monkeypatch.setattr(
-            workflow_tools_manage_service.ToolTransformService, "repack_provider", MagicMock()
-        )
+        monkeypatch.setattr(workflow_tools_manage_service.ToolTransformService, "repack_provider", MagicMock())
         mock_get_tools = MagicMock(return_value=[MagicMock()])
         good_ctrl.get_tools = mock_get_tools
         monkeypatch.setattr(

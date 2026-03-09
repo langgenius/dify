@@ -410,9 +410,7 @@ def test_update_trigger_subscription_should_update_fields_and_clear_cache(
     mock_delete_cache.assert_called_once()
 
 
-def test_get_subscription_by_id_should_return_none_when_missing(
-    mocker: MockerFixture, mock_session: MagicMock
-) -> None:
+def test_get_subscription_by_id_should_return_none_when_missing(mocker: MockerFixture, mock_session: MagicMock) -> None:
     # Arrange
     mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
@@ -610,9 +608,7 @@ def test_refresh_subscription_should_raise_error_when_subscription_missing(
         TriggerProviderService.refresh_subscription("tenant-1", "sub-1", now=100)
 
 
-def test_refresh_subscription_should_skip_when_not_due(
-    mocker: MockerFixture, mock_session: MagicMock
-) -> None:
+def test_refresh_subscription_should_skip_when_not_due(mocker: MockerFixture, mock_session: MagicMock) -> None:
     # Arrange
     subscription = SimpleNamespace(expires_at=200)
     mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
