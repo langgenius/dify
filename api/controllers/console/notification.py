@@ -8,25 +8,7 @@ from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 
 # Notification content is stored under three lang tags.
-_FALLBACK_LANG = "en"
-
-# Maps dify interface_language prefixes to notification lang tags.
-# Any unrecognised prefix falls back to _FALLBACK_LANG.
-_LANG_MAP: dict[str, str] = {
-    "zh": "zh",
-    "ja": "jp",
-}
-
-
-def _resolve_lang(interface_language: str | None) -> str:
-    """Derive the notification lang tag from the user's interface_language.
-
-    e.g. "zh-Hans" → "zh", "ja-JP" → "jp", "en-US" / None → "en"
-    """
-    if not interface_language:
-        return _FALLBACK_LANG
-    prefix = interface_language.split("-")[0].lower()
-    return _LANG_MAP.get(prefix, _FALLBACK_LANG)
+_FALLBACK_LANG = "en-US"
 
 
 def _pick_lang_content(contents: dict, lang: str) -> dict:
@@ -66,7 +48,7 @@ class NotificationApi(Resource):
         if not result.get("shouldShow"):
             return {"should_show": False, "notifications": []}, 200
 
-        lang = _resolve_lang(current_user.interface_language)
+        lang = current_user.interface_language
 
         notifications = []
         for notification in result.get("notifications") or []:
