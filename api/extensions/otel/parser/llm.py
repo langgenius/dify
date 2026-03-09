@@ -8,9 +8,9 @@ from typing import Any
 
 from opentelemetry.trace import Span
 
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
-from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps, should_include_content
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
 
 logger = logging.getLogger(__name__)
@@ -132,19 +132,24 @@ class LLMNodeOTelParser:
             span.set_attribute(LLMAttributes.USAGE_OUTPUT_TOKENS, completion_tokens)
             span.set_attribute(LLMAttributes.USAGE_TOTAL_TOKENS, total_tokens)
 
-        # Prompts and completion — gated by content policy
-        if should_include_content():
-            prompts = process_data.get("prompts", [])
-            if prompts:
-                prompts_json = safe_json_dumps(prompts)
-                span.set_attribute(LLMAttributes.PROMPT, prompts_json)
+        # Prompts and completion
+        prompts = process_data.get("prompts", [])
+        if prompts:
+            prompts_json = safe_json_dumps(prompts)
+            span.set_attribute(LLMAttributes.PROMPT, prompts_json)
 
-            text_output = str(outputs.get("text", ""))
-            if text_output:
-                span.set_attribute(LLMAttributes.COMPLETION, text_output)
+        text_output = str(outputs.get("text", ""))
+        if text_output:
+            span.set_attribute(LLMAttributes.COMPLETION, text_output)
 
-            # Structured input/output messages
-            gen_ai_input_message = _format_input_messages(process_data)
-            gen_ai_output_message = _format_output_messages(outputs)
-            span.set_attribute(LLMAttributes.INPUT_MESSAGE, gen_ai_input_message)
-            span.set_attribute(LLMAttributes.OUTPUT_MESSAGE, gen_ai_output_message)
+        # Finish reason
+        finish_reason = outputs.get("finish_reason") or ""
+        if finish_reason:
+            span.set_attribute(LLMAttributes.RESPONSE_FINISH_REASON, finish_reason)
+
+        # Structured input/output messages
+        gen_ai_input_message = _format_input_messages(process_data)
+        gen_ai_output_message = _format_output_messages(outputs)
+
+        span.set_attribute(LLMAttributes.INPUT_MESSAGE, gen_ai_input_message)
+        span.set_attribute(LLMAttributes.OUTPUT_MESSAGE, gen_ai_output_message)

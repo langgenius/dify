@@ -63,18 +63,16 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
-from core.telemetry import emit as telemetry_emit
-from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.nodes import NodeType
-from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.nodes import NodeType
+from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
@@ -518,8 +516,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
-        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -540,6 +540,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             exceptions_count=event.exceptions_count,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
 
     def _handle_workflow_paused_event(
@@ -624,7 +627,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
 
             with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
+                # Save message
+                self._save_message(session=session, graph_runtime_state=resolved_state)
 
             yield workflow_finish_resp
         elif event.stopped_by in (
@@ -633,7 +637,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         ):
             # When hitting input-moderation or annotation-reply, the workflow will not start
             with self._database_session() as session:
-                self._save_message(session=session, trace_manager=trace_manager)
+                # Save message
+                self._save_message(session=session)
 
         yield self._message_end_to_stream_response()
 
@@ -642,7 +647,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueAdvancedChatMessageEndEvent,
         *,
         graph_runtime_state: GraphRuntimeState | None = None,
-        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
@@ -661,7 +665,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         # Save message unless it has already been persisted on pause.
         if not self._message_saved_on_pause:
             with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
+                self._save_message(session=session, graph_runtime_state=resolved_state)
 
         yield self._message_end_to_stream_response()
 
@@ -736,7 +740,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _load_human_input_form_id(self, *, node_id: str) -> str | None:
         form_repository = HumanInputFormRepositoryImpl(
-            session_factory=db.engine,
             tenant_id=self._workflow_tenant_id,
         )
         form = form_repository.get_form(self._workflow_run_id, node_id)
@@ -856,6 +859,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     yield from self._handle_workflow_paused_event(event)
                     break
 
+                case QueueWorkflowSucceededEvent():
+                    yield from self._handle_workflow_succeeded_event(event, trace_manager=trace_manager)
+                    break
+
+                case QueueWorkflowPartialSuccessEvent():
+                    yield from self._handle_workflow_partial_success_event(event, trace_manager=trace_manager)
+                    break
+
                 case QueueStopEvent():
                     yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
                     break
@@ -878,13 +889,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(
-        self,
-        *,
-        session: Session,
-        graph_runtime_state: GraphRuntimeState | None = None,
-        trace_manager: TraceQueueManager | None = None,
-    ):
+    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
         if message is None:
             return
@@ -944,22 +949,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
-
-        if trace_manager:
-            telemetry_emit(
-                TelemetryEvent(
-                    name=TraceTaskName.MESSAGE_TRACE,
-                    context=TelemetryContext(
-                        tenant_id=self._application_generate_entity.app_config.tenant_id,
-                        app_id=self._application_generate_entity.app_config.app_id,
-                    ),
-                    payload={
-                        "conversation_id": str(message.conversation_id),
-                        "message_id": str(message.id),
-                    },
-                ),
-                trace_manager=trace_manager,
-            )
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""

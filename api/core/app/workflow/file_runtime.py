@@ -5,13 +5,13 @@ from collections.abc import Generator
 from configs import dify_config
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.signature import sign_tool_file
-from core.workflow.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
-from core.workflow.file.runtime import set_workflow_file_runtime
+from dify_graph.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
+from dify_graph.file.runtime import set_workflow_file_runtime
 from extensions.ext_storage import storage
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
-    """Production runtime wiring for ``core.workflow.file``."""
+    """Production runtime wiring for ``dify_graph.file``."""
 
     @property
     def files_url(self) -> str:

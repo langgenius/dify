@@ -23,15 +23,15 @@ from core.llm_generator.prompts import (
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
-from core.telemetry import emit as telemetry_emit
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -95,17 +95,16 @@ class LLMGenerator:
         if len(name) > 75:
             name = name[:75] + "..."
 
-        telemetry_emit(
-            TelemetryEvent(
-                name=TraceTaskName.GENERATE_NAME_TRACE,
-                context=TelemetryContext(tenant_id=tenant_id, app_id=app_id),
-                payload={
-                    "conversation_id": conversation_id,
-                    "generate_conversation_name": name,
-                    "inputs": prompt,
-                    "timer": timer,
-                    "tenant_id": tenant_id,
-                },
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_id=app_id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.GENERATE_NAME_TRACE,
+                conversation_id=conversation_id,
+                generate_conversation_name=name,
+                inputs=prompt,
+                timer=timer,
+                tenant_id=tenant_id,
             )
         )
 

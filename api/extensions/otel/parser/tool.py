@@ -4,11 +4,11 @@ Parser for tool nodes that captures tool-specific metadata.
 
 from opentelemetry.trace import Span
 
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.tool.entities import ToolNodeData
-from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps, should_include_content
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.tool.entities import ToolNodeData
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import ToolAttributes
 
 
@@ -40,14 +40,8 @@ class ToolNodeOTelParser:
         if tool_info:
             span.set_attribute(ToolAttributes.TOOL_DESCRIPTION, safe_json_dumps(tool_info))
 
-        # Tool call arguments and result — gated by content policy
-        if should_include_content():
-            if result_event and result_event.node_run_result and result_event.node_run_result.inputs:
-                span.set_attribute(
-                    ToolAttributes.TOOL_CALL_ARGUMENTS, safe_json_dumps(result_event.node_run_result.inputs)
-                )
+        if result_event and result_event.node_run_result and result_event.node_run_result.inputs:
+            span.set_attribute(ToolAttributes.TOOL_CALL_ARGUMENTS, safe_json_dumps(result_event.node_run_result.inputs))
 
-            if result_event and result_event.node_run_result and result_event.node_run_result.outputs:
-                span.set_attribute(
-                    ToolAttributes.TOOL_CALL_RESULT, safe_json_dumps(result_event.node_run_result.outputs)
-                )
+        if result_event and result_event.node_run_result and result_event.node_run_result.outputs:
+            span.set_attribute(ToolAttributes.TOOL_CALL_RESULT, safe_json_dumps(result_event.node_run_result.outputs))
