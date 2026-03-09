@@ -1,5 +1,7 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.prompt.prompt_transform import PromptTransform
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
@@ -14,6 +16,87 @@ from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 class TestPromptTransform:
+    def test_resolve_model_runtime_requires_model_config_or_instance(self):
+        transform = PromptTransform()
+
+        with pytest.raises(ValueError, match="Either model_config or model_instance must be provided."):
+            transform._resolve_model_runtime()
+
+    def test_resolve_model_runtime_builds_model_instance_from_model_config(self):
+        transform = PromptTransform()
+        fake_model_schema = SimpleNamespace(model_properties={}, parameter_rules=[])
+        fake_model_type_instance = MagicMock()
+        fake_model_type_instance.get_model_schema.return_value = fake_model_schema
+        fake_model_instance = SimpleNamespace(
+            model_type_instance=fake_model_type_instance,
+            model_name="resolved-model",
+            credentials=None,
+            parameters=None,
+            stop=None,
+        )
+        model_config = SimpleNamespace(
+            provider_model_bundle=object(),
+            model="config-model",
+            credentials={"api_key": "secret"},
+            parameters={"temperature": 0.1},
+            stop=["END"],
+            model_schema=SimpleNamespace(model_properties={}, parameter_rules=[]),
+        )
+
+        with patch(
+            "core.prompt.prompt_transform.ModelInstance", return_value=fake_model_instance
+        ) as model_instance_cls:
+            model_instance, model_schema = transform._resolve_model_runtime(model_config=model_config)
+
+        model_instance_cls.assert_called_once_with(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model,
+        )
+        fake_model_type_instance.get_model_schema.assert_called_once_with(
+            model="resolved-model",
+            credentials={"api_key": "secret"},
+        )
+        assert model_instance is fake_model_instance
+        assert model_instance.credentials == {"api_key": "secret"}
+        assert model_instance.parameters == {"temperature": 0.1}
+        assert model_instance.stop == ["END"]
+        assert model_schema is fake_model_schema
+
+    def test_resolve_model_runtime_uses_model_config_schema_fallback(self):
+        transform = PromptTransform()
+        fallback_schema = SimpleNamespace(model_properties={}, parameter_rules=[])
+        fake_model_type_instance = MagicMock()
+        fake_model_type_instance.get_model_schema.return_value = None
+        model_instance = SimpleNamespace(
+            model_type_instance=fake_model_type_instance,
+            model_name="resolved-model",
+            credentials={"api_key": "secret"},
+            parameters={},
+        )
+        model_config = SimpleNamespace(model_schema=fallback_schema)
+
+        resolved_model_instance, resolved_schema = transform._resolve_model_runtime(
+            model_config=model_config,
+            model_instance=model_instance,
+        )
+
+        assert resolved_model_instance is model_instance
+        assert resolved_schema is fallback_schema
+
+    def test_resolve_model_runtime_raises_when_schema_missing_without_model_config(self):
+        transform = PromptTransform()
+        fake_model_type_instance = MagicMock()
+        fake_model_type_instance.get_model_schema.return_value = None
+        model_instance = SimpleNamespace(
+            model_type_instance=fake_model_type_instance,
+            model_name="resolved-model",
+            credentials={"api_key": "secret"},
+            parameters={},
+        )
+
+        with pytest.raises(ValueError, match="Model schema not found for the provided model instance."):
+            transform._resolve_model_runtime(model_instance=model_instance)
+
     def test_calculate_rest_token_defaults_when_context_size_missing(self):
         transform = PromptTransform()
         fake_model_instance = SimpleNamespace(parameters={}, get_llm_num_tokens=lambda _: 0)
