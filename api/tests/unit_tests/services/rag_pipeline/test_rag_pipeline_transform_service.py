@@ -5,7 +5,7 @@ from typing import cast
 import pytest
 
 from models.dataset import Dataset
-from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
+from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 
 
@@ -264,7 +264,7 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
 
     result = service._deal_knowledge_index(
-        knowledge_configuration, cast(Dataset, dataset), "high_quality", cast(RetrievalSetting, retrieval_model), node
+        knowledge_configuration, dataset, "high_quality", retrieval_model, node  # type: ignore
     )
 
     assert result["data"]["embedding_model"] == "text-embedding-ada-002"
