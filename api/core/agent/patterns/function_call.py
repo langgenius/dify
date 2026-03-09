@@ -34,7 +34,10 @@ class FunctionCallStrategy(AgentPattern):
     """Function Call strategy using model's native tool calling capability."""
 
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any],
+        stop: list[str] = [],
         stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the function call agent strategy."""
@@ -307,9 +310,7 @@ class FunctionCallStrategy(AgentPattern):
             tool_call_log.data = {**tool_call_log.data, "error": validation_error}
             yield tool_call_log
 
-            messages.append(
-                ToolPromptMessage(content=validation_error, tool_call_id=tool_call_id, name=tool_name)
-            )
+            messages.append(ToolPromptMessage(content=validation_error, tool_call_id=tool_call_id, name=tool_name))
             return validation_error, [], None, True
 
         # Invoke tool using base class method with error handling

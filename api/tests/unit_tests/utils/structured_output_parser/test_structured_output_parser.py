@@ -370,7 +370,7 @@ def test_structured_output_with_pydantic_model_validation_error():
             model_schema=model_schema,
             model_instance=model_instance,
             prompt_messages=[UserPromptMessage(content="test")],
-            output_model=ExampleOutput
+            output_model=ExampleOutput,
         )
 
 

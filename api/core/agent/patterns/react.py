@@ -52,7 +52,10 @@ class ReActStrategy(AgentPattern):
         self.instruction = instruction
 
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any],
+        stop: list[str] = [],
         stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the ReAct agent strategy."""

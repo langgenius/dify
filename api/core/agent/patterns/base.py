@@ -56,7 +56,10 @@ class AgentPattern(ABC):
 
     @abstractmethod
     def run(
-        self, prompt_messages: list[PromptMessage], model_parameters: dict[str, Any], stop: list[str] = [],
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any],
+        stop: list[str] = [],
         stream: bool = True,
     ) -> Generator[LLMResultChunk | AgentLog, None, AgentResult]:
         """Execute the agent strategy."""
@@ -468,7 +471,8 @@ class AgentPattern(ABC):
             return None
 
         missing = [
-            p for p in required_params
+            p
+            for p in required_params
             if p not in tool_args
             or tool_args[p] is None
             or (isinstance(tool_args[p], str) and not tool_args[p].strip())
