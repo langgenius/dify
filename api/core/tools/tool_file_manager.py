@@ -14,6 +14,7 @@ import httpx
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
+from dify_graph.file.models import ToolFile as ToolFilePydanticModel
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
@@ -207,7 +208,9 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]:
+    def get_file_generator_by_tool_file_id(
+        self, tool_file_id: str
+    ) -> tuple[Generator | None, ToolFilePydanticModel | None]:
         """
         get file binary
 
@@ -229,7 +232,7 @@ class ToolFileManager:
 
         stream = storage.load_stream(tool_file.file_key)
 
-        return stream, tool_file
+        return stream, ToolFilePydanticModel.model_validate(tool_file)
 
 
 # init tool_file_parser
