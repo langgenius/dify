@@ -247,10 +247,9 @@ class TestMessagesCleanService:
             MessagesCleanService.from_days(mock_policy, days=30, batch_size=0)
 
     def test_from_days_success(self, mock_policy):
-        with patch("services.retention.conversation.messages_clean_service.datetime", autospec=True) as mock_date:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 1)
-            mock_date.datetime.now.return_value = fixed_now
-            mock_date.timedelta = datetime.timedelta
+            mock_now.return_value = fixed_now
 
             service = MessagesCleanService.from_days(mock_policy, days=10)
             assert service._start_from is None
