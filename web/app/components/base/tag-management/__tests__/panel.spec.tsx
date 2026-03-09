@@ -98,14 +98,12 @@ describe('Panel', () => {
 
     it('should fallback to empty placeholder when translation is empty', () => {
       const mockedTranslation = {
-        t: ((..._args: unknown[]) => '') as ReturnType<typeof ReactI18next.useTranslation>['t'],
+        t: vi.fn().mockReturnValue(''),
         i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
         ready: true,
-      } as Pick<ReturnType<typeof ReactI18next.useTranslation>, 't' | 'i18n' | 'ready'>
+      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
 
-      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(
-        mockedTranslation as ReturnType<typeof ReactI18next.useTranslation>,
-      )
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
 
       render(<Panel {...defaultProps} />)
 
