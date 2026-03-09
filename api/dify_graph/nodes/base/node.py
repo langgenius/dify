@@ -153,11 +153,11 @@ class Node(Generic[NodeDataT]):
         Later, in __init__:
         ::
 
-            config["data"] ──► _hydrate_node_data() ──► _node_data_type.model_validate()
-                                                                │
-                                                                ▼
-                                                        CodeNodeData instance
-                                                        (stored in self._node_data)
+            config["data"] ──► _node_data_type.model_validate(..., from_attributes=True)
+                                               │
+                                               ▼
+                                       CodeNodeData instance
+                                       (stored in self._node_data)
 
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
