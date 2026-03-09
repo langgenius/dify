@@ -7,7 +7,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import { formatDateForOutput } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
@@ -121,10 +121,22 @@ const MarkdownForm = ({ node }: any) => {
       const name = child.properties.name
       if (!isSafeName(name))
         continue
-      if (child.tagName === SUPPORTED_TAGS.INPUT && child.properties.type === SUPPORTED_TYPES.HIDDEN)
+
+      const type = child.tagName === SUPPORTED_TAGS.INPUT ? str(child.properties.type) : ''
+
+      if (type === SUPPORTED_TYPES.HIDDEN) {
         init[name] = str(child.properties.value)
-      else
+      }
+      else if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME || type === SUPPORTED_TYPES.TIME) {
+        const raw = child.properties.value
+        init[name] = raw != null ? toDayjs(String(raw)) : undefined
+      }
+      else if (type === SUPPORTED_TYPES.CHECKBOX) {
+        init[name] = false
+      }
+      else {
         init[name] = child.properties.value != null ? str(child.properties.value) : undefined
+      }
     }
     setFormValues(init)
   }, [elementChildren])
@@ -180,7 +192,7 @@ const MarkdownForm = ({ node }: any) => {
         onSend?.(textResult)
       }
     }
-    finally {
+    catch {
       setIsSubmitting(false)
     }
   }, [isSubmitting, typedNode.properties.dataFormat, getFormOutput, onSend])
