@@ -225,8 +225,9 @@ def test_builtin_provider_to_user_provider_should_include_plugin_identity_for_pl
     assert result.plugin_unique_identifier == "plugin-unique"
 
 
-def test_builtin_provider_to_user_provider_should_mark_team_authorization_when_provider_does_not_need_credentials(
-) -> None:
+def test_builtin_provider_to_user_provider_should_mark_team_authorization_when_provider_does_not_need_credentials() -> (
+    None
+):
     # Arrange
     schema_item = MagicMock()
     schema_item.to_basic_provider_config.return_value.name = "api_key"
