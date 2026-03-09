@@ -1,11 +1,11 @@
 'use client'
 
-import type { InSiteMessageActionItem } from './in-site-message'
+import type { InSiteMessageActionItem } from './index'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/client'
-import InSiteMessage from './in-site-message'
+import InSiteMessage from './index'
 
 type NotificationBodyPayload = {
   actions: InSiteMessageActionItem[]
