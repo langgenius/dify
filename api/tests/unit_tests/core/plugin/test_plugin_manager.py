@@ -269,6 +269,7 @@ class TestPluginLoading:
             id="task-123",
             created_at=datetime.datetime.now(),
             updated_at=datetime.datetime.now(),
+            plugin_unique_identifier="test-org/test-plugin/1.0.0",
             status=PluginInstallTaskStatus.Running,
             total_plugins=3,
             completed_plugins=1,
@@ -720,6 +721,7 @@ class TestPluginTaskManagement:
                 id="task-1",
                 created_at=datetime.datetime.now(),
                 updated_at=datetime.datetime.now(),
+                plugin_unique_identifier="test-org/test-plugin-a/1.0.0",
                 status=PluginInstallTaskStatus.Running,
                 total_plugins=2,
                 completed_plugins=1,
@@ -729,6 +731,7 @@ class TestPluginTaskManagement:
                 id="task-2",
                 created_at=datetime.datetime.now(),
                 updated_at=datetime.datetime.now(),
+                plugin_unique_identifier="test-org/test-plugin-b/1.0.0",
                 status=PluginInstallTaskStatus.Success,
                 total_plugins=1,
                 completed_plugins=1,
@@ -1256,6 +1259,7 @@ class TestPluginTaskStatusTransitions:
             id="pending-task",
             created_at=datetime.datetime.now(),
             updated_at=datetime.datetime.now(),
+            plugin_unique_identifier="test-org/test-plugin/1.0.0",
             status=PluginInstallTaskStatus.Pending,
             total_plugins=3,
             completed_plugins=0,  # No plugins completed yet
@@ -1283,6 +1287,7 @@ class TestPluginTaskStatusTransitions:
             id="running-task",
             created_at=datetime.datetime.now(),
             updated_at=datetime.datetime.now(),
+            plugin_unique_identifier="test-org/test-plugin/1.0.0",
             status=PluginInstallTaskStatus.Running,
             total_plugins=5,
             completed_plugins=2,  # 2 out of 5 completed
@@ -1311,6 +1316,7 @@ class TestPluginTaskStatusTransitions:
             id="success-task",
             created_at=datetime.datetime.now(),
             updated_at=datetime.datetime.now(),
+            plugin_unique_identifier="test-org/test-plugin/1.0.0",
             status=PluginInstallTaskStatus.Success,
             total_plugins=4,
             completed_plugins=4,  # All plugins completed
@@ -1338,6 +1344,7 @@ class TestPluginTaskStatusTransitions:
             id="failed-task",
             created_at=datetime.datetime.now(),
             updated_at=datetime.datetime.now(),
+            plugin_unique_identifier="test-org/test-plugin/1.0.0",
             status=PluginInstallTaskStatus.Failed,
             total_plugins=3,
             completed_plugins=1,  # Only 1 completed before failure
