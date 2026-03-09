@@ -235,8 +235,9 @@ class Workflow(Base):  # bug
         """Extract a node configuration from the workflow graph by node ID.
 
         A node configuration includes the node id and a typed `BaseNodeData` for `data`.
-        `BaseNodeData` keeps a dict-like `get`/`__getitem__` compatibility layer via
-        `model_dump()` for legacy consumers, but callers should prefer attribute access.
+        `BaseNodeData` keeps a dict-like `get`/`__getitem__` compatibility layer backed by
+        model fields plus Pydantic extra storage for legacy consumers, but callers should
+        prefer attribute access.
         """
         workflow_graph = self.graph_dict
 

@@ -15,6 +15,8 @@ else:
 @with_config(extra="allow")
 class NodeConfigDict(TypedDict):
     id: str
+    # This is the permissive raw graph boundary. Node factories re-validate `data`
+    # with the concrete `NodeData` subtype after resolving the node implementation.
     data: BaseNodeData
 
 

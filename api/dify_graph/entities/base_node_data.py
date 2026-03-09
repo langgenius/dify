@@ -129,6 +129,13 @@ class DefaultValue(BaseModel):
 
 
 class BaseNodeData(ABC, BaseModel):
+    # Raw graph payloads are first validated through `NodeConfigDictAdapter`, where
+    # `node["data"]` is typed as `BaseNodeData` before the concrete node class is known.
+    # At that boundary, node-specific fields are still "extra" relative to this shared DTO,
+    # and persisted templates/workflows also carry undeclared compatibility keys such as
+    # `selected`, `params`, `paramSchemas`, and `datasource_label`. Keep extras permissive
+    # here until graph parsing becomes discriminated by node type or those legacy payloads
+    # are normalized.
     model_config = ConfigDict(extra="allow")
 
     type: NodeType
@@ -154,7 +161,7 @@ class BaseNodeData(ABC, BaseModel):
         if key in self.__class__.model_fields:
             return getattr(self, key)
 
-        # Then, check any extra fields allowed by ConfigDict(extra="allow")
+        # Then, check undeclared compatibility fields stored in Pydantic's extra dict.
         extras = getattr(self, "__pydantic_extra__", None)
         if extras is None:
             extras = getattr(self, "model_extra", None)
