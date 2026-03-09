@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from enum import StrEnum
 
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 
 
 class WriteMode(StrEnum):

@@ -2,8 +2,8 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 
 
 class TriggerScheduleNodeData(BaseNodeData):

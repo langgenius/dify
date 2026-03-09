@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 from dify_graph.variables.types import SegmentType
 
 

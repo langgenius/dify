@@ -4,9 +4,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
 from dify_graph.model_runtime.entities import ImagePromptMessageContent, LLMMode
-from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.nodes.base.entities import VariableSelector
 
 

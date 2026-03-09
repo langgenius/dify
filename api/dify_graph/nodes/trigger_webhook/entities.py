@@ -3,8 +3,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 from dify_graph.variables.types import SegmentType
 
 _WEBHOOK_HEADER_ALLOWED_TYPES = frozenset(

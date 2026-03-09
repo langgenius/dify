@@ -3,8 +3,8 @@ from typing import Literal, Union
 from pydantic import BaseModel
 
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 
 
 class RerankingModelConfig(BaseModel):

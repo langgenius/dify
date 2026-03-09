@@ -8,8 +8,8 @@ from pydantic import (
 )
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from dify_graph.enums import NodeType
 from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 from dify_graph.nodes.llm.entities import ModelConfig, VisionConfig
 from dify_graph.variables.types import SegmentType
 
