@@ -2364,7 +2364,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 11
+      "count": 1
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {

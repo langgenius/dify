@@ -54,7 +54,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           rehypePlugins={[rehypeVariable, rehypeNotes]}
           customComponents={{
             variable: ({ node }) => {
-              const path = String(node?.properties?.['data-path'] ?? '')
+              const path = String(node?.properties?.dataPath ?? '')
               let newPath = path
               if (path) {
                 newPath = path.replace(/#([^#.]+)([.#])/g, (match, nodeId, sep) => {
@@ -64,7 +64,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
               return <Variable path={newPath} />
             },
             section: ({ node }) => (() => {
-              const name = String(node?.properties?.['data-name'] ?? '')
+              const name = String(node?.properties?.dataName ?? '')
               const input = formInputs.find(i => i.output_variable_name === name)
               if (!input) {
                 return (

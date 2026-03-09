@@ -24,9 +24,14 @@ import 'katex/dist/katex.min.css'
 type PluggableList = NonNullable<StreamdownProps['rehypePlugins']>
 type Pluggable = PluggableList[number]
 
+type AttributeDefinition = string | [string, ...(string | boolean | RegExp)[]]
+
 type SanitizeSchema = {
   tagNames?: string[]
-  attributes?: Record<string, string[]>
+  attributes?: Record<string, AttributeDefinition[]>
+  required?: Record<string, Record<string, unknown>>
+  clobber?: string[]
+  clobberPrefix?: string
   [key: string]: unknown
 }
 
@@ -39,25 +44,28 @@ const mathPlugin = createMathPlugin({
 /**
  * Allowed HTML tags and their permitted data attributes for rehype-sanitize.
  * Keys = tag names to allow; values = attribute names in **hast** property format
- * (camelCase, e.g. `dataThink` for `data-think`, or the wildcard `data*`).
+ * (camelCase, e.g. `dataThink` for `data-think`).
+ *
+ * Prefer explicit attribute lists over wildcards (e.g. `data*`) to
+ * minimise the attack surface when LLM-generated content is rendered.
  */
 const ALLOWED_TAGS: Record<string, string[]> = {
-  button: ['data*'],
-  form: ['data*'],
+  button: ['dataVariant', 'dataSize', 'dataMessage', 'dataLink'],
+  form: ['dataFormat'],
+  input: ['type', 'name', 'value', 'placeholder', 'checked', 'dataTip', 'dataOptions'],
+  textarea: ['name', 'placeholder', 'value'],
+  label: ['htmlFor'],
   details: ['dataThink'],
-  video: ['src', 'controls', 'width', 'height', 'data*'],
-  audio: ['src', 'controls', 'data*'],
+  video: ['src'],
+  audio: ['src'],
   source: ['src'],
   mark: [],
   sub: [],
   sup: [],
   kbd: [],
   // custom tags from human input node
-  variable: ['data*'],
-  section: ['data*'],
-  // ... existing tags ...
-  withiconlist: ['className', 'mt'],
-  withiconitem: ['icon'],
+  variable: ['dataPath'],
+  section: ['dataName'],
 }
 
 /**
@@ -77,19 +85,45 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
     ...Object.keys(ALLOWED_TAGS),
   ])
 
-  const mergedAttributes: Record<string, string[]> = {
+  const mergedAttributes: Record<string, AttributeDefinition[]> = {
     ...(defaultSanitizeSchema.attributes ?? {}),
   }
+
   for (const tag of Object.keys(ALLOWED_TAGS)) {
-    mergedAttributes[tag] = mergedAttributes[tag]
-      ? Array.from(new Set([...mergedAttributes[tag], ...ALLOWED_TAGS[tag]]))
-      : ALLOWED_TAGS[tag]
+    const existing = mergedAttributes[tag]
+    if (existing) {
+      // When we add an unrestricted attribute (bare string), remove any
+      // existing restricted tuple for the same name.  hast-util-sanitize's
+      // `findDefinition` returns the *first* match, so a restricted tuple
+      // like `['type','checkbox']` would shadow our unrestricted `'type'`.
+      const overrideNames = new Set(ALLOWED_TAGS[tag])
+      const filtered = existing.filter((entry) => {
+        const name = typeof entry === 'string' ? entry : entry[0]
+        return !overrideNames.has(name as string)
+      })
+      mergedAttributes[tag] = [...filtered, ...ALLOWED_TAGS[tag]]
+    }
+    else {
+      mergedAttributes[tag] = ALLOWED_TAGS[tag]
+    }
   }
+
+  // The default schema forces `input` to be `{disabled:true, type:'checkbox'}`
+  // via `required`.  Drop that so form inputs keep their original attributes.
+  const { input: _inputRequired, ...requiredRest }
+    = (defaultSanitizeSchema.required ?? {})
+
+  // `name` is in the default `clobber` list, which prefixes every `name` value
+  // with `user-content-`.  Form fields need the original `name`, and our form
+  // component validates names with `isSafeName()`, so remove it.
+  const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
 
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
     tagNames: Array.from(tagNamesSet),
     attributes: mergedAttributes,
+    required: requiredRest,
+    clobber,
   }
 
   return [
