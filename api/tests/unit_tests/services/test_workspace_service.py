@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+
+from models.account import Tenant
 
 # ---------------------------------------------------------------------------
 # Constants used throughout the tests
@@ -33,15 +36,18 @@ def _make_tenant(
     plan: str = "sandbox",
     status: str = "active",
     custom_config: dict | None = None,
-) -> SimpleNamespace:
+) -> Tenant:
     """Create a minimal Tenant-like namespace."""
-    return SimpleNamespace(
-        id=tenant_id,
-        name=name,
-        plan=plan,
-        status=status,
-        created_at="2024-01-01T00:00:00Z",
-        custom_config_dict=custom_config or {},
+    return cast(
+        Tenant,
+        SimpleNamespace(
+            id=tenant_id,
+            name=name,
+            plan=plan,
+            status=status,
+            created_at="2024-01-01T00:00:00Z",
+            custom_config_dict=custom_config or {},
+        ),
     )
 
 
@@ -67,6 +73,10 @@ def _make_pool(quota_limit: int, quota_used: int) -> MagicMock:
 
 def _make_tenant_account_join(role: str = "normal") -> SimpleNamespace:
     return SimpleNamespace(role=role)
+
+
+def _tenant_info(result: object) -> dict[str, Any] | None:
+    return cast(dict[str, Any] | None, result)
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +133,7 @@ def test_get_tenant_info_should_return_none_when_tenant_is_none() -> None:
     tenant = None
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = WorkspaceService.get_tenant_info(cast(Tenant, tenant))
 
     # Assert
     assert result is None
@@ -153,7 +163,7 @@ def test_get_tenant_info_should_return_base_fields(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -177,7 +187,7 @@ def test_get_tenant_info_should_populate_role_from_tenant_account_join(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -226,7 +236,7 @@ def test_get_tenant_info_should_include_custom_config_when_logo_allowed_and_admi
     )
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -249,7 +259,7 @@ def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent
     tenant = _make_tenant(custom_config={})  # no replace_webapp_logo key
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -269,7 +279,7 @@ def test_get_tenant_info_should_not_include_custom_config_when_logo_not_allowed(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -289,7 +299,7 @@ def test_get_tenant_info_should_not_include_custom_config_when_user_not_admin(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -311,7 +321,7 @@ def test_get_tenant_info_should_use_files_url_for_logo_url(
     tenant = _make_tenant(custom_config={"replace_webapp_logo": True})
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -372,7 +382,7 @@ def test_get_tenant_info_should_add_next_credit_reset_date_in_cloud_edition(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -392,7 +402,7 @@ def test_get_tenant_info_should_use_paid_pool_when_plan_is_not_sandbox_and_pool_
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -413,7 +423,7 @@ def test_get_tenant_info_should_use_paid_pool_when_quota_limit_is_infinite(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -435,7 +445,7 @@ def test_get_tenant_info_should_fall_back_to_trial_pool_when_paid_pool_is_full(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -456,7 +466,7 @@ def test_get_tenant_info_should_fall_back_to_trial_pool_when_paid_pool_is_none(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -486,7 +496,7 @@ def test_get_tenant_info_should_fall_back_to_trial_pool_for_sandbox_plan(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -506,7 +516,7 @@ def test_get_tenant_info_should_omit_trial_credits_when_both_pools_are_none(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None
@@ -530,7 +540,7 @@ def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(
     tenant = _make_tenant()
 
     # Act
-    result = WorkspaceService.get_tenant_info(tenant)
+    result = _tenant_info(WorkspaceService.get_tenant_info(tenant))
 
     # Assert
     assert result is not None

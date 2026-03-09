@@ -1,22 +1,33 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import Account
+from models.model import App, EndUser
 from services.web_conversation_service import WebConversationService
 
 
 @pytest.fixture
-def app_model() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1")
+def app_model() -> App:
+    return cast(App, SimpleNamespace(id="app-1"))
+
+
+def _account(**kwargs: Any) -> Account:
+    return cast(Account, SimpleNamespace(**kwargs))
+
+
+def _end_user(**kwargs: Any) -> EndUser:
+    return cast(EndUser, SimpleNamespace(**kwargs))
 
 
 def test_pagination_by_last_id_should_raise_error_when_user_is_none(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
@@ -36,12 +47,12 @@ def test_pagination_by_last_id_should_raise_error_when_user_is_none(
 
 
 def test_pagination_by_last_id_should_forward_without_pin_filter_when_pinned_is_none(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     session = MagicMock()
-    fake_user = SimpleNamespace(id="user-1")
+    fake_user = _account(id="user-1")
     mock_pagination = mocker.patch("services.web_conversation_service.ConversationService.pagination_by_last_id")
     mock_pagination.return_value = MagicMock()
 
@@ -65,13 +76,13 @@ def test_pagination_by_last_id_should_forward_without_pin_filter_when_pinned_is_
 
 
 def test_pagination_by_last_id_should_include_only_pinned_ids_when_pinned_true(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     session = MagicMock()
     fake_account_cls = type("FakeAccount", (), {})
-    fake_user = fake_account_cls()
+    fake_user = cast(Account, fake_account_cls())
     fake_user.id = "account-1"
     mocker.patch("services.web_conversation_service.Account", fake_account_cls)
     mocker.patch("services.web_conversation_service.EndUser", type("FakeEndUser", (), {}))
@@ -97,13 +108,13 @@ def test_pagination_by_last_id_should_include_only_pinned_ids_when_pinned_true(
 
 
 def test_pagination_by_last_id_should_exclude_pinned_ids_when_pinned_false(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     session = MagicMock()
     fake_end_user_cls = type("FakeEndUser", (), {})
-    fake_user = fake_end_user_cls()
+    fake_user = cast(EndUser, fake_end_user_cls())
     fake_user.id = "end-user-1"
     mocker.patch("services.web_conversation_service.Account", type("FakeAccount", (), {}))
     mocker.patch("services.web_conversation_service.EndUser", fake_end_user_cls)
@@ -128,7 +139,7 @@ def test_pagination_by_last_id_should_exclude_pinned_ids_when_pinned_false(
     assert call_kwargs["exclude_ids"] == ["conv-3"]
 
 
-def test_pin_should_return_early_when_user_is_none(app_model: SimpleNamespace, mocker: MockerFixture) -> None:
+def test_pin_should_return_early_when_user_is_none(app_model: App, mocker: MockerFixture) -> None:
     # Arrange
     mock_db = mocker.patch("services.web_conversation_service.db")
     mocker.patch("services.web_conversation_service.ConversationService.get_conversation")
@@ -142,12 +153,12 @@ def test_pin_should_return_early_when_user_is_none(app_model: SimpleNamespace, m
 
 
 def test_pin_should_return_early_when_conversation_is_already_pinned(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     fake_account_cls = type("FakeAccount", (), {})
-    fake_user = fake_account_cls()
+    fake_user = cast(Account, fake_account_cls())
     fake_user.id = "account-1"
     mocker.patch("services.web_conversation_service.Account", fake_account_cls)
     mock_db = mocker.patch("services.web_conversation_service.db")
@@ -164,12 +175,12 @@ def test_pin_should_return_early_when_conversation_is_already_pinned(
 
 
 def test_pin_should_create_pinned_conversation_when_not_already_pinned(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     fake_account_cls = type("FakeAccount", (), {})
-    fake_user = fake_account_cls()
+    fake_user = cast(Account, fake_account_cls())
     fake_user.id = "account-2"
     mocker.patch("services.web_conversation_service.Account", fake_account_cls)
     mock_db = mocker.patch("services.web_conversation_service.db")
@@ -193,7 +204,7 @@ def test_pin_should_create_pinned_conversation_when_not_already_pinned(
     mock_db.session.commit.assert_called_once()
 
 
-def test_unpin_should_return_early_when_user_is_none(app_model: SimpleNamespace, mocker: MockerFixture) -> None:
+def test_unpin_should_return_early_when_user_is_none(app_model: App, mocker: MockerFixture) -> None:
     # Arrange
     mock_db = mocker.patch("services.web_conversation_service.db")
 
@@ -206,12 +217,12 @@ def test_unpin_should_return_early_when_user_is_none(app_model: SimpleNamespace,
 
 
 def test_unpin_should_return_early_when_conversation_is_not_pinned(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     fake_end_user_cls = type("FakeEndUser", (), {})
-    fake_user = fake_end_user_cls()
+    fake_user = cast(EndUser, fake_end_user_cls())
     fake_user.id = "end-user-3"
     mocker.patch("services.web_conversation_service.Account", type("FakeAccount", (), {}))
     mocker.patch("services.web_conversation_service.EndUser", fake_end_user_cls)
@@ -227,12 +238,12 @@ def test_unpin_should_return_early_when_conversation_is_not_pinned(
 
 
 def test_unpin_should_delete_pinned_conversation_when_exists(
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
     fake_end_user_cls = type("FakeEndUser", (), {})
-    fake_user = fake_end_user_cls()
+    fake_user = cast(EndUser, fake_end_user_cls())
     fake_user.id = "end-user-4"
     mocker.patch("services.web_conversation_service.Account", type("FakeAccount", (), {}))
     mocker.patch("services.web_conversation_service.EndUser", fake_end_user_cls)

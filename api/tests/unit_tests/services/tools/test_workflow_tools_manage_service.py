@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -154,7 +155,7 @@ def test_create_workflow_tool_success(monkeypatch):
 
     assert result == {"result": "success"}
     assert len(dummy_session.added) == 1
-    created_provider = dummy_session.added[0]
+    created_provider = cast(WorkflowToolProvider, dummy_session.added[0])
     assert created_provider.name == "tool_name"
     assert created_provider.label == "Tool"
     assert created_provider.icon == json.dumps(icon)

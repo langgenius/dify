@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +18,7 @@ from dify_graph.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
+from models.provider import LoadBalancingModelConfig
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
@@ -52,13 +54,15 @@ def _build_provider_configuration(
     )
     provider_configuration.custom_configuration = SimpleNamespace(provider=custom_provider)
     provider_configuration.extract_secret_variables.return_value = ["api_key"]
-    provider_configuration.obfuscated_credentials.side_effect = (
-        lambda credentials, credential_form_schemas: credentials
-    )
+    provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: credentials
     provider_configuration.get_provider_model_setting.return_value = (
         None if load_balancing_enabled is None else SimpleNamespace(load_balancing_enabled=load_balancing_enabled)
     )
     return provider_configuration
+
+
+def _load_balancing_model_config(**kwargs: Any) -> LoadBalancingModelConfig:
+    return cast(LoadBalancingModelConfig, SimpleNamespace(**kwargs))
 
 
 @pytest.fixture
@@ -276,9 +280,9 @@ def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    provider_configuration.obfuscated_credentials.side_effect = (
-        lambda credentials, credential_form_schemas: {"masked": credentials.get("api_key", "")}
-    )
+    provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: {
+        "masked": credentials.get("api_key", "")
+    }
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     config = SimpleNamespace(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
     mock_db.session.query.return_value.where.return_value.first.return_value = config
@@ -347,7 +351,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_configs_is_
             "openai",
             "gpt-4o-mini",
             ModelType.LLM.value,
-            "invalid-configs",
+            cast(list[dict[str, object]], "invalid-configs"),
             "custom-model",
         )
 
@@ -368,7 +372,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_config_item
             "openai",
             "gpt-4o-mini",
             ModelType.LLM.value,
-            ["bad-item"],
+            cast(list[dict[str, object]], ["bad-item"]),
             "custom-model",
         )
 
@@ -670,7 +674,9 @@ def test_custom_credentials_validate_should_replace_hidden_secret_with_original_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    load_balancing_model_config = SimpleNamespace(encrypted_config=json.dumps({"api_key": "old-encrypted-token"}))
+    load_balancing_model_config = _load_balancing_model_config(
+        encrypted_config=json.dumps({"api_key": "old-encrypted-token"})
+    )
     mocker.patch("services.model_load_balancing_service.encrypter.decrypt_token", return_value="old-plain-value")
     mock_encrypt = mocker.patch(
         "services.model_load_balancing_service.encrypter.encrypt_token",
@@ -699,7 +705,7 @@ def test_custom_credentials_validate_should_handle_invalid_original_json_and_val
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(model_schema=_build_model_credential_schema())
-    load_balancing_model_config = SimpleNamespace(encrypted_config="not-json")
+    load_balancing_model_config = _load_balancing_model_config(encrypted_config="not-json")
     mock_factory = MagicMock()
     mock_factory.model_credentials_validate.return_value = {"api_key": "validated"}
     mocker.patch("services.model_load_balancing_service.ModelProviderFactory", return_value=mock_factory)

@@ -4,15 +4,17 @@ import hashlib
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import IntegrityError
 
-from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.mcp.entities import AuthActionType
 from core.mcp.error import MCPAuthError, MCPError
+from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import (
     EMPTY_CREDENTIALS_JSON,
     EMPTY_TOOLS_JSON,
@@ -46,59 +48,65 @@ def service(mock_session: MagicMock) -> MCPToolManageService:
     return MCPToolManageService(session=mock_session)
 
 
-def _provider_entity_stub(*, authed: bool = True) -> SimpleNamespace:
-    return SimpleNamespace(
-        authed=authed,
-        timeout=30.0,
-        sse_read_timeout=300.0,
-        provider_id="server-1",
-        headers={"x-api-key": "enc"},
-        decrypt_headers=lambda: {"x-api-key": "key"},
-        retrieve_tokens=lambda: SimpleNamespace(token_type="bearer", access_token="token-1"),
-        decrypt_server_url=lambda: "https://mcp.example.com/sse",
-        to_api_response=lambda user_name=None: {
-            "id": "provider-1",
-            "author": user_name or "Anonymous",
-            "name": "MCP Tool",
-            "description": {"en_US": "", "zh_Hans": ""},
-            "icon": "icon",
-            "label": {"en_US": "MCP Tool", "zh_Hans": "MCP Tool"},
-            "type": "mcp",
-            "is_team_authorization": True,
-            "server_url": "https://mcp.example.com/******",
-            "updated_at": 1,
-            "server_identifier": "server-1",
-            "configuration": {"timeout": "30", "sse_read_timeout": "300"},
-            "masked_headers": {},
-            "is_dynamic_registration": True,
-        },
-        decrypt_credentials=lambda: {"client_id": "plain-id", "client_secret": "plain-secret"},
-        masked_credentials=lambda: {"client_id": "pl***id", "client_secret": "pl***et"},
-        masked_headers=lambda: {"x-api-key": "ke***ey"},
+def _provider_entity_stub(*, authed: bool = True) -> MCPProviderEntity:
+    return cast(
+        MCPProviderEntity,
+        SimpleNamespace(
+            authed=authed,
+            timeout=30.0,
+            sse_read_timeout=300.0,
+            provider_id="server-1",
+            headers={"x-api-key": "enc"},
+            decrypt_headers=lambda: {"x-api-key": "key"},
+            retrieve_tokens=lambda: SimpleNamespace(token_type="bearer", access_token="token-1"),
+            decrypt_server_url=lambda: "https://mcp.example.com/sse",
+            to_api_response=lambda user_name=None: {
+                "id": "provider-1",
+                "author": user_name or "Anonymous",
+                "name": "MCP Tool",
+                "description": {"en_US": "", "zh_Hans": ""},
+                "icon": "icon",
+                "label": {"en_US": "MCP Tool", "zh_Hans": "MCP Tool"},
+                "type": "mcp",
+                "is_team_authorization": True,
+                "server_url": "https://mcp.example.com/******",
+                "updated_at": 1,
+                "server_identifier": "server-1",
+                "configuration": {"timeout": "30", "sse_read_timeout": "300"},
+                "masked_headers": {},
+                "is_dynamic_registration": True,
+            },
+            decrypt_credentials=lambda: {"client_id": "plain-id", "client_secret": "plain-secret"},
+            masked_credentials=lambda: {"client_id": "pl***id", "client_secret": "pl***et"},
+            masked_headers=lambda: {"x-api-key": "ke***ey"},
+        ),
     )
 
 
-def _provider_stub(*, authed: bool = True) -> SimpleNamespace:
+def _provider_stub(*, authed: bool = True) -> MCPToolProvider:
     entity = _provider_entity_stub(authed=authed)
-    return SimpleNamespace(
-        id="provider-1",
-        tenant_id="tenant-1",
-        user_id="user-1",
-        name="Provider A",
-        server_identifier="server-1",
-        server_url="encrypted-url",
-        server_url_hash="old-hash",
-        authed=authed,
-        tools=EMPTY_TOOLS_JSON,
-        encrypted_credentials=json.dumps({"existing": "credential"}),
-        encrypted_headers=json.dumps({"x-api-key": "enc"}),
-        credentials={"existing": "credential"},
-        timeout=30.0,
-        sse_read_timeout=300.0,
-        updated_at=datetime.now(),
-        icon="icon",
-        to_entity=lambda: entity,
-        load_user=lambda: SimpleNamespace(name="Tester"),
+    return cast(
+        MCPToolProvider,
+        SimpleNamespace(
+            id="provider-1",
+            tenant_id="tenant-1",
+            user_id="user-1",
+            name="Provider A",
+            server_identifier="server-1",
+            server_url="encrypted-url",
+            server_url_hash="old-hash",
+            authed=authed,
+            tools=EMPTY_TOOLS_JSON,
+            encrypted_credentials=json.dumps({"existing": "credential"}),
+            encrypted_headers=json.dumps({"x-api-key": "enc"}),
+            credentials={"existing": "credential"},
+            timeout=30.0,
+            sse_read_timeout=300.0,
+            updated_at=datetime.now(),
+            icon="icon",
+            to_entity=lambda: entity,
+            load_user=lambda: SimpleNamespace(name="Tester"),
+        ),
     )
 
 
@@ -460,7 +468,7 @@ def test_update_provider_credentials_should_update_encrypted_credentials_and_aut
 ) -> None:
     # Arrange
     provider = _provider_stub(authed=True)
-    provider.credentials = {"existing": "value"}
+    provider.encrypted_credentials = json.dumps({"existing": "value"})
     mocker.patch.object(service, "get_provider", return_value=provider)
     mock_controller = MagicMock()
     mocker.patch("core.tools.mcp_tool.provider.MCPToolProviderController.from_db", return_value=mock_controller)
@@ -479,7 +487,7 @@ def test_update_provider_credentials_should_update_encrypted_credentials_and_aut
     # Assert
     assert provider.authed is False
     assert provider.tools == EMPTY_TOOLS_JSON
-    assert json.loads(provider.encrypted_credentials)["access_token"] == "encrypted-token"
+    assert json.loads(cast(str, provider.encrypted_credentials))["access_token"] == "encrypted-token"
     mock_session.flush.assert_called_once()
 
 

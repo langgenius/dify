@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import uuid
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
 from dify_graph.enums import WorkflowExecutionStatus
+from models import App, WorkflowAppLog
 from models.enums import AppTriggerType, CreatorUserRole
 from services.workflow_app_service import LogView, WorkflowAppService
 
@@ -20,14 +22,18 @@ def service() -> WorkflowAppService:
 
 
 @pytest.fixture
-def app_model() -> SimpleNamespace:
+def app_model() -> App:
     # Arrange
-    return SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    return cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+
+
+def _workflow_app_log(**kwargs: Any) -> WorkflowAppLog:
+    return cast(WorkflowAppLog, SimpleNamespace(**kwargs))
 
 
 def test_log_view_details_should_return_wrapped_details_and_proxy_attributes() -> None:
     # Arrange
-    log = SimpleNamespace(id="log-1", status="succeeded")
+    log = _workflow_app_log(id="log-1", status="succeeded")
     view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
 
     # Act
@@ -41,7 +47,7 @@ def test_log_view_details_should_return_wrapped_details_and_proxy_attributes() -
 
 def test_get_paginate_workflow_app_logs_should_return_paginated_summary_when_detail_false(
     service: WorkflowAppService,
-    app_model: SimpleNamespace,
+    app_model: App,
 ) -> None:
     # Arrange
     session = MagicMock()
@@ -71,7 +77,7 @@ def test_get_paginate_workflow_app_logs_should_return_paginated_summary_when_det
 
 def test_get_paginate_workflow_app_logs_should_return_detailed_rows_when_detail_true(
     service: WorkflowAppService,
-    app_model: SimpleNamespace,
+    app_model: App,
     mocker: MockerFixture,
 ) -> None:
     # Arrange
@@ -107,7 +113,7 @@ def test_get_paginate_workflow_app_logs_should_return_detailed_rows_when_detail_
 
 def test_get_paginate_workflow_app_logs_should_raise_when_account_filter_email_not_found(
     service: WorkflowAppService,
-    app_model: SimpleNamespace,
+    app_model: App,
 ) -> None:
     # Arrange
     session = MagicMock()
@@ -124,7 +130,7 @@ def test_get_paginate_workflow_app_logs_should_raise_when_account_filter_email_n
 
 def test_get_paginate_workflow_app_logs_should_filter_by_account_when_account_exists(
     service: WorkflowAppService,
-    app_model: SimpleNamespace,
+    app_model: App,
 ) -> None:
     # Arrange
     session = MagicMock()
@@ -145,7 +151,7 @@ def test_get_paginate_workflow_app_logs_should_filter_by_account_when_account_ex
 
 def test_get_paginate_workflow_archive_logs_should_return_paginated_archive_items(
     service: WorkflowAppService,
-    app_model: SimpleNamespace,
+    app_model: App,
 ) -> None:
     # Arrange
     session = MagicMock()

@@ -2,21 +2,24 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound, Unauthorized
 
-from models import AccountStatus
+from models import Account, AccountStatus
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
-ACCOUNT_LOOKUP_PATH = (
-    "services.webapp_auth_service.AccountService.get_account_by_email_with_case_fallback"
-)
+ACCOUNT_LOOKUP_PATH = "services.webapp_auth_service.AccountService.get_account_by_email_with_case_fallback"
 TOKEN_GENERATE_PATH = "services.webapp_auth_service.TokenManager.generate_token"
 TOKEN_GET_DATA_PATH = "services.webapp_auth_service.TokenManager.get_token_data"
+
+
+def _account(**kwargs: Any) -> Account:
+    return cast(Account, SimpleNamespace(**kwargs))
 
 
 @pytest.fixture
@@ -85,7 +88,7 @@ def test_authenticate_should_return_account_when_credentials_are_valid(mocker: M
 
 def test_login_should_return_token_from_internal_token_builder(mocker: MockerFixture) -> None:
     # Arrange
-    account = SimpleNamespace(id="a1", email="u@example.com")
+    account = _account(id="a1", email="u@example.com")
     mock_get_token = mocker.patch.object(WebAppAuthService, "_get_account_jwt_token", return_value="jwt-token")
 
     # Act
@@ -146,7 +149,7 @@ def test_send_email_code_login_email_should_generate_token_and_send_mail_for_acc
     mocker: MockerFixture,
 ) -> None:
     # Arrange
-    account = SimpleNamespace(email="user@example.com")
+    account = _account(email="user@example.com")
     mocker.patch("services.webapp_auth_service.secrets.randbelow", side_effect=[1, 2, 3, 4, 5, 6])
     mock_generate_token = mocker.patch(TOKEN_GENERATE_PATH, return_value="token-1")
     mock_delay = mocker.patch("services.webapp_auth_service.send_email_code_login_mail_task.delay")
@@ -240,7 +243,7 @@ def test_create_end_user_should_create_and_commit_end_user_when_data_is_valid(mo
 
 def test_get_account_jwt_token_should_build_payload_and_issue_token(mocker: MockerFixture) -> None:
     # Arrange
-    account = SimpleNamespace(id="a1", email="user@example.com")
+    account = _account(id="a1", email="user@example.com")
     mocker.patch("services.webapp_auth_service.dify_config.ACCESS_TOKEN_EXPIRE_MINUTES", 60)
     mock_issue = mocker.patch("services.webapp_auth_service.PassportService.issue", return_value="jwt-1")
 

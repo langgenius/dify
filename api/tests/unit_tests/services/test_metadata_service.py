@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,
@@ -58,6 +60,10 @@ def _build_document(document_id: str, doc_metadata: dict[str, object] | None = N
         data_source_type="upload_file",
         doc_metadata=doc_metadata,
     )
+
+
+def _dataset(**kwargs: Any) -> Dataset:
+    return cast(Dataset, SimpleNamespace(**kwargs))
 
 
 def test_create_metadata_should_raise_value_error_when_name_exceeds_limit() -> None:
@@ -295,7 +301,7 @@ def test_enable_built_in_field_should_return_immediately_when_already_enabled(
     mocker: MockerFixture,
 ) -> None:
     # Arrange
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=True)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=True)
     get_docs = mocker.patch("services.metadata_service.DocumentService.get_working_documents_by_dataset_id")
 
     # Act
@@ -313,7 +319,7 @@ def test_enable_built_in_field_should_populate_documents_and_enable_flag(
 ) -> None:
     # Arrange
     mock_redis_client.get.return_value = None
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=False)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=False)
     doc_1 = _build_document("1", {"custom": "value"})
     doc_2 = _build_document("2", None)
     mocker.patch(
@@ -340,7 +346,7 @@ def test_disable_built_in_field_should_return_immediately_when_already_disabled(
     mocker: MockerFixture,
 ) -> None:
     # Arrange
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=False)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=False)
     get_docs = mocker.patch("services.metadata_service.DocumentService.get_working_documents_by_dataset_id")
 
     # Act
@@ -358,7 +364,7 @@ def test_disable_built_in_field_should_remove_builtin_keys_and_disable_flag(
 ) -> None:
     # Arrange
     mock_redis_client.get.return_value = None
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=True)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=True)
     document = _build_document(
         "1",
         {
@@ -393,7 +399,7 @@ def test_update_documents_metadata_should_replace_metadata_and_create_bindings_o
 ) -> None:
     # Arrange
     mock_redis_client.get.return_value = None
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=False)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=False)
     document = _build_document("1", {"legacy": "value"})
     mocker.patch("services.metadata_service.DocumentService.get_document", return_value=document)
     delete_chain = mock_db.session.query.return_value.filter_by.return_value
@@ -424,7 +430,7 @@ def test_update_documents_metadata_should_skip_existing_binding_and_preserve_exi
 ) -> None:
     # Arrange
     mock_redis_client.get.return_value = None
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=True)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=True)
     document = _build_document("1", {"existing": "value"})
     mocker.patch("services.metadata_service.DocumentService.get_document", return_value=document)
     mock_db.session.query.return_value.filter_by.return_value.first.return_value = object()
@@ -456,7 +462,7 @@ def test_update_documents_metadata_should_raise_and_rollback_when_document_not_f
 ) -> None:
     # Arrange
     mock_redis_client.get.return_value = None
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=False)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=False)
     mocker.patch("services.metadata_service.DocumentService.get_document", return_value=None)
     operation = DocumentMetadataOperation(document_id="404", metadata_list=[], partial_update=True)
     metadata_args = MetadataOperationData(operation_data=[operation])
@@ -517,7 +523,7 @@ def test_knowledge_base_metadata_lock_check_should_raise_when_document_lock_exis
 
 def test_get_dataset_metadatas_should_exclude_builtin_and_include_binding_counts(mock_db: MagicMock) -> None:
     # Arrange
-    dataset = SimpleNamespace(
+    dataset = _dataset(
         id="dataset-1",
         built_in_field_enabled=True,
         doc_metadata=[
@@ -542,7 +548,7 @@ def test_get_dataset_metadatas_should_exclude_builtin_and_include_binding_counts
 
 def test_get_dataset_metadatas_should_return_empty_list_when_no_metadata(mock_db: MagicMock) -> None:
     # Arrange
-    dataset = SimpleNamespace(id="dataset-1", built_in_field_enabled=False, doc_metadata=None)
+    dataset = _dataset(id="dataset-1", built_in_field_enabled=False, doc_metadata=None)
 
     # Act
     result = MetadataService.get_dataset_metadatas(dataset)

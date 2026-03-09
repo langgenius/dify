@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,17 +25,23 @@ def mock_redis_client(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("services.oauth_server.redis_client")
 
 
-def test_get_oauth_provider_app_should_return_app_when_record_exists(mocker: MockerFixture) -> None:
-    # Arrange
+@pytest.fixture
+def mock_session(mocker: MockerFixture) -> MagicMock:
+    """Mock the OAuth server Session context manager."""
     mocker.patch("services.oauth_server.db", SimpleNamespace(engine=object()))
-    mock_session = MagicMock()
+    session = MagicMock()
+    session_cm = MagicMock()
+    session_cm.__enter__.return_value = session
+    mocker.patch("services.oauth_server.Session", return_value=session_cm)
+    return session
+
+
+def test_get_oauth_provider_app_should_return_app_when_record_exists(mock_session: MagicMock) -> None:
+    # Arrange
     mock_execute_result = MagicMock()
     expected_app = MagicMock()
     mock_execute_result.scalar_one_or_none.return_value = expected_app
     mock_session.execute.return_value = mock_execute_result
-
-    mock_session_cls = mocker.patch("services.oauth_server.Session")
-    mock_session_cls.return_value.__enter__.return_value = mock_session
 
     # Act
     result = OAuthServerService.get_oauth_provider_app("client-1")
@@ -157,10 +164,10 @@ def test_sign_oauth_access_token_should_issue_new_access_token_when_refresh_toke
 
 def test_sign_oauth_access_token_with_unknown_grant_type_should_return_none() -> None:
     # Arrange
-    grant_type = "invalid-grant-type"
+    grant_type = cast(OAuthGrantType, "invalid-grant-type")
 
     # Act
-    result = OAuthServerService.sign_oauth_access_token(  # type: ignore[arg-type]
+    result = OAuthServerService.sign_oauth_access_token(
         grant_type=grant_type,
         client_id="client-1",
     )
