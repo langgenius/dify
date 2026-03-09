@@ -24,6 +24,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "tailwindcss"
+        versions:
+          - "^4.0.0"
     groups:
       lexical:
         patterns:
