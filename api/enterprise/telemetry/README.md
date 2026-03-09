@@ -47,10 +47,12 @@ The Enterprise OTEL exporter is configured via environment variables.
 Dify uses deterministic ID generation to ensure signals are correlated across different services and asynchronous tasks.
 
 ### ID Generation Rules
+
 - `trace_id`: Derived from the correlation ID (workflow_run_id or node_execution_id for drafts) using `int(UUID(correlation_id))`
 - `span_id`: Derived from the source ID using `SHA256(source_id)[:8]`
 
 ### Scenario A: Simple Workflow
+
 A single workflow run with multiple nodes. All spans and logs share the same `trace_id` (derived from `workflow_run_id`).
 
 ```
@@ -62,6 +64,7 @@ trace_id = UUID(workflow_run_id)
 ```
 
 ### Scenario B: Nested Sub-Workflow
+
 A workflow calling another workflow via a Tool or Sub-workflow node. The child workflow's spans are linked to the parent via `parent_span_id`. Both workflows share the same trace_id.
 
 ```
@@ -76,12 +79,14 @@ trace_id = UUID(outer_workflow_run_id)     ← shared across both workflows
 ```
 
 **Key attributes for nested workflows:**
+
 - Inner workflow's `dify.parent.trace_id` = outer `workflow_run_id`
 - Inner workflow's `dify.parent.node.execution_id` = tool node's `execution_id`
 - Inner workflow's `dify.parent.workflow.run_id` = outer `workflow_run_id`
 - Inner workflow's `dify.parent.app.id` = outer `app_id`
 
 ### Scenario C: Draft Node Execution
+
 A single node run in isolation (debugger/preview mode). It creates its own trace where the node span is the root.
 
 ```

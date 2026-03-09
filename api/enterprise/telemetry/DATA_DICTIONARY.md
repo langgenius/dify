@@ -84,6 +84,7 @@ All counters are cumulative and emitted at 100% accuracy.
 | `dify.tokens.output` | `{token}` | Output (completion) tokens |
 
 **Labels:**
+
 - `tenant_id`, `app_id`, `operation_type`, `model_provider`, `model_name`, `node_type` (if node_execution)
 
 ⚠️ **Warning:** `dify.tokens.total` at workflow level includes all node tokens. Filter by `operation_type` to avoid double-counting.
@@ -228,6 +229,7 @@ Logs that accompany spans. Signal type: `span_detail`
 | `dify.workflow.query` | string | No | User query text (content-gated) |
 
 **Event attributes:**
+
 - `dify.event.name`: `"dify.workflow.run"`
 - `dify.event.signal`: `"span_detail"`
 - `trace_id`, `span_id`, `tenant_id`, `user_id`
@@ -256,6 +258,7 @@ Logs that accompany spans. Signal type: `span_detail`
 | `dify.node.process_data` | string/JSON | No | Processing data (content-gated) |
 
 **Event attributes:**
+
 - `dify.event.name`: `"dify.node.execution"` or `"dify.node.execution.draft"`
 - `dify.event.signal`: `"span_detail"`
 - `trace_id`, `span_id`, `tenant_id`, `user_id`
