@@ -25,6 +25,10 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 2
     groups:
+      lexical:
+        patterns:
+          - "lexical"
+          - "@lexical/*"
       storybook:
         patterns:
           - "storybook"
@@ -33,5 +37,7 @@ updates:
         patterns:
           - "*"
         exclude-patterns:
+          - "lexical"
+          - "@lexical/*"
           - "storybook"
           - "@storybook/*"
