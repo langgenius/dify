@@ -26,7 +26,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required

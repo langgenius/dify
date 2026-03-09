@@ -4,33 +4,34 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.knowledge_retrieval.entities import (
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.nodes.knowledge_retrieval.entities import (
+    Condition,
     KnowledgeRetrievalNodeData,
+    MetadataFilteringCondition,
     MultipleRetrievalConfig,
     RerankingModelConfig,
     SingleRetrievalConfig,
 )
-from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import StringSegment
-from models.enums import UserFrom
+from dify_graph.nodes.knowledge_retrieval.exc import RateLimitExceededError
+from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import StringSegment
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def mock_graph_init_params():
     """Create mock GraphInitParams."""
-    return GraphInitParams(
-        tenant_id=str(uuid.uuid4()),
-        app_id=str(uuid.uuid4()),
+    return build_test_graph_init_params(
         workflow_id=str(uuid.uuid4()),
         graph_config={},
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
         user_id=str(uuid.uuid4()),
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -155,7 +156,7 @@ class TestKnowledgeRetrievalNode:
     ):
         """Test _run with query variable in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from dify_graph.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         query_selector = ["start", "query"]
@@ -206,6 +207,7 @@ class TestKnowledgeRetrievalNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "result" in result.outputs
         assert mock_rag_retrieval.knowledge_retrieval.called
+        mock_source.model_dump.assert_called_once_with(by_alias=True)
 
     def test_run_with_query_variable_multiple_mode(
         self,
@@ -444,7 +446,7 @@ class TestFetchDatasetRetriever:
     ):
         """Test _fetch_dataset_retriever in single mode."""
         # Arrange
-        from core.workflow.nodes.llm.entities import ModelConfig
+        from dify_graph.nodes.llm.entities import ModelConfig
 
         query = "What is Python?"
         variables = {"query": query}
@@ -593,3 +595,106 @@ class TestFetchDatasetRetriever:
 
         # Assert
         assert version == "1"
+
+    def test_resolve_metadata_filtering_conditions_templates(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
+    ):
+        """_resolve_metadata_filtering_conditions should expand {{#...#}} and keep numbers/None unchanged."""
+        # Arrange
+        node_id = str(uuid.uuid4())
+        config = {
+            "id": node_id,
+            "data": {
+                "title": "Knowledge Retrieval",
+                "type": "knowledge-retrieval",
+                "dataset_ids": [str(uuid.uuid4())],
+                "retrieval_mode": "multiple",
+            },
+        }
+        # Variable in pool used by template
+        mock_graph_runtime_state.variable_pool.add(["start", "query"], StringSegment(value="readme"))
+
+        node = KnowledgeRetrievalNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            rag_retrieval=mock_rag_retrieval,
+        )
+
+        conditions = MetadataFilteringCondition(
+            logical_operator="and",
+            conditions=[
+                Condition(name="document_name", comparison_operator="is", value="{{#start.query#}}"),
+                Condition(name="tags", comparison_operator="in", value=["x", "{{#start.query#}}"]),
+                Condition(name="year", comparison_operator="=", value=2025),
+            ],
+        )
+
+        # Act
+        resolved = node._resolve_metadata_filtering_conditions(conditions)
+
+        # Assert
+        assert resolved.logical_operator == "and"
+        assert resolved.conditions[0].value == "readme"
+        assert isinstance(resolved.conditions[1].value, list)
+        assert resolved.conditions[1].value[1] == "readme"
+        assert resolved.conditions[2].value == 2025
+
+    def test_fetch_passes_resolved_metadata_conditions(
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
+    ):
+        """_fetch_dataset_retriever should pass resolved metadata conditions into request."""
+        # Arrange
+        query = "hi"
+        variables = {"query": query}
+        mock_graph_runtime_state.variable_pool.add(["start", "q"], StringSegment(value="readme"))
+
+        node_data = KnowledgeRetrievalNodeData(
+            title="Knowledge Retrieval",
+            type="knowledge-retrieval",
+            dataset_ids=[str(uuid.uuid4())],
+            retrieval_mode="multiple",
+            multiple_retrieval_config=MultipleRetrievalConfig(
+                top_k=4,
+                score_threshold=0.0,
+                reranking_mode="reranking_model",
+                reranking_enable=True,
+                reranking_model=RerankingModelConfig(provider="cohere", model="rerank-v2"),
+            ),
+            metadata_filtering_mode="manual",
+            metadata_filtering_conditions=MetadataFilteringCondition(
+                logical_operator="and",
+                conditions=[
+                    Condition(name="document_name", comparison_operator="is", value="{{#start.q#}}"),
+                ],
+            ),
+        )
+
+        node_id = str(uuid.uuid4())
+        config = {"id": node_id, "data": node_data.model_dump()}
+        node = KnowledgeRetrievalNode(
+            id=node_id,
+            config=config,
+            graph_init_params=mock_graph_init_params,
+            graph_runtime_state=mock_graph_runtime_state,
+            rag_retrieval=mock_rag_retrieval,
+        )
+
+        mock_rag_retrieval.knowledge_retrieval.return_value = []
+        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
+
+        # Act
+        node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+
+        # Assert the passed request has resolved value
+        call_args = mock_rag_retrieval.knowledge_retrieval.call_args
+        request = call_args[1]["request"]
+        assert request.metadata_filtering_conditions is not None
+        assert request.metadata_filtering_conditions.conditions[0].value == "readme"

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useCallback } from 'react'
-import Toast, { ToastProvider, useToastContext } from '.'
+import Toast, { ToastProvider } from '.'
+import { useToastContext } from './context'
 
 const ToastControls = () => {
   const { notify } = useToastContext()
