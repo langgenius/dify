@@ -79,7 +79,6 @@ export default function RemarkDirectiveTestPage() {
       <InSiteMessage
         title="Help Shape Dify"
         subtitle="We’d love to hear how you evaluate and use Dify"
-        title_pic_url="https://www.figma.com/api/mcp/asset/ee1209b5-5df1-48a6-8052-ad4a2a08a653"
         main={inSiteMessageMain}
         actions={[
           { type: 'default', text: 'Not now', action: 'close' },

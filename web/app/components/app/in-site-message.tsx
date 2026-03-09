@@ -18,10 +18,10 @@ export type InSiteMessageActionItem = {
 type InSiteMessageProps = {
   actions: InSiteMessageActionItem[]
   className?: string
+  headerBgUrl?: string
   main: string
   subtitle: string
   title: string
-  title_pic_url?: string
 }
 
 function normalizeLinkData(data: unknown): { href: string, rel?: string, target?: string } | null {
@@ -45,26 +45,18 @@ function normalizeLinkData(data: unknown): { href: string, rel?: string, target?
 function InSiteMessage({
   actions,
   className,
+  headerBgUrl = '/in-site-message/header-bg.svg',
   main,
   subtitle,
   title,
-  title_pic_url,
 }: InSiteMessageProps) {
   const [visible, setVisible] = useState(true)
 
   const headerStyle = useMemo(() => {
-    if (!title_pic_url) {
-      return {
-        background: 'linear-gradient(180deg, #3268f4 0%, #194ccf 100%)',
-      }
-    }
-
     return {
-      backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%), url(${title_pic_url})`,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
+      backgroundImage: `url(${headerBgUrl})`,
     }
-  }, [title_pic_url])
+  }, [headerBgUrl])
 
   const handleAction = (item: InSiteMessageActionItem) => {
     if (item.action === 'close') {
@@ -95,7 +87,7 @@ function InSiteMessage({
         className,
       )}
     >
-      <div className="flex min-h-[128px] flex-col justify-end gap-0.5 px-4 pb-3 pt-6 text-white" style={headerStyle}>
+      <div className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pb-3 pt-6 text-white" style={headerStyle}>
         <div className="text-[20px] font-bold leading-6">
           {title}
         </div>
@@ -104,7 +96,7 @@ function InSiteMessage({
         </div>
       </div>
 
-      <div className="markdown-body px-4 pb-2 pt-4 text-[14px] leading-5 text-text-secondary">
+      <div className="px-4 pb-2 pt-4 text-[14px] leading-5 text-text-secondary [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5">
         <MarkdownWithDirective markdown={main} />
       </div>
 
