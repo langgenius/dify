@@ -2629,11 +2629,6 @@
       "count": 2
     }
   },
-  "app/components/base/prompt-editor/plugins/workflow-variable-block/component.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 4
@@ -6865,9 +6860,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -7001,14 +6993,6 @@
   "app/components/workflow/nodes/_base/components/variable/var-type-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-name.tsx": {

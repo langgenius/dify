@@ -1,11 +1,8 @@
 import type { VariablePayload } from '../types'
-import {
-  RiErrorWarningFill,
-  RiMoreLine,
-} from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
+import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
@@ -46,8 +43,8 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
-            <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
+            <span className="i-ri-more-line h-3 w-3 shrink-0 text-text-secondary" />
+            <div className="shrink-0 text-divider-deep system-xs-regular">/</div>
           </>
         )
       }
@@ -62,18 +59,16 @@ const VariableLabel = ({
       />
       {
         !!variableType && (
-          <div className="system-xs-regular shrink-0 text-text-tertiary">
+          <div className="shrink-0 text-text-tertiary system-xs-regular">
             {capitalize(variableType)}
           </div>
         )
       }
       {
         !!errorMsg && (
-          <Tooltip
-            popupContent={errorMsg}
-            asChild
-          >
-            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
+          <Tooltip>
+            <TooltipTrigger render={<Warning className="h-3 w-3 shrink-0 text-text-warning" />} />
+            <TooltipContent>{errorMsg}</TooltipContent>
           </Tooltip>
         )
       }
