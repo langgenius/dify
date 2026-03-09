@@ -43,6 +43,22 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+const mockCredentialPanelState = vi.hoisted(() => vi.fn())
+vi.mock('../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: mockCredentialPanelState,
+}))
+
+vi.mock('../provider-added-card/use-change-provider-priority', () => ({
+  useChangeProviderPriority: () => ({
+    isChangingPriority: false,
+    handleChangePriority: vi.fn(),
+  }),
+}))
+
+vi.mock('../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
+  default: () => null,
+}))
+
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -99,6 +115,16 @@ describe('PopupItem', () => {
     })
     mockUseAppContext.mockReturnValue({
       currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-active',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'my-api-key',
+      credits: 200,
     })
   })
 
@@ -206,6 +232,16 @@ describe('PopupItem', () => {
         },
       })],
     })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-required-configure',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 0,
+    })
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
@@ -217,6 +253,16 @@ describe('PopupItem', () => {
       modelProviders: [makeProvider({
         preferred_provider_type: PreferredProviderTypeEnum.system,
       })],
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-active',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 200,
     })
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
@@ -232,6 +278,16 @@ describe('PopupItem', () => {
     })
     mockUseAppContext.mockReturnValue({
       currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-exhausted',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: true,
+      credentialName: undefined,
+      credits: 0,
     })
 
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)

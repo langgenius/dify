@@ -155,6 +155,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert
@@ -180,6 +181,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert - Badge component should render
@@ -200,6 +202,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert - ConfigModel should show because plan.type === 'sandbox'
@@ -219,6 +222,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert - ConfigModel should NOT show because plan.type !== 'sandbox' and load balancing is disabled
@@ -238,6 +242,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={false}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert - ConfigModel should not render because status is not active/disabled
@@ -259,6 +264,7 @@ describe('ModelListItem', () => {
         provider={mockProvider}
         isConfigurable={true}
       />,
+      { wrapper: createWrapper() },
     )
 
     // Assert

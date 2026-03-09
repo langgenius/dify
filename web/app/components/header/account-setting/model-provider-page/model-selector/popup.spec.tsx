@@ -49,6 +49,16 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ modelProviders: [] }),
 }))
 
+vi.mock('../provider-added-card/use-trial-credits', () => ({
+  useTrialCredits: () => ({
+    credits: 200,
+    totalCredits: 200,
+    isExhausted: false,
+    isLoading: false,
+    nextCreditResetDate: undefined,
+  }),
+}))
+
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))

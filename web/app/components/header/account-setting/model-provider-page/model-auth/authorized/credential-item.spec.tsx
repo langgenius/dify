@@ -122,14 +122,16 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} disabled onDelete={onDelete} />)
 
-    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
+    const deleteButton = screen.getAllByRole('button')
+      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
 
   // showSelectedIcon=true: check icon area is always rendered; check icon only appears when IDs match
   it('should render check icon area when showSelectedIcon=true and selectedCredentialId matches', () => {
-    render(
+    const { container } = render(
       <CredentialItem
         credential={credential}
         showSelectedIcon
@@ -137,7 +139,7 @@ describe('CredentialItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('check-icon')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
 
   it('should not render check icon when showSelectedIcon=true but selectedCredentialId does not match', () => {
