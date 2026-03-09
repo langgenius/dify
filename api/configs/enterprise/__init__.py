@@ -64,3 +64,7 @@ class EnterpriseTelemetryConfig(BaseSettings):
         description="Sampling rate for enterprise traces (0.0 to 1.0, default 1.0 = 100%).",
         default=1.0,
     )
+
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )

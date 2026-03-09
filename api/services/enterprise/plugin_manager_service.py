@@ -3,6 +3,7 @@ import logging
 
 from pydantic import BaseModel
 
+from configs import dify_config
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
@@ -26,6 +27,11 @@ class CheckCredentialPolicyComplianceRequest(BaseModel):
         data = super().model_dump(**kwargs)
         data["credential_type"] = self.credential_type.to_number()
         return data
+
+
+class PreUninstallPluginRequest(BaseModel):
+    tenant_id: str
+    plugin_unique_identifier: str
 
 
 class CredentialPolicyViolationError(BaseServiceError):
@@ -55,3 +61,24 @@ class PluginManagerService:
             body.dify_credential_id,
             ret.get("result", False),
         )
+
+    @classmethod
+    def try_pre_uninstall_plugin(cls, body: PreUninstallPluginRequest):
+        try:
+            # the invocation must be synchronous.
+            EnterprisePluginManagerRequest.send_request(  # pyright: ignore[reportUnknownMemberType]
+                "POST",
+                "/pre-uninstall-plugin",
+                json=body.model_dump(),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                raise_for_status=True,
+                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
+            )
+        except Exception as e:
+            logger.exception(
+                """
+                failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s, 
+                this may cause plugin %s to be automatically garbage collected
+                """,
+                body.tenant_id,
+                body.plugin_unique_identifier,
+            )
