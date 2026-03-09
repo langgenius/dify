@@ -49,7 +49,7 @@ Dify uses deterministic ID generation to ensure signals are correlated across di
 ### ID Generation Rules
 
 - `trace_id`: Derived from the correlation ID (workflow_run_id or node_execution_id for drafts) using `int(UUID(correlation_id))`
-- `span_id`: Derived from the source ID using `SHA256(source_id)[:8]`
+- `span_id`: Derived from the source ID using the lower 64 bits of `UUID(source_id)`
 
 ### Scenario A: Simple Workflow
 

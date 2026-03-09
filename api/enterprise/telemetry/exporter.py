@@ -54,7 +54,7 @@ def _parse_otlp_headers(raw: str) -> dict[str, str]:
         if "=" not in pair:
             continue
         k, v = pair.split("=", 1)
-        headers[k.strip()] = v.strip()
+        headers[k.strip().lower()] = v.strip()
     return headers
 
 

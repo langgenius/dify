@@ -486,7 +486,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.MESSAGE_RUN,
             attributes=attrs,
-            trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            trace_id_source=metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None),
             span_id_source=node_execution_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -765,7 +765,7 @@ class EnterpriseOtelTrace:
         emit_metric_only_event(
             event_name=EnterpriseTelemetryEvent.DATASET_RETRIEVAL,
             attributes=attrs,
-            trace_id_source=metadata.get("workflow_run_id") or str(info.message_id) if info.message_id else None,
+            trace_id_source=metadata.get("workflow_run_id") or (str(info.message_id) if info.message_id else None),
             span_id_source=node_execution_id or (str(info.message_id) if info.message_id else None),
             tenant_id=tenant_id,
             user_id=user_id,

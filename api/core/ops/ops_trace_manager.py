@@ -1317,7 +1317,7 @@ class TraceTask:
             "workspace_name": workspace_name,
             "user_id": node_data.get("user_id"),
             "invoke_from": node_data.get("invoke_from"),
-            "credential_id": node_data.get("credential_id"),
+            "credential_id": credential_id,
             "credential_name": credential_name,
             "dataset_ids": node_data.get("dataset_ids"),
             "dataset_names": node_data.get("dataset_names"),

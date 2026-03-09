@@ -59,10 +59,9 @@ def process_trace_tasks(file_info):
 
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except Exception as e:
-        logger.info("error:\n\n\n%s\n\n\n\n", e)
+        logger.exception("Processing trace tasks failed, app_id: %s", app_id)
         failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
         redis_client.incr(failed_key)
-        logger.info("Processing trace tasks failed, app_id: %s", app_id)
     finally:
         try:
             storage.delete(file_path)
