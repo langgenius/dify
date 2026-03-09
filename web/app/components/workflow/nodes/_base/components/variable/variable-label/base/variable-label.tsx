@@ -25,7 +25,8 @@ const VariableLabel = ({
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
   const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
-  return (
+
+  const badge = (
     <div
       className={cn(
         'inline-flex h-6 max-w-full items-center space-x-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 shadow-xs',
@@ -66,16 +67,23 @@ const VariableLabel = ({
       }
       {
         !!errorMsg && (
-          <Tooltip>
-            <TooltipTrigger render={<Warning className="h-3 w-3 shrink-0 text-text-warning" />} />
-            <TooltipContent>{errorMsg}</TooltipContent>
-          </Tooltip>
+          <Warning className="h-3 w-3 shrink-0 text-text-warning" />
         )
       }
       {
         rightSlot
       }
     </div>
+  )
+
+  if (!errorMsg)
+    return badge
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={badge} />
+      <TooltipContent>{errorMsg}</TooltipContent>
+    </Tooltip>
   )
 }
 
