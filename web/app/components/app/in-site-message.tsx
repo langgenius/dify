@@ -24,6 +24,10 @@ type InSiteMessageProps = {
   title: string
 }
 
+function normalizeLineBreaks(text: string): string {
+  return text.replace(/\\n/g, '\n')
+}
+
 function normalizeLinkData(data: unknown): { href: string, rel?: string, target?: string } | null {
   if (typeof data === 'string')
     return { href: data, target: '_blank' }
@@ -51,6 +55,8 @@ function InSiteMessage({
   title,
 }: InSiteMessageProps) {
   const [visible, setVisible] = useState(true)
+  const normalizedTitle = normalizeLineBreaks(title)
+  const normalizedSubtitle = normalizeLineBreaks(subtitle)
 
   const headerStyle = useMemo(() => {
     return {
@@ -88,11 +94,11 @@ function InSiteMessage({
       )}
     >
       <div className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pb-3 pt-6 text-white" style={headerStyle}>
-        <div className="text-[20px] font-bold leading-6">
-          {title}
+        <div className="whitespace-pre-line text-[20px] font-bold leading-6">
+          {normalizedTitle}
         </div>
-        <div className="text-[14px] font-normal leading-5 text-white/95">
-          {subtitle}
+        <div className="whitespace-pre-line text-[14px] font-normal leading-5 text-white/95">
+          {normalizedSubtitle}
         </div>
       </div>
 
