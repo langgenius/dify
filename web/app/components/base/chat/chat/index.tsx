@@ -30,7 +30,7 @@ import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { cn } from '@/utils/classnames'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
-import { ChatContextProvider } from './context'
+import { ChatContextProvider } from './context-provider'
 import Question from './question'
 import TryToAsk from './try-to-ask'
 
@@ -332,8 +332,7 @@ const Chat: FC<ChatProps> = ({
               !noStopResponding && isResponding && (
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
-                    {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
-                    <div className="i-custom-vender-solid-mediaanddevices-stop-circle mr-[5px] h-3.5 w-3.5" />
+                    <div className="i-custom-vender-solid-mediaAndDevices-stop-circle mr-[5px] h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>

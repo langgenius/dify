@@ -37,12 +37,15 @@ vi.mock('@/app/components/base/toast', async (importOriginal) => {
     default: {
       notify: (args: { type: string, message: string }) => mockToast(args),
     },
-    useToastContext: () => ({
-      notify: (args: { type: string, message: string }) => mockToast(args),
-      close: vi.fn(),
-    }),
   }
 })
+
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: (args: { type: string, message: string }) => mockToast(args),
+    close: vi.fn(),
+  }),
+}))
 
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',

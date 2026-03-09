@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+import zipfile
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -82,7 +83,17 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
 
         value = variable.value
         inputs = {"variable_selector": variable_selector}
+        if isinstance(value, list):
+            value = list(filter(lambda x: x, value))
         process_data = {"documents": value if isinstance(value, list) else [value]}
+
+        if not value:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={"text": ArrayStringSegment(value=[])},
+            )
 
         try:
             if isinstance(value, list):
@@ -111,6 +122,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             else:
                 raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
         except DocumentExtractorError as e:
+            logger.warning(e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
@@ -385,6 +397,32 @@ def parser_docx_part(block, doc: Document, content_items, i):
         content_items.append((i, "table", Table(block, doc)))
 
 
+def _normalize_docx_zip(file_content: bytes) -> bytes:
+    """
+    Some DOCX files (e.g. exported by Evernote on Windows) are malformed:
+    ZIP entry names use backslash (\\) as path separator instead of the forward
+    slash (/) required by both the ZIP spec and OOXML.  On Linux/Mac the entry
+    "word\\document.xml" is never found when python-docx looks for
+    "word/document.xml", which triggers a KeyError about a missing relationship.
+
+    This function rewrites the ZIP in-memory, normalizing all entry names to
+    use forward slashes without touching any actual document content.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as zin:
+            out_buf = io.BytesIO()
+            with zipfile.ZipFile(out_buf, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    # Normalize backslash path separators to forward slash
+                    item.filename = item.filename.replace("\\", "/")
+                    zout.writestr(item, data)
+            return out_buf.getvalue()
+    except zipfile.BadZipFile:
+        # Not a valid zip — return as-is and let python-docx report the real error
+        return file_content
+
+
 def _extract_text_from_docx(file_content: bytes) -> str:
     """
     Extract text from a DOCX file.
@@ -392,7 +430,15 @@ def _extract_text_from_docx(file_content: bytes) -> str:
     """
     try:
         doc_file = io.BytesIO(file_content)
-        doc = docx.Document(doc_file)
+        try:
+            doc = docx.Document(doc_file)
+        except Exception as e:
+            logger.warning("Failed to parse DOCX, attempting to normalize ZIP entry paths: %s", e)
+            # Some DOCX files exported by tools like Evernote on Windows use
+            # backslash path separators in ZIP entries and/or single-quoted XML
+            # attributes, both of which break python-docx on Linux. Normalize and retry.
+            file_content = _normalize_docx_zip(file_content)
+            doc = docx.Document(io.BytesIO(file_content))
         text = []
 
         # Keep track of paragraph and table positions

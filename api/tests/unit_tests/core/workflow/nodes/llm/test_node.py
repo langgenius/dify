@@ -111,6 +111,7 @@ def llm_node(
         "id": "1",
         "data": llm_node_data.model_dump(),
     }
+    http_client = mock.MagicMock()
     node = LLMNode(
         id="1",
         config=node_config,
@@ -120,6 +121,7 @@ def llm_node(
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        http_client=http_client,
     )
     return node
 
@@ -632,6 +634,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         "id": "1",
         "data": llm_node_data.model_dump(),
     }
+    http_client = mock.MagicMock()
     node = LLMNode(
         id="1",
         config=node_config,
@@ -641,6 +644,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        http_client=http_client,
     )
     return node, mock_file_saver
 
