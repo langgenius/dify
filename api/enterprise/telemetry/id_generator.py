@@ -9,7 +9,6 @@ without depending on span creation order.
 import random
 import uuid
 from contextvars import ContextVar
-from typing import cast
 
 from opentelemetry.sdk.trace.id_generator import IdGenerator
 
@@ -41,7 +40,7 @@ def compute_deterministic_span_id(source_id: str) -> int:
     Uses the lower 64 bits of the UUID, guaranteeing non-zero output
     (OTEL requires span_id != 0).
     """
-    span_id = cast(int, uuid.UUID(source_id).int) & ((1 << 64) - 1)
+    span_id = uuid.UUID(source_id).int & ((1 << 64) - 1)
     return span_id if span_id != 0 else 1
 
 
@@ -57,7 +56,7 @@ class CorrelationIdGenerator(IdGenerator):
         correlation_id = _correlation_id_context.get()
         if correlation_id:
             try:
-                return cast(int, uuid.UUID(correlation_id).int)
+                return uuid.UUID(correlation_id).int
             except (ValueError, AttributeError):
                 pass
         return random.getrandbits(128)

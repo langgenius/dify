@@ -120,7 +120,7 @@ def _lookup_llm_credential_info(
             credential_name = ""
             is_model_level = False
 
-            if model and provider_record.credential_id:
+            if model:
                 # Try model-level first
                 model_record = session.scalar(
                     select(ProviderModel).where(
@@ -646,7 +646,7 @@ class TraceTask:
 
     @classmethod
     def _calculate_workflow_token_split(cls, workflow_run_id: str, tenant_id: str) -> tuple[int, int]:
-        from core.workflow.enums import WorkflowNodeExecutionMetadataKey
+        from dify_graph.enums import WorkflowNodeExecutionMetadataKey
         from models.workflow import WorkflowNodeExecutionModel
 
         with Session(db.engine) as session:

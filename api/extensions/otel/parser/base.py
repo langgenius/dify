@@ -14,14 +14,13 @@ from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
+from configs import dify_config
 from dify_graph.enums import NodeType
 from dify_graph.file.models import File
 from dify_graph.graph_events import GraphNodeEventBase
 from dify_graph.nodes.base.node import Node
 from dify_graph.variables import Segment
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
-from configs import dify_config
-
 
 
 def should_include_content() -> bool:
@@ -33,6 +32,7 @@ def should_include_content() -> bool:
     if not dify_config.ENTERPRISE_ENABLED:
         return True
     return dify_config.ENTERPRISE_INCLUDE_CONTENT
+
 
 def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
     """

@@ -5,7 +5,7 @@ from typing import Any
 
 from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
 from core.telemetry import emit as telemetry_emit
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
 
 

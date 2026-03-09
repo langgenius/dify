@@ -88,6 +88,15 @@ def _get_case_routing() -> dict:
     return _case_routing
 
 
+def __getattr__(name: str) -> dict:
+    """Lazy module-level access to routing tables."""
+    if name == "CASE_ROUTING":
+        return _get_case_routing()
+    if name == "CASE_TO_TRACE_TASK":
+        return _get_case_to_trace_task()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -186,7 +195,7 @@ def _emit_trace(
         app_id=context.get("app_id"),
         user_id=context.get("user_id"),
     )
-    queue_manager.add_trace_task(TraceTask(trace_task_name, **payload))
+    queue_manager.add_trace_task(TraceTask(trace_task_name, user_id=context.get("user_id"), **payload))
     logger.debug("Enqueued trace task: case=%s, app_id=%s", case, context.get("app_id"))
 
 
