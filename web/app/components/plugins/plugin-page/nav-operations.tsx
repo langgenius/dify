@@ -82,7 +82,7 @@ export const SubmitRequestDropdown = () => {
         >
           <RiAddLine className="h-4 w-4 shrink-0 lg:hidden" />
           <span className="system-sm-medium hidden lg:inline">
-            {t('requestSubmitPlugin', { ns: 'plugin' })}
+            {t('requestSubmit', { ns: 'plugin' })}
           </span>
         </Button>
       </PortalToFollowElemTrigger>

@@ -59,7 +59,6 @@ type CollectionHeaderProps<TCollection extends BaseCollection> = {
   collection: TCollection
   itemsLength: number
   locale: Locale
-  carouselCollectionNames: string[]
   viewMore: React.ReactNode
 }
 
@@ -67,11 +66,10 @@ export function CollectionHeader<TCollection extends BaseCollection>({
   collection,
   itemsLength,
   locale,
-  carouselCollectionNames,
   viewMore,
 }: CollectionHeaderProps<TCollection>) {
-  const showViewMore = (collection.searchable || collection.search_params)
-    && !carouselCollectionNames.includes(collection.name)
+  const showViewMore = collection.searchable
+    && !!collection.search_params
     && itemsLength > GRID_DISPLAY_LIMIT
 
   return (
@@ -146,8 +144,6 @@ type CollectionListProps<TItem, TCollection extends BaseCollection> = {
   /** Field name to use as item key (e.g. 'plugin_id', 'id'). */
   itemKeyField: keyof TItem
   renderCard: (item: TItem) => React.ReactNode
-  /** Collection names that use carousel layout (e.g. ['partners'], ['featured']). */
-  carouselCollectionNames: string[]
   /** Search tab for ViewMoreButton (e.g. 'templates' for template collections). */
   viewMoreSearchTab?: SearchTab
   gridClassName?: string
@@ -161,7 +157,6 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
   collectionItemsMap,
   itemKeyField,
   renderCard,
-  carouselCollectionNames,
   viewMoreSearchTab,
   gridClassName = GRID_CLASS,
   cardContainerClassName,
@@ -183,7 +178,6 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
       {
         collectionsWithItems.map((collection) => {
           const items = collectionItemsMap[collection.name]
-          const isCarouselCollection = carouselCollectionNames.includes(collection.name)
 
           return (
             <div
@@ -194,10 +188,9 @@ function CollectionList<TItem, TCollection extends BaseCollection>({
                 collection={collection}
                 itemsLength={items.length}
                 locale={locale}
-                carouselCollectionNames={carouselCollectionNames}
                 viewMore={<ViewMoreButton searchParams={collection.search_params} searchTab={viewMoreSearchTab} />}
               />
-              {isCarouselCollection
+              {!collection.searchable
                 ? (
                     <CarouselCollection
                       items={items}

@@ -4,7 +4,6 @@ import type { PluginCollection, Template, TemplateCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useTranslation } from '#i18n'
 import CardWrapper from './card-wrapper'
-import { CAROUSEL_COLLECTION_NAMES } from './collection-constants'
 import CollectionList from './collection-list'
 import TemplateCard from './template-card'
 
@@ -58,7 +57,6 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
         collectionItemsMap={collectionItemsMap}
         itemKeyField="plugin_id"
         renderCard={renderPluginCard}
-        carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.partners, CAROUSEL_COLLECTION_NAMES.featured]}
         cardContainerClassName={cardContainerClassName}
       />
     )
@@ -76,7 +74,7 @@ const ListWithCollection = (props: ListWithCollectionProps) => {
       collectionItemsMap={collectionItemsMap}
       itemKeyField="id"
       renderCard={renderTemplateCard}
-      carouselCollectionNames={[CAROUSEL_COLLECTION_NAMES.featured]}
+      viewMoreSearchTab="templates"
       cardContainerClassName={cardContainerClassName}
       emptyText={t('marketplace.noTemplateFound', { ns: 'plugin' })}
     />

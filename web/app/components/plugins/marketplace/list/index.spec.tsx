@@ -588,7 +588,7 @@ describe('ListWithCollection', () => {
   // View More Button Tests
   // ================================
   describe('View More Button', () => {
-    it('should render View More button when non-carousel collection is searchable and exceeds display limit', () => {
+    it('should render View More button when collection is searchable and exceeds display limit', () => {
       const collections = [createMockCollection({
         name: 'searchable-collection',
         searchable: true,
@@ -681,7 +681,7 @@ describe('ListWithCollection', () => {
   // Grid Display Limit Tests
   // ================================
   describe('Grid Display Limit', () => {
-    it('should render at most 4 cards for non-carousel collections', () => {
+    it('should render at most 4 cards for searchable collections', () => {
       const collections = createMockCollectionList(1)
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(8),
@@ -697,6 +697,27 @@ describe('ListWithCollection', () => {
 
       const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
       expect(cards.length).toBe(4)
+    })
+
+    it('should render all cards for non-searchable collections in carousel mode', () => {
+      const collections = [createMockCollection({
+        name: 'carousel-collection',
+        searchable: false,
+      })]
+      const pluginsMap: Record<string, Plugin[]> = {
+        'carousel-collection': createMockPluginList(8),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(8)
     })
 
     it('should render all cards when count is within the display limit', () => {
