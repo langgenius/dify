@@ -162,7 +162,7 @@
     "tailwind-merge": "2.6.1",
     "tldts": "7.0.25",
     "use-context-selector": "2.0.0",
-    "uuid": "10.0.0",
+    "uuid": "13.0.0",
     "zod": "4.3.6",
     "zundo": "2.3.0",
     "zustand": "5.0.11"
@@ -210,7 +210,6 @@
     "@types/react-window": "1.8.8",
     "@types/semver": "7.7.1",
     "@types/sortablejs": "1.15.9",
-    "@types/uuid": "10.0.0",
     "@typescript-eslint/parser": "8.56.1",
     "@typescript/native-preview": "7.0.0-dev.20260309.1",
     "@vitejs/plugin-react": "5.1.4",
