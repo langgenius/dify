@@ -104,7 +104,7 @@ describe('PopupItem', () => {
 
   it('should call onSelect when clicking an active model', () => {
     const onSelect = vi.fn()
-    render(<PopupItem model={makeModel()} onSelect={onSelect} />)
+    render(<PopupItem model={makeModel()} onSelect={onSelect} onHide={vi.fn()} />)
 
     fireEvent.click(screen.getByText('GPT-4'))
 
@@ -117,6 +117,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
         onSelect={onSelect}
+        onHide={vi.fn()}
       />,
     )
 
@@ -130,6 +131,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -149,6 +151,7 @@ describe('PopupItem', () => {
           models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
         })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -167,6 +170,7 @@ describe('PopupItem', () => {
         defaultModel={defaultModel}
         model={makeModel()}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -174,7 +178,7 @@ describe('PopupItem', () => {
   })
 
   it('should toggle collapsed state when clicking provider header', () => {
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} />)
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
 
@@ -188,7 +192,7 @@ describe('PopupItem', () => {
   })
 
   it('should show credential name when using custom provider', () => {
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} />)
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText('my-api-key')).toBeInTheDocument()
   })
@@ -203,7 +207,7 @@ describe('PopupItem', () => {
       })],
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} />)
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.configureRequired/)).toBeInTheDocument()
   })
@@ -215,7 +219,7 @@ describe('PopupItem', () => {
       })],
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} />)
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.aiCredits/)).toBeInTheDocument()
   })
@@ -230,7 +234,7 @@ describe('PopupItem', () => {
       currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} />)
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/)).toBeInTheDocument()
   })

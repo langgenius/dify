@@ -4,10 +4,14 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import { useState } from 'react'
-
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -28,6 +32,9 @@ import {
 import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
+import { useChangeProviderPriority } from '../provider-added-card/use-change-provider-priority'
+import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
 import {
   modelTypeFormat,
   sizeFormat,
@@ -38,13 +45,16 @@ type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
   onSelect: (provider: string, model: ModelItem) => void
+  onHide: () => void
 }
 const PopupItem: FC<PopupItemProps> = ({
   defaultModel,
   model,
   onSelect,
+  onHide,
 }) => {
   const [collapsed, setCollapsed] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
   const { currentWorkspace } = useAppContext()
@@ -82,6 +92,14 @@ const PopupItem: FC<PopupItemProps> = ({
   const isApiKeyActive = currentProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
   const credentialName = currentProvider?.custom_configuration.current_credential_name
 
+  const state = useCredentialPanelState(currentProvider)
+  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
+
+  const handleCloseDropdown = useCallback(() => {
+    setDropdownOpen(false)
+    onHide()
+  }, [onHide])
+
   return (
     <div className="mb-1">
       <div className="flex h-[22px] items-center justify-between px-3 text-xs font-medium text-text-tertiary">
@@ -92,39 +110,53 @@ const PopupItem: FC<PopupItemProps> = ({
           {model.label[language] || model.label.en_US}
           <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', collapsed && '-rotate-90')} />
         </div>
-        <div className="flex items-center text-text-tertiary system-xs-medium">
-          {isUsingCredits
-            ? (
-                hasCredits
+        <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <PopoverTrigger
+            render={(
+              <div className="flex cursor-pointer items-center text-text-tertiary system-xs-medium">
+                {isUsingCredits
                   ? (
-                      <>
-                        <span className="i-ri-globe-line h-3 w-3" />
-                        <span className="ml-1">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
-                      </>
+                      hasCredits
+                        ? (
+                            <>
+                              <span className="i-custom-vender-line-financeandecommerce-credits-coin h-3 w-3" />
+                              <span className="ml-1">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
+                            </>
+                          )
+                        : (
+                            <>
+                              <span className="i-ri-alert-fill h-3 w-3 text-text-warning-secondary" />
+                              <span className="ml-1 text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
+                            </>
+                          )
                     )
-                  : (
-                      <>
-                        <span className="i-ri-alert-fill h-3 w-3 text-text-warning-secondary" />
-                        <span className="ml-1 text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
-                      </>
-                    )
-              )
-            : credentialName
-              ? (
-                  <>
-                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-[2px] border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
-                    <span className="ml-1 text-text-tertiary">{credentialName}</span>
-                  </>
-                )
-              : (
-                  <>
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-[2px] border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
-                    <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
-                  </>
-                )}
-          <span className={cn('i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary', collapsed && '-rotate-90')} />
-
-        </div>
+                  : credentialName
+                    ? (
+                        <>
+                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-[2px] border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className="ml-1 text-text-tertiary">{credentialName}</span>
+                        </>
+                      )
+                    : (
+                        <>
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-[2px] border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
+                        </>
+                      )}
+                <span className={cn('i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary', collapsed && '-rotate-90')} />
+              </div>
+            )}
+          />
+          <PopoverContent placement="bottom-end" className="z-[1003]">
+            <DropdownContent
+              provider={currentProvider}
+              state={state}
+              isChangingPriority={isChangingPriority}
+              onChangePriority={handleChangePriority}
+              onClose={handleCloseDropdown}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
       {!collapsed && model.models.map(modelItem => (
         <Tooltip

@@ -24,6 +24,7 @@ type ModelSelectorProps = {
   triggerClassName?: string
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
+  onHide?: () => void
   readonly?: boolean
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
@@ -35,6 +36,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   triggerClassName,
   popupClassName,
   onSelect,
+  onHide,
   readonly,
   scopeFeatures = [],
   deprecatedClassName,
@@ -113,7 +115,10 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             modelList={modelList}
             onSelect={handleSelect}
             scopeFeatures={scopeFeatures}
-            onHide={() => setOpen(false)}
+            onHide={() => {
+              setOpen(false)
+              onHide?.()
+            }}
             triggerRef={triggerRef}
           />
         </PortalToFollowElemContent>

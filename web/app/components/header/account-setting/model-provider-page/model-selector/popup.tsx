@@ -19,8 +19,9 @@ import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
-import { ModelFeatureEnum } from '../declarations'
+import { CustomConfigurationStatusEnum, ModelFeatureEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
+import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap, providerIconMap, providerKeyToPluginId } from '../utils'
 import PopupItem from './popup-item'
 
@@ -56,6 +57,9 @@ const Popup: FC<PopupProps> = ({
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
+  const hasApiKeyFallback = useMemo(() => {
+    return modelProviders.some(p => p.custom_configuration?.status === CustomConfigurationStatusEnum.active)
+  }, [modelProviders])
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
     if (!allPlugins || installingProvider)
@@ -101,7 +105,7 @@ const Popup: FC<PopupProps> = ({
   }, [])
 
   const filteredModelList = useMemo(() => {
-    return modelList.map((model) => {
+    const filtered = modelList.map((model) => {
       const filteredModels = model.models
         .filter((modelItem) => {
           if (modelItem.label[language] !== undefined)
@@ -121,7 +125,17 @@ const Popup: FC<PopupProps> = ({
         })
       return { ...model, models: filteredModels }
     }).filter(model => model.models.length > 0)
-  }, [language, modelList, scopeFeatures, searchText])
+
+    if (defaultModel?.provider) {
+      const selectedIndex = filtered.findIndex(m => m.provider === defaultModel.provider)
+      if (selectedIndex > 0) {
+        const [selected] = filtered.splice(selectedIndex, 1)
+        filtered.unshift(selected)
+      }
+    }
+
+    return filtered
+  }, [defaultModel?.provider, language, modelList, scopeFeatures, searchText])
 
   const marketplaceProviders = useMemo(() => {
     const installedProviders = new Set(modelList.map(m => m.provider))
@@ -158,6 +172,7 @@ const Popup: FC<PopupProps> = ({
           }
         </div>
       </div>
+      <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       <div className="p-1">
         {
           filteredModelList.map(model => (
@@ -166,6 +181,7 @@ const Popup: FC<PopupProps> = ({
               defaultModel={defaultModel}
               model={model}
               onSelect={onSelect}
+              onHide={onHide}
             />
           ))
         }
