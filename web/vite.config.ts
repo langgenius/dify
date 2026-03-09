@@ -46,7 +46,6 @@ export default defineConfig(({ mode }) => {
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
-            react(),
             vinext(),
             customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
             // reactGrabOpenFilePlugin({
