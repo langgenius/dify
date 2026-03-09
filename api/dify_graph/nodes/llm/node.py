@@ -64,6 +64,7 @@ from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
     ArrayFileSegment,
@@ -127,6 +128,7 @@ class LLMNode(Node[LLMNodeData]):
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -149,6 +151,7 @@ class LLMNode(Node[LLMNodeData]):
             llm_file_saver = FileSaverImpl(
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
