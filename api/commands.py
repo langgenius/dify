@@ -2630,6 +2630,8 @@ def clean_expired_messages(
     """
     Clean expired messages and related data for tenants based on clean policy.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     click.echo(click.style("clean_messages: start clean messages.", fg="green"))
 
     start_at = time.perf_counter()
@@ -2671,6 +2673,8 @@ def clean_expired_messages(
             )
         )
         raise
+    finally:
+        flush_telemetry()
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
 
