@@ -30,8 +30,6 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "tailwindcss"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "echarts"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "react-markdown"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-syntax-highlighter"

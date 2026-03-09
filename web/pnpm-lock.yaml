@@ -171,11 +171,11 @@ importers:
         specifier: 3.3.2
         version: 3.3.2
       echarts:
-        specifier: 5.6.0
-        version: 5.6.0
+        specifier: 6.0.0
+        version: 6.0.0
       echarts-for-react:
         specifier: 3.0.6
-        version: 3.0.6(echarts@5.6.0)(react@19.2.4)
+        version: 3.0.6(echarts@6.0.0)(react@19.2.4)
       elkjs:
         specifier: 0.11.1
         version: 0.11.1
@@ -4444,8 +4444,8 @@ packages:
       echarts: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
       react: ^15.0.0 || >=16.0.0
 
-  echarts@5.6.0:
-    resolution: {integrity: sha512-oTbVTsXfKuEhxftHqL5xprgLoc0k7uScAwtryCgWF6hPYFLRwOUHiFmHGCBKP5NPFNkDVopOieyUqYGH8Fa3kA==}
+  echarts@6.0.0:
+    resolution: {integrity: sha512-Tte/grDQRiETQP4xz3iZWSvoHrkCQtwqd6hs+mifXcjrCuo2iKWbajFObuLJVBlDIJlOzgQPd1hsaKt/3+OMkQ==}
 
   electron-to-chromium@1.5.307:
     resolution: {integrity: sha512-5z3uFKBWjiNR44nFcYdkcXjKMbg5KXNdciu7mhTPo9tB7NbqSNP2sSnGR+fqknZSCwKkBN+oxiiajWs4dT6ORg==}
@@ -7761,8 +7761,8 @@ packages:
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
-  zrender@5.6.1:
-    resolution: {integrity: sha512-OFXkDJKcrlx5su2XbzJvj/34Q3m6PvyCZkVPHGYpcCJ52ek4U/ymZyfuV1nKE23AyBJ51E/6Yr0mhZ7xGTO4ag==}
+  zrender@6.0.0:
+    resolution: {integrity: sha512-41dFXEEXuJpNecuUQq6JlbybmnHaqqpGlbH1yxnA5V9MMP4SbohSVZsJIwz+zdjQXSSlR1Vc34EgH1zxyTDvhg==}
 
   zundo@2.3.0:
     resolution: {integrity: sha512-4GXYxXA17SIKYhVbWHdSEU04P697IMyVGXrC2TnzoyohEAWytFNOKqOp5gTGvaW93F/PM5Y0evbGtOPF0PWQwQ==}
@@ -11909,17 +11909,17 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-  echarts-for-react@3.0.6(echarts@5.6.0)(react@19.2.4):
+  echarts-for-react@3.0.6(echarts@6.0.0)(react@19.2.4):
     dependencies:
-      echarts: 5.6.0
+      echarts: 6.0.0
       fast-deep-equal: 3.1.3
       react: 19.2.4
       size-sensor: 1.0.3
 
-  echarts@5.6.0:
+  echarts@6.0.0:
     dependencies:
       tslib: 2.3.0
-      zrender: 5.6.1
+      zrender: 6.0.0
 
   electron-to-chromium@1.5.307: {}
 
@@ -15917,7 +15917,7 @@ snapshots:
 
   zod@4.3.6: {}
 
-  zrender@5.6.1:
+  zrender@6.0.0:
     dependencies:
       tslib: 2.3.0
 
