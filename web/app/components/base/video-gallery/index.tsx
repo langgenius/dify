@@ -11,7 +11,7 @@ const VideoGallery: React.FC<Props> = ({ srcs }) => {
     return null
 
   return (
-    <div className="my-3">
+    <div className="my-3" data-testid="video-gallery-container">
       <VideoPlayer srcs={validSrcs} />
     </div>
   )

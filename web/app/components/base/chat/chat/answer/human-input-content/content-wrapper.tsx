@@ -1,4 +1,3 @@
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -26,26 +25,33 @@ const ContentWrapper = ({
   }, [isExpanded])
 
   return (
-    <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md', className)}>
+    <div
+      className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md', className)}
+      data-testid="content-wrapper"
+    >
       <div className="flex items-center gap-2 p-2">
         {/* node icon */}
         <BlockIcon type={BlockEnum.HumanInput} className="shrink-0" />
         {/* node name */}
         <div
-          className="system-sm-semibold-uppercase grow truncate text-text-primary"
+          className="grow truncate text-text-primary system-sm-semibold-uppercase"
           title={nodeTitle}
         >
           {nodeTitle}
         </div>
         {showExpandIcon && (
-          <div className="shrink-0 cursor-pointer" onClick={handleToggleExpand}>
+          <div
+            className="shrink-0 cursor-pointer"
+            onClick={handleToggleExpand}
+            data-testid="expand-icon"
+          >
             {
               isExpanded
                 ? (
-                    <RiArrowDownSLine className="size-4" />
+                    <div className="i-ri-arrow-down-s-line size-4" />
                   )
                 : (
-                    <RiArrowRightSLine className="size-4" />
+                    <div className="i-ri-arrow-right-s-line size-4" />
                   )
             }
           </div>

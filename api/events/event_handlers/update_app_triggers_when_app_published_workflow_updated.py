@@ -3,7 +3,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes import NodeType
+from dify_graph.nodes import NodeType
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode

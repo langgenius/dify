@@ -22,10 +22,10 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.entities import WorkflowStartReason
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowStartReason
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
@@ -129,15 +129,15 @@ def build_workflow_event_stream(
                         return
 
                     try:
-                        event = buffer_state.queue.get(timeout=0.1)
+                        event = buffer_state.queue.get(timeout=1)
                     except queue.Empty:
                         current_time = time.time()
                         if current_time - last_msg_time > idle_timeout:
                             logger.debug(
-                                "No workflow events received for %s seconds, keeping stream open",
+                                "Idle timeout of %s seconds reached, closing workflow event stream.",
                                 idle_timeout,
                             )
-                            last_msg_time = current_time
+                            return
                         if current_time - last_ping_time >= ping_interval:
                             yield StreamEvent.PING.value
                             last_ping_time = current_time
@@ -405,7 +405,7 @@ def _start_buffering(subscription) -> BufferState:
         dropped_count = 0
         try:
             while not buffer_state.stop_event.is_set():
-                msg = subscription.receive(timeout=0.1)
+                msg = subscription.receive(timeout=1)
                 if msg is None:
                     continue
                 event = _parse_event_message(msg)

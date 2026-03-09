@@ -11,18 +11,18 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import (
+from dify_graph.nodes.human_input.entities import (
     FormDefinition,
     HumanInputSubmissionValidationError,
     validate_human_input_submission,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
-from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE, resume_app_execution
+from tasks.app_generate.workflow_execute_task import resume_app_execution
 
 
 class Form:
@@ -130,7 +130,7 @@ class HumanInputService:
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
-        self._form_repository = form_repository or HumanInputFormSubmissionRepository(session_factory)
+        self._form_repository = form_repository or HumanInputFormSubmissionRepository()
 
     def get_form_by_token(self, form_token: str) -> Form | None:
         record = self._form_repository.get_by_token(form_token)
@@ -230,7 +230,6 @@ class HumanInputService:
             try:
                 resume_app_execution.apply_async(
                     kwargs={"payload": payload},
-                    queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE,
                 )
             except Exception:  # pragma: no cover
                 logger.exception("Failed to enqueue resume task for workflow run %s", workflow_run_id)

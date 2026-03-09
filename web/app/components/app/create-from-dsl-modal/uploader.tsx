@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 

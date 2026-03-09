@@ -8,6 +8,7 @@ import 'dayjs/locale/fr'
 import 'dayjs/locale/hi'
 import 'dayjs/locale/id'
 import 'dayjs/locale/it'
+import 'dayjs/locale/nl'
 import 'dayjs/locale/ja'
 import 'dayjs/locale/ko'
 import 'dayjs/locale/pl'
@@ -38,7 +39,7 @@ export const formatNumber = (num: number | string) => {
   // Force fixed decimal for small numbers to avoid scientific notation
   if (Math.abs(n) < 0.001 && n !== 0) {
     const str = n.toString()
-    const match = str.match(/e-(\d+)$/)
+    const match = /e-(\d+)$/.exec(str)
     let precision: number
     if (match) {
       // Scientific notation: precision is exponent + decimal digits in mantissa
