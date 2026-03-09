@@ -48,6 +48,9 @@ updates:
         patterns:
           - "storybook"
           - "@storybook/*"
+      eslint-group:
+        patterns:
+          - "*eslint*"
       npm-dependencies:
         patterns:
           - "*"
@@ -56,3 +59,4 @@ updates:
           - "@lexical/*"
           - "storybook"
           - "@storybook/*"
+          - "*eslint*"
