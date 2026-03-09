@@ -2,7 +2,7 @@ import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from controllers.console import console_ns
@@ -1627,8 +1627,14 @@ class TestDatasetApiKeyApi:
                 return_value=MagicMock(where=lambda *args, **kwargs: MagicMock(count=lambda: 10)),
             ),
         ):
-            with pytest.raises(TypeError):
+            with pytest.raises(BadRequest) as exc_info:
                 method(api)
+
+        assert exc_info.value.code == 400
+        assert exc_info.value.data == {
+            "message": "Cannot create more than 10 API keys for this resource type.",
+            "custom": "max_keys_exceeded",
+        }
 
 
 class TestDatasetApiDeleteApi:
