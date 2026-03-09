@@ -43,9 +43,12 @@ const TemplateCardComponent = ({
       templateId: id,
       creationType: 'templates',
     }
+    const encodedPublisherHandle = encodeURIComponent(publisher_handle)
+    const encodedTemplateName = encodeURIComponent(template_name)
+
     return includeSource
-      ? getMarketplaceUrl(`/template/${publisher_handle}/${template_name}`, queryParams)
-      : `${MARKETPLACE_URL_PREFIX}/template/${publisher_handle}/${template_name}?${buildSearchParamsString(queryParams)}`
+      ? getMarketplaceUrl(`/template/${encodedPublisherHandle}/${encodedTemplateName}`, queryParams)
+      : `${MARKETPLACE_URL_PREFIX}/template/${encodedPublisherHandle}/${encodedTemplateName}?${buildSearchParamsString(queryParams)}`
   }, [publisher_handle, template_name, theme, locale, id, includeSource])
 
   const visibleDepsPlugins = deps_plugins?.slice(0, MAX_VISIBLE_DEPS_PLUGINS) || []

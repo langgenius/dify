@@ -203,7 +203,7 @@ function TemplatesSection({ templates, includeSource, t }: {
           <DropdownItem
             key={template.id}
             href={buildMarketplaceHref(
-              `/template/${template.publisher_handle}/${template.template_name}`,
+              `/template/${encodeURIComponent(template.publisher_handle)}/${encodeURIComponent(template.template_name)}`,
               { templateId: template.id },
               includeSource,
             )}
