@@ -6,49 +6,49 @@ settings:
 
 overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
-  '@monaco-editor/loader': 1.5.0
+  '@monaco-editor/loader': 1.7.0
   '@nolyfill/safe-buffer': npm:safe-buffer@^5.2.1
-  array-includes: npm:@nolyfill/array-includes@^1
-  array.prototype.findlast: npm:@nolyfill/array.prototype.findlast@^1
-  array.prototype.findlastindex: npm:@nolyfill/array.prototype.findlastindex@^1
-  array.prototype.flat: npm:@nolyfill/array.prototype.flat@^1
-  array.prototype.flatmap: npm:@nolyfill/array.prototype.flatmap@^1
-  array.prototype.tosorted: npm:@nolyfill/array.prototype.tosorted@^1
-  assert: npm:@nolyfill/assert@^1
-  brace-expansion: ~2.0
+  array-includes: npm:@nolyfill/array-includes@^1.0.44
+  array.prototype.findlast: npm:@nolyfill/array.prototype.findlast@^1.0.44
+  array.prototype.findlastindex: npm:@nolyfill/array.prototype.findlastindex@^1.0.44
+  array.prototype.flat: npm:@nolyfill/array.prototype.flat@^1.0.44
+  array.prototype.flatmap: npm:@nolyfill/array.prototype.flatmap@^1.0.44
+  array.prototype.tosorted: npm:@nolyfill/array.prototype.tosorted@^1.0.44
+  assert: npm:@nolyfill/assert@^1.0.26
+  brace-expansion: ~2.0.2
   brace-expansion@<2.0.2: 2.0.2
-  canvas: ^3.2.0
+  canvas: ^3.2.1
   devalue@<5.3.2: 5.3.2
-  es-iterator-helpers: npm:@nolyfill/es-iterator-helpers@^1
+  es-iterator-helpers: npm:@nolyfill/es-iterator-helpers@^1.0.21
   esbuild@<0.27.2: 0.27.2
   glob@>=10.2.0,<10.5.0: 11.1.0
-  hasown: npm:@nolyfill/hasown@^1
-  is-arguments: npm:@nolyfill/is-arguments@^1
-  is-core-module: npm:@nolyfill/is-core-module@^1
-  is-generator-function: npm:@nolyfill/is-generator-function@^1
-  is-typed-array: npm:@nolyfill/is-typed-array@^1
-  isarray: npm:@nolyfill/isarray@^1
-  object.assign: npm:@nolyfill/object.assign@^1
-  object.entries: npm:@nolyfill/object.entries@^1
-  object.fromentries: npm:@nolyfill/object.fromentries@^1
-  object.groupby: npm:@nolyfill/object.groupby@^1
-  object.values: npm:@nolyfill/object.values@^1
-  pbkdf2: ~3.1.3
+  hasown: npm:@nolyfill/hasown@^1.0.44
+  is-arguments: npm:@nolyfill/is-arguments@^1.0.44
+  is-core-module: npm:@nolyfill/is-core-module@^1.0.39
+  is-generator-function: npm:@nolyfill/is-generator-function@^1.0.44
+  is-typed-array: npm:@nolyfill/is-typed-array@^1.0.44
+  isarray: npm:@nolyfill/isarray@^1.0.44
+  object.assign: npm:@nolyfill/object.assign@^1.0.44
+  object.entries: npm:@nolyfill/object.entries@^1.0.44
+  object.fromentries: npm:@nolyfill/object.fromentries@^1.0.44
+  object.groupby: npm:@nolyfill/object.groupby@^1.0.44
+  object.values: npm:@nolyfill/object.values@^1.0.44
+  pbkdf2: ~3.1.5
   pbkdf2@<3.1.3: 3.1.3
   prismjs: ~1.30
   prismjs@<1.30.0: 1.30.0
   safe-buffer: ^5.2.1
-  safe-regex-test: npm:@nolyfill/safe-regex-test@^1
-  safer-buffer: npm:@nolyfill/safer-buffer@^1
-  side-channel: npm:@nolyfill/side-channel@^1
+  safe-regex-test: npm:@nolyfill/safe-regex-test@^1.0.44
+  safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
+  side-channel: npm:@nolyfill/side-channel@^1.0.44
   solid-js: 1.9.11
-  string-width: ~4.2.3
-  string.prototype.includes: npm:@nolyfill/string.prototype.includes@^1
-  string.prototype.matchall: npm:@nolyfill/string.prototype.matchall@^1
-  string.prototype.repeat: npm:@nolyfill/string.prototype.repeat@^1
-  string.prototype.trimend: npm:@nolyfill/string.prototype.trimend@^1
-  typed-array-buffer: npm:@nolyfill/typed-array-buffer@^1
-  which-typed-array: npm:@nolyfill/which-typed-array@^1
+  string-width: ~8.2.0
+  string.prototype.includes: npm:@nolyfill/string.prototype.includes@^1.0.44
+  string.prototype.matchall: npm:@nolyfill/string.prototype.matchall@^1.0.44
+  string.prototype.repeat: npm:@nolyfill/string.prototype.repeat@^1.0.44
+  string.prototype.trimend: npm:@nolyfill/string.prototype.trimend@^1.0.44
+  typed-array-buffer: npm:@nolyfill/typed-array-buffer@^1.0.44
+  which-typed-array: npm:@nolyfill/which-typed-array@^1.0.44
 
 importers:
 
@@ -521,8 +521,8 @@ importers:
         specifier: 10.4.27
         version: 10.4.27(postcss@8.5.8)
       code-inspector-plugin:
-        specifier: 1.4.3
-        version: 1.4.3
+        specifier: 1.4.4
+        version: 1.4.4
       eslint:
         specifier: 10.0.3
         version: 10.0.3(jiti@1.21.7)
@@ -948,23 +948,23 @@ packages:
   '@clack/prompts@1.1.0':
     resolution: {integrity: sha512-pkqbPGtohJAvm4Dphs2M8xE29ggupihHdy1x84HNojZuMtFsHiUlRvqD24tM2+XmI+61LlfNceM3Wr7U5QES5g==}
 
-  '@code-inspector/core@1.4.3':
-    resolution: {integrity: sha512-byxpCCzzFPWoo2emh2QAIhC6KC0s4Kl2soE2ZJJRSGNS5M8jSuo9bg6/DkmB1iXDNSFnJ5SFT+YifThrAnEDyw==}
+  '@code-inspector/core@1.4.4':
+    resolution: {integrity: sha512-bQNcbiiTodOiVuJ9JQ/AgyArfc5rH9qexzDya3ugasIbUMfUNBPKCwoq6He4Y6/bwUx6mUqwTODwPtu13BR75Q==}
 
-  '@code-inspector/esbuild@1.4.3':
-    resolution: {integrity: sha512-QFPlslEMuHN0jJxLKAYOK+e1r6HmJg1Sz+gFTkE0/zkb7PWacOrQoNiICRlhLAVpI++nEtxb7OJulb19VmOW7w==}
+  '@code-inspector/esbuild@1.4.4':
+    resolution: {integrity: sha512-quGKHsPiFRIPMGOhtHhSQhqDAdvC5aGvKKk4EAhvNvZG1TGxt0nXu99+O0shHdl6TQhlq1NgmPyTWqGyVM5s6g==}
 
-  '@code-inspector/mako@1.4.3':
-    resolution: {integrity: sha512-eMEX6uSaZabzbWfK86PUjUszfDuvrJHhRiplpCIcufM4TBdnx+cxYD2+6A8ZJ6yZzwGEC+cSI39h/HrTw1DEYA==}
+  '@code-inspector/mako@1.4.4':
+    resolution: {integrity: sha512-SSs9oo3THS7vAFceAcICvVbbmaU9z6omwiXbCjIGhCxMvm7T6s/au4VHuOyU8Z3+floz+lDg/6W72VdBxWwVSg==}
 
-  '@code-inspector/turbopack@1.4.3':
-    resolution: {integrity: sha512-kd2SNhCIAs3HmeIfzAz6DqHzwTrSo3E89MEDqv+B0FV1KVhejx0RpgUvwDZQ70X3MD1wpjDf61zxB5i3TY3MNg==}
+  '@code-inspector/turbopack@1.4.4':
+    resolution: {integrity: sha512-ZK/sHPB4A+qcHXg+sR+0qCSFA2CYTfuPXaHC9GdnwwNdz6lhO3bkG7Ju0csKVxEp3LR8UVfMsKsRYbGSs8Ly8w==}
 
-  '@code-inspector/vite@1.4.3':
-    resolution: {integrity: sha512-ww3PUYQ1Cwuww5G38jacQcQf2CuctTYCerSHCBb9PT1lj45SbtuJlo2rWgPuopY4lYHh/qcKvsLrsx6sXOj0Tw==}
+  '@code-inspector/vite@1.4.4':
+    resolution: {integrity: sha512-UWnkaRTHwUDezKp1vXUrjr8Q93s91iYHbsyhfjOJGIiqBvmcaa3nqBlEAt7rzEi5hdaQVVeFdh+9q+4cVpK26A==}
 
-  '@code-inspector/webpack@1.4.3':
-    resolution: {integrity: sha512-5CtuFoK6IHfjKFrnUIhr3Z3FAQYgT/eR5eC0hVan+BwwTERLVjI3/5iKL+XKYt4diPrQ5v6PjRld5GkFeKpemQ==}
+  '@code-inspector/webpack@1.4.4':
+    resolution: {integrity: sha512-icYvkENomjUhlBXhYwkDFMtk62BPEWJCNsfYyHnQlGNJWW8SKuLU3AAbJQJMvA6Nmp++r9D/8xj1OJ2K1Y+/Dg==}
 
   '@csstools/color-helpers@6.0.2':
     resolution: {integrity: sha512-LMGQLS9EuADloEFkcTBR3BwV/CGHV7zyDxVRtVDTwdI2Ca4it0CCVTT9wCkxSgokjE5Ho41hEPgb8OEUwoXr6Q==}
@@ -1713,8 +1713,8 @@ packages:
   '@mermaid-js/parser@1.0.1':
     resolution: {integrity: sha512-opmV19kN1JsK0T6HhhokHpcVkqKpF+x2pPDKKM2ThHtZAB5F4PROopk0amuVYK5qMrIA4erzpNm8gmPNJgMDxQ==}
 
-  '@monaco-editor/loader@1.5.0':
-    resolution: {integrity: sha512-hKoGSM+7aAc7eRTRjpqAZucPmoNOC4UUbknb/VNoTkEIkCPhqV8LfbsgM1webRM7S/z21eHEx9Fkwx8Z/C/+Xw==}
+  '@monaco-editor/loader@1.7.0':
+    resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
 
   '@monaco-editor/react@4.7.0':
     resolution: {integrity: sha512-cyzXQCtO47ydzxpQtCGSQGOC8Gk3ZUeBXFAxD+CWXYFo5OqZyZUonFl0DwUlTyAfRHntBfw2p3w4s9R6oe1eCA==}
@@ -4033,8 +4033,8 @@ packages:
       react: ^18 || ^19 || ^19.0.0-rc
       react-dom: ^18 || ^19 || ^19.0.0-rc
 
-  code-inspector-plugin@1.4.3:
-    resolution: {integrity: sha512-93XPC0sNxWpiSPYYl4fsfN4WlgIXyOvXuv9p1IMbGLr1o59j1/AGeqLTX1KSQoGlrqoJqfEsA1lrDUQXSsgh/w==}
+  code-inspector-plugin@1.4.4:
+    resolution: {integrity: sha512-fdrSiP5jJ+FFLQmUyaF52xBB1yelJJtGdzr9wwFUJlbq5di4+rfyBHIzSrYgCTU5EAMrsRZ2eSnJb4zFa8Svvw==}
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -4476,9 +4476,6 @@ packages:
   emoji-regex-xs@2.0.1:
     resolution: {integrity: sha512-1QFuh8l7LqUcKe24LsPUNzjrzJQ7pgRwp1QMcZ5MX6mFplk2zQ08NVCM84++1cveaUUYtcCYHmeFEuNg16sU4g==}
     engines: {node: '>=10.0.0'}
-
-  emoji-regex@8.0.0:
-    resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
   empathic@2.0.0:
     resolution: {integrity: sha512-i6UzDscO/XfAcNYD75CfICkmfLedpyPDdozrLMmQc5ORaQcdMoc21OnlEylMIqI7U8eniKrPMxxtj8k0vhmJhA==}
@@ -5320,10 +5317,6 @@ packages:
     resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
     engines: {node: '>=0.10.0'}
 
-  is-fullwidth-code-point@3.0.0:
-    resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
-    engines: {node: '>=8'}
-
   is-fullwidth-code-point@5.1.0:
     resolution: {integrity: sha512-5XHYaSyiqADb4RnZ1Bdad6cPp8Toise4TzEjcOYDHZkTCbKgiUl7WTUCpNWHuxmDt91wnsZBc9xinNzopv3JMQ==}
     engines: {node: '>=18'}
@@ -5450,7 +5443,7 @@ packages:
     resolution: {integrity: sha512-0+MoQNYyr2rBHqO1xilltfDjV9G7ymYGlAUazgcDLQaUf8JDHbuGwsxN6U9qWaElZ4w1B2r7yEGIL3GdeW3Rug==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
     peerDependencies:
-      canvas: ^3.2.0
+      canvas: ^3.2.1
     peerDependenciesMeta:
       canvas:
         optional: true
@@ -6928,9 +6921,9 @@ packages:
   string-ts@2.3.1:
     resolution: {integrity: sha512-xSJq+BS52SaFFAVxuStmx6n5aYZU571uYUnUrPXkPFCfdHyZMMlbP2v2Wx5sNBnAVzq/2+0+mcBLBa3Xa5ubYw==}
 
-  string-width@4.2.3:
-    resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
-    engines: {node: '>=8'}
+  string-width@8.2.0:
+    resolution: {integrity: sha512-6hJPQ8N0V0P3SNmP6h2J99RLuzrWz2gvT7VnK5tKvrNqJoyS9W4/Fb8mo31UiPvy00z7DQXkP2hnKBVav76thw==}
+    engines: {node: '>=20'}
 
   string.prototype.codepointat@0.2.1:
     resolution: {integrity: sha512-2cBVCj6I4IOvEnjgO/hWqXjqBGsY+zwPmHl12Srk9IXSZ56Jwwmy+66XO5Iut/oQVR7t5ihYdLB0GMa4alEUcg==}
@@ -6940,10 +6933,6 @@ packages:
 
   stringify-entities@4.0.4:
     resolution: {integrity: sha512-IwfBptatlO+QCJUo19AqvrPNqlVMpW9YEL2LIVY+Rpv2qsjCGxaDLNRgeGsQWJhfItebuJhsGSLjaBbNSQ+ieg==}
-
-  strip-ansi@6.0.1:
-    resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
-    engines: {node: '>=8'}
 
   strip-ansi@7.2.0:
     resolution: {integrity: sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w==}
@@ -8302,45 +8291,45 @@ snapshots:
       '@clack/core': 1.1.0
       sisteransi: 1.0.5
 
-  '@code-inspector/core@1.4.3':
+  '@code-inspector/core@1.4.4':
     dependencies:
       '@vue/compiler-dom': 3.5.30
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
       launch-ide: 1.4.3
       portfinder: 1.0.38
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/esbuild@1.4.3':
+  '@code-inspector/esbuild@1.4.4':
     dependencies:
-      '@code-inspector/core': 1.4.3
+      '@code-inspector/core': 1.4.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/mako@1.4.3':
+  '@code-inspector/mako@1.4.4':
     dependencies:
-      '@code-inspector/core': 1.4.3
+      '@code-inspector/core': 1.4.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/turbopack@1.4.3':
+  '@code-inspector/turbopack@1.4.4':
     dependencies:
-      '@code-inspector/core': 1.4.3
-      '@code-inspector/webpack': 1.4.3
+      '@code-inspector/core': 1.4.4
+      '@code-inspector/webpack': 1.4.4
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/vite@1.4.3':
+  '@code-inspector/vite@1.4.4':
     dependencies:
-      '@code-inspector/core': 1.4.3
+      '@code-inspector/core': 1.4.4
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/webpack@1.4.3':
+  '@code-inspector/webpack@1.4.4':
     dependencies:
-      '@code-inspector/core': 1.4.3
+      '@code-inspector/core': 1.4.4
     transitivePeerDependencies:
       - supports-color
 
@@ -9152,13 +9141,13 @@ snapshots:
     dependencies:
       langium: 4.2.1
 
-  '@monaco-editor/loader@1.5.0':
+  '@monaco-editor/loader@1.7.0':
     dependencies:
       state-local: 1.0.7
 
   '@monaco-editor/react@4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@monaco-editor/loader': 1.5.0
+      '@monaco-editor/loader': 1.7.0
       monaco-editor: 0.55.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
@@ -11487,7 +11476,7 @@ snapshots:
   cli-truncate@5.2.0:
     dependencies:
       slice-ansi: 8.0.0
-      string-width: 4.2.3
+      string-width: 8.2.0
 
   client-only@0.0.1: {}
 
@@ -11507,14 +11496,14 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  code-inspector-plugin@1.4.3:
+  code-inspector-plugin@1.4.4:
     dependencies:
-      '@code-inspector/core': 1.4.3
-      '@code-inspector/esbuild': 1.4.3
-      '@code-inspector/mako': 1.4.3
-      '@code-inspector/turbopack': 1.4.3
-      '@code-inspector/vite': 1.4.3
-      '@code-inspector/webpack': 1.4.3
+      '@code-inspector/core': 1.4.4
+      '@code-inspector/esbuild': 1.4.4
+      '@code-inspector/mako': 1.4.4
+      '@code-inspector/turbopack': 1.4.4
+      '@code-inspector/vite': 1.4.4
+      '@code-inspector/webpack': 1.4.4
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
@@ -11954,8 +11943,6 @@ snapshots:
   emoji-mart@5.6.0: {}
 
   emoji-regex-xs@2.0.1: {}
-
-  emoji-regex@8.0.0: {}
 
   empathic@2.0.0: {}
 
@@ -13055,8 +13042,6 @@ snapshots:
 
   is-extglob@2.1.1: {}
 
-  is-fullwidth-code-point@3.0.0: {}
-
   is-fullwidth-code-point@5.1.0:
     dependencies:
       get-east-asian-width: 1.5.0
@@ -13263,7 +13248,7 @@ snapshots:
 
   launch-ide@1.4.3:
     dependencies:
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
 
   layout-base@1.0.2: {}
@@ -15123,11 +15108,10 @@ snapshots:
 
   string-ts@2.3.1: {}
 
-  string-width@4.2.3:
+  string-width@8.2.0:
     dependencies:
-      emoji-regex: 8.0.0
-      is-fullwidth-code-point: 3.0.0
-      strip-ansi: 6.0.1
+      get-east-asian-width: 1.5.0
+      strip-ansi: 7.2.0
 
   string.prototype.codepointat@0.2.1: {}
 
@@ -15140,10 +15124,6 @@ snapshots:
     dependencies:
       character-entities-html4: 2.1.0
       character-entities-legacy: 3.0.0
-
-  strip-ansi@6.0.1:
-    dependencies:
-      ansi-regex: 5.0.1
 
   strip-ansi@7.2.0:
     dependencies:
@@ -15882,7 +15862,7 @@ snapshots:
   wrap-ansi@9.0.2:
     dependencies:
       ansi-styles: 6.2.3
-      string-width: 4.2.3
+      string-width: 8.2.0
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
