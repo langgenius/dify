@@ -357,7 +357,6 @@
   "modelProvider.card.modelSupported": "{{modelName}} models are using these credits.",
   "modelProvider.card.noApiKeysDescription": "Add an API key to start using your own model credentials.",
   "modelProvider.card.noApiKeysFallback": "No API keys, using AI credits instead",
-  "modelProvider.card.noApiKeysFallbackDescription": "Please upgrade your plan or configure an API key",
   "modelProvider.card.noApiKeysTitle": "No API keys configured yet",
   "modelProvider.card.noAvailableUsage": "No available usage",
   "modelProvider.card.onTrial": "On Trial",

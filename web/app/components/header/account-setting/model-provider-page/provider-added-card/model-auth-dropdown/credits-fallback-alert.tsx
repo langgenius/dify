@@ -17,11 +17,11 @@ export default function CreditsFallbackAlert({ hasCredentials }: CreditsFallback
         <div className="text-text-primary system-sm-medium">
           {t(titleKey, { ns: 'common' })}
         </div>
-        <div className="text-text-tertiary system-xs-regular">
-          {t(hasCredentials
-            ? 'modelProvider.card.apiKeyUnavailableFallbackDescription'
-            : 'modelProvider.card.noApiKeysFallbackDescription', { ns: 'common' })}
-        </div>
+        {hasCredentials && (
+          <div className="text-text-tertiary system-xs-regular">
+            {t('modelProvider.card.apiKeyUnavailableFallbackDescription', { ns: 'common' })}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -13,6 +13,7 @@ import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
@@ -22,6 +23,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
+import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap, providerIconMap, providerKeyToPluginId } from '../utils'
 import PopupItem from './popup-item'
 
@@ -57,8 +59,16 @@ const Popup: FC<PopupProps> = ({
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
+  const { isExhausted: isCreditsExhausted } = useTrialCredits()
+  const showCreditsExhaustedAlert = useMemo(() => {
+    return isCreditsExhausted && modelProviders.some(p => p.system_configuration.enabled && IS_CLOUD_EDITION)
+  }, [isCreditsExhausted, modelProviders])
   const hasApiKeyFallback = useMemo(() => {
-    return modelProviders.some(p => p.custom_configuration?.status === CustomConfigurationStatusEnum.active)
+    return modelProviders.some((p) => {
+      const isApiKeyActive = p.custom_configuration?.status === CustomConfigurationStatusEnum.active
+      const supportsCredits = p.system_configuration.enabled && IS_CLOUD_EDITION
+      return isApiKeyActive && supportsCredits
+    })
   }, [modelProviders])
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
@@ -172,7 +182,9 @@ const Popup: FC<PopupProps> = ({
           }
         </div>
       </div>
-      <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+      {showCreditsExhaustedAlert && (
+        <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+      )}
       <div className="p-1">
         {
           filteredModelList.map(model => (
