@@ -200,6 +200,23 @@ class Graph:
 
         return GraphBuilder(graph_cls=cls)
 
+    @staticmethod
+    def _filter_canvas_only_nodes(node_configs: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
+        """
+        Remove editor-only nodes before `NodeConfigDict` validation.
+
+        Persisted note widgets use a top-level `type == "custom-note"` but leave
+        `data.type` empty because they are never executable graph nodes. Filter
+        them while configs are still raw dicts so Pydantic does not validate
+        their placeholder payloads against `BaseNodeData.type: NodeType`.
+        """
+        filtered_node_configs: list[dict[str, object]] = []
+        for node_config in node_configs:
+            if node_config.get("type", "") == "custom-note":
+                continue
+            filtered_node_configs.append(dict(node_config))
+        return filtered_node_configs
+
     @classmethod
     def _promote_fail_branch_nodes(cls, nodes: dict[str, Node]) -> None:
         """
@@ -299,12 +316,12 @@ class Graph:
         node_configs = graph_config.get("nodes", [])
 
         edge_configs = cast(list[dict[str, object]], edge_configs)
+        node_configs = cast(list[dict[str, object]], node_configs)
+        node_configs = cls._filter_canvas_only_nodes(node_configs)
         node_configs = _ListNodeConfigDict.validate_python(node_configs)
 
         if not node_configs:
             raise ValueError("Graph must have at least one node")
-
-        node_configs = [node_config for node_config in node_configs if node_config.get("type", "") != "custom-note"]
 
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)

@@ -183,3 +183,36 @@ def test_graph_validation_blocks_start_and_trigger_coexistence(
         Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     assert any(issue.code == "TRIGGER_START_NODE_CONFLICT" for issue in exc_info.value.issues)
+
+
+def test_graph_init_ignores_custom_note_nodes_before_node_data_validation(
+    graph_init_dependencies: tuple[_SimpleNodeFactory, dict[str, object]],
+) -> None:
+    node_factory, graph_config = graph_init_dependencies
+    graph_config["nodes"] = [
+        {
+            "id": "start",
+            "data": {"type": NodeType.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
+        {"id": "answer", "data": {"type": NodeType.ANSWER, "title": "Answer"}},
+        {
+            "id": "note",
+            "type": "custom-note",
+            "data": {
+                "type": "",
+                "title": "",
+                "desc": "",
+                "text": "{}",
+                "theme": "blue",
+            },
+        },
+    ]
+    graph_config["edges"] = [
+        {"source": "start", "target": "answer", "sourceHandle": "success"},
+    ]
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
+    assert graph.root_node.id == "start"
+    assert "answer" in graph.nodes
+    assert "note" not in graph.nodes
