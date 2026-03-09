@@ -94,9 +94,9 @@ def rag_pipeline_run_task(
                 for next_file_id in batch:
                     tenant_isolated_task_queue.set_task_waiting_time()
 
-                    file_id = (next_file_id.decode("utf-8")
-                               if isinstance(next_file_id, (bytes, bytearray))
-                               else next_file_id)
+                    file_id = (
+                        next_file_id.decode("utf-8") if isinstance(next_file_id, (bytes, bytearray)) else next_file_id
+                    )
 
                     jobs.append(
                         rag_pipeline_run_task.s(

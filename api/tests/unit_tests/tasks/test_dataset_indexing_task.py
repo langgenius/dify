@@ -115,6 +115,7 @@ def mock_db_session():
 
             # Dataset queries
             if model.__name__ == "Dataset":
+
                 def _dataset_first():
                     ds = session._shared_data.get("dataset")
                     if not ds:
@@ -139,6 +140,7 @@ def mock_db_session():
 
             # Document queries
             if model.__name__ == "Document":
+
                 def _apply_doc_filters(docs):
                     result = list(docs)
                     for key in ("id", "dataset_id"):

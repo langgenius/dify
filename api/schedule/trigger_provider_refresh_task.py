@@ -91,7 +91,8 @@ def trigger_provider_refresh() -> None:
 
             jobs = [
                 trigger_subscription_refresh.s(tenant_id=tenant_id, subscription_id=subscription_id)
-                for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired) if is_locked
+                for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired)
+                if is_locked
             ]
             result = group(jobs).apply_async()
             enqueued = len(jobs)
