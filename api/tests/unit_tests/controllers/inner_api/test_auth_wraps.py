@@ -214,7 +214,7 @@ class TestEnterpriseInnerApiUserAuth:
 
         # Act - use wrong signature
         with app.test_request_context(
-            headers={"Authorization": "DIFY user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
+            headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
         ):
             with patch.object(dify_config, "INNER_API", True):
                 result = protected_view()
@@ -246,46 +246,7 @@ class TestEnterpriseInnerApiUserAuth:
 
         # Act
         with app.test_request_context(
-            headers={"Authorization": f"DIFY {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
-        ):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch("controllers.inner_api.wraps.db.session.query") as mock_query:
-                    mock_query.return_value.where.return_value.first.return_value = mock_user
-                    result = protected_view()
-
-        # Assert
-        assert result == mock_user
-
-    def test_should_extract_user_id_with_bearer_prefix(self, app: Flask):
-        """Test that user ID is correctly extracted when Authorization has Bearer prefix.
-
-        For "Bearer DIFY user123:signature", the decorator strips the prefix
-        via split(" ")[-1] and extracts "user123" as the real user_id.
-        """
-        # Arrange
-        from base64 import b64encode
-        from hashlib import sha1
-        from hmac import new as hmac_new
-
-        @enterprise_inner_api_user_auth
-        def protected_view(**kwargs):
-            return kwargs.get("user")
-
-        user_id = "user123"
-        inner_api_key = "valid_key"
-        data_to_sign = f"DIFY {user_id}"
-        signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
-        valid_signature = b64encode(signature.digest()).decode("utf-8")
-
-        mock_user = MagicMock()
-        mock_user.id = user_id
-
-        # Act - Authorization header with "Bearer " prefix before DIFY
-        with app.test_request_context(
-            headers={
-                "Authorization": f"Bearer DIFY {user_id}:{valid_signature}",
-                "X-Inner-Api-Key": inner_api_key,
-            }
+            headers={"Authorization": f"Bearer {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
         ):
             with patch.object(dify_config, "INNER_API", True):
                 with patch("controllers.inner_api.wraps.db.session.query") as mock_query:
