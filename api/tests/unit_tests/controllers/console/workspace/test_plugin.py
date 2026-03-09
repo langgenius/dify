@@ -431,7 +431,7 @@ class TestPluginUploadFromBundleApi:
         method = unwrap(api.post)
 
         file = FileStorage(
-            stream=io.BytesIO(b"x" * 10**9),
+            stream=io.BytesIO(b"x"),
             filename="test.bundle",
             content_type="application/octet-stream",
         )
@@ -443,6 +443,7 @@ class TestPluginUploadFromBundleApi:
                 content_type="multipart/form-data",
             ),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
+            patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
         ):
             with pytest.raises(ValueError):
                 method(api)
