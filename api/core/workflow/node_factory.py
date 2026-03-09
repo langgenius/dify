@@ -167,7 +167,8 @@ class DifyNodeFactory(NodeFactory):
 
         :param node_config: node configuration dictionary containing type and other data
         :return: initialized Node instance
-        :raises ValueError: if node type is unknown or configuration is invalid
+        :raises ValueError: if node type is unknown or no implementation exists for the resolved version
+        :raises ValidationError: if node_config fails NodeConfigDict/BaseNodeData validation
         """
         typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
         node_id = typed_node_config["id"]
