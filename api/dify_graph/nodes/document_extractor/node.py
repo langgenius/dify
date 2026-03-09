@@ -83,7 +83,17 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
 
         value = variable.value
         inputs = {"variable_selector": variable_selector}
+        if isinstance(value, list):
+            value = list(filter(lambda x: x, value))
         process_data = {"documents": value if isinstance(value, list) else [value]}
+
+        if not value:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={"text": ArrayStringSegment(value=[])},
+            )
 
         try:
             if isinstance(value, list):
@@ -112,6 +122,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             else:
                 raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
         except DocumentExtractorError as e:
+            logger.warning(e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
