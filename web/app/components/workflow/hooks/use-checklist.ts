@@ -68,6 +68,8 @@ export type ChecklistItem = {
   errorMessage?: string
   canNavigate: boolean
   disableGoTo?: boolean
+  isPluginMissing?: boolean
+  pluginUniqueIdentifier?: string
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -212,6 +214,10 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             errorMessage,
             canNavigate: !isPluginMissing,
             disableGoTo: isPluginMissing,
+            isPluginMissing,
+            pluginUniqueIdentifier: isPluginMissing
+              ? (node.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
+              : undefined,
           })
         }
       }
