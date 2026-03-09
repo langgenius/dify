@@ -6554,9 +6554,6 @@
   "app/components/workflow/block-selector/tool/action-item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/block-selector/tool/tool-list-flat-view/list.tsx": {
@@ -6575,9 +6572,6 @@
   "app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
