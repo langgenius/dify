@@ -277,7 +277,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
         variable_pool = self.graph_runtime_state.variable_pool
         resolved_conditions: list[Condition] = []
-        for cond in (conditions.conditions or []):
+        for cond in conditions.conditions or []:
             value = cond.value
             if isinstance(value, str):
                 segment_group = variable_pool.convert_template(value)
