@@ -48,7 +48,7 @@ class NotificationApi(Resource):
         if not result.get("shouldShow"):
             return {"should_show": False, "notifications": []}, 200
 
-        lang = current_user.interface_language
+        lang = current_user.interface_language or _FALLBACK_LANG
 
         notifications = []
         for notification in result.get("notifications") or []:
