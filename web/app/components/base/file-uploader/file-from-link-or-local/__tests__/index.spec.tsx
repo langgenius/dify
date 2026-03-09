@@ -129,12 +129,10 @@ describe('FileFromLinkOrLocal', () => {
   it('should not submit when url is empty', () => {
     renderAndOpen({ showFromLink: true })
 
-    const okButton = screen.getByText(/operation\.ok/)
-    const buttonElement = okButton.closest('button')
-    if (buttonElement)
-      buttonElement.removeAttribute('disabled')
+    const buttonElement = screen.getByRole('button', { name: /operation\.ok/ }) as HTMLButtonElement
+    buttonElement.disabled = false
 
-    fireEvent.click(okButton)
+    fireEvent.click(buttonElement)
 
     expect(screen.queryByText(/fileUploader\.pasteFileLinkInvalid/)).not.toBeInTheDocument()
     expect(mockHandleLoadFileFromLink).not.toHaveBeenCalled()

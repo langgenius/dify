@@ -1,7 +1,8 @@
 import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as ReactI18next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useChatWithHistoryContext } from '../../context'
 import Header from '../index'
@@ -237,7 +238,9 @@ describe('Header Component', () => {
       expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
 
       const successCallback = handleRenameConversation.mock.calls[0][2].onSuccess
-      successCallback()
+      await act(async () => {
+        successCallback()
+      })
 
       await waitFor(() => {
         expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
@@ -268,7 +271,9 @@ describe('Header Component', () => {
       expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
 
       const successCallback = handleDeleteConversation.mock.calls[0][1].onSuccess
-      successCallback()
+      await act(async () => {
+        successCallback()
+      })
 
       await waitFor(() => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
@@ -294,6 +299,31 @@ describe('Header Component', () => {
       await waitFor(() => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
       })
+    })
+
+    it('should handle empty translated delete content via fallback', async () => {
+      const mockedTranslation = {
+        t: vi.fn((key: string, options?: { ns?: string }) => {
+          if (key === 'chat.deleteConversation.content')
+            return ''
+          return `${options?.ns}.${key}`
+        }),
+        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
+        ready: true,
+      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
+
+      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
+        sidebarCollapseState: true,
+      })
+
+      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.click(await screen.findByText('explore.sidebar.action.delete'))
+
+      expect(await screen.findByText('share.chat.deleteConversation.title')).toBeInTheDocument()
     })
   })
 
@@ -388,6 +418,22 @@ describe('Header Component', () => {
         sidebarCollapseState: false,
       })
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
+    })
+
+    it('should pass empty rename value when conversation name is undefined', async () => {
+      const mockConv = { id: 'conv-1' } as ConversationItem
+      const { container } = setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
+        sidebarCollapseState: true,
+      })
+
+      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      await userEvent.click(operationTrigger)
+      await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
+
+      const input = screen.getByRole('textbox') as HTMLInputElement
+      expect(input.value).toBe('')
     })
   })
 })
