@@ -1,12 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CredentialSelector from './credential-selector'
 
-// Mock components
 vi.mock('./authorized/credential-item', () => ({
-  default: ({ credential, onItemClick }: { credential: { credential_name: string }, onItemClick: (c: unknown) => void }) => (
-    <div data-testid="credential-item" onClick={() => onItemClick(credential)}>
+  default: ({ credential, onItemClick }: { credential: { credential_name: string }, onItemClick?: (c: unknown) => void }) => (
+    <button type="button" onClick={() => onItemClick?.(credential)}>
       {credential.credential_name}
-    </div>
+    </button>
   ),
 }))
 
@@ -17,22 +17,6 @@ vi.mock('@/app/components/header/indicator', () => ({
 vi.mock('@remixicon/react', () => ({
   RiAddLine: () => <div data-testid="add-icon" />,
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
-}))
-
-// Mock portal components
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode, open?: boolean }) => {
-    // We should only render children if open or if we want to test they are hidden
-    // The real component might handle this with CSS or conditional rendering.
-    // Let's use conditional rendering in the mock to avoid "multiple elements" errors.
-    return <div data-testid="portal-content">{children}</div>
-  },
 }))
 
 describe('CredentialSelector', () => {
@@ -46,7 +30,7 @@ describe('CredentialSelector', () => {
     vi.clearAllMocks()
   })
 
-  it('should render selected credential name', () => {
+  it('should render selected credential name when selectedCredential is provided', () => {
     render(
       <CredentialSelector
         selectedCredential={mockCredentials[0]}
@@ -55,12 +39,11 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    // Use getAllByText and take the first one (the one in the trigger)
-    expect(screen.getAllByText('Key 1')[0]).toBeInTheDocument()
+    expect(screen.getByText('Key 1')).toBeInTheDocument()
     expect(screen.getByTestId('indicator')).toBeInTheDocument()
   })
 
-  it('should render placeholder when no credential selected', () => {
+  it('should render placeholder when selectedCredential is missing', () => {
     render(
       <CredentialSelector
         credentials={mockCredentials}
@@ -71,7 +54,8 @@ describe('CredentialSelector', () => {
     expect(screen.getByText(/modelProvider.auth.selectModelCredential/)).toBeInTheDocument()
   })
 
-  it('should open portal on click', () => {
+  it('should call onSelect when a credential item is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         credentials={mockCredentials}
@@ -79,26 +63,14 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'true')
-    expect(screen.getAllByTestId('credential-item')).toHaveLength(2)
-  })
-
-  it('should call onSelect when a credential is clicked', () => {
-    render(
-      <CredentialSelector
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByText('Key 2'))
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    await user.click(screen.getByRole('button', { name: 'Key 2' }))
 
     expect(mockOnSelect).toHaveBeenCalledWith(mockCredentials[1])
   })
 
-  it('should call onSelect with add new credential data when clicking add button', () => {
+  it('should call onSelect with add-new payload when add action is clicked', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         credentials={mockCredentials}
@@ -106,8 +78,8 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByText(/modelProvider.auth.addNewModelCredential/))
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    await user.click(screen.getByText(/modelProvider.auth.addNewModelCredential/))
 
     expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
       credential_id: '__add_new_credential',
@@ -115,7 +87,8 @@ describe('CredentialSelector', () => {
     }))
   })
 
-  it('should not open portal when disabled', () => {
+  it('should not open options when disabled is true', async () => {
+    const user = userEvent.setup()
     render(
       <CredentialSelector
         disabled
@@ -124,7 +97,7 @@ describe('CredentialSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'false')
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    expect(screen.queryByRole('button', { name: 'Key 1' })).not.toBeInTheDocument()
   })
 })
