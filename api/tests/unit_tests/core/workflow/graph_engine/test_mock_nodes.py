@@ -75,6 +75,7 @@ class MockNodeMixin:
 
         # Provide default tool_file_manager_factory for ToolNode subclasses
         from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
 

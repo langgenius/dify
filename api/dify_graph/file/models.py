@@ -48,10 +48,10 @@ class ToolFile(BaseModel):
     id: UUID = Field(default_factory=uuid4, description="Unique identifier for the file")
     user_id: UUID = Field(..., description="ID of the user who owns this file")
     tenant_id: UUID = Field(..., description="ID of the tenant/organization")
-    conversation_id: Optional[UUID] = Field(None, description="ID of the associated conversation")
+    conversation_id: UUID | None = Field(None, description="ID of the associated conversation")
     file_key: str = Field(..., max_length=255, description="Storage key for the file")
     mimetype: str = Field(..., max_length=255, description="MIME type of the file")
-    original_url: Optional[str] = Field(
+    original_url: str | None = Field(
         None, max_length=2048, description="Original URL if file was fetched from external source"
     )
     name: str = Field(default="", max_length=255, description="Display name of the file")
