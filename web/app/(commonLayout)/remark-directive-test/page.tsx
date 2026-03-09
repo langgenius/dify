@@ -1,4 +1,5 @@
 'use client'
+import InSiteMessage from '@/app/components/app/in-site-message'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
 
 const markdown1 = `
@@ -39,19 +40,60 @@ Dify swag
 ::::
 `
 
+const inSiteMessageMain = `
+We’re speaking with technical teams to better understand:
+
+- How you discovered Dify
+- What resonated — and what didn’t
+- How we can improve the experience
+
+As a thank-you for your time:
+
+::::withIconCardList
+
+:::withIconCardItem {icon="https://assets.dify.ai/images/gift-card.png"}
+$100 Amazon gift card
+:::
+
+:::withIconCardItem {icon="https://assets.dify.ai/images/dify-swag.png"}
+Exclusive Dify swag
+:::
+
+::::
+`
+
 export default function RemarkDirectiveTestPage() {
   return (
     <main style={{ padding: 24 }}>
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
         remark-directive test page
       </h1>
-      <div className="markdown-body">
+      <div>
         <MarkdownWithDirective markdown={markdown1} />
       </div>
 
-      <div className="markdown-body !mt-5">
+      <div className="mt-5">
         <MarkdownWithDirective markdown={markdown2} />
       </div>
+
+      <InSiteMessage
+        title="Help Shape Dify"
+        subtitle="We’d love to hear how you evaluate and use Dify"
+        title_pic_url="https://www.figma.com/api/mcp/asset/ee1209b5-5df1-48a6-8052-ad4a2a08a653"
+        main={inSiteMessageMain}
+        actions={[
+          { type: 'default', text: 'Not now', action: 'close' },
+          {
+            type: 'primary',
+            text: 'Schedule 30-min Chat',
+            action: 'link',
+            data: {
+              href: 'https://dify.ai',
+              target: '_blank',
+            },
+          },
+        ]}
+      />
     </main>
   )
 }
