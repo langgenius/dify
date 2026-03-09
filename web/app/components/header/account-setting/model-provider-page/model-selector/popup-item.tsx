@@ -59,7 +59,7 @@ const PopupItem: FC<PopupItemProps> = ({
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
-  const currentProvider = modelProviders.find(provider => provider.provider === model.provider)!
+  const currentProvider = modelProviders.find(provider => provider.provider === model.provider)
   const handleSelect = (provider: string, modelItem: ModelItem) => {
     if (modelItem.status !== ModelStatusEnum.active)
       return
@@ -67,6 +67,8 @@ const PopupItem: FC<PopupItemProps> = ({
     onSelect(provider, modelItem)
   }
   const handleOpenModelModal = () => {
+    if (!currentProvider)
+      return
     setShowModelModal({
       payload: {
         currentProvider,
@@ -95,6 +97,9 @@ const PopupItem: FC<PopupItemProps> = ({
     setDropdownOpen(false)
     onHide()
   }, [onHide])
+
+  if (!currentProvider)
+    return null
 
   return (
     <div className="mb-1">

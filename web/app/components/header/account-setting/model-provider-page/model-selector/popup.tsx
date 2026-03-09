@@ -137,11 +137,11 @@ const Popup: FC<PopupProps> = ({
     }).filter(model => model.models.length > 0)
 
     if (defaultModel?.provider) {
-      const selectedIndex = filtered.findIndex(m => m.provider === defaultModel.provider)
-      if (selectedIndex > 0) {
-        const [selected] = filtered.splice(selectedIndex, 1)
-        filtered.unshift(selected)
-      }
+      filtered.sort((a, b) => {
+        const aSelected = a.provider === defaultModel.provider ? 0 : 1
+        const bSelected = b.provider === defaultModel.provider ? 0 : 1
+        return aSelected - bSelected
+      })
     }
 
     return filtered

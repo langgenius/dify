@@ -6,12 +6,12 @@ import { consoleQuery } from '@/service/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
-export function useChangeProviderPriority(provider: ModelProvider) {
+export function useChangeProviderPriority(provider: ModelProvider | undefined) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
-  const providerName = provider.provider
+  const providerName = provider?.provider ?? ''
 
   const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
     input: {
@@ -31,9 +31,9 @@ export function useChangeProviderPriority(provider: ModelProvider) {
           refetchType: 'none',
         })
         updateModelProviders()
-        provider.configurate_methods.forEach((method) => {
+        provider?.configurate_methods.forEach((method) => {
           if (method === ConfigurationMethodEnum.predefinedModel)
-            provider.supported_model_types.forEach(modelType => updateModelList(modelType))
+            provider?.supported_model_types.forEach(modelType => updateModelList(modelType))
         })
       },
       onError: () => {

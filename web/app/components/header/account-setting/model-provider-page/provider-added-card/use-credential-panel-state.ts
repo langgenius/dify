@@ -70,7 +70,7 @@ function deriveVariant(
   return 'api-required-add'
 }
 
-export function useCredentialPanelState(provider: ModelProvider): CredentialPanelState {
+export function useCredentialPanelState(provider: ModelProvider | undefined): CredentialPanelState {
   const { isExhausted, credits } = useTrialCredits()
   const {
     hasCredential,
@@ -78,10 +78,10 @@ export function useCredentialPanelState(provider: ModelProvider): CredentialPane
     current_credential_name,
   } = useCredentialStatus(provider)
 
-  const systemConfig = provider.system_configuration
-  const preferredType = provider.preferred_provider_type
+  const systemConfig = provider?.system_configuration
+  const preferredType = provider?.preferred_provider_type
 
-  const supportsCredits = systemConfig.enabled && IS_CLOUD_EDITION
+  const supportsCredits = !!systemConfig?.enabled && IS_CLOUD_EDITION
 
   const priority: UsagePriority = !supportsCredits
     ? 'apiKeyOnly'
