@@ -1,10 +1,10 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
-import { createWorkflowStore } from '../workflow'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
-  return createWorkflowStore({})
+  return createTestWorkflowStore()
 }
 
 function makeVar(overrides: Partial<VarInInspect> = {}): VarInInspect {

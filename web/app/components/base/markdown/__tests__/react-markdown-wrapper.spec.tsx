@@ -8,9 +8,9 @@ vi.mock('@/app/components/base/markdown-blocks', () => ({
   Link: ({ children, href }: { children?: ReactNode, href?: string }) => <a href={href}>{children}</a>,
   MarkdownButton: ({ children }: PropsWithChildren) => <button>{children}</button>,
   MarkdownForm: ({ children }: PropsWithChildren) => <form>{children}</form>,
-  Paragraph: ({ children }: PropsWithChildren) => <p>{children}</p>,
+  Paragraph: ({ children }: PropsWithChildren) => <p data-testid="paragraph">{children}</p>,
   PluginImg: ({ alt }: { alt?: string }) => <span data-testid="plugin-img">{alt}</span>,
-  PluginParagraph: ({ children }: PropsWithChildren) => <p>{children}</p>,
+  PluginParagraph: ({ children }: PropsWithChildren) => <p data-testid="plugin-paragraph">{children}</p>,
   ScriptBlock: () => null,
   ThinkBlock: ({ children }: PropsWithChildren) => <details>{children}</details>,
   VideoBlock: ({ children }: PropsWithChildren) => <div data-testid="video-block">{children}</div>,
@@ -104,6 +104,86 @@ describe('ReactMarkdownWrapper', () => {
       // Assert
       expect(screen.getByText('italic text')).toBeInTheDocument()
       expect(document.querySelector('em')).not.toBeNull()
+    })
+
+    it('should render standard Image component when pluginInfo is not provided', () => {
+      // Act
+      render(<ReactMarkdownWrapper latexContent="![standard-img](https://example.com/img.png)" />)
+
+      // Assert
+      expect(screen.getByTestId('img')).toBeInTheDocument()
+    })
+
+    it('should render a CodeBlock component for code markdown', async () => {
+      // Arrange
+      const content = '```javascript\nconsole.log("hello")\n```'
+
+      // Act
+      render(<ReactMarkdownWrapper latexContent={content} />)
+
+      // Assert
+      // We mocked code block to return <code>{children}</code>
+      const codeElement = await screen.findByText('console.log("hello")')
+      expect(codeElement).toBeInTheDocument()
+    })
+  })
+
+  describe('Plugin Info behavior', () => {
+    it('should render PluginImg and PluginParagraph when pluginInfo is provided', () => {
+      // Arrange
+      const content = 'This is a plugin paragraph\n\n![plugin-img](https://example.com/plugin.png)'
+      const pluginInfo = { pluginUniqueIdentifier: 'test-plugin', pluginId: 'plugin-1' }
+
+      // Act
+      render(<ReactMarkdownWrapper latexContent={content} pluginInfo={pluginInfo} />)
+
+      // Assert
+      expect(screen.getByTestId('plugin-img')).toBeInTheDocument()
+      expect(screen.queryByTestId('img')).toBeNull()
+
+      expect(screen.getAllByTestId('plugin-paragraph').length).toBeGreaterThan(0)
+      expect(screen.queryByTestId('paragraph')).toBeNull()
+    })
+  })
+
+  describe('Custom elements configuration', () => {
+    it('should use customComponents if provided', () => {
+      // Arrange
+      const customComponents = {
+        a: ({ children }: PropsWithChildren) => <a data-testid="custom-link">{children}</a>,
+      }
+
+      // Act
+      render(<ReactMarkdownWrapper latexContent="[link](https://example.com)" customComponents={customComponents} />)
+
+      // Assert
+      expect(screen.getByTestId('custom-link')).toBeInTheDocument()
+    })
+
+    it('should disallow customDisallowedElements', () => {
+      // Act - disallow strong (which is usually **bold**)
+      render(<ReactMarkdownWrapper latexContent="**bold**" customDisallowedElements={['strong']} />)
+
+      // Assert - strong element shouldn't be rendered (it will be stripped out)
+      expect(document.querySelector('strong')).toBeNull()
+    })
+  })
+
+  describe('Rehype AST modification', () => {
+    it('should remove ref attributes from elements', () => {
+      // Act
+      render(<ReactMarkdownWrapper latexContent={'<div ref="someRef">content</div>'} />)
+
+      // Assert - If ref isn't stripped, it gets passed to React DOM causing warnings, but here we just ensure content renders
+      expect(screen.getByText('content')).toBeInTheDocument()
+    })
+
+    it('should convert invalid tag names to text nodes', () => {
+      // Act - <custom-element> is invalid because it contains a hyphen
+      render(<ReactMarkdownWrapper latexContent="<custom-element>content</custom-element>" />)
+
+      // Assert - The AST node is changed to text with value `<custom-element`
+      expect(screen.getByText(/<custom-element/)).toBeInTheDocument()
     })
   })
 })

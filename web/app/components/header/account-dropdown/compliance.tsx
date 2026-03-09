@@ -46,9 +46,10 @@ function ComplianceDocActionVisual({
     return (
       <div
         aria-hidden
+        data-disabled={isPending || undefined}
         className={cn(
           'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
-          isPending && 'btn-disabled',
+          isPending && 'cursor-not-allowed',
         )}
       >
         <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
@@ -183,7 +184,7 @@ export default function Compliance() {
       <DropdownMenuSubContent
         popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
       >
-        <DropdownMenuGroup className="p-1">
+        <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
             label={t('compliance.soc2Type1', { ns: 'common' })}
