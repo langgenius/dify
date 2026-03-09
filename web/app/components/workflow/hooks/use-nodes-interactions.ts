@@ -1735,6 +1735,7 @@ export const useNodesInteractions = () => {
       const offsetX = currentPosition.x - x
       const offsetY = currentPosition.y - y
       let idMapping: Record<string, string> = {}
+      const pastedNodesMap: Record<string, Node> = {}
       const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
@@ -1794,7 +1795,21 @@ export const useNodesInteractions = () => {
           newLoopStartNode!.parentId = newNode.id;
           (newNode.data as LoopNodeType).start_node_id = newLoopStartNode!.id
 
-          newChildren = handleNodeLoopChildrenCopy(nodeToPaste.id, newNode.id)
+          const oldLoopStartNode = nodes.find(
+            n =>
+              n.parentId === nodeToPaste.id
+              && n.type === CUSTOM_LOOP_START_NODE,
+          )
+          idMapping[oldLoopStartNode!.id] = newLoopStartNode!.id
+
+          const { copyChildren, newIdMapping }
+            = handleNodeLoopChildrenCopy(
+              nodeToPaste.id,
+              newNode.id,
+              idMapping,
+            )
+          newChildren = copyChildren
+          idMapping = newIdMapping
           newChildren.forEach((child) => {
             newNode.data._children?.push({
               nodeId: child.id,
@@ -1839,18 +1854,31 @@ export const useNodesInteractions = () => {
           }
         }
 
+        idMapping[nodeToPaste.id] = newNode.id
         nodesToPaste.push(newNode)
+        pastedNodesMap[newNode.id] = newNode
 
-        if (newChildren.length)
+        if (newChildren.length) {
+          newChildren.forEach((child) => {
+            pastedNodesMap[child.id] = child
+          })
           nodesToPaste.push(...newChildren)
+        }
       })
 
-      // only handle edge when paste nested block
+      // Rebuild edges where both endpoints are part of the pasted set.
       edges.forEach((edge) => {
         const sourceId = idMapping[edge.source]
         const targetId = idMapping[edge.target]
 
         if (sourceId && targetId) {
+          const sourceNode = pastedNodesMap[sourceId]
+          const targetNode = pastedNodesMap[targetId]
+          const parentNode = sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId
+            ? pastedNodesMap[sourceNode.parentId] ?? nodes.find(n => n.id === sourceNode.parentId)
+            : null
+          const isInIteration = parentNode?.data.type === BlockEnum.Iteration
+          const isInLoop = parentNode?.data.type === BlockEnum.Loop
           const newEdge: Edge = {
             ...edge,
             id: `${sourceId}-${edge.sourceHandle}-${targetId}-${edge.targetHandle}`,
@@ -1858,8 +1886,19 @@ export const useNodesInteractions = () => {
             target: targetId,
             data: {
               ...edge.data,
+              isInIteration,
+              iteration_id: isInIteration ? parentNode?.id : undefined,
+              isInLoop,
+              loop_id: isInLoop ? parentNode?.id : undefined,
               _connectedNodeIsSelected: false,
             },
+            zIndex: parentNode
+              ? isInIteration
+                ? ITERATION_CHILDREN_Z_INDEX
+                : isInLoop
+                  ? LOOP_CHILDREN_Z_INDEX
+                  : 0
+              : 0,
           }
           edgesToPaste.push(newEdge)
         }
