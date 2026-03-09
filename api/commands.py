@@ -2668,3 +2668,77 @@ def clean_expired_messages(
         raise
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
+
+
+@click.command("export-app-messages", help="Export messages for an app to JSONL.GZ.")
+@click.option("--app-id", required=True, help="Application ID to export messages for.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option(
+    "--filename",
+    required=True,
+    help="Base filename (relative path). Do not include suffix like .jsonl.gz.",
+)
+@click.option("--use-cloud-storage", is_flag=True, default=False, help="Upload to cloud storage instead of local file.")
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for cursor pagination.")
+@click.option("--dry-run", is_flag=True, default=False, help="Scan only, print stats without writing any file.")
+def export_app_messages(
+    app_id: str,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+    filename: str,
+    use_cloud_storage: bool,
+    batch_size: int,
+    dry_run: bool,
+):
+    if start_from and start_from >= end_before:
+        raise click.UsageError("--start-from must be before --end-before.")
+
+    from services.retention.conversation.message_export_service import AppMessageExportService
+
+    try:
+        validated_filename = AppMessageExportService.validate_export_filename(filename)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--filename") from e
+
+    click.echo(click.style(f"export_app_messages: starting export for app {app_id}.", fg="green"))
+    start_at = time.perf_counter()
+
+    try:
+        service = AppMessageExportService(
+            app_id=app_id,
+            end_before=end_before,
+            filename=validated_filename,
+            start_from=start_from,
+            batch_size=batch_size,
+            use_cloud_storage=use_cloud_storage,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        elapsed = time.perf_counter() - start_at
+        click.echo(
+            click.style(
+                f"export_app_messages: completed in {elapsed:.2f}s\n"
+                f"  - Batches: {stats.batches}\n"
+                f"  - Total messages: {stats.total_messages}\n"
+                f"  - Messages with feedback: {stats.messages_with_feedback}\n"
+                f"  - Total feedbacks: {stats.total_feedbacks}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        elapsed = time.perf_counter() - start_at
+        logger.exception("export_app_messages failed")
+        click.echo(click.style(f"export_app_messages: failed after {elapsed:.2f}s - {e}", fg="red"))
+        raise
