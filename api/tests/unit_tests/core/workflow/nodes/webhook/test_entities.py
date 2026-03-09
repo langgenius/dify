@@ -251,6 +251,36 @@ def test_webhook_data_sequence_fields():
     assert len(data.headers) == 1  # Should still be 1
 
 
+def test_webhook_data_rejects_non_string_header_types():
+    """Headers should stay string-only because runtime does not coerce header values."""
+    for param_type in ["number", "boolean", "object", "array[string]", "file"]:
+        with pytest.raises(ValidationError):
+            WebhookData(
+                title="Test",
+                headers=[WebhookParameter(name="X-Test", type=param_type)],
+            )
+
+
+def test_webhook_data_limits_query_param_types_to_scalar_values():
+    """Query params only support scalar conversions in the current runtime."""
+    data = WebhookData(
+        title="Test",
+        params=[
+            WebhookParameter(name="count", type="number"),
+            WebhookParameter(name="enabled", type="boolean"),
+        ],
+    )
+    assert data.params[0].type == "number"
+    assert data.params[1].type == "boolean"
+
+    for param_type in ["object", "array[string]", "array[number]", "array[boolean]", "array[object]", "file"]:
+        with pytest.raises(ValidationError):
+            WebhookData(
+                title="Test",
+                params=[WebhookParameter(name="test", type=param_type)],
+            )
+
+
 def test_webhook_data_sync_mode():
     """Test WebhookData SyncMode nested enum."""
     # Test that SyncMode enum exists and has expected value
