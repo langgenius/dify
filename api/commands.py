@@ -1038,13 +1038,19 @@ def archive_workflow_runs(
     Archive workflow runs for paid plan tenants older than the specified days.
 
     This command archives the following tables to storage:
+    - workflow_runs
+    - workflow_app_logs
     - workflow_node_executions
     - workflow_node_execution_offload
     - workflow_pauses
     - workflow_pause_reasons
+    - human_input_forms
+    - human_input_form_deliveries
+    - human_input_form_recipients
+    - execution_extra_contents
     - workflow_trigger_logs
 
-    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
+    Note: archived tables stay in DB unless --delete-after-archive is provided.
     """
     from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
@@ -1153,10 +1159,16 @@ def restore_workflow_runs(
     Restore an archived workflow run from storage to the database.
 
     This restores the following tables:
+    - workflow_runs
+    - workflow_app_logs
     - workflow_node_executions
     - workflow_node_execution_offload
     - workflow_pauses
     - workflow_pause_reasons
+    - human_input_forms
+    - human_input_form_deliveries
+    - human_input_form_recipients
+    - execution_extra_contents
     - workflow_trigger_logs
     """
     from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore

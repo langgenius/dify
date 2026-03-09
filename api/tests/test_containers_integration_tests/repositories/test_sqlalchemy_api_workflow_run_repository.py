@@ -14,9 +14,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from dify_graph.entities import WorkflowExecution
 from dify_graph.entities.pause_reason import PauseReasonType
 from dify_graph.enums import WorkflowExecutionStatus
+from dify_graph.nodes.human_input.enums import (
+    DeliveryMethodType,
+    HumanInputFormKind,
+    HumanInputFormStatus,
+)
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.execution_extra_content import HumanInputContent
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
@@ -74,6 +81,22 @@ def _create_workflow_run(
 
 def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
     """Remove test-created DB rows and storage objects for a test scope."""
+
+    scope_run_ids = session.scalars(
+        select(WorkflowRun.id).where(
+            WorkflowRun.tenant_id == scope.tenant_id,
+            WorkflowRun.app_id == scope.app_id,
+        )
+    ).all()
+    if scope_run_ids:
+        session.execute(delete(HumanInputContent).where(HumanInputContent.workflow_run_id.in_(scope_run_ids)))
+        form_ids = session.scalars(
+            select(HumanInputForm.id).where(HumanInputForm.workflow_run_id.in_(scope_run_ids))
+        ).all()
+        if form_ids:
+            session.execute(delete(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids)))
+            session.execute(delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids)))
+            session.execute(delete(HumanInputForm).where(HumanInputForm.id.in_(form_ids)))
 
     pause_ids_subquery = select(WorkflowPause.id).where(WorkflowPause.workflow_id == scope.workflow_id)
     session.execute(delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids_subquery)))
@@ -208,25 +231,68 @@ class TestDeleteRunsWithRelated:
             type_=PauseReasonType.SCHEDULED_PAUSE,
             message="scheduled pause",
         )
-        db_session_with_containers.add_all([app_log, pause, pause_reason])
+        form = HumanInputForm(
+            id=str(uuid4()),
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=workflow_run.id,
+            form_kind=HumanInputFormKind.RUNTIME,
+            node_id="node-human-input",
+            form_definition='{"form_content":"Question","inputs":[],"user_actions":[]}',
+            rendered_content="Question",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=naive_utc_now() + timedelta(minutes=5),
+        )
+        delivery = HumanInputDelivery(
+            id=str(uuid4()),
+            form_id=form.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload='{"type":"console","internal":true}',
+        )
+        recipient = HumanInputFormRecipient(
+            id=str(uuid4()),
+            form_id=form.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload='{"TYPE":"console"}',
+            access_token=uuid4().hex,
+        )
+        extra_content = HumanInputContent(
+            id=str(uuid4()),
+            workflow_run_id=workflow_run.id,
+            message_id=None,
+            form_id=form.id,
+        )
+        db_session_with_containers.add_all([app_log, pause, pause_reason, form, delivery, recipient, extra_content])
         db_session_with_containers.commit()
 
         fake_trigger_repo = Mock()
         fake_trigger_repo.delete_by_run_ids.return_value = 3
+        fake_execution_extra_content_repo = Mock()
+        fake_execution_extra_content_repo.delete_by_workflow_run_ids.return_value = 1
+
+        def _delete_execution_extra_contents(session: Session, run_ids: list[str]) -> int:
+            return fake_execution_extra_content_repo.delete_by_workflow_run_ids(session, run_ids)
 
         counts = repository.delete_runs_with_related(
             [workflow_run],
             delete_node_executions=lambda session, runs: (2, 1),
             delete_trigger_logs=lambda session, run_ids: fake_trigger_repo.delete_by_run_ids(run_ids),
+            delete_execution_extra_contents=_delete_execution_extra_contents,
         )
 
         fake_trigger_repo.delete_by_run_ids.assert_called_once_with([workflow_run.id])
+        fake_execution_extra_content_repo.delete_by_workflow_run_ids.assert_called_once()
         assert counts["node_executions"] == 2
         assert counts["offloads"] == 1
         assert counts["trigger_logs"] == 3
         assert counts["app_logs"] == 1
         assert counts["pauses"] == 1
         assert counts["pause_reasons"] == 1
+        assert counts["human_input_forms"] == 1
+        assert counts["human_input_form_deliveries"] == 1
+        assert counts["human_input_form_recipients"] == 1
+        assert counts["execution_extra_contents"] == 1
         assert counts["runs"] == 1
         with Session(bind=db_session_with_containers.get_bind()) as verification_session:
             assert verification_session.get(WorkflowRun, workflow_run.id) is None
@@ -268,25 +334,68 @@ class TestCountRunsWithRelated:
             type_=PauseReasonType.SCHEDULED_PAUSE,
             message="scheduled pause",
         )
-        db_session_with_containers.add_all([app_log, pause, pause_reason])
+        form = HumanInputForm(
+            id=str(uuid4()),
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=workflow_run.id,
+            form_kind=HumanInputFormKind.RUNTIME,
+            node_id="node-human-input",
+            form_definition='{"form_content":"Question","inputs":[],"user_actions":[]}',
+            rendered_content="Question",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=naive_utc_now() + timedelta(minutes=5),
+        )
+        delivery = HumanInputDelivery(
+            id=str(uuid4()),
+            form_id=form.id,
+            delivery_method_type=DeliveryMethodType.WEBAPP,
+            channel_payload='{"type":"console","internal":true}',
+        )
+        recipient = HumanInputFormRecipient(
+            id=str(uuid4()),
+            form_id=form.id,
+            delivery_id=delivery.id,
+            recipient_type=RecipientType.CONSOLE,
+            recipient_payload='{"TYPE":"console"}',
+            access_token=uuid4().hex,
+        )
+        extra_content = HumanInputContent(
+            id=str(uuid4()),
+            workflow_run_id=workflow_run.id,
+            message_id=None,
+            form_id=form.id,
+        )
+        db_session_with_containers.add_all([app_log, pause, pause_reason, form, delivery, recipient, extra_content])
         db_session_with_containers.commit()
 
         fake_trigger_repo = Mock()
         fake_trigger_repo.count_by_run_ids.return_value = 3
+        fake_execution_extra_content_repo = Mock()
+        fake_execution_extra_content_repo.count_by_workflow_run_ids.return_value = 1
+
+        def _count_execution_extra_contents(session: Session, run_ids: list[str]) -> int:
+            return fake_execution_extra_content_repo.count_by_workflow_run_ids(session, run_ids)
 
         counts = repository.count_runs_with_related(
             [workflow_run],
             count_node_executions=lambda session, runs: (2, 1),
             count_trigger_logs=lambda session, run_ids: fake_trigger_repo.count_by_run_ids(run_ids),
+            count_execution_extra_contents=_count_execution_extra_contents,
         )
 
         fake_trigger_repo.count_by_run_ids.assert_called_once_with([workflow_run.id])
+        fake_execution_extra_content_repo.count_by_workflow_run_ids.assert_called_once()
         assert counts["node_executions"] == 2
         assert counts["offloads"] == 1
         assert counts["trigger_logs"] == 3
         assert counts["app_logs"] == 1
         assert counts["pauses"] == 1
         assert counts["pause_reasons"] == 1
+        assert counts["human_input_forms"] == 1
+        assert counts["human_input_form_deliveries"] == 1
+        assert counts["human_input_form_recipients"] == 1
+        assert counts["execution_extra_contents"] == 1
         assert counts["runs"] == 1
 
 

@@ -23,6 +23,7 @@ from models.model import (
 from models.web import SavedMessage
 from models.workflow import ConversationVariable, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 
 logger = logging.getLogger(__name__)
@@ -160,10 +161,17 @@ def _delete_batch(
                 trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(active_session)
                 return trigger_repo.delete_by_run_ids(run_ids)
 
+            def _delete_execution_extra_contents(active_session: Session, run_ids: Sequence[str]) -> int:
+                extra_content_repo = SQLAlchemyExecutionExtraContentRepository(
+                    session_maker=sessionmaker(bind=active_session.get_bind(), expire_on_commit=False)
+                )
+                return extra_content_repo.delete_by_workflow_run_ids(active_session, run_ids)
+
             workflow_run_repo.delete_runs_with_related(
                 workflow_runs,
                 delete_node_executions=_delete_node_executions,
                 delete_trigger_logs=_delete_trigger_logs,
+                delete_execution_extra_contents=_delete_execution_extra_contents,
             )
 
             return True
