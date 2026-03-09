@@ -130,9 +130,14 @@ describe('FileFromLinkOrLocal', () => {
     renderAndOpen({ showFromLink: true })
 
     const okButton = screen.getByText(/operation\.ok/)
+    const buttonElement = okButton.closest('button')
+    if (buttonElement)
+      buttonElement.removeAttribute('disabled')
+
     fireEvent.click(okButton)
 
     expect(screen.queryByText(/fileUploader\.pasteFileLinkInvalid/)).not.toBeInTheDocument()
+    expect(mockHandleLoadFileFromLink).not.toHaveBeenCalled()
   })
 
   it('should call handleLoadFileFromLink when valid URL is submitted', () => {

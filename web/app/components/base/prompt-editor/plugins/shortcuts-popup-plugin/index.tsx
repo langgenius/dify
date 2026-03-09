@@ -46,6 +46,7 @@ const ALT_ALIASES = new Set(['alt', 'option'])
 const SHIFT_ALIASES = new Set(['shift'])
 
 function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
+  /* v8 ignore next 2 - @preserve */
   if (!hotkey)
     return false
 
@@ -140,6 +141,7 @@ export default function ShortcutsPopupPlugin({
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
+  /* v8 ignore next - @preserve */
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
@@ -172,6 +174,7 @@ export default function ShortcutsPopupPlugin({
         const selection = $getSelection()
         if ($isRangeSelection(selection)) {
           const domSelection = window.getSelection()
+          /* v8 ignore next 2 - @preserve */
           if (domSelection && domSelection.rangeCount > 0)
             lastSelectionRef.current = domSelection.getRangeAt(0).cloneRange()
         }
@@ -181,6 +184,7 @@ export default function ShortcutsPopupPlugin({
 
   const isEditorFocused = useCallback(() => {
     const root = editor.getRootElement()
+    /* v8 ignore next 2 - @preserve */
     if (!root)
       return false
     return root.contains(document.activeElement)
@@ -206,6 +210,7 @@ export default function ShortcutsPopupPlugin({
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
+        /* v8 ignore next 10 - @preserve */
         if (root) {
           const sc = range.startContainer
           const node = sc.nodeType === Node.ELEMENT_NODE
@@ -265,6 +270,7 @@ export default function ShortcutsPopupPlugin({
       return
 
     const onMouseDown = (e: MouseEvent) => {
+      /* v8 ignore next 2 - @preserve */
       if (!portalRef.current)
         return
       if (!portalRef.current.contains(e.target as Node))

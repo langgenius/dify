@@ -185,6 +185,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   const handleSave = () => {
+    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled save button because click is prevented at DOM level. @preserve */
     if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
       return
 

@@ -317,6 +317,64 @@ describe('Header Component', () => {
       expect(titleEl).toHaveClass('system-md-semibold')
     })
 
+    it('should render app icon from URL when icon_url is provided', () => {
+      setup({
+        appData: {
+          ...mockAppData,
+          site: {
+            ...mockAppData.site,
+            icon_type: 'image',
+            icon_url: 'https://example.com/icon.png',
+          },
+        },
+      })
+      const img = screen.getByAltText('app icon')
+      expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
+    })
+
+    it('should handle undefined appData gracefully (optional chaining)', () => {
+      setup({ appData: null as unknown as AppData })
+      // Just verify it doesn't crash and renders the basic structure
+      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+    })
+
+    it('should handle missing name in conversation item', () => {
+      const mockConv = { id: 'conv-1', name: '' } as ConversationItem
+      setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
+        sidebarCollapseState: true,
+      })
+      // The separator is just a div with text content '/'
+      expect(screen.getByText('/')).toBeInTheDocument()
+    })
+
+    it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {
+      setup({
+        isResponding: true,
+        sidebarCollapseState: true,
+        currentConversationId: 'conv-1',
+      })
+
+      const buttons = screen.getAllByRole('button')
+      // Sidebar, NewChat, ResetChat (3)
+      const newChatBtn = buttons[1]
+      expect(newChatBtn).toBeDisabled()
+    })
+
+    it('should handle New Chat button state when currentConversationId is missing and isResponding is false', () => {
+      setup({
+        isResponding: false,
+        sidebarCollapseState: true,
+        currentConversationId: '',
+      })
+
+      const buttons = screen.getAllByRole('button')
+      // Sidebar, NewChat (2)
+      const newChatBtn = buttons[1]
+      expect(newChatBtn).toBeDisabled()
+    })
+
     it('should not render operation menu if conversation id is missing', () => {
       setup({ currentConversationId: '', sidebarCollapseState: true })
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
@@ -330,19 +388,6 @@ describe('Header Component', () => {
         sidebarCollapseState: false,
       })
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
-    })
-
-    it('should handle New Chat button disabled state when responding', () => {
-      setup({
-        isResponding: true,
-        sidebarCollapseState: true,
-        currentConversationId: undefined,
-      })
-
-      const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) = 2
-      const newChatBtn = buttons[1]
-      expect(newChatBtn).toBeDisabled()
     })
   })
 })

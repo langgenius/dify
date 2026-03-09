@@ -13,6 +13,8 @@ import {
   DELETE_CONTEXT_BLOCK_COMMAND,
 } from '../plugins/context-block'
 import { ContextBlockNode } from '../plugins/context-block/node'
+import { DELETE_HISTORY_BLOCK_COMMAND } from '../plugins/history-block'
+import { HistoryBlockNode } from '../plugins/history-block/node'
 import { DELETE_QUERY_BLOCK_COMMAND } from '../plugins/query-block'
 import { QueryBlockNode } from '../plugins/query-block/node'
 
@@ -189,6 +191,48 @@ describe('prompt-editor/hooks', () => {
       expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_CONTEXT_BLOCK_COMMAND, undefined)
     })
 
+    it('should dispatch delete command when unselected history block is focused', () => {
+      mockState.isSelected = false
+      mockState.selection = {
+        getNodes: () => [Object.create(HistoryBlockNode.prototype) as MockNode],
+        isNodeSelection: false,
+      }
+
+      render(
+        <SelectOrDeleteHarness
+          nodeKey="node-1"
+          command={DELETE_HISTORY_BLOCK_COMMAND}
+        />,
+      )
+
+      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
+      const handled = deleteHandler?.(new KeyboardEvent('keydown'))
+
+      expect(handled).toBe(false)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_HISTORY_BLOCK_COMMAND, undefined)
+    })
+
+    it('should dispatch delete command when unselected query block is focused', () => {
+      mockState.isSelected = false
+      mockState.selection = {
+        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
+        isNodeSelection: false,
+      }
+
+      render(
+        <SelectOrDeleteHarness
+          nodeKey="node-1"
+          command={DELETE_QUERY_BLOCK_COMMAND}
+        />,
+      )
+
+      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
+      const handled = deleteHandler?.(new KeyboardEvent('keydown'))
+
+      expect(handled).toBe(false)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_QUERY_BLOCK_COMMAND, undefined)
+    })
+
     it('should prevent default and remove selected decorator node on delete', () => {
       const remove = vi.fn()
       const preventDefault = vi.fn()
@@ -219,6 +263,68 @@ describe('prompt-editor/hooks', () => {
       expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_QUERY_BLOCK_COMMAND, undefined)
       expect(remove).toHaveBeenCalled()
     })
+
+    it('should remove selected decorator node without dispatching when command is undefined', () => {
+      const remove = vi.fn()
+      const preventDefault = vi.fn()
+      mockState.isSelected = true
+      mockState.selection = {
+        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
+        isNodeSelection: true,
+      }
+      mockState.node = { isDecorator: true, remove }
+
+      render(<SelectOrDeleteHarness nodeKey="node-1" />)
+
+      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
+      const handled = deleteHandler?.({ preventDefault } as unknown as KeyboardEvent)
+
+      expect(handled).toBe(true)
+      expect(remove).toHaveBeenCalled()
+      expect(mockState.editor.dispatchCommand).not.toHaveBeenCalled()
+    })
+
+    it('should return false when selected node is not a decorator node', () => {
+      const preventDefault = vi.fn()
+      mockState.isSelected = true
+      mockState.selection = {
+        getNodes: () => [Object.create(QueryBlockNode.prototype) as MockNode],
+        isNodeSelection: true,
+      }
+      mockState.node = { isDecorator: false, remove: vi.fn() }
+
+      render(
+        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />,
+      )
+
+      const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
+      const handled = deleteHandler?.({ preventDefault } as unknown as KeyboardEvent)
+      expect(handled).toBe(false)
+    })
+
+    it('should not select when metaKey is pressed on click', () => {
+      render(
+        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
+      )
+
+      const node = screen.getByTestId('select-or-delete-node')
+      node.dispatchEvent(new MouseEvent('click', { bubbles: true, metaKey: true }))
+
+      expect(mockState.clearSelection).not.toHaveBeenCalled()
+      expect(mockState.setSelected).not.toHaveBeenCalled()
+    })
+
+    it('should not select when ctrlKey is pressed on click', () => {
+      render(
+        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
+      )
+
+      const node = screen.getByTestId('select-or-delete-node')
+      node.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))
+
+      expect(mockState.clearSelection).not.toHaveBeenCalled()
+      expect(mockState.setSelected).not.toHaveBeenCalled()
+    })
   })
 
   // Trigger hook toggles dropdown/popup state from bound DOM element.
@@ -240,7 +346,7 @@ describe('prompt-editor/hooks', () => {
   // Lexical entity hook should register and cleanup transforms.
   describe('useLexicalTextEntity', () => {
     it('should register lexical text entity transforms and cleanup on unmount', () => {
-      class MockTargetNode {}
+      class MockTargetNode { }
       const getMatch: LexicalTextEntityGetMatch = vi.fn(() => null)
       const createNode: LexicalTextEntityCreateNode = vi.fn((textNode: TextNode) => textNode)
 
@@ -302,6 +408,14 @@ describe('prompt-editor/hooks', () => {
         maxLength: 2,
       }))
       expect(result.current('prefix @...', {} as LexicalEditor)).toBeNull()
+    })
+
+    it('should return null when text has no trigger character', () => {
+      const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
+        minLength: 1,
+        maxLength: 75,
+      }))
+      expect(result.current('no trigger here', {} as LexicalEditor)).toBeNull()
     })
   })
 })

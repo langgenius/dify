@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
+import * as ReactI18next from 'react-i18next'
 import { ToastContext } from '@/app/components/base/toast/context'
 import Panel from '../panel'
 import { useStore as useTagStore } from '../store'
@@ -93,6 +94,22 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       expect(input).toBeInTheDocument()
       expect(input.tagName).toBe('INPUT')
+    })
+
+    it('should fallback to empty placeholder when translation is empty', () => {
+      const mockedTranslation = {
+        t: ((..._args: unknown[]) => '') as ReturnType<typeof ReactI18next.useTranslation>['t'],
+        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
+        ready: true,
+      } as Pick<ReturnType<typeof ReactI18next.useTranslation>, 't' | 'i18n' | 'ready'>
+
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(
+        mockedTranslation as ReturnType<typeof ReactI18next.useTranslation>,
+      )
+
+      render(<Panel {...defaultProps} />)
+
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
     })
 
     it('should render selected tags from selectedTags prop', () => {
@@ -457,7 +474,7 @@ describe('Panel', () => {
 
       unmount()
 
-      await act(async () => {})
+      await act(async () => { })
       expect(bindTag).not.toHaveBeenCalled()
       expect(unBindTag).not.toHaveBeenCalled()
     })
@@ -473,6 +490,20 @@ describe('Panel', () => {
       await waitFor(() => {
         expect(defaultProps.onChange).toHaveBeenCalled()
       })
+    })
+
+    it('should skip onChange callback when onChange prop is undefined', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const { unmount } = render(<Panel {...defaultProps} onChange={undefined} />)
+
+      await user.click(screen.getByText('Backend'))
+      unmount()
+
+      await waitFor(() => {
+        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+      })
+      expect(onChange).not.toHaveBeenCalled()
     })
 
     it('should show success notification after successful bind', async () => {

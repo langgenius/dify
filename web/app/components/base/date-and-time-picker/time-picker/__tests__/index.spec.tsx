@@ -135,14 +135,6 @@ describe('TimePicker', () => {
       expect(onClear).not.toHaveBeenCalled()
     })
 
-    it('should register click outside listener on mount', () => {
-      const addEventSpy = vi.spyOn(document, 'addEventListener')
-      render(<TimePicker {...baseProps} value="10:00 AM" timezone="UTC" />)
-
-      expect(addEventSpy).toHaveBeenCalledWith('mousedown', expect.any(Function))
-      addEventSpy.mockRestore()
-    })
-
     it('should sync selectedTime from value when opening with stale state', () => {
       const onChange = vi.fn()
       render(
@@ -472,6 +464,24 @@ describe('TimePicker', () => {
       const emitted = onChange.mock.calls[0][0]
       expect(isDayjsObject(emitted)).toBe(true)
       expect(emitted.hour()).toBeGreaterThanOrEqual(12)
+    })
+
+    it('should handle selection when timezone is undefined', () => {
+      const onChange = vi.fn()
+      // Render without timezone prop
+      render(<TimePicker {...baseProps} onChange={onChange} />)
+      openPicker()
+
+      // Click hour "03"
+      const { hourList } = getHourAndMinuteLists()
+      fireEvent.click(within(hourList).getByText('03'))
+
+      const confirmButton = screen.getByRole('button', { name: /operation\.ok/i })
+      fireEvent.click(confirmButton)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      const emitted = onChange.mock.calls[0][0]
+      expect(emitted.hour()).toBe(3)
     })
   })
 

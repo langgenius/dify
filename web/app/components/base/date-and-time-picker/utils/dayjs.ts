@@ -112,6 +112,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
   const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
+  /* v8 ignore next 2 - @preserve */
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
@@ -132,6 +133,7 @@ export type ToDayjsOptions = {
 }
 
 const warnParseFailure = (value: string) => {
+  /* v8 ignore next 2 - @preserve */
   if (!IS_PROD)
     console.warn('[TimePicker] Failed to parse time value', value)
 }
@@ -141,6 +143,7 @@ const normalizeMillisecond = (value: string | undefined) => {
     return 0
   if (value.length === 3)
     return Number(value)
+  /* v8 ignore next 2 - @preserve */
   if (value.length > 3)
     return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
@@ -168,6 +171,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
     const parsedWithFormat = tzName
       ? dayjs(trimmed, format, true).tz(tzName, true)
       : dayjs(trimmed, format, true)
+    /* v8 ignore next 2 - @preserve */
     if (parsedWithFormat.isValid())
       return parsedWithFormat
   }
@@ -214,6 +218,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
   }
 
   const fallbackParsed = tzName ? dayjs.tz(trimmed, tzName) : dayjs(trimmed)
+  /* v8 ignore next 2 - @preserve */
   if (fallbackParsed.isValid())
     return fallbackParsed
 

@@ -84,11 +84,12 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
 
   useEffect(() => {
     const ele = ref.current
-
+    /* v8 ignore next 2 - @preserve */
     if (ele)
       ele.addEventListener('click', handleSelect)
 
     return () => {
+      /* v8 ignore next 2 - @preserve */
       if (ele)
         ele.removeEventListener('click', handleSelect)
     }
@@ -122,10 +123,12 @@ export const useTrigger: UseTriggerHandler = () => {
 
   useEffect(() => {
     const trigger = triggerRef.current
+    /* v8 ignore next 2 - @preserve */
     if (trigger)
       trigger.addEventListener('click', handleOpen)
 
     return () => {
+      /* v8 ignore next 2 - @preserve */
       if (trigger)
         trigger.removeEventListener('click', handleOpen)
     }

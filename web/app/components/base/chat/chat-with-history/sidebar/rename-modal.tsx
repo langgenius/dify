@@ -24,6 +24,8 @@ const RenameModal: FC<IRenameModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [tempName, setTempName] = useState(name)
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. */
+  const conversationNamePlaceholder = t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''
 
   return (
     <Modal
@@ -36,7 +38,7 @@ const RenameModal: FC<IRenameModalProps> = ({
         className="mt-2 h-10 w-full"
         value={tempName}
         onChange={e => setTempName(e.target.value)}
-        placeholder={t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''}
+        placeholder={conversationNamePlaceholder}
       />
 
       <div className="mt-10 flex justify-end">
