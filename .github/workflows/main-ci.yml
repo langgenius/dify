@@ -39,6 +39,7 @@ jobs:
             web:
               - 'web/**'
               - '.github/workflows/web-tests.yml'
+              - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'docker/**'

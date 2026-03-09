@@ -30,21 +30,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
 
       - name: Run tests
         run: pnpm vitest run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
@@ -74,21 +61,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
 
       - name: Download blob reports
         uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
@@ -446,25 +420,11 @@ jobs:
           files: |
             web/**
             .github/workflows/web-tests.yml
+            .github/actions/setup-web/**
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - name: Setup web environment
         if: steps.changed-files.outputs.any_changed == 'true'
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Web dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: pnpm install --frozen-lockfile
+        uses: ./.github/actions/setup-web
 
       - name: Web build check
         if: steps.changed-files.outputs.any_changed == 'true'
