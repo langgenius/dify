@@ -50,7 +50,8 @@ const createMockEmblaApi = (): MockEmblaApi => ({
   }),
 })
 
-const emitEmblaEvent = (event: EmblaEventName, api: MockEmblaApi | undefined = mockApi) => {
+const emitEmblaEvent = (event: EmblaEventName, ...args: [MockEmblaApi | undefined] | []) => {
+  const api = args.length > 0 ? args[0] : mockApi
   listeners[event].forEach((callback) => {
     callback(api)
   })
@@ -130,6 +131,24 @@ describe('Carousel', () => {
         undefined,
       )
       expect(screen.getByTestId('carousel-content')).toHaveClass('flex-col')
+    })
+  })
+
+  // Ref API exposes embla and controls.
+  describe('Ref API', () => {
+    it('should expose carousel API and controls via ref', () => {
+      type CarouselRef = { api: unknown, selectedIndex: number }
+      const ref = { current: null as CarouselRef | null }
+
+      render(
+        <Carousel ref={(r) => { ref.current = r as unknown as CarouselRef }}>
+          <Carousel.Content />
+        </Carousel>,
+      )
+
+      expect(ref.current).toBeDefined()
+      expect(ref.current?.api).toBe(mockApi)
+      expect(ref.current?.selectedIndex).toBe(0)
     })
   })
 
