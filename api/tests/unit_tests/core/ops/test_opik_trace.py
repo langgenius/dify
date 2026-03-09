@@ -13,8 +13,6 @@ import uuid
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.ops.entities.trace_entity import TraceTaskName, WorkflowTraceInfo
 from core.ops.opik_trace.opik_trace import OpikDataTrace, _seed_to_uuid4, prepare_opik_uuid
 
@@ -173,6 +171,14 @@ class TestWorkflowTraceWithoutMessageId:
         root_span_kwargs = instance.add_span.call_args_list[0][0][0]
         assert root_span_kwargs["parent_span_id"] is None
 
+    def test_trace_name_is_workflow_trace(self):
+        """Without message_id, the Opik trace itself should be named WORKFLOW_TRACE."""
+        trace_info = _make_workflow_trace_info(message_id=None)
+        instance = self._run(trace_info)
+
+        trace_kwargs = instance.add_trace.call_args_list[0][0][0]
+        assert trace_kwargs["name"] == TraceTaskName.WORKFLOW_TRACE
+
     def test_root_span_name_is_workflow_trace(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
@@ -271,6 +277,14 @@ class TestWorkflowTraceWithMessageId:
             instance.workflow_trace(trace_info)
 
         return instance
+
+    def test_trace_name_is_message_trace(self):
+        """With message_id, the Opik trace should be named MESSAGE_TRACE."""
+        trace_info = _make_workflow_trace_info(message_id=self._MESSAGE_ID)
+        instance = self._run(trace_info)
+
+        trace_kwargs = instance.add_trace.call_args_list[0][0][0]
+        assert trace_kwargs["name"] == TraceTaskName.MESSAGE_TRACE
 
     def test_root_span_uses_workflow_run_id_directly(self):
         """When message_id is set, root_span_id = prepare_opik_uuid(start_time, workflow_run_id)."""
