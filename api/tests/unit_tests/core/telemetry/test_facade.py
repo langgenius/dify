@@ -54,7 +54,7 @@ def telemetry_test_setup(monkeypatch):
 
 class TestTelemetryEmit:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_enterprise_trace_creates_trace_task(self, _mock_ee, telemetry_test_setup):
+    def test_emit_enterprise_trace_creates_trace_task(self, mock_ee, telemetry_test_setup):
         emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
@@ -108,7 +108,7 @@ class TestTelemetryEmit:
         mock_queue.put.assert_not_called()
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_all_enterprise_only_traces_allowed_when_ee_enabled(self, _mock_ee, telemetry_test_setup):
+    def test_emit_all_enterprise_only_traces_allowed_when_ee_enabled(self, mock_ee, telemetry_test_setup):
         emit_fn, mock_queue = telemetry_test_setup
 
         enterprise_only_traces = [
@@ -137,7 +137,7 @@ class TestTelemetryEmit:
             assert called_task.trace_type == trace_name
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_passes_name_directly_to_trace_task(self, _mock_ee, telemetry_test_setup):
+    def test_emit_passes_name_directly_to_trace_task(self, mock_ee, telemetry_test_setup):
         emit_fn, mock_queue = telemetry_test_setup
 
         event = TelemetryEvent(
@@ -158,7 +158,7 @@ class TestTelemetryEmit:
         assert isinstance(called_task.trace_type, TraceTaskName)
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_with_provided_trace_manager(self, _mock_ee, telemetry_test_setup):
+    def test_emit_with_provided_trace_manager(self, mock_ee, telemetry_test_setup):
         emit_fn, mock_queue = telemetry_test_setup
 
         mock_trace_manager = MagicMock()

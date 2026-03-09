@@ -97,7 +97,7 @@ class TestGatewayTraceRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_trace_case_routes_to_trace_manager(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
@@ -111,7 +111,7 @@ class TestGatewayTraceRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
     def test_ce_eligible_trace_enqueued_when_ee_disabled(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
@@ -125,7 +125,7 @@ class TestGatewayTraceRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False)
     def test_enterprise_only_trace_dropped_when_ee_disabled(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
@@ -139,7 +139,7 @@ class TestGatewayTraceRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_enterprise_only_trace_enqueued_when_ee_enabled(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
         mock_trace_manager: MagicMock,
         mock_ops_trace_manager: tuple[MagicMock, MagicMock],
     ) -> None:
@@ -157,7 +157,7 @@ class TestGatewayMetricLogRouting:
     def test_metric_case_routes_to_celery_task(
         self,
         mock_delay: MagicMock,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc", "name": "My App"}
@@ -176,7 +176,7 @@ class TestGatewayMetricLogRouting:
     def test_envelope_has_unique_event_id(
         self,
         mock_delay: MagicMock,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc"}
@@ -196,7 +196,7 @@ class TestGatewayPayloadSizing:
     def test_small_payload_inlined(
         self,
         mock_delay: MagicMock,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         payload = {"key": "small_value"}
@@ -215,7 +215,7 @@ class TestGatewayPayloadSizing:
         self,
         mock_delay: MagicMock,
         mock_storage: MagicMock,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         context = {"tenant_id": "tenant-123"}
         large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
@@ -240,7 +240,7 @@ class TestGatewayPayloadSizing:
         self,
         mock_delay: MagicMock,
         mock_storage: MagicMock,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         mock_storage.save.side_effect = Exception("Storage failure")
         context = {"tenant_id": "tenant-123"}

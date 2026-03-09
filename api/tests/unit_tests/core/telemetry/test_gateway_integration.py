@@ -98,7 +98,7 @@ class TestGatewayIntegrationMetricRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_metric_case_routes_to_celery_task(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         from enterprise.telemetry.contracts import TelemetryEnvelope
 
@@ -119,7 +119,7 @@ class TestGatewayIntegrationMetricRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_tool_execution_trace_routed(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         mock_trace_manager = MagicMock()
         context = {"tenant_id": "tenant-123", "app_id": "app-123"}
@@ -133,7 +133,7 @@ class TestGatewayIntegrationMetricRouting:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
     def test_moderation_check_trace_routed(
         self,
-        _mock_ee_enabled: MagicMock,
+        mock_ee_enabled: MagicMock,
     ) -> None:
         mock_trace_manager = MagicMock()
         context = {"tenant_id": "tenant-123", "app_id": "app-123"}
