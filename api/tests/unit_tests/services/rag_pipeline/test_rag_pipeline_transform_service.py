@@ -264,7 +264,11 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
 
     result = service._deal_knowledge_index(
-        knowledge_configuration, dataset, "high_quality", retrieval_model, node  # type: ignore
+        knowledge_configuration,
+        dataset,
+        "high_quality",
+        retrieval_model,
+        node,  # type: ignore
     )
 
     assert result["data"]["embedding_model"] == "text-embedding-ada-002"
