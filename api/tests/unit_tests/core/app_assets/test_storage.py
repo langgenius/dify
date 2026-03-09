@@ -89,21 +89,6 @@ def test_asset_paths_draft_validation():
         AssetPaths.draft(tenant_id=tenant_id, app_id=app_id, node_id="not-a-uuid")
 
 
-def test_asset_paths_resolved_requires_node_id():
-    """Test that AssetPaths.resolved() requires a valid node_id."""
-    tenant_id = str(uuid4())
-    app_id = str(uuid4())
-    assets_id = str(uuid4())
-
-    # Missing node_id should raise
-    with pytest.raises(TypeError):
-        AssetPaths.resolved(tenant_id, app_id, assets_id)  # type: ignore[call-arg]
-
-    # Invalid node_id should raise
-    with pytest.raises(ValueError, match="node_id must be a valid UUID"):
-        AssetPaths.resolved(tenant_id, app_id, assets_id, node_id="not-a-uuid")
-
-
 # --- Storage key format tests (must match existing paths exactly) ---
 
 

@@ -13,6 +13,7 @@ from core.app.entities.app_asset_entities import (
     TreeParentNotFoundError,
     TreePathConflictError,
 )
+from core.app_assets.accessor import CachedContentAccessor
 from core.app_assets.entities.assets import AssetItem
 from core.app_assets.storage import AssetPaths
 from extensions.ext_database import db
@@ -22,6 +23,7 @@ from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
 from models.app_asset import AppAssets
 from models.model import App
+from services.asset_content_service import AssetContentService
 
 from .errors.app_asset import (
     AppAssetNodeNotFoundError,
@@ -208,6 +210,11 @@ class AppAssetService:
             return node
 
     @staticmethod
+    def get_accessor(tenant_id: str, app_id: str) -> CachedContentAccessor:
+        """Get a content accessor with DB caching for the given app."""
+        return CachedContentAccessor(AppAssetService.get_storage(), tenant_id, app_id)
+
+    @staticmethod
     def get_file_content(app_model: App, account_id: str, node_id: str) -> bytes:
         with Session(db.engine) as session:
             assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
@@ -221,9 +228,8 @@ class AppAssetService:
                 max_size_mb = AppAssetService.MAX_PREVIEW_CONTENT_SIZE / 1024 / 1024
                 raise AppAssetNodeTooLargeError(f"File node {node_id} size exceeded the limit: {max_size_mb} MB")
 
-            asset_storage = AppAssetService.get_storage()
-            key = AssetPaths.draft(app_model.tenant_id, app_model.id, node_id)
-            return asset_storage.load_once(key)
+            accessor = AppAssetService.get_accessor(app_model.tenant_id, app_model.id)
+            return accessor.load(node)
 
     @staticmethod
     def update_file_content(
@@ -242,9 +248,8 @@ class AppAssetService:
                 except TreeNodeNotFoundError as e:
                     raise AppAssetNodeNotFoundError(str(e)) from e
 
-                asset_storage = AppAssetService.get_storage()
-                key = AssetPaths.draft(app_model.tenant_id, app_model.id, node_id)
-                asset_storage.save(key, content)
+                accessor = AppAssetService.get_accessor(app_model.tenant_id, app_model.id)
+                accessor.save(node, content)
 
                 assets.asset_tree = tree
                 assets.updated_by = account_id
@@ -340,8 +345,9 @@ class AppAssetService:
                 assets.updated_by = account_id
                 session.commit()
 
-        # FIXME(Mairuis): sync deletion queue, failed is fine
-        def _delete_file_from_storage(tenant_id: str, app_id: str, node_ids: list[str]) -> None:
+        # Delete from both DB cache and S3 in background; failures are non-fatal.
+        def _delete_files(tenant_id: str, app_id: str, node_ids: list[str]) -> None:
+            AssetContentService.delete_many(tenant_id, app_id, node_ids)
             asset_storage = AppAssetService.get_storage()
             for nid in node_ids:
                 key = AssetPaths.draft(tenant_id, app_id, nid)
@@ -350,9 +356,7 @@ class AppAssetService:
                 except Exception:
                     logger.warning("Failed to delete storage file %s", key, exc_info=True)
 
-        threading.Thread(
-            target=lambda: _delete_file_from_storage(app_model.tenant_id, app_model.id, removed_ids)
-        ).start()
+        threading.Thread(target=lambda: _delete_files(app_model.tenant_id, app_model.id, removed_ids)).start()
 
     @staticmethod
     def get_file_download_url(
@@ -469,17 +473,13 @@ class AppAssetService:
                 tree = assets.asset_tree
 
                 taken_by_parent: dict[str | None, set[str]] = {}
-                stack: list[tuple[BatchUploadNode, str | None]] = [
-                    (child, None) for child in reversed(input_children)
-                ]
+                stack: list[tuple[BatchUploadNode, str | None]] = [(child, None) for child in reversed(input_children)]
                 while stack:
                     node, parent_id = stack.pop()
                     if node.id is None:
                         node.id = str(uuid4())
                     if parent_id not in taken_by_parent:
-                        taken_by_parent[parent_id] = {
-                            child.name for child in tree.get_children(parent_id)
-                        }
+                        taken_by_parent[parent_id] = {child.name for child in tree.get_children(parent_id)}
                     taken = taken_by_parent[parent_id]
                     unique_name = tree.ensure_unique_name(
                         parent_id,

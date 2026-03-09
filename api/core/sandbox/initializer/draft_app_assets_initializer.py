@@ -1,5 +1,6 @@
 import logging
 
+from core.app_assets.accessor import should_mirror
 from core.app_assets.constants import AppAssetsAttrs
 from core.app_assets.storage import AssetPaths
 from core.sandbox.entities import AppAssets
@@ -30,10 +31,10 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         nodes = list(tree.walk_files())
         if not nodes:
             return
-        # FIXME(Mairuis): should be more graceful
+        # Inline-mirror nodes use the resolved (compiled) key; others use draft.
         keys = [
             AssetPaths.resolved(self._tenant_id, self._app_id, build_id, node.id)
-            if node.extension == "md"
+            if should_mirror(node.extension)
             else AssetPaths.draft(self._tenant_id, self._app_id, node.id)
             for node in nodes
         ]

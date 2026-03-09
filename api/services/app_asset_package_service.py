@@ -158,8 +158,10 @@ class AppAssetPackageService:
         session.flush()
 
         asset_storage = AppAssetService.get_storage()
+        accessor = AppAssetService.get_accessor(tenant_id, app_id)
+        pipeline = AssetBuildPipeline([SkillBuilder(accessor=accessor, storage=asset_storage), FileBuilder()])
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
-        built_assets = AssetBuildPipeline([SkillBuilder(storage=asset_storage), FileBuilder()]).build_all(tree, ctx)
+        built_assets = pipeline.build_all(tree, ctx)
 
         runtime_zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
         runtime_upload_url = asset_storage.get_upload_url(runtime_zip_key)
@@ -194,10 +196,10 @@ class AppAssetPackageService:
         tree = assets.asset_tree
 
         asset_storage = AppAssetService.get_storage()
+        accessor = AppAssetService.get_accessor(tenant_id, app_id)
+        pipeline = AssetBuildPipeline([SkillBuilder(accessor=accessor, storage=asset_storage), FileBuilder()])
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
-        built_assets: list[AssetItem] = AssetBuildPipeline(
-            [SkillBuilder(storage=asset_storage), FileBuilder()]
-        ).build_all(tree, ctx)
+        built_assets: list[AssetItem] = pipeline.build_all(tree, ctx)
 
         user_id = getattr(assets, "updated_by", None) or getattr(assets, "created_by", None) or "system"
         key = AssetPaths.build_zip(tenant_id, app_id, assets.id)

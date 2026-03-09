@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.app.entities.app_asset_entities import AppAssetFileTree
@@ -49,3 +49,41 @@ class AppAssets(Base):
 
     def __repr__(self) -> str:
         return f"<AppAssets(id={self.id}, app_id={self.app_id}, version={self.version})>"
+
+
+class AppAssetContent(Base):
+    """Inline content cache for app asset draft files.
+
+    Acts as a read-through cache for S3: text-like asset content is dual-written
+    here on save and read from DB first (falling back to S3 on miss with sync backfill).
+    Keyed by (tenant_id, app_id, node_id) — stores only the current draft content,
+    not published snapshots.
+
+    See core/app_assets/content_accessor.py for the accessor abstraction that
+    manages the DB/S3 read-through and dual-write logic.
+    """
+
+    __tablename__ = "app_asset_contents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_asset_contents_pkey"),
+        sa.UniqueConstraint("tenant_id", "app_id", "node_id", name="uq_asset_content_node"),
+        sa.Index("idx_asset_content_app", "tenant_id", "app_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    node_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    content: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=func.current_timestamp(),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AppAssetContent(id={self.id}, node_id={self.node_id})>"

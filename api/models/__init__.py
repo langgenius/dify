@@ -9,7 +9,7 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from .app_asset import AppAssets
+from .app_asset import AppAssetContent, AppAssets
 from .comment import (
     WorkflowComment,
     WorkflowCommentMention,
@@ -136,6 +136,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppAssetContent",
     "AppAssets",
     "AppDatasetJoin",
     "AppMCPServer",

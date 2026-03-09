@@ -2,12 +2,13 @@ import json
 import logging
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
+from core.app_assets.accessor import CachedContentAccessor
 from core.app_assets.entities import AssetItem
 from core.app_assets.storage import AssetPaths
 from core.skill.assembler import SkillBundleAssembler
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
-from extensions.storage.cached_presign_storage import CachedPresignStorage
+from extensions.storage.base_storage import BaseStorage
 
 from .base import BuildContext
 
@@ -16,10 +17,12 @@ logger = logging.getLogger(__name__)
 
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
-    _storage: CachedPresignStorage
+    _accessor: CachedContentAccessor
+    _storage: BaseStorage
 
-    def __init__(self, storage: CachedPresignStorage) -> None:
+    def __init__(self, accessor: CachedContentAccessor, storage: BaseStorage) -> None:
         self._nodes = []
+        self._accessor = accessor
         self._storage = storage
 
     def accept(self, node: AppAssetNode) -> bool:
@@ -37,15 +40,16 @@ class SkillBuilder:
             )
             return []
 
-        # load documents – skip nodes whose draft content is still the empty
-        # placeholder written at creation time (the front-end has not uploaded
-        # the actual skill document yet).
+        # Batch-load all skill draft content in one DB query (with S3 fallback on miss).
+        nodes_only = [node for node, _ in self._nodes]
+        raw_contents = self._accessor.bulk_load(nodes_only)
+
+        # Parse documents — skip nodes whose draft content is still the empty
+        # placeholder written at creation time.
         documents: dict[str, SkillDocument] = {}
         for node, _ in self._nodes:
             try:
-                key = AssetPaths.draft(ctx.tenant_id, ctx.app_id, node.id)
-                raw = self._storage.load_once(key)
-                # skip empty content
+                raw = raw_contents.get(node.id)
                 if not raw:
                     continue
                 data = {"skill_id": node.id, **json.loads(raw)}

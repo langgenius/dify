@@ -115,9 +115,7 @@ class SandboxFileRuntimeSource(SandboxFileSource):
                 raise RuntimeError(str(exc)) from exc
             finally:
                 try:
-                    pipeline(self._runtime).add(["rm", "-f", archive_path]).execute(
-                        timeout=self._LIST_TIMEOUT_SECONDS
-                    )
+                    pipeline(self._runtime).add(["rm", "-f", archive_path]).execute(timeout=self._LIST_TIMEOUT_SECONDS)
                 except Exception as exc:
                     # Best-effort cleanup; do not fail the download on cleanup issues.
                     logger.debug("Failed to cleanup temp archive %s: %s", archive_path, exc)
