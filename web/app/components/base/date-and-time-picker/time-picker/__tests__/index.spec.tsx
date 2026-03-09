@@ -503,7 +503,7 @@ describe('TimePicker', () => {
       const emitted = onChange.mock.calls[0][0]
       expect(isDayjsObject(emitted)).toBe(true)
       // 10:30 UTC converted to America/New_York (UTC-5 in Jan) = 05:30
-      expect(emitted.utcOffset()).toBe(dayjs().tz('America/New_York').utcOffset())
+      expect(emitted.utcOffset()).toBe(dayjs('2024-01-01T10:30:00Z').tz('America/New_York').utcOffset())
       expect(emitted.hour()).toBe(5)
       expect(emitted.minute()).toBe(30)
     })
