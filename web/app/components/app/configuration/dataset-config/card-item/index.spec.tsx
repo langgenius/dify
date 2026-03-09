@@ -43,6 +43,7 @@ const baseRetrievalConfig: RetrievalConfig = {
 }
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
+const saveChangesButtonName = /save changes/i
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const {
@@ -172,12 +173,10 @@ describe('dataset-config/card-item', () => {
     const [editButton] = within(card).getAllByRole('button', { hidden: true })
     await user.click(editButton)
 
-    expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeVisible()
-    })
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText('Mock settings modal')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Save changes'))
+    await user.click(await within(dialog).findByRole('button', { name: saveChangesButtonName }))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
@@ -194,7 +193,7 @@ describe('dataset-config/card-item', () => {
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
     const buttons = within(card).getAllByRole('button', { hidden: true })
-    const deleteButton = buttons[buttons.length - 1]
+    const deleteButton = buttons.at(-1)!
 
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
@@ -233,7 +232,7 @@ describe('dataset-config/card-item', () => {
     await user.click(editButton)
     expect(screen.getByText('Mock settings modal')).toBeInTheDocument()
 
-    const overlay = Array.from(document.querySelectorAll('[class]'))
+    const overlay = [...document.querySelectorAll('[class]')]
       .find(element => element.className.toString().includes('bg-black/30'))
 
     expect(overlay).toBeInTheDocument()
