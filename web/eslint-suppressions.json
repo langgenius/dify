@@ -4554,11 +4554,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/install-from-marketplace.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -6398,11 +6393,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
-    }
-  },
-  "app/components/workflow/header/checklist.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/workflow/header/editing-title.tsx": {
