@@ -25,6 +25,9 @@ class GenericProviderID:
             # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
             if re.match(r"^[a-z0-9_-]+$", value):
                 value = f"langgenius/{value}/{value}"
+            # check if matches $organization/$plugin_name (2-part), assume provider_name = plugin_name
+            elif re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+$", value):
+                value = f"{value}/{value.split('/')[1]}"
             else:
                 raise ValueError(f"Invalid plugin id {value}")
 
