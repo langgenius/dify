@@ -44,9 +44,23 @@ def create_flask_app_with_configs() -> DifyApp:
 
             if is_console_api or is_webapp_api:
                 if is_console_api:
+                    # Console bootstrap APIs exempt from license check:
+                    # - system-features: license status for expiry UI (GlobalPublicStoreProvider)
+                    # - setup: install/setup status check (AppInitializer)
+                    # - init: init password validation for fresh install (InitPasswordPopup)
+                    # - login: auto-login after setup completion (InstallForm)
+                    # - features: billing/plan features (ProviderContextProvider)
+                    # - account/profile: login check + user profile (AppContextProvider, useIsLogin)
+                    # - workspaces/current: workspace + model providers (AppContextProvider)
+                    # - version: version check (AppContextProvider)
+                    # - activate/check: invitation link validation (signin page)
+                    # Without these exemptions, the signin page triggers location.reload()
+                    # on unauthorized_and_force_logout, causing an infinite loop.
                     console_exempt_prefixes = (
                         "/console/api/system-features",
                         "/console/api/setup",
+                        "/console/api/init",
+                        "/console/api/login",
                         "/console/api/version",
                         "/console/api/activate/check",
                     )
