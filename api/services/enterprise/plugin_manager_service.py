@@ -77,7 +77,7 @@ class PluginManagerService:
             logger.exception(
                 """
                 failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s, 
-                this may cause plugin %s to be automatically garbage collected
+                this may cause plugin to be automatically garbage collected
                 """,
                 body.tenant_id,
                 body.plugin_unique_identifier,
