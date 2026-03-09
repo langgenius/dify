@@ -113,17 +113,11 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   const { input: _inputRequired, ...requiredRest }
     = (defaultSanitizeSchema.required ?? {})
 
-  // `name` is in the default `clobber` list, which prefixes every `name` value
-  // with `user-content-`.  Form fields need the original `name`, and our form
-  // component validates names with `isSafeName()`, so remove it.
-  const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
-
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
     tagNames: Array.from(tagNamesSet),
     attributes: mergedAttributes,
     required: requiredRest,
-    clobber,
   }
 
   return [
