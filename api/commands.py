@@ -936,6 +936,12 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     is_flag=True,
     help="Preview cleanup results without deleting any workflow run data.",
 )
+@click.option(
+    "--task-label",
+    default="daily",
+    show_default=True,
+    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
+)
 def clean_workflow_runs(
     before_days: int,
     batch_size: int,
@@ -944,6 +950,7 @@ def clean_workflow_runs(
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
+    task_label: str,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
@@ -976,6 +983,7 @@ def clean_workflow_runs(
             start_from=start_from,
             end_before=end_before,
             dry_run=dry_run,
+            task_label=task_label,
         ).run()
     finally:
         flush_telemetry()
@@ -2620,12 +2628,19 @@ def migrate_oss(
     help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
+@click.option(
+    "--task-label",
+    default="daily",
+    show_default=True,
+    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
+)
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
     start_from: datetime.datetime,
     end_before: datetime.datetime,
     dry_run: bool,
+    task_label: str,
 ):
     """
     Clean expired messages and related data for tenants based on clean policy.
@@ -2648,6 +2663,7 @@ def clean_expired_messages(
             end_before=end_before,
             batch_size=batch_size,
             dry_run=dry_run,
+            task_label=task_label,
         )
         stats = service.run()
 

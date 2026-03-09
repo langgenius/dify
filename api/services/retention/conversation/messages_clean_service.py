@@ -40,7 +40,7 @@ class MessagesCleanupMetrics:
     """
     Records low-cardinality OpenTelemetry metrics for expired message cleanup jobs.
 
-    We keep labels stable (dry_run/window_mode/status) so these metrics remain
+    We keep labels stable (dry_run/window_mode/task_label/status) so these metrics remain
     dashboard-friendly for long-running CronJob executions.
     """
 
@@ -53,7 +53,7 @@ class MessagesCleanupMetrics:
     _batch_duration_seconds: "Histogram | None"
     _base_attributes: dict[str, str]
 
-    def __init__(self, *, dry_run: bool, has_window: bool) -> None:
+    def __init__(self, *, dry_run: bool, has_window: bool, task_label: str) -> None:
         self._job_runs_total = None
         self._batches_total = None
         self._messages_scanned_total = None
@@ -65,6 +65,7 @@ class MessagesCleanupMetrics:
             "job_name": "messages_cleanup",
             "dry_run": str(dry_run).lower(),
             "window_mode": "between" if has_window else "before_cutoff",
+            "task_label": task_label,
         }
         self._init_instruments()
 
@@ -168,6 +169,7 @@ class MessagesCleanService:
         start_from: datetime.datetime | None = None,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "daily",
     ) -> None:
         """
         Initialize the service with cleanup parameters.
@@ -178,13 +180,20 @@ class MessagesCleanService:
             start_from: Optional start time (inclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Stable task label to distinguish multiple cleanup CronJobs
         """
         self._policy = policy
         self._end_before = end_before
         self._start_from = start_from
         self._batch_size = batch_size
         self._dry_run = dry_run
-        self._metrics = MessagesCleanupMetrics(dry_run=dry_run, has_window=bool(start_from))
+        normalized_task_label = task_label.strip()
+        self._task_label = normalized_task_label or "daily"
+        self._metrics = MessagesCleanupMetrics(
+            dry_run=dry_run,
+            has_window=bool(start_from),
+            task_label=self._task_label,
+        )
 
     @classmethod
     def from_time_range(
@@ -194,6 +203,7 @@ class MessagesCleanService:
         end_before: datetime.datetime,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "daily",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages within a specific time range.
@@ -206,6 +216,7 @@ class MessagesCleanService:
             end_before: End time (exclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Stable task label to distinguish multiple cleanup CronJobs
 
         Returns:
             MessagesCleanService instance
@@ -233,6 +244,7 @@ class MessagesCleanService:
             start_from=start_from,
             batch_size=batch_size,
             dry_run=dry_run,
+            task_label=task_label,
         )
 
     @classmethod
@@ -242,6 +254,7 @@ class MessagesCleanService:
         days: int = 30,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "daily",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages older than specified days.
@@ -251,6 +264,7 @@ class MessagesCleanService:
             days: Number of days to look back from now
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Stable task label to distinguish multiple cleanup CronJobs
 
         Returns:
             MessagesCleanService instance
@@ -274,7 +288,14 @@ class MessagesCleanService:
             policy.__class__.__name__,
         )
 
-        return cls(policy=policy, end_before=end_before, start_from=None, batch_size=batch_size, dry_run=dry_run)
+        return cls(
+            policy=policy,
+            end_before=end_before,
+            start_from=None,
+            batch_size=batch_size,
+            dry_run=dry_run,
+            task_label=task_label,
+        )
 
     def run(self) -> dict[str, int]:
         """

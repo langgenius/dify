@@ -28,7 +28,7 @@ class WorkflowRunCleanupMetrics:
     """
     Records low-cardinality OpenTelemetry metrics for workflow run cleanup jobs.
 
-    Metrics are emitted with stable labels only (dry_run/window_mode/status)
+    Metrics are emitted with stable labels only (dry_run/window_mode/task_label/status)
     to keep dashboard and alert cardinality predictable in production clusters.
     """
 
@@ -43,7 +43,7 @@ class WorkflowRunCleanupMetrics:
     _batch_duration_seconds: "Histogram | None"
     _base_attributes: dict[str, str]
 
-    def __init__(self, *, dry_run: bool, has_window: bool) -> None:
+    def __init__(self, *, dry_run: bool, has_window: bool, task_label: str) -> None:
         self._job_runs_total = None
         self._batches_total = None
         self._runs_scanned_total = None
@@ -57,6 +57,7 @@ class WorkflowRunCleanupMetrics:
             "job_name": "workflow_run_cleanup",
             "dry_run": str(dry_run).lower(),
             "window_mode": "between" if has_window else "before_cutoff",
+            "task_label": task_label,
         }
         self._init_instruments()
 
@@ -178,6 +179,7 @@ class WorkflowRunCleanup:
         end_before: datetime.datetime | None = None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
         dry_run: bool = False,
+        task_label: str = "daily",
     ):
         if (start_from is None) ^ (end_before is None):
             raise ValueError("start_from and end_before must be both set or both omitted.")
@@ -195,9 +197,12 @@ class WorkflowRunCleanup:
         self.batch_size = batch_size
         self._cleanup_whitelist: set[str] | None = None
         self.dry_run = dry_run
+        normalized_task_label = task_label.strip()
+        self.task_label = normalized_task_label or "daily"
         self._metrics = WorkflowRunCleanupMetrics(
             dry_run=dry_run,
             has_window=bool(start_from),
+            task_label=self.task_label,
         )
         self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
         self.workflow_run_repo: APIWorkflowRunRepository
