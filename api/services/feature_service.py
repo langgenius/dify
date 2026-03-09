@@ -382,7 +382,7 @@ class FeatureService:
         # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
         # so the login page can detect an expired/inactive license after force-logout.
         # All other license details (expiry date, workspace usage) remain auth-gated.
-        # See CVE-2025-63387 for prior information-leakage context.
+        # This behavior reflects prior internal review of information-leakage risks.
         if license_info := enterprise_info.get("License"):
             features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
 
