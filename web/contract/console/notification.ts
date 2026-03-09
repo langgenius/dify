@@ -22,3 +22,15 @@ export const notificationContract = base
     method: 'GET',
   })
   .output(type<ConsoleNotificationResponse>())
+
+export const notificationDismissContract = base
+  .route({
+    path: '/notification/dismiss',
+    method: 'POST',
+  })
+  .input(type<{
+    body: {
+      notification_id: string
+    }
+  }>())
+  .output(type<unknown>())

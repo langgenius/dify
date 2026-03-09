@@ -1,7 +1,7 @@
 'use client'
 
 import type { InSiteMessageActionItem } from './index'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -60,6 +60,17 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 
 function InSiteMessageNotification() {
   const { t } = useTranslation()
+  const dismissNotificationMutation = useMutation({
+    mutationKey: consoleQuery.notificationDismiss.mutationKey(),
+    mutationFn: async (notificationId: string) => {
+      return await consoleClient.notificationDismiss({
+        body: {
+          notification_id: notificationId,
+        },
+      })
+    },
+  })
+
   const { data } = useQuery({
     queryKey: consoleQuery.notification.queryKey(),
     queryFn: async () => {
@@ -83,7 +94,13 @@ function InSiteMessageNotification() {
   ]
 
   const actions = parsedBody?.actions?.length ? parsedBody.actions : fallbackActions
-  const main = parsedBody?.main ?? 'Invalid notification body'
+  const main = parsedBody?.main ?? notification.body
+  const handleAction = (action: InSiteMessageActionItem) => {
+    if (action.action !== 'close')
+      return
+
+    dismissNotificationMutation.mutate(notification.notification_id)
+  }
 
   return (
     <InSiteMessage
@@ -93,6 +110,7 @@ function InSiteMessageNotification() {
       headerBgUrl={notification.title_pic_url}
       main={main}
       actions={actions}
+      onAction={handleAction}
     />
   )
 }

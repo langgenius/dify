@@ -20,6 +20,7 @@ type InSiteMessageProps = {
   className?: string
   headerBgUrl?: string
   main: string
+  onAction?: (action: InSiteMessageActionItem) => void
   subtitle: string
   title: string
 }
@@ -46,11 +47,14 @@ function normalizeLinkData(data: unknown): { href: string, rel?: string, target?
   }
 }
 
+const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
+
 function InSiteMessage({
   actions,
   className,
-  headerBgUrl = '/in-site-message/header-bg.svg',
+  headerBgUrl = DEFAULT_HEADER_BG_URL,
   main,
+  onAction,
   subtitle,
   title,
 }: InSiteMessageProps) {
@@ -60,11 +64,13 @@ function InSiteMessage({
 
   const headerStyle = useMemo(() => {
     return {
-      backgroundImage: `url(${headerBgUrl})`,
+      backgroundImage: `url(${headerBgUrl || DEFAULT_HEADER_BG_URL})`,
     }
   }, [headerBgUrl])
 
   const handleAction = (item: InSiteMessageActionItem) => {
+    onAction?.(item)
+
     if (item.action === 'close') {
       setVisible(false)
       return
