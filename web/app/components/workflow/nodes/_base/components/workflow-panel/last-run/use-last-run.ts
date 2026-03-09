@@ -159,10 +159,10 @@ const useLastRun = <T>({
     if (!warningForNode)
       return false
 
-    if (warningForNode.unConnected && !warningForNode.errorMessage)
+    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0)
       return false
 
-    const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
+    const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
     Toast.notify({ type: 'error', message })
     return true
   }, [warningNodes, id])

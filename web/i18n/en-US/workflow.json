@@ -299,6 +299,7 @@
   "error.operations.updatingWorkflow": "updating workflow",
   "error.startNodeRequired": "Please add a start node first before {{operation}}",
   "errorMsg.authRequired": "Authorization is required",
+  "errorMsg.configureModel": "Configure a model",
   "errorMsg.fieldRequired": "{{field}} is required",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Model",

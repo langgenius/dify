@@ -25,12 +25,12 @@ export const ChecklistNodeGroup = memo(({
 
   const subItems = useMemo(() => {
     const items: ChecklistSubItem[] = []
-    if (item.errorMessage)
-      items.push({ key: 'error', message: item.errorMessage })
+    for (let i = 0; i < item.errorMessages.length; i++)
+      items.push({ key: `error-${i}`, message: item.errorMessages[i] })
     if (item.unConnected)
       items.push({ key: 'unconnected', message: t('common.needConnectTip', { ns: 'workflow' }) })
     return items
-  }, [item.errorMessage, item.unConnected, t])
+  }, [item.errorMessages, item.unConnected, t])
 
   return (
     <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">

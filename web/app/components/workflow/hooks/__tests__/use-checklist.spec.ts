@@ -195,7 +195,7 @@ describe('useChecklist', () => {
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
-    expect(warning!.errorMessage).toBe('Model not configured')
+    expect(warning!.errorMessages).toContain('Model not configured')
   })
 
   it('should report missing start node in workflow mode', () => {
