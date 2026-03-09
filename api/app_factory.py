@@ -62,12 +62,13 @@ def create_flask_app_with_configs() -> DifyApp:
                             raise UnauthorizedAndForceLogout(
                                 f"Enterprise license is {license_status}. Please contact your administrator."
                             )
+                        if license_status is None:
+                            raise UnauthorizedAndForceLogout(
+                                "Unable to verify enterprise license. Please contact your administrator."
+                            )
                     except UnauthorizedAndForceLogout:
                         raise
                     except Exception:
-                        # Fail-closed: if we cannot verify the license (Redis down +
-                        # enterprise API unreachable), block the request.  An unreachable
-                        # sidecar is itself an abnormal state that should surface.
                         logger.exception("Failed to check enterprise license status")
                         raise UnauthorizedAndForceLogout(
                             "Unable to verify enterprise license. Please contact your administrator."

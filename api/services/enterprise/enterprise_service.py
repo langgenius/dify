@@ -239,7 +239,7 @@ class EnterpriseService:
         """Get enterprise license status with Redis caching to reduce HTTP calls.
 
         Caches valid statuses (active/expiring) for 10 minutes and invalid statuses
-        (inactive/expired/lost) for 1 minute.  The shorter TTL for invalid statuses
+        (inactive/expired/lost) for 30 seconds.  The shorter TTL for invalid statuses
         balances prompt license-fix detection against DoS mitigation — without
         caching, every request on an expired license would hit the enterprise API.
 
