@@ -38,6 +38,7 @@ def test_absolute_mode_calls_from_time_range():
             from_days_ago=None,
             before_days=None,
             dry_run=True,
+            task_label="daily",
         )
 
     mock_from_time_range.assert_called_once_with(
@@ -67,6 +68,7 @@ def test_relative_mode_before_days_only_calls_from_days():
             from_days_ago=None,
             before_days=30,
             dry_run=False,
+            task_label="daily",
         )
 
     mock_from_days.assert_called_once_with(
@@ -97,6 +99,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
             from_days_ago=60,
             before_days=30,
             dry_run=False,
+            task_label="daily",
         )
 
     mock_from_time_range.assert_called_once_with(
@@ -178,4 +181,5 @@ def test_invalid_inputs_raise_usage_error(kwargs: dict, message: str):
             from_days_ago=kwargs["from_days_ago"],
             before_days=kwargs["before_days"],
             dry_run=False,
+            task_label="daily",
         )
