@@ -86,4 +86,71 @@ describe('CredentialItem', () => {
 
     expect(onDelete).not.toHaveBeenCalled()
   })
+
+  // All disable flags true → no action buttons rendered
+  it('should hide all action buttons when disableRename, disableEdit, and disableDelete are all true', () => {
+    // Act
+    render(
+      <CredentialItem
+        credential={credential}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        disableRename
+        disableEdit
+        disableDelete
+      />,
+    )
+
+    // Assert
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('delete-icon')).not.toBeInTheDocument()
+  })
+
+  // disabled=true guards: clicks on the item row and on delete should both be no-ops
+  it('should not call onItemClick when disabled=true and item is clicked', () => {
+    const onItemClick = vi.fn()
+
+    render(<CredentialItem credential={credential} disabled onItemClick={onItemClick} />)
+
+    fireEvent.click(screen.getByText('Test API Key'))
+
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('should not call onDelete when disabled=true and delete button is clicked', () => {
+    const onDelete = vi.fn()
+
+    render(<CredentialItem credential={credential} disabled onDelete={onDelete} />)
+
+    const deleteButton = screen.getAllByRole('button')
+      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    fireEvent.click(deleteButton)
+
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
+  // showSelectedIcon=true: check icon area is always rendered; check icon only appears when IDs match
+  it('should render check icon area when showSelectedIcon=true and selectedCredentialId matches', () => {
+    const { container } = render(
+      <CredentialItem
+        credential={credential}
+        showSelectedIcon
+        selectedCredentialId="cred-1"
+      />,
+    )
+
+    expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
+  })
+
+  it('should not render check icon when showSelectedIcon=true but selectedCredentialId does not match', () => {
+    render(
+      <CredentialItem
+        credential={credential}
+        showSelectedIcon
+        selectedCredentialId="other-cred"
+      />,
+    )
+
+    expect(screen.queryByTestId('check-icon')).not.toBeInTheDocument()
+  })
 })

@@ -1,24 +1,12 @@
-import type {
-  ModelProvider,
-  PreferredProviderTypeEnum,
-} from '../declarations'
+import type { ModelProvider } from '../declarations'
 import type { CardVariant } from './use-credential-panel-state'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
-import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
-import { consoleQuery } from '@/service/client'
-import {
-  ConfigurationMethodEnum,
-} from '../declarations'
-import {
-  useUpdateModelList,
-  useUpdateModelProviders,
-} from '../hooks'
 import ModelAuthDropdown from './model-auth-dropdown'
 import SystemQuotaCard from './system-quota-card'
+import { useChangeProviderPriority } from './use-change-provider-priority'
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
 type CredentialPanelProps = {
@@ -37,47 +25,8 @@ const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const updateModelList = useUpdateModelList()
-  const updateModelProviders = useUpdateModelProviders()
   const state = useCredentialPanelState(provider)
-  const providerName = provider.provider
-  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
-    input: {
-      params: {
-        provider: providerName,
-      },
-    },
-  })
-
-  const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
-    consoleQuery.modelProviders.changePreferredProviderType.mutationOptions({
-      onSuccess: () => {
-        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-        queryClient.invalidateQueries({
-          queryKey: modelProviderModelListQueryKey,
-          exact: true,
-          refetchType: 'none',
-        })
-        updateModelProviders()
-        provider.configurate_methods.forEach((method) => {
-          if (method === ConfigurationMethodEnum.predefinedModel)
-            provider.supported_model_types.forEach(modelType => updateModelList(modelType))
-        })
-      },
-      onError: () => {
-        Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
-      },
-    }),
-  )
-
-  const handleChangePriority = (key: PreferredProviderTypeEnum) => {
-    changePriority({
-      params: { provider: providerName },
-      body: { preferred_provider_type: key },
-    })
-  }
+  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
 
   const { variant, credentialName } = state
   const isDestructive = isDestructiveVariant(variant)

@@ -3,17 +3,22 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
+import { useTranslation } from 'react-i18next'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import {
-  MODEL_STATUS_TEXT,
   ModelStatusEnum,
 } from '../declarations'
-import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+
+const STATUS_I18N_KEY: Partial<Record<ModelStatusEnum, string>> = {
+  [ModelStatusEnum.quotaExceeded]: 'modelProvider.selector.creditsExhausted',
+  [ModelStatusEnum.noConfigure]: 'modelProvider.selector.configureRequired',
+  [ModelStatusEnum.noPermission]: 'modelProvider.selector.incompatible',
+  [ModelStatusEnum.disabled]: 'modelProvider.selector.disabled',
+  [ModelStatusEnum.credentialRemoved]: 'modelProvider.selector.apiKeyUnavailable',
+}
 
 type ModelTriggerProps = {
   open: boolean
@@ -29,7 +34,9 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   className,
   readonly,
 }) => {
-  const language = useLanguage()
+  const { t } = useTranslation()
+  const isActive = model.status === ModelStatusEnum.active
+  const statusI18nKey = STATUS_I18N_KEY[model.status]
 
   return (
     <div
@@ -37,7 +44,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         'group flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1',
         !readonly && 'cursor-pointer hover:bg-components-input-bg-hover',
         open && 'bg-components-input-bg-hover',
-        model.status !== ModelStatusEnum.active && 'bg-components-input-bg-disabled hover:bg-components-input-bg-disabled',
+        !isActive && 'bg-components-input-bg-disabled hover:bg-components-input-bg-disabled',
         className,
       )}
     >
@@ -53,22 +60,26 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           showMode
           showFeatures
         />
-        {!readonly && (
-          <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-            {
-              model.status !== ModelStatusEnum.active
-                ? (
-                    <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
-                      <AlertTriangle className="h-4 w-4 text-text-warning-secondary" />
-                    </Tooltip>
-                  )
-                : (
-                    <RiArrowDownSLine
-                      className="h-3.5 w-3.5 text-text-tertiary"
-                    />
-                  )
-            }
-          </div>
+        {!readonly && !isActive && statusI18nKey && (
+          <Tooltip>
+            <TooltipTrigger
+              disabled={model.status !== ModelStatusEnum.noPermission}
+              render={(
+                <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning px-[5px] py-0.5">
+                  <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                  <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                    {t(statusI18nKey as 'modelProvider.selector.creditsExhausted', { ns: 'common' })}
+                  </span>
+                </div>
+              )}
+            />
+            <TooltipContent placement="top" className="z-[1003]">
+              {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {!readonly && isActive && (
+          <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 shrink-0 text-text-tertiary" />
         )}
       </div>
     </div>

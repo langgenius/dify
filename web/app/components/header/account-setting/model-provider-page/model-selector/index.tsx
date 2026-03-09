@@ -5,7 +5,7 @@ import type {
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -24,6 +24,7 @@ type ModelSelectorProps = {
   triggerClassName?: string
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
+  onHide?: () => void
   readonly?: boolean
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
@@ -35,12 +36,14 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   triggerClassName,
   popupClassName,
   onSelect,
+  onHide,
   readonly,
   scopeFeatures = [],
   deprecatedClassName,
   showDeprecatedWarnIcon = false,
 }) => {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
   const {
     currentProvider,
     currentModel,
@@ -70,7 +73,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       placement="bottom-start"
       offset={4}
     >
-      <div className={cn('relative')}>
+      <div ref={triggerRef} className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
           className="block"
@@ -112,7 +115,11 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             modelList={modelList}
             onSelect={handleSelect}
             scopeFeatures={scopeFeatures}
-            onHide={() => setOpen(false)}
+            onHide={() => {
+              setOpen(false)
+              onHide?.()
+            }}
+            triggerRef={triggerRef}
           />
         </PortalToFollowElemContent>
       </div>

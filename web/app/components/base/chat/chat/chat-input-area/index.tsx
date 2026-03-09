@@ -200,14 +200,14 @@ const ChatInputArea = ({
             <div className="relative flex w-full grow items-center">
               <div
                 ref={textValueRef}
-                className="body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6"
+                className="pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6 body-lg-regular"
               >
                 {query}
               </div>
               <Textarea
                 ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
+                  'w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none body-lg-regular',
                 )}
                 placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 autoFocus

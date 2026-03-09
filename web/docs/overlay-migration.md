@@ -16,6 +16,7 @@ This document tracks the migration away from legacy overlay APIs.
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
+  - `@/app/components/base/ui/context-menu`
   - `@/app/components/base/ui/popover`
   - `@/app/components/base/ui/dialog`
   - `@/app/components/base/ui/alert-dialog`

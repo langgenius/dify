@@ -35,7 +35,7 @@ describe('Input component', () => {
 
   it('renders correctly with default props', () => {
     render(<Input />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toBeInTheDocument()
     expect(input).not.toBeDisabled()
     expect(input).not.toHaveClass('cursor-not-allowed')
@@ -45,7 +45,7 @@ describe('Input component', () => {
     render(<Input showLeftIcon />)
     const searchIcon = document.querySelector('.i-ri-search-line')
     expect(searchIcon).toBeInTheDocument()
-    const input = screen.getByPlaceholderText('Search')
+    const input = screen.getByPlaceholderText(/search/i)
     expect(input).toHaveClass('pl-[26px]')
   })
 
@@ -75,13 +75,13 @@ describe('Input component', () => {
     render(<Input destructive />)
     const warningIcon = document.querySelector('.i-ri-error-warning-line')
     expect(warningIcon).toBeInTheDocument()
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass('border-components-input-border-destructive')
   })
 
   it('applies disabled styles when disabled', () => {
     render(<Input disabled />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toBeDisabled()
     expect(input).toHaveClass('cursor-not-allowed')
     expect(input).toHaveClass('bg-components-input-bg-disabled')
@@ -97,7 +97,7 @@ describe('Input component', () => {
     const customClass = 'test-class'
     const customStyle = { color: 'red' }
     render(<Input className={customClass} styleCss={customStyle} />)
-    const input = screen.getByPlaceholderText('Please input')
+    const input = screen.getByPlaceholderText(/input/i)
     expect(input).toHaveClass(customClass)
     expect(input).toHaveStyle({ color: 'rgb(255, 0, 0)' })
   })
@@ -113,5 +113,62 @@ describe('Input component', () => {
     render(<Input placeholder={placeholder} />)
     const input = screen.getByPlaceholderText(placeholder)
     expect(input).toBeInTheDocument()
+  })
+
+  describe('Number Input Formatting', () => {
+    it('removes leading zeros on change when current value is zero', () => {
+      let changedValue = ''
+      const onChange = vi.fn((e: React.ChangeEvent<HTMLInputElement>) => {
+        changedValue = e.target.value
+      })
+      render(<Input type="number" value={0} onChange={onChange} />)
+
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '00042' } })
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(changedValue).toBe('42')
+    })
+
+    it('keeps typed value on change when current value is not zero', () => {
+      let changedValue = ''
+      const onChange = vi.fn((e: React.ChangeEvent<HTMLInputElement>) => {
+        changedValue = e.target.value
+      })
+      render(<Input type="number" value={1} onChange={onChange} />)
+
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '00042' } })
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(changedValue).toBe('00042')
+    })
+
+    it('normalizes value and triggers change on blur when leading zeros exist', () => {
+      const onChange = vi.fn()
+      const onBlur = vi.fn()
+      render(<Input type="number" defaultValue="0012" onChange={onChange} onBlur={onBlur} />)
+
+      const input = screen.getByRole('spinbutton')
+      fireEvent.blur(input)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange.mock.calls[0][0].type).toBe('change')
+      expect(onChange.mock.calls[0][0].target.value).toBe('12')
+      expect(onBlur).toHaveBeenCalledTimes(1)
+      expect(onBlur.mock.calls[0][0].target.value).toBe('12')
+    })
+
+    it('does not trigger change on blur when value is already normalized', () => {
+      const onChange = vi.fn()
+      const onBlur = vi.fn()
+      render(<Input type="number" defaultValue="12" onChange={onChange} onBlur={onBlur} />)
+
+      const input = screen.getByRole('spinbutton')
+      fireEvent.blur(input)
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(onBlur).toHaveBeenCalledTimes(1)
+      expect(onBlur.mock.calls[0][0].target.value).toBe('12')
+    })
   })
 })

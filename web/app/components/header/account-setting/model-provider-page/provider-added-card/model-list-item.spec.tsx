@@ -13,6 +13,7 @@ function createWrapper() {
 }
 
 let mockModelLoadBalancingEnabled = false
+let mockPlanType: string = 'pro'
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -22,7 +23,7 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    plan: { type: 'pro' },
+    plan: { type: mockPlanType },
   }),
   useProviderContextSelector: () => mockModelLoadBalancingEnabled,
 }))
@@ -68,6 +69,7 @@ describe('ModelListItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
+    mockPlanType = 'pro'
   })
 
   it('should render model item with icon and name', () => {
@@ -138,5 +140,134 @@ describe('ModelListItem', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'modify load balancing' }))
     expect(onModifyLoadBalancing).toHaveBeenCalledWith(mockModel)
+  })
+
+  // Deprecated branches: opacity-60, disabled switch, no ConfigModel
+  it('should show deprecated model with opacity and disabled switch', () => {
+    // Arrange
+    const deprecatedModel = { ...mockModel, deprecated: true } as unknown as ModelItem
+    mockModelLoadBalancingEnabled = true
+
+    // Act
+    const { container } = render(
+      <ModelListItem
+        model={deprecatedModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert
+    expect(container.querySelector('.opacity-60')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+  })
+
+  // Load balancing badge: visible when all 4 conditions met
+  it('should show load balancing badge when all conditions are met', () => {
+    // Arrange
+    mockModelLoadBalancingEnabled = true
+    const lbModel = {
+      ...mockModel,
+      load_balancing_enabled: true,
+      has_invalid_load_balancing_configs: false,
+      deprecated: false,
+    } as unknown as ModelItem
+
+    // Act
+    render(
+      <ModelListItem
+        model={lbModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert - Badge component should render
+    const badge = document.querySelector('.border-text-accent-secondary')
+    expect(badge).toBeInTheDocument()
+  })
+
+  // Plan.sandbox: ConfigModel shown without load balancing enabled
+  it('should show ConfigModel for sandbox plan even without load balancing enabled', () => {
+    // Arrange - set plan type to sandbox and keep load balancing disabled
+    mockModelLoadBalancingEnabled = false
+    mockPlanType = 'sandbox'
+
+    // Act
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert - ConfigModel should show because plan.type === 'sandbox'
+    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
+  })
+
+  // Negative proof: non-sandbox plan without load balancing should NOT show ConfigModel
+  it('should hide ConfigModel for non-sandbox plan without load balancing enabled', () => {
+    // Arrange - set plan type to non-sandbox and keep load balancing disabled
+    mockModelLoadBalancingEnabled = false
+    mockPlanType = 'pro'
+
+    // Act
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert - ConfigModel should NOT show because plan.type !== 'sandbox' and load balancing is disabled
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+  })
+
+  // model.status=credentialRemoved: switch disabled, no ConfigModel
+  it('should disable switch and hide ConfigModel when status is credentialRemoved', () => {
+    // Arrange
+    const removedModel = { ...mockModel, status: ModelStatusEnum.credentialRemoved } as unknown as ModelItem
+    mockModelLoadBalancingEnabled = true
+
+    // Act
+    render(
+      <ModelListItem
+        model={removedModel}
+        provider={mockProvider}
+        isConfigurable={false}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert - ConfigModel should not render because status is not active/disabled
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+    const statusSwitch = screen.getByRole('switch')
+    expect(statusSwitch).toHaveClass('!cursor-not-allowed')
+    fireEvent.click(statusSwitch)
+    expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(enableModel).not.toHaveBeenCalled()
+    expect(disableModel).not.toHaveBeenCalled()
+  })
+
+  // isConfigurable=true: hover class on row
+  it('should apply hover class when isConfigurable is true', () => {
+    // Act
+    const { container } = render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable={true}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    // Assert
+    expect(container.querySelector('.hover\\:bg-components-panel-on-panel-item-bg-hover')).toBeInTheDocument()
   })
 })

@@ -2,9 +2,11 @@ import type { DefaultModel, Model, ModelItem } from '../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
+  PreferredProviderTypeEnum,
 } from '../declarations'
 import PopupItem from './popup-item'
 
@@ -33,6 +35,30 @@ vi.mock('../model-name', () => ({
   default: ({ modelItem }: { modelItem: ModelItem }) => <span>{modelItem.label.en_US}</span>,
 }))
 
+vi.mock('./feature-icon', () => ({
+  default: ({ feature }: { feature: string }) => <span data-testid="feature-icon">{feature}</span>,
+}))
+
+vi.mock('@/app/components/base/tooltip', () => ({
+  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+const mockCredentialPanelState = vi.hoisted(() => vi.fn())
+vi.mock('../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: mockCredentialPanelState,
+}))
+
+vi.mock('../provider-added-card/use-change-provider-priority', () => ({
+  useChangeProviderPriority: () => ({
+    isChangingPriority: false,
+    handleChangePriority: vi.fn(),
+  }),
+}))
+
+vi.mock('../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
+  default: () => null,
+}))
+
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -43,6 +69,11 @@ vi.mock('@/context/modal-context', () => ({
 const mockUseProviderContext = vi.hoisted(() => vi.fn())
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
+}))
+
+const mockUseAppContext = vi.hoisted(() => vi.fn())
+vi.mock('@/context/app-context', () => ({
+  useAppContext: mockUseAppContext,
 }))
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -66,17 +97,40 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
+const makeProvider = (overrides: Record<string, unknown> = {}) => ({
+  provider: 'openai',
+  preferred_provider_type: PreferredProviderTypeEnum.custom,
+  custom_configuration: {
+    status: CustomConfigurationStatusEnum.active,
+    current_credential_name: 'my-api-key',
+  },
+  ...overrides,
+})
+
 describe('PopupItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [{ provider: 'openai' }],
+      modelProviders: [makeProvider()],
+    })
+    mockUseAppContext.mockReturnValue({
+      currentWorkspace: { trial_credits: 200, trial_credits_used: 0 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-active',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'my-api-key',
+      credits: 200,
     })
   })
 
   it('should call onSelect when clicking an active model', () => {
     const onSelect = vi.fn()
-    render(<PopupItem model={makeModel()} onSelect={onSelect} />)
+    render(<PopupItem model={makeModel()} onSelect={onSelect} onHide={vi.fn()} />)
 
     fireEvent.click(screen.getByText('GPT-4'))
 
@@ -89,6 +143,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
         onSelect={onSelect}
+        onHide={vi.fn()}
       />,
     )
 
@@ -102,6 +157,7 @@ describe('PopupItem', () => {
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -121,6 +177,7 @@ describe('PopupItem', () => {
           models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
         })}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
@@ -139,9 +196,102 @@ describe('PopupItem', () => {
         defaultModel={defaultModel}
         model={makeModel()}
         onSelect={vi.fn()}
+        onHide={vi.fn()}
       />,
     )
 
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
+  })
+
+  it('should toggle collapsed state when clicking provider header', () => {
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('OpenAI'))
+
+    expect(screen.queryByText('GPT-4')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('OpenAI'))
+
+    expect(screen.getByText('GPT-4')).toBeInTheDocument()
+  })
+
+  it('should show credential name when using custom provider', () => {
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText('my-api-key')).toBeInTheDocument()
+  })
+
+  it('should show configure required when no credential name', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.noConfigure,
+          current_credential_name: '',
+        },
+      })],
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-required-configure',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 0,
+    })
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.configureRequired/)).toBeInTheDocument()
+  })
+
+  it('should show credits info when using system provider with remaining credits', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+      })],
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-active',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 200,
+    })
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.aiCredits/)).toBeInTheDocument()
+  })
+
+  it('should show credits exhausted when system provider has no credits', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [makeProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+      })],
+    })
+    mockUseAppContext.mockReturnValue({
+      currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },
+    })
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'credits-exhausted',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: true,
+      credentialName: undefined,
+      credits: 0,
+    })
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/)).toBeInTheDocument()
   })
 })

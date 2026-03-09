@@ -14,7 +14,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
@@ -28,6 +28,7 @@ import {
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
 import { WorkflowVariableBlockNode } from './node'
+import { useLlmModelPluginInstalled } from './use-llm-model-plugin-installed'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -68,6 +69,8 @@ const WorkflowVariableBlockComponent = ({
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
 
   const isException = isExceptionVariable(varName, node?.type)
+  const sourceNodeId = variables[isRagVar ? 1 : 0]
+  const isLlmModelInstalled = useLlmModelPluginInstalled(sourceNodeId, localWorkflowNodesMap)
   const variableValid = useMemo(() => {
     let variableValid = true
     const isEnv = isENV(variables)
@@ -144,7 +147,13 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
-      errorMsg={!variableValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
+      errorMsg={
+        !variableValid
+          ? t('errorMsg.invalidVariable', { ns: 'workflow' })
+          : !isLlmModelInstalled
+              ? t('errorMsg.modelPluginNotInstalled', { ns: 'workflow' })
+              : undefined
+      }
       isSelected={isSelected}
       ref={ref}
       notShowFullPath={isShowAPart}
@@ -155,9 +164,9 @@ const WorkflowVariableBlockComponent = ({
     return Item
 
   return (
-    <Tooltip
-      noDecoration
-      popupContent={(
+    <Tooltip>
+      <TooltipTrigger disabled={!isShowAPart} render={<div>{Item}</div>} />
+      <TooltipContent variant="plain">
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
@@ -169,10 +178,7 @@ const WorkflowVariableBlockComponent = ({
             : Type.string}
           nodeType={node?.type}
         />
-      )}
-      disabled={!isShowAPart}
-    >
-      <div>{Item}</div>
+      </TooltipContent>
     </Tooltip>
   )
 }
