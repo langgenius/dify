@@ -327,7 +327,6 @@ class EvaluationService:
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
-            evaluation_category=evaluation_category,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
             default_metrics=[m.model_dump() for m in run_request.default_metrics],

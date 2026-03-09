@@ -9,6 +9,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from configs import dify_config
+from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationItemResult,
@@ -16,9 +17,11 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
+from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluationRunner
+from core.workflow.node_events.base import NodeRunResult
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunStatus
@@ -72,22 +75,8 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
 
-    # Select runner based on category
-    runner = _create_runner(run_data.evaluation_category, evaluation_instance, session)
+    _execute_evaluation_runner(session, run_data, evaluation_instance, node_run_result_mapping)
 
-    # Execute evaluation
-    results = runner.run(
-        evaluation_run_id=run_data.evaluation_run_id,
-        tenant_id=run_data.tenant_id,
-        target_id=run_data.target_id,
-        target_type=run_data.target_type,
-        items=run_data.items,
-        default_metrics=run_data.default_metrics,
-        customized_metrics=run_data.customized_metrics,
-        model_provider=run_data.evaluation_model_provider,
-        model_name=run_data.evaluation_model,
-        judgment_config=run_data.judgment_config,
-    )
 
     # Compute summary metrics
     metrics_summary = _compute_metrics_summary(results)
@@ -112,12 +101,46 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
 
     logger.info("Evaluation run %s completed successfully", run_data.evaluation_run_id)
 
+def _execute_evaluation_runner(
+    session: Any, 
+    run_data: EvaluationRunData, 
+    evaluation_instance: BaseEvaluationInstance, 
+    node_run_result_mapping: dict[str, NodeRunResult],
+) -> list[EvaluationItemResult]:
+    """Execute the evaluation runner."""
+    default_metrics = run_data.default_metrics
+    customized_metrics = run_data.customized_metrics
+    for default_metric in default_metrics:
+        for node_info in default_metric.node_info_list:
+            node_run_result = node_run_result_mapping.get(node_info.node_id)
+            if node_run_result:
+                runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance, session)
+                runner.run(
+                    evaluation_run_id=run_data.evaluation_run_id,
+                    tenant_id=run_data.tenant_id,
+                    target_id=run_data.target_id,
+                    target_type=run_data.target_type,
+                    default_metric=default_metric,
+                    customized_metrics=None,
+                    model_provider=run_data.evaluation_model_provider,
+                    model_name=run_data.evaluation_model,
+                    node_run_result=node_run_result,
+                )
+            else:
+                default_metric.score = 0
+    for customized_metric in customized_metrics:
+    runner = _create_runner(run_data.evaluation_category, evaluation_instance, session)
+    runner.run(
+        evaluation_run_id=run_data.evaluation_run_id,
+        tenant_id=run_data.tenant_id,
+        target_id=run_data.target_id,
+    )
 
 def _create_runner(
     category: EvaluationCategory,
-    evaluation_instance: Any,
+    evaluation_instance: BaseEvaluationInstance,
     session: Any,
-) -> Any:
+) -> BaseEvaluationRunner:
     """Create the appropriate runner for the evaluation category."""
     match category:
         case EvaluationCategory.LLM:

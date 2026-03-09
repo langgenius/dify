@@ -17,11 +17,15 @@ from sqlalchemy.orm import Session
 
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
+    CustomizedMetrics,
+    DefaultMetric,
     EvaluationItemInput,
     EvaluationItemResult,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.judgment.processor import JudgmentProcessor
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
 
@@ -34,17 +38,6 @@ class BaseEvaluationRunner(ABC):
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
         self.evaluation_instance = evaluation_instance
         self.session = session
-
-    @abstractmethod
-    def execute_target(
-        self,
-        tenant_id: str,
-        target_id: str,
-        target_type: str,
-        item: EvaluationItemInput,
-    ) -> EvaluationItemResult:
-        """Execute the evaluation target for a single item and return the result with actual_output populated."""
-        ...
 
     @abstractmethod
     def evaluate_metrics(
@@ -65,17 +58,19 @@ class BaseEvaluationRunner(ABC):
         tenant_id: str,
         target_id: str,
         target_type: str,
-        items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
-        customized_metrics: dict[str, Any] | None = None,
+        node_run_result: NodeRunResult,
+        default_metric: DefaultMetric | None = None,
+        customized_metrics: CustomizedMetrics | None = None,
         model_provider: str = "",
-        model_name: str = "",
-        judgment_config: JudgmentConfig | None = None,
+        model_name: str = "", 
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
         if not evaluation_run:
             raise ValueError(f"EvaluationRun {evaluation_run_id} not found")
+        
+        if not default_metric and not customized_metrics:
+            raise ValueError("Either default_metric or customized_metrics must be provided")
 
         # Update status to running
         evaluation_run.status = EvaluationRunStatus.RUNNING
@@ -84,28 +79,8 @@ class BaseEvaluationRunner(ABC):
 
         results: list[EvaluationItemResult] = []
 
-        # Phase 1: Execute target for each item
-        for item in items:
-            try:
-                result = self.execute_target(tenant_id, target_id, target_type, item)
-                results.append(result)
-                evaluation_run.completed_items += 1
-            except Exception as e:
-                logger.exception("Failed to execute target for item %d", item.index)
-                results.append(
-                    EvaluationItemResult(
-                        index=item.index,
-                        error=str(e),
-                    )
-                )
-                evaluation_run.failed_items += 1
-            self.session.commit()
-
-        # Phase 2: Compute metrics on successful results
-        successful_items = [item for item, result in zip(items, results) if result.error is None]
-        successful_results = [r for r in results if r.error is None]
-
-        if successful_items and successful_results:
+        # Phase 1: run evaluation
+        if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
             try:
                 if customized_metrics is not None:
                     # Customized workflow evaluation — target-type agnostic
@@ -125,10 +100,6 @@ class BaseEvaluationRunner(ABC):
                         results[i] = evaluated_by_index[result.index]
             except Exception:
                 logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
-
-        # Phase 3: Apply judgment conditions on metrics
-        if judgment_config and judgment_config.conditions:
-            results = self._apply_judgment(results, items, judgment_config)
 
         # Phase 4: Persist individual items
         for result in results:

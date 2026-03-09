@@ -21,50 +21,6 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
         super().__init__(evaluation_instance, session)
 
-    def execute_target(
-        self,
-        tenant_id: str,
-        target_id: str,
-        target_type: str,
-        item: EvaluationItemInput,
-    ) -> EvaluationItemResult:
-        """Execute workflow and collect outputs."""
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-        from core.app.entities.app_invoke_entities import InvokeFrom
-        from core.evaluation.runners import get_service_account_for_app
-        from services.workflow_service import WorkflowService
-
-        app = self.session.query(App).filter_by(id=target_id).first()
-        if not app:
-            raise ValueError(f"App {target_id} not found")
-
-        service_account = get_service_account_for_app(self.session, target_id)
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_published_workflow(app_model=app)
-        if not workflow:
-            raise ValueError(f"No published workflow found for app {target_id}")
-
-        args: dict[str, Any] = {"inputs": item.inputs}
-
-        generator = WorkflowAppGenerator()
-        response: Mapping[str, Any] = generator.generate(
-            app_model=app,
-            workflow=workflow,
-            user=service_account,
-            args=args,
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=False,
-        )
-
-        actual_output = self._extract_output(response)
-        node_executions = self._extract_node_executions(response)
-
-        return EvaluationItemResult(
-            index=item.index,
-            actual_output=actual_output,
-            metadata={"node_executions": node_executions},
-        )
-
     def evaluate_metrics(
         self,
         items: list[EvaluationItemInput],

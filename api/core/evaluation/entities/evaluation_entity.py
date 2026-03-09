@@ -16,7 +16,7 @@ class EvaluationCategory(StrEnum):
 
 class EvaluationMetric(BaseModel):
     name: str
-    score: float
+    value: Any
     details: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -31,8 +31,6 @@ class EvaluationItemResult(BaseModel):
     index: int
     actual_output: str | None = None
     metrics: list[EvaluationMetric] = Field(default_factory=list)
-    judgment: JudgmentResult | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
 
     @property
@@ -85,10 +83,9 @@ class EvaluationRunData(BaseModel):
     tenant_id: str
     target_type: str
     target_id: str
-    evaluation_category: EvaluationCategory
     evaluation_model_provider: str
     evaluation_model: str
-    default_metrics: list[dict[str, Any]] = Field(default_factory=list)
-    customized_metrics: dict[str, Any] | None = None
+    default_metrics: list[DefaultMetric] = Field(default_factory=list)
+    customized_metrics: CustomizedMetrics | None = None
     judgment_config: JudgmentConfig | None = None
-    items: list[EvaluationItemInput]
+    input_list: list[dict]

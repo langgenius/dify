@@ -19,41 +19,6 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
         super().__init__(evaluation_instance, session)
 
-    def execute_target(
-        self,
-        tenant_id: str,
-        target_id: str,
-        target_type: str,
-        item: EvaluationItemInput,
-    ) -> EvaluationItemResult:
-        """Execute retrieval using DatasetRetrieval and collect context documents."""
-        from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-
-        query = self._extract_query(item.inputs)
-
-        dataset_retrieval = DatasetRetrieval()
-
-        # Use knowledge_retrieval for structured results
-        try:
-            from core.rag.retrieval.dataset_retrieval import KnowledgeRetrievalRequest
-
-            request = KnowledgeRetrievalRequest(
-                query=query,
-                app_id=target_id,
-                tenant_id=tenant_id,
-            )
-            sources = dataset_retrieval.knowledge_retrieval(request)
-            retrieved_contexts = [source.content for source in sources if source.content]
-        except (ImportError, AttributeError):
-            logger.warning("KnowledgeRetrievalRequest not available, using simple retrieval")
-            retrieved_contexts = []
-
-        return EvaluationItemResult(
-            index=item.index,
-            actual_output="\n\n".join(retrieved_contexts) if retrieved_contexts else "",
-            metadata={"retrieved_contexts": retrieved_contexts},
-        )
-
     def evaluate_metrics(
         self,
         items: list[EvaluationItemInput],
