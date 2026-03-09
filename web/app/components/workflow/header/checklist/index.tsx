@@ -68,26 +68,27 @@ const WorkflowChecklist = ({
     <Popover open={open} onOpenChange={newOpen => !disabled && setOpen(newOpen)}>
       <PopoverTrigger
         render={(
-          <div
+          <button
+            type="button"
             className={cn(
-              'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md',
+              'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
               disabled && 'cursor-not-allowed opacity-50',
             )}
-            aria-disabled={disabled || undefined}
+            disabled={disabled || undefined}
           >
-            <div
-              className={cn('group flex h-full w-full cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+            <span
+              className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
             >
               <span
                 className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
               />
-            </div>
+            </span>
             {!!needWarningNodes.length && (
-              <div className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
                 {needWarningNodes.length}
-              </div>
+              </span>
             )}
-          </div>
+          </button>
         )}
       />
       <PopoverContent
