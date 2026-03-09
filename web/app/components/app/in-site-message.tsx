@@ -89,29 +89,29 @@ function InSiteMessage({
   return (
     <div
       className={cn(
-        'fixed bottom-3 right-3 z-50 w-[360px] overflow-hidden rounded-xl border border-black/5 bg-background-default shadow-2xl',
+        'fixed bottom-3 right-3 z-50 w-[360px] overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg shadow-2xl backdrop-blur-[5px]',
         className,
       )}
     >
-      <div className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pb-3 pt-6 text-white" style={headerStyle}>
-        <div className="whitespace-pre-line text-[20px] font-bold leading-6">
+      <div className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pb-3 pt-6 text-text-primary-on-surface" style={headerStyle}>
+        <div className="whitespace-pre-line title-3xl-bold">
           {normalizedTitle}
         </div>
-        <div className="whitespace-pre-line text-[14px] font-normal leading-5 text-white/95">
+        <div className="whitespace-pre-line body-md-regular">
           {normalizedSubtitle}
         </div>
       </div>
 
-      <div className="px-4 pb-2 pt-4 text-[14px] leading-5 text-text-secondary [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5">
+      <div className="markdown-body px-4 pb-2 pt-4 text-text-secondary body-md-regular">
         <MarkdownWithDirective markdown={main} />
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2">
+      <div className="flex items-center justify-end gap-2 p-4">
         {actions.map(item => (
           <Button
             key={`${item.type}-${item.action}-${item.text}`}
             variant={item.type === 'primary' ? 'primary' : 'ghost'}
-            size="small"
+            size="medium"
             className={cn(item.type === 'default' && 'text-text-secondary')}
             onClick={() => handleAction(item)}
           >
