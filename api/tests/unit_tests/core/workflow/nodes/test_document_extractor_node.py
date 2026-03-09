@@ -387,6 +387,7 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
 
     assert expected_manual == result
 
+
 def _make_docx_zip(use_backslash: bool) -> bytes:
     """Helper to build a minimal in-memory DOCX zip.
 
