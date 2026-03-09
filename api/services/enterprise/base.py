@@ -48,7 +48,6 @@ class BaseRequest:
         params: Mapping[str, Any] | None = None,
         *,
         timeout: float | httpx.Timeout | None = None,
-        raise_for_status: bool = False,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
@@ -72,14 +71,9 @@ class BaseRequest:
 
             response = client.request(method, url, **request_kwargs)
 
-            # Always validate HTTP status and raise domain-specific errors
+            # Validate HTTP status and raise domain-specific errors
             if not response.is_success:
                 cls._handle_error_response(response)
-
-            # Legacy support: still respect raise_for_status parameter
-            if raise_for_status:
-                response.raise_for_status()
-
         return response.json()
 
     @classmethod

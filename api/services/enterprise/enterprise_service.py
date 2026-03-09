@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import logging
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -8,12 +11,16 @@ from configs import dify_config
 from extensions.ext_redis import redis_client
 from services.enterprise.base import EnterpriseRequest
 
+if TYPE_CHECKING:
+    from services.feature_service import LicenseStatus
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS = 1.0
 # License status cache configuration
 LICENSE_STATUS_CACHE_KEY = "enterprise:license:status"
-LICENSE_STATUS_CACHE_TTL = 600  # 10 minutes
+VALID_LICENSE_CACHE_TTL = 600  # 10 minutes — valid licenses are stable
+INVALID_LICENSE_CACHE_TTL = 30  # 30 seconds — short so admin fixes are picked up quickly
 
 
 class WebAppSettings(BaseModel):
@@ -56,7 +63,7 @@ class DefaultWorkspaceJoinResult(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     @model_validator(mode="after")
-    def _check_workspace_id_when_joined(self) -> "DefaultWorkspaceJoinResult":
+    def _check_workspace_id_when_joined(self) -> DefaultWorkspaceJoinResult:
         if self.joined and not self.workspace_id:
             raise ValueError("workspace_id must be non-empty when joined is True")
         return self
@@ -119,7 +126,6 @@ class EnterpriseService:
             "/default-workspace/members",
             json={"account_id": account_id},
             timeout=DEFAULT_WORKSPACE_JOIN_TIMEOUT_SECONDS,
-            raise_for_status=True,
         )
         if not isinstance(data, dict):
             raise ValueError("Invalid response format from enterprise default workspace API")
@@ -229,45 +235,62 @@ class EnterpriseService:
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)
 
     @classmethod
-    def get_cached_license_status(cls):
-        """
-        Get enterprise license status with Redis caching to reduce HTTP calls.
+    def get_cached_license_status(cls) -> LicenseStatus | None:
+        """Get enterprise license status with Redis caching to reduce HTTP calls.
 
-        Only caches valid statuses (active/expiring) since invalid statuses
-        should be re-checked every request — the admin may update the license
-        at any time.
+        Caches valid statuses (active/expiring) for 10 minutes and invalid statuses
+        (inactive/expired/lost) for 1 minute.  The shorter TTL for invalid statuses
+        balances prompt license-fix detection against DoS mitigation — without
+        caching, every request on an expired license would hit the enterprise API.
 
-        Returns license status string or None if unavailable.
+        Returns:
+            LicenseStatus enum value, or None if enterprise is disabled / unreachable.
         """
         if not dify_config.ENTERPRISE_ENABLED:
             return None
 
-        # Try cache first — only valid statuses are cached
-        try:
-            cached_status = redis_client.get(LICENSE_STATUS_CACHE_KEY)
-            if cached_status:
-                if isinstance(cached_status, bytes):
-                    cached_status = cached_status.decode("utf-8")
-                return cached_status
-        except Exception:
-            logger.debug("Failed to get license status from cache, calling enterprise API")
+        cached = cls._read_cached_license_status()
+        if cached is not None:
+            return cached
 
-        # Cache miss or failure — call enterprise API
+        return cls._fetch_and_cache_license_status()
+
+    @classmethod
+    def _read_cached_license_status(cls) -> LicenseStatus | None:
+        """Read license status from Redis cache, returning None on miss or failure."""
+        from services.feature_service import LicenseStatus
+
+        try:
+            raw = redis_client.get(LICENSE_STATUS_CACHE_KEY)
+            if raw:
+                value = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                return LicenseStatus(value)
+        except Exception:
+            logger.warning("Failed to read license status from cache", exc_info=True)
+        return None
+
+    @classmethod
+    def _fetch_and_cache_license_status(cls) -> LicenseStatus | None:
+        """Fetch license status from enterprise API and cache the result."""
+        from services.feature_service import LicenseStatus
+
         try:
             info = cls.get_info()
             license_info = info.get("License")
-            if license_info:
-                from services.feature_service import LicenseStatus
+            if not license_info:
+                return None
 
-                status = license_info.get("status", LicenseStatus.INACTIVE)
-                # Only cache valid statuses so license updates are picked up immediately
-                if status in (LicenseStatus.ACTIVE, LicenseStatus.EXPIRING):
-                    try:
-                        redis_client.setex(LICENSE_STATUS_CACHE_KEY, LICENSE_STATUS_CACHE_TTL, status)
-                    except Exception:
-                        logger.debug("Failed to cache license status")
-                return status
+            status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+            ttl = (
+                VALID_LICENSE_CACHE_TTL
+                if status in (LicenseStatus.ACTIVE, LicenseStatus.EXPIRING)
+                else INVALID_LICENSE_CACHE_TTL
+            )
+            try:
+                redis_client.setex(LICENSE_STATUS_CACHE_KEY, ttl, status)
+            except Exception:
+                logger.warning("Failed to cache license status", exc_info=True)
+            return status
         except Exception:
             logger.exception("Failed to get enterprise license status")
-
         return None

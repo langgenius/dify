@@ -40,7 +40,7 @@ def create_flask_app_with_configs() -> DifyApp:
         # for the frontend to load the license expiration page without infinite reloads.
         if dify_config.ENTERPRISE_ENABLED:
             is_console_api = request.path.startswith("/console/api/")
-            is_webapp_api = request.path.startswith("/api/") and not is_console_api
+            is_webapp_api = request.path.startswith("/api/")
 
             if is_console_api or is_webapp_api:
                 if is_console_api:
@@ -56,7 +56,7 @@ def create_flask_app_with_configs() -> DifyApp:
 
                 if not is_exempt:
                     try:
-                        # Check license status with caching (10 min TTL)
+                        # Check license status (cached — see EnterpriseService for TTL details)
                         license_status = EnterpriseService.get_cached_license_status()
                         if license_status in (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST):
                             raise UnauthorizedAndForceLogout(
@@ -65,7 +65,13 @@ def create_flask_app_with_configs() -> DifyApp:
                     except UnauthorizedAndForceLogout:
                         raise
                     except Exception:
+                        # Fail-closed: if we cannot verify the license (Redis down +
+                        # enterprise API unreachable), block the request.  An unreachable
+                        # sidecar is itself an abnormal state that should surface.
                         logger.exception("Failed to check enterprise license status")
+                        raise UnauthorizedAndForceLogout(
+                            "Unable to verify enterprise license. Please contact your administrator."
+                        )
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context

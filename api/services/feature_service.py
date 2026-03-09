@@ -379,17 +379,19 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        # License status and expiry are always exposed so the login page can
-        # show the expiry UI after a force-logout (the user is unauthenticated
-        # at that point).  Workspace usage details remain auth-gated.
+        # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
+        # so the login page can detect an expired/inactive license after force-logout.
+        # All other license details (expiry date, workspace usage) remain auth-gated.
+        # See CVE-2025-63387 for prior information-leakage context.
         if license_info := enterprise_info.get("License"):
             features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-            features.license.expired_at = license_info.get("expiredAt", "")
 
-            if is_authenticated and (workspaces_info := license_info.get("workspaces")):
-                features.license.workspaces.enabled = workspaces_info.get("enabled", False)
-                features.license.workspaces.limit = workspaces_info.get("limit", 0)
-                features.license.workspaces.size = workspaces_info.get("used", 0)
+            if is_authenticated:
+                features.license.expired_at = license_info.get("expiredAt", "")
+                if workspaces_info := license_info.get("workspaces"):
+                    features.license.workspaces.enabled = workspaces_info.get("enabled", False)
+                    features.license.workspaces.limit = workspaces_info.get("limit", 0)
+                    features.license.workspaces.size = workspaces_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]
