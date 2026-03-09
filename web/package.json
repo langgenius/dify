@@ -84,7 +84,7 @@
     "@orpc/openapi-client": "1.13.6",
     "@orpc/tanstack-query": "1.13.6",
     "@remixicon/react": "4.9.0",
-    "@sentry/react": "8.55.0",
+    "@sentry/react": "10.42.0",
     "@svgdotjs/svg.js": "3.2.5",
     "@t3-oss/env-nextjs": "0.13.10",
     "@tailwindcss/typography": "0.5.19",

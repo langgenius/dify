@@ -26,8 +26,6 @@ updates:
     open-pull-requests-limit: 2
     ignore:
       - dependency-name: "ky"
-      - dependency-name: "@sentry/react"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "tailwind-merge"
         update-types: ["version-update:semver-major"]
       - dependency-name: "tailwindcss"
