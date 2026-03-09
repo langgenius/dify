@@ -25,19 +25,19 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 2
     ignore:
-      - package-name: "@sentry/react"
+      - dependency-name: "@sentry/react"
         update-types: ["version-update:semver-major"]
-      - package-name: "tailwindcss"
+      - dependency-name: "tailwindcss"
         update-types: ["version-update:semver-major"]
-      - package-name: "echarts"
+      - dependency-name: "echarts"
         update-types: ["version-update:semver-major"]
-      - package-name: "uuid"
+      - dependency-name: "uuid"
         update-types: ["version-update:semver-major"]
-      - package-name: "react-markdown"
+      - dependency-name: "react-markdown"
         update-types: ["version-update:semver-major"]
-      - package-name: "react-syntax-highlighter"
+      - dependency-name: "react-syntax-highlighter"
         update-types: ["version-update:semver-major"]
-      - package-name: "react-window"
+      - dependency-name: "react-window"
         update-types: ["version-update:semver-major"]
     groups:
       lexical:
