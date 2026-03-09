@@ -1,4 +1,4 @@
-import type { FC, RefObject } from 'react'
+import type { FC } from 'react'
 import type {
   DefaultModel,
   Model,
@@ -6,10 +6,9 @@ import type {
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { useTheme } from 'next-themes'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
@@ -33,7 +32,6 @@ type PopupProps = {
   onSelect: (provider: string, model: ModelItem) => void
   scopeFeatures?: ModelFeatureEnum[]
   onHide: () => void
-  triggerRef?: RefObject<HTMLDivElement | null>
 }
 const Popup: FC<PopupProps> = ({
   defaultModel,
@@ -41,7 +39,6 @@ const Popup: FC<PopupProps> = ({
   onSelect,
   scopeFeatures = [],
   onHide,
-  triggerRef,
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -50,9 +47,6 @@ const Popup: FC<PopupProps> = ({
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const { modelProviders } = useProviderContext()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const triggerWidth = triggerRef?.current?.offsetWidth
-
   const {
     plugins: allPlugins,
   } = useMarketplaceAllPlugins(modelProviders, '')
@@ -95,25 +89,6 @@ const Popup: FC<PopupProps> = ({
     }
   }, [allPlugins, installingProvider, installPackageFromMarketPlace, refreshPluginList])
 
-  // Close any open tooltips when the user scrolls to prevent them from appearing
-  // in incorrect positions or becoming detached from their trigger elements
-  useEffect(() => {
-    const handleTooltipCloseOnScroll = () => {
-      tooltipManager.closeActiveTooltip()
-    }
-
-    const scrollContainer = scrollRef.current
-    if (!scrollContainer)
-      return
-
-    // Use passive listener for better performance since we don't prevent default
-    scrollContainer.addEventListener('scroll', handleTooltipCloseOnScroll, { passive: true })
-
-    return () => {
-      scrollContainer.removeEventListener('scroll', handleTooltipCloseOnScroll)
-    }
-  }, [])
-
   const filteredModelList = useMemo(() => {
     const filtered = modelList.map((model) => {
       const filteredModels = model.models
@@ -137,11 +112,11 @@ const Popup: FC<PopupProps> = ({
     }).filter(model => model.models.length > 0)
 
     if (defaultModel?.provider) {
-      const selectedIndex = filtered.findIndex(m => m.provider === defaultModel.provider)
-      if (selectedIndex > 0) {
-        const [selected] = filtered.splice(selectedIndex, 1)
-        filtered.unshift(selected)
-      }
+      filtered.sort((a, b) => {
+        const aSelected = a.provider === defaultModel.provider ? 0 : 1
+        const bSelected = b.provider === defaultModel.provider ? 0 : 1
+        return aSelected - bSelected
+      })
     }
 
     return filtered
@@ -153,7 +128,7 @@ const Popup: FC<PopupProps> = ({
   }, [modelList])
 
   return (
-    <div ref={scrollRef} className="max-h-[480px] min-w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg no-scrollbar" style={triggerWidth ? { width: triggerWidth } : undefined}>
+    <div className="max-h-[480px] overflow-y-auto no-scrollbar">
       <div className="sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3">
         <div className={`
           flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]

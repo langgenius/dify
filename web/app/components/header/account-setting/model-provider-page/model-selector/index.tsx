@@ -5,17 +5,15 @@ import type {
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import { cn } from '@/utils/classnames'
 import { useCurrentProviderAndModel } from '../hooks'
-import DeprecatedModelTrigger from './deprecated-model-trigger'
-import EmptyTrigger from './empty-trigger'
-import ModelTrigger from './model-trigger'
+import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 
 type ModelSelectorProps = {
@@ -40,10 +38,9 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   readonly,
   scopeFeatures = [],
   deprecatedClassName,
-  showDeprecatedWarnIcon = false,
+  showDeprecatedWarnIcon = true,
 }) => {
   const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLDivElement>(null)
   const {
     currentProvider,
     currentModel,
@@ -59,71 +56,60 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       onSelect({ provider, model: model.model })
   }
 
-  const handleToggle = () => {
-    if (readonly)
-      return
-
-    setOpen(v => !v)
-  }
-
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
+      onOpenChange={(newOpen) => {
+        if (readonly)
+          return
+        setOpen(newOpen)
+      }}
     >
-      <div ref={triggerRef} className={cn('relative')}>
-        <PortalToFollowElemTrigger
-          onClick={handleToggle}
-          className="block"
-        >
-          {
-            currentModel && currentProvider && (
-              <ModelTrigger
-                open={open}
-                provider={currentProvider}
-                model={currentModel}
-                className={triggerClassName}
-                readonly={readonly}
-              />
-            )
-          }
-          {
-            !currentModel && defaultModel && (
-              <DeprecatedModelTrigger
-                modelName={defaultModel?.model || ''}
-                providerName={defaultModel?.provider || ''}
-                className={triggerClassName}
-                showWarnIcon={showDeprecatedWarnIcon}
-                contentClassName={deprecatedClassName}
-              />
-            )
-          }
-          {
-            !defaultModel && (
-              <EmptyTrigger
-                open={open}
-                className={triggerClassName}
-              />
-            )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={`z-[1002] ${popupClassName}`}>
-          <Popup
-            defaultModel={defaultModel}
-            modelList={modelList}
-            onSelect={handleSelect}
-            scopeFeatures={scopeFeatures}
-            onHide={() => {
-              setOpen(false)
-              onHide?.()
-            }}
-            triggerRef={triggerRef}
-          />
-        </PortalToFollowElemContent>
-      </div>
-    </PortalToFollowElem>
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            className="block w-full border-0 bg-transparent p-0 text-left"
+            disabled={readonly}
+          >
+            <ModelSelectorTrigger
+              currentProvider={currentProvider}
+              currentModel={currentModel}
+              defaultModel={defaultModel}
+              open={open}
+              readonly={readonly}
+              className={triggerClassName}
+              deprecatedClassName={deprecatedClassName}
+              showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+            />
+          </button>
+        )}
+      />
+      {/*
+       * TODO(overlay-migration): temporary layering hack.
+       * Some callers still render ModelSelector inside legacy high-z modals
+       * (e.g. code/automatic generators at z-[1000]). Keep this selector above
+       * them until those call sites are fully migrated to unified base/ui overlays.
+       */}
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        className={cn('z-[1002]', popupClassName)}
+        popupClassName="overflow-hidden rounded-lg"
+        popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
+      >
+        <Popup
+          defaultModel={defaultModel}
+          modelList={modelList}
+          onSelect={handleSelect}
+          scopeFeatures={scopeFeatures}
+          onHide={() => {
+            setOpen(false)
+            onHide?.()
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 

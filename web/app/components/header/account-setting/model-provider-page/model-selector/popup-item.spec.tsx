@@ -128,6 +128,18 @@ describe('PopupItem', () => {
     })
   })
 
+  it('should render nothing when provider is not found in modelProviders', () => {
+    mockUseProviderContext.mockReturnValue({
+      modelProviders: [],
+    })
+
+    const { container } = render(
+      <PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />,
+    )
+
+    expect(container.innerHTML).toBe('')
+  })
+
   it('should call onSelect when clicking an active model', () => {
     const onSelect = vi.fn()
     render(<PopupItem model={makeModel()} onSelect={onSelect} onHide={vi.fn()} />)

@@ -183,6 +183,18 @@ describe('useCredentialPanelState', () => {
     })
   })
 
+  // Undefined provider
+  describe('Undefined provider', () => {
+    it('should return safe defaults when provider is undefined', () => {
+      const { result } = renderHook(() => useCredentialPanelState(undefined))
+
+      expect(result.current.priority).toBe('apiKeyOnly')
+      expect(result.current.supportsCredits).toBe(false)
+      expect(result.current.hasCredentials).toBe(false)
+      expect(result.current.credentialName).toBeUndefined()
+    })
+  })
+
   // Derived metadata
   describe('Derived metadata', () => {
     it('should show priority switcher when credits supported and custom config active', () => {
