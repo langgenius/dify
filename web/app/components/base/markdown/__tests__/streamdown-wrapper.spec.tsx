@@ -165,7 +165,7 @@ describe('StreamdownWrapper', () => {
       render(<StreamdownWrapper latexContent="**bold**" customDisallowedElements={['strong']} />)
 
       // Assert - strong element shouldn't be rendered (it will be stripped out)
-      expect(document.querySelector('strong')).toBeNull()
+      expect(document.querySelector('[data-streamdown="strong"]')).toBeNull()
     })
   })
 
@@ -174,8 +174,9 @@ describe('StreamdownWrapper', () => {
       // Act
       render(<StreamdownWrapper latexContent={'<div ref="someRef">content</div>'} />)
 
-      // Assert - If ref isn't stripped, it gets passed to React DOM causing warnings, but here we just ensure content renders
+      // Assert - ref attribute should be removed
       expect(screen.getByText('content')).toBeInTheDocument()
+      expect(document.querySelector('[ref="someRef"]')).toBeNull()
     })
 
     it('should strip disallowed tags but preserve their text content', () => {

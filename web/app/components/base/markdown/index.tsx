@@ -5,7 +5,7 @@ import { memo, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
-const ReactMarkdown = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
+const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
 
 const preprocess = flow([preprocessThinkTag, preprocessLaTeX])
 
@@ -43,7 +43,7 @@ export const Markdown = memo((props: MarkdownProps) => {
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', className)}>
-      <ReactMarkdown
+      <StreamdownWrapper
         pluginInfo={pluginInfo}
         latexContent={latexContent}
         customComponents={customComponents}

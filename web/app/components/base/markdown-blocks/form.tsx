@@ -271,7 +271,8 @@ const MarkdownForm = ({ node }: any) => {
                 if (Array.isArray(parsed))
                   options = parsed.filter((o): o is string => typeof o === 'string')
               }
-              catch {
+              catch (error) {
+                console.error('Failed to parse data-options JSON:', rawOptions, error)
                 options = []
               }
             }
@@ -352,7 +353,12 @@ const MarkdownForm = ({ node }: any) => {
           )
         }
 
-        return null
+        return (
+          <p key={key}>
+            Unsupported tag:
+            {child.tagName}
+          </p>
+        )
       })}
     </form>
   )
