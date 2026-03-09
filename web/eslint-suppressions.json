@@ -8221,11 +8221,6 @@
       "count": 7
     }
   },
-  "app/components/workflow/nodes/tool/node.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/tool/output-schema-utils.ts": {
     "ts/no-explicit-any": {
       "count": 4

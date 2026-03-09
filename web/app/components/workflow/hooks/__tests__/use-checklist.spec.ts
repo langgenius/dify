@@ -1,5 +1,6 @@
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
+import { CollectionType } from '@/app/components/tools/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -217,7 +218,9 @@ describe('useChecklist', () => {
       data: {
         type: BlockEnum.Tool,
         title: 'My Tool',
-        _pluginInstallLocked: true,
+        provider_type: CollectionType.builtIn,
+        provider_id: 'missing-provider',
+        plugin_unique_identifier: 'plugin/tool@0.0.1',
       },
     })
 

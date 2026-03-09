@@ -2,14 +2,11 @@ import type { FC } from 'react'
 import type { ToolNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
-  id,
   data,
 }) => {
   const { tool_configurations, paramSchemas } = data
@@ -23,20 +20,6 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     shouldDim,
   } = useNodePluginInstallation(data)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
-  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
-
-  useEffect(() => {
-    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
-      return
-    handleNodeDataUpdate({
-      id,
-      data: {
-        _pluginInstallLocked: shouldLock,
-        _dimmed: shouldDim,
-      },
-    })
-  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const hasConfigs = toolConfigs.length > 0
 
@@ -63,7 +46,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       {hasConfigs && (
         <div className="space-y-0.5" aria-disabled={shouldDim}>
           {toolConfigs.map((key, index) => (
-            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md  bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
+            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
               <div title={key} className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary">
                 {key}
               </div>

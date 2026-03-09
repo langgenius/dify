@@ -35,6 +35,7 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
+  useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
@@ -59,6 +60,7 @@ import {
   getValidTreeNodes,
 } from '../utils'
 import { extractPluginId } from '../utils/plugin'
+import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 
@@ -82,13 +84,6 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
-// Node types that depend on plugins
-const PLUGIN_DEPENDENT_TYPES: BlockEnum[] = [
-  BlockEnum.Tool,
-  BlockEnum.DataSource,
-  BlockEnum.TriggerPlugin,
-]
-
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -96,6 +91,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: strategyProviders } = useStrategyProviders()
   const { data: triggerPlugins } = useAllTriggerPlugins()
@@ -174,7 +170,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
         const validator = nodesExtraData?.[node.data.type as BlockEnum]?.checkValid
-        const isPluginMissing = PLUGIN_DEPENDENT_TYPES.includes(node.data.type as BlockEnum) && node.data._pluginInstallLocked
+        const isPluginMissing = isNodePluginMissing(node.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
 
@@ -264,7 +260,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     workflowStore.setState({ checklistItems: list })
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, workflowStore])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, workflowStore])
 
   return needWarningNodes
 }
