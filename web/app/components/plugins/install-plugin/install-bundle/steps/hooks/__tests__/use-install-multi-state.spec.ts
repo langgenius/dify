@@ -266,6 +266,29 @@ describe('useInstallMultiState', () => {
         expect(result.current.plugins[1]).toBeDefined()
       })
     })
+
+    it('should resolve marketplace dependency from organization and plugin fields', async () => {
+      mockMarketplaceData = createMarketplaceApiData([0])
+
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              organization: 'test-org',
+              plugin: 'plugin-0',
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.plugins[0]).toBeDefined()
+        expect(result.current.errorIndexes).not.toContain(0)
+      })
+    })
   })
 
   // ==================== Error Handling ====================

@@ -20,6 +20,12 @@ type MarketplacePluginInfo = {
   version?: string
 }
 
+type MarketplaceRequest = {
+  dslIndex: number
+  dependency: GitHubItemAndMarketPlaceDependency
+  info: MarketplacePluginInfo
+}
+
 export function getPluginKey(plugin: Plugin | undefined): string {
   return `${plugin?.org || plugin?.author}/${plugin?.name}`
 }
@@ -38,6 +44,25 @@ function parseMarketplaceIdentifier(identifier?: string): MarketplacePluginInfo 
     return null
 
   return { organization, plugin, version }
+}
+
+function getMarketplacePluginInfo(
+  value: GitHubItemAndMarketPlaceDependency['value'],
+): MarketplacePluginInfo | null {
+  const parsedInfo = parseMarketplaceIdentifier(
+    value.marketplace_plugin_unique_identifier || value.plugin_unique_identifier,
+  )
+  if (parsedInfo)
+    return parsedInfo
+
+  if (!value.organization || !value.plugin)
+    return null
+
+  return {
+    organization: value.organization,
+    plugin: value.plugin,
+    version: value.version,
+  }
 }
 
 function initPluginsFromDependencies(allPlugins: Dependency[]): (Plugin | undefined)[] {
@@ -77,33 +102,35 @@ export function useInstallMultiState({
     }, [])
   }, [allPlugins])
 
-  const { marketplacePayloadByIdentifier, invalidMarketplaceIndexes } = useMemo(() => {
+  const { marketplaceRequests, invalidMarketplaceIndexes } = useMemo(() => {
     return marketplacePlugins.reduce<{
-      marketplacePayloadByIdentifier: MarketplacePluginInfo[]
+      marketplaceRequests: MarketplaceRequest[]
       invalidMarketplaceIndexes: number[]
-    }>((acc, d, marketplaceIndex) => {
-      const parsedIdentifier = parseMarketplaceIdentifier(
-        d.value.marketplace_plugin_unique_identifier || d.value.plugin_unique_identifier,
-      )
+    }>((acc, dependency, marketplaceIndex) => {
       const dslIndex = marketPlaceInDSLIndex[marketplaceIndex]
-      if (parsedIdentifier)
-        acc.marketplacePayloadByIdentifier.push(parsedIdentifier)
-      else if (dslIndex !== undefined)
+      if (dslIndex === undefined)
+        return acc
+
+      const marketplaceInfo = getMarketplacePluginInfo(dependency.value)
+      if (!marketplaceInfo)
         acc.invalidMarketplaceIndexes.push(dslIndex)
+      else
+        acc.marketplaceRequests.push({ dslIndex, dependency, info: marketplaceInfo })
+
       return acc
     }, {
-      marketplacePayloadByIdentifier: [],
+      marketplaceRequests: [],
       invalidMarketplaceIndexes: [],
     })
   }, [marketPlaceInDSLIndex, marketplacePlugins])
 
-  // Marketplace data fetching: by unique identifier
+  // Marketplace data fetching: by normalized marketplace info
   const {
     isLoading: isFetchingById,
     data: infoGetById,
     error: infoByIdError,
   } = useFetchPluginsInMarketPlaceByInfo(
-    marketplacePayloadByIdentifier,
+    marketplaceRequests.map(request => request.info),
   )
 
   // Derive marketplace plugin data and errors from API responses
@@ -113,22 +140,26 @@ export function useInstallMultiState({
 
     // Process "by ID" response
     if (!isFetchingById && infoGetById?.data.list) {
+      const payloads = infoGetById.data.list
       const pluginById = new Map(
-        infoGetById.data.list.map(item => [item.plugin.plugin_id, item.plugin]),
+        payloads.map(item => [item.plugin.plugin_id, item.plugin]),
       )
 
-      marketPlaceInDSLIndex.forEach((index, i) => {
-        const dependency = marketplacePlugins[i]
-        const pluginId = (dependency?.value.marketplace_plugin_unique_identifier || dependency?.value.plugin_unique_identifier)?.split(':')[0]
-        const pluginInfo = pluginId ? pluginById.get(pluginId) : undefined
+      marketplaceRequests.forEach((request, requestIndex) => {
+        const pluginId = (
+          request.dependency.value.marketplace_plugin_unique_identifier
+          || request.dependency.value.plugin_unique_identifier
+        )?.split(':')[0]
+        const pluginInfo = (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
+
         if (pluginInfo) {
-          pluginMap.set(index, {
+          pluginMap.set(request.dslIndex, {
             ...pluginInfo,
-            from: dependency.type,
+            from: request.dependency.type,
             version: pluginInfo.version || pluginInfo.latest_version,
           })
         }
-        else { errorSet.add(index) }
+        else { errorSet.add(request.dslIndex) }
       })
     }
 
@@ -137,7 +168,7 @@ export function useInstallMultiState({
       marketPlaceInDSLIndex.forEach(index => errorSet.add(index))
 
     return { marketplacePluginMap: pluginMap, marketplaceErrorIndexes: errorSet }
-  }, [invalidMarketplaceIndexes, isFetchingById, infoGetById, infoByIdError, marketPlaceInDSLIndex, marketplacePlugins])
+  }, [invalidMarketplaceIndexes, isFetchingById, infoGetById, infoByIdError, marketPlaceInDSLIndex, marketplaceRequests])
 
   // GitHub-fetched plugins and errors (imperative state from child callbacks)
   const [githubPluginMap, setGithubPluginMap] = useState<Map<number, Plugin>>(() => new Map())
