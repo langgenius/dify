@@ -47,6 +47,8 @@ def create_flask_app_with_configs() -> DifyApp:
                     # Console bootstrap APIs exempt from license check:
                     # - system-features: license status for expiry UI (GlobalPublicStoreProvider)
                     # - setup: install/setup status check (AppInitializer)
+                    # - init: init password validation for fresh install (InitPasswordPopup)
+                    # - login: auto-login after setup completion (InstallForm)
                     # - features: billing/plan features (ProviderContextProvider)
                     # - account/profile: login check + user profile (AppContextProvider, useIsLogin)
                     # - workspaces/current: workspace + model providers (AppContextProvider)
@@ -57,6 +59,8 @@ def create_flask_app_with_configs() -> DifyApp:
                     console_exempt_prefixes = (
                         "/console/api/system-features",
                         "/console/api/setup",
+                        "/console/api/init",
+                        "/console/api/login",
                         "/console/api/features",
                         "/console/api/account/profile",
                         "/console/api/workspaces/current",
