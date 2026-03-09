@@ -129,13 +129,18 @@ def _execute_evaluation_runner(
                 )
             else:
                 default_metric.score = 0
-    for customized_metric in customized_metrics:
-    runner = _create_runner(run_data.evaluation_category, evaluation_instance, session)
-    runner.run(
-        evaluation_run_id=run_data.evaluation_run_id,
-        tenant_id=run_data.tenant_id,
-        target_id=run_data.target_id,
-    )
+    if customized_metrics:
+        runner = _create_runner(EvaluationCategory.WORKFLOW, evaluation_instance, session)
+        runner.run(
+            evaluation_run_id=run_data.evaluation_run_id,
+            tenant_id=run_data.tenant_id,
+            target_id=run_data.target_id,
+            target_type=run_data.target_type,
+            default_metric=None,
+            customized_metrics=customized_metrics,
+            node_run_result=None,
+            node_run_result_mapping=node_run_result_mapping,
+        )
 
 def _create_runner(
     category: EvaluationCategory,

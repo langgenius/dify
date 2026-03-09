@@ -16,10 +16,13 @@ from sqlalchemy.orm import Session
 
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
+    CustomizedMetrics,
+    DefaultMetric,
     EvaluationItemInput,
     EvaluationItemResult,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
+from core.workflow.node_events import NodeRunResult
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowNodeExecutionModel
 
@@ -89,9 +92,10 @@ class SnippetEvaluationRunner(BaseEvaluationRunner):
 
     def evaluate_metrics(
         self,
-        items: list[EvaluationItemInput],
-        results: list[EvaluationItemResult],
-        default_metrics: list[dict[str, Any]],
+        node_run_result_mapping: dict[str, NodeRunResult] | None,
+        node_run_result: NodeRunResult | None,
+        default_metric: DefaultMetric | None,
+        customized_metrics: CustomizedMetrics | None,
         model_provider: str,
         model_name: str,
         tenant_id: str,

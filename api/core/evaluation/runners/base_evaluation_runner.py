@@ -42,9 +42,10 @@ class BaseEvaluationRunner(ABC):
     @abstractmethod
     def evaluate_metrics(
         self,
-        items: list[EvaluationItemInput],
-        results: list[EvaluationItemResult],
-        default_metrics: list[dict[str, Any]],
+        node_run_result_mapping: dict[str, NodeRunResult] | None,
+        node_run_result: NodeRunResult | None,
+        default_metric: DefaultMetric | None,
+        customized_metrics: CustomizedMetrics | None,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -58,11 +59,12 @@ class BaseEvaluationRunner(ABC):
         tenant_id: str,
         target_id: str,
         target_type: str,
-        node_run_result: NodeRunResult,
+        node_run_result: NodeRunResult | None = None,
         default_metric: DefaultMetric | None = None,
         customized_metrics: CustomizedMetrics | None = None,
         model_provider: str = "",
-        model_name: str = "", 
+        model_name: str = "",
+        node_run_result_mapping: dict[str, NodeRunResult] | None = None,
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
@@ -82,17 +84,15 @@ class BaseEvaluationRunner(ABC):
         # Phase 1: run evaluation
         if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
             try:
-                if customized_metrics is not None:
-                    # Customized workflow evaluation — target-type agnostic
-                    evaluated_results = self._evaluate_customized(
-                        successful_items, successful_results, customized_metrics, tenant_id,
-                    )
-                else:
-                    # Framework-specific evaluation — delegate to subclass
-                    evaluated_results = self.evaluate_metrics(
-                        successful_items, successful_results, default_metrics,
-                        model_provider, model_name, tenant_id,
-                    )
+                evaluated_results = self.evaluate_metrics(
+                    node_run_result_mapping=node_run_result_mapping,
+                    node_run_result=node_run_result,
+                    default_metric=default_metric,
+                    customized_metrics=customized_metrics,
+                    model_provider=model_provider,
+                    model_name=model_name,
+                    tenant_id=tenant_id,
+                )
                 # Merge evaluated metrics back into results
                 evaluated_by_index = {r.index: r for r in evaluated_results}
                 for i, result in enumerate(results):
