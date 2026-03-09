@@ -357,6 +357,7 @@
   "modelProvider.card.modelSupported": "{{modelName}} 模型正在使用此额度。",
   "modelProvider.card.noApiKeysDescription": "添加 API Key 以使用自有模型凭证。",
   "modelProvider.card.noApiKeysFallback": "未配置 API Key，正在使用 AI 额度",
+  "modelProvider.card.noApiKeysFallbackDescription": "请升级您的计划或配置 API Key",
   "modelProvider.card.noApiKeysTitle": "尚未配置 API Key",
   "modelProvider.card.noAvailableUsage": "无可用额度",
   "modelProvider.card.onTrial": "试用中",
