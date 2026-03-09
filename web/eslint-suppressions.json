@@ -1040,14 +1040,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/dataset-config/card-item/index.spec.tsx": {
-    "e18e/prefer-array-at": {
-      "count": 1
-    },
-    "e18e/prefer-spread-syntax": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/dataset-config/card-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
