@@ -3,7 +3,7 @@
   "type": "module",
   "version": "1.13.0",
   "private": true,
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "pnpm@10.31.0",
   "imports": {
     "#i18n": {
       "react-server": "./i18n-config/lib.server.ts",
@@ -221,7 +221,7 @@
     "code-inspector-plugin": "1.4.3",
     "cross-env": "10.1.0",
     "eslint": "10.0.3",
-    "eslint-plugin-better-tailwindcss": "https://pkg.pr.new/hyoban/eslint-plugin-better-tailwindcss@a520d15",
+    "eslint-plugin-better-tailwindcss": "4.3.2",
     "eslint-plugin-hyoban": "0.14.1",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-react-refresh": "0.5.2",
@@ -255,7 +255,6 @@
       "@lexical/code": "npm:lexical-code-no-prism@0.41.0",
       "@monaco-editor/loader": "1.5.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
-      "@stylistic/eslint-plugin": "https://pkg.pr.new/@stylistic/eslint-plugin@258f9d8",
       "array-includes": "npm:@nolyfill/array-includes@^1",
       "array.prototype.findlast": "npm:@nolyfill/array.prototype.findlast@^1",
       "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@^1",
