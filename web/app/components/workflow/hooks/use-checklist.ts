@@ -104,6 +104,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const modelProviders = useProviderContextSelector(s => s.modelProviders)
+  const workflowStore = useWorkflowStore()
 
   const map = useNodesAvailableVarList(nodes)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -261,8 +262,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     })
 
+    workflowStore.setState({ checklistItems: list })
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, workflowStore])
 
   return needWarningNodes
 }

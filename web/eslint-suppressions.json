@@ -6678,9 +6678,6 @@
   "app/components/workflow/nodes/_base/components/field.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/file-type-item.tsx": {
@@ -7937,9 +7934,6 @@
   "app/components/workflow/nodes/llm/panel.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
