@@ -43,7 +43,6 @@ const baseRetrievalConfig: RetrievalConfig = {
 }
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
-const saveChangesButtonName = /save changes/i
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const {
@@ -173,10 +172,8 @@ describe('dataset-config/card-item', () => {
     const [editButton] = within(card).getAllByRole('button', { hidden: true })
     await user.click(editButton)
 
-    const dialog = await screen.findByRole('dialog')
-    expect(await within(dialog).findByText('Mock settings modal')).toBeInTheDocument()
-
-    await user.click(await within(dialog).findByRole('button', { name: saveChangesButtonName }))
+    expect(await screen.findByText('Mock settings modal')).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('Save changes'))
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated dataset' }))
