@@ -8,6 +8,7 @@ class SandboxType(StrEnum):
     E2B = "e2b"
     LOCAL = "local"
     SSH = "ssh"
+    AWS_CODE_INTERPRETER = "aws_code_interpreter"
 
     @classmethod
     def get_all(cls) -> list[str]:

@@ -38,6 +38,12 @@ def _get_sandbox_class(sandbox_type: SandboxType) -> type[VirtualEnvironment]:
             from core.virtual_environment.providers.ssh_sandbox import SSHSandboxEnvironment
 
             return SSHSandboxEnvironment
+        case SandboxType.AWS_CODE_INTERPRETER:
+            from core.virtual_environment.providers.aws_code_interpreter_sandbox import (
+                AWSCodeInterpreterEnvironment,
+            )
+
+            return AWSCodeInterpreterEnvironment
         case _:
             raise ValueError(f"Unsupported sandbox type: {sandbox_type}")
 
