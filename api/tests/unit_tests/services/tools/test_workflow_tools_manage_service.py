@@ -1,11 +1,12 @@
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.tools.entities.tool_entities import ToolParameter, WorkflowToolParameterConfiguration
+from models.tools import WorkflowToolProvider
 from services.tools import workflow_tools_manage_service as service_module
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
@@ -157,7 +158,11 @@ def test_create_workflow_tool_should_persist_provider_and_update_labels(monkeypa
     monkeypatch.setattr(service_module.WorkflowToolProviderController, "from_db", MagicMock(return_value=MagicMock()))
 
     workflow_controller = MagicMock()
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=workflow_controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=workflow_controller),
+    )
     update_labels_mock = MagicMock()
     monkeypatch.setattr(service_module.ToolLabelManager, "update_tool_labels", update_labels_mock)
 
@@ -351,7 +356,11 @@ def test_update_workflow_tool_should_update_fields_commit_and_labels(monkeypatch
     monkeypatch.setattr(service_module.WorkflowToolProviderController, "from_db", MagicMock(return_value=MagicMock()))
 
     workflow_controller = MagicMock()
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=workflow_controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=workflow_controller),
+    )
     update_labels_mock = MagicMock()
     monkeypatch.setattr(service_module.ToolLabelManager, "update_tool_labels", update_labels_mock)
 
@@ -379,7 +388,9 @@ def test_update_workflow_tool_should_update_fields_commit_and_labels(monkeypatch
     update_labels_mock.assert_called_once_with(workflow_controller, ["ops"])
 
 
-def test_list_tenant_workflow_tools_should_skip_invalid_controller_and_build_result(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_tenant_workflow_tools_should_skip_invalid_controller_and_build_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     provider_valid = SimpleNamespace(id="provider-1", app_id="app-1")
     provider_invalid = SimpleNamespace(id="provider-2", app_id="app-2")
@@ -396,12 +407,24 @@ def test_list_tenant_workflow_tools_should_skip_invalid_controller_and_build_res
             raise RuntimeError("deleted")
         return valid_controller
 
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(side_effect=_to_controller))
-    monkeypatch.setattr(service_module.ToolLabelManager, "get_tools_labels", MagicMock(return_value={"provider-1": ["L"]}))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(side_effect=_to_controller),
+    )
+    monkeypatch.setattr(
+        service_module.ToolLabelManager,
+        "get_tools_labels",
+        MagicMock(return_value={"provider-1": ["L"]}),
+    )
 
     user_provider = MagicMock()
     user_provider.tools = []
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_user_provider", MagicMock(return_value=user_provider))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_user_provider",
+        MagicMock(return_value=user_provider),
+    )
     monkeypatch.setattr(service_module.ToolTransformService, "repack_provider", MagicMock())
     monkeypatch.setattr(
         service_module.ToolTransformService,
@@ -430,7 +453,11 @@ def test_delete_workflow_tool_should_delete_and_commit(monkeypatch: pytest.Monke
     monkeypatch.setattr(service_module.db, "session", db_session)
 
     # Act
-    result = WorkflowToolManageService.delete_workflow_tool(user_id="user-1", tenant_id="tenant-1", workflow_tool_id="tool-1")
+    result = WorkflowToolManageService.delete_workflow_tool(
+        user_id="user-1",
+        tenant_id="tenant-1",
+        workflow_tool_id="tool-1",
+    )
 
     # Assert
     assert result == {"result": "success"}
@@ -478,7 +505,7 @@ def test_get_workflow_tool_should_raise_when_db_tool_missing() -> None:
 
     # Act / Assert
     with pytest.raises(ValueError, match="Tool not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", db_tool)
+        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
 
 
 def test_get_workflow_tool_should_raise_when_app_missing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -490,7 +517,7 @@ def test_get_workflow_tool_should_raise_when_app_missing(monkeypatch: pytest.Mon
 
     # Act / Assert
     with pytest.raises(ValueError, match="App app-1 not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", db_tool)
+        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
 
 
 def test_get_workflow_tool_should_raise_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -503,7 +530,7 @@ def test_get_workflow_tool_should_raise_when_workflow_missing(monkeypatch: pytes
 
     # Act / Assert
     with pytest.raises(ValueError, match="Workflow not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", db_tool)
+        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
 
 
 def test_get_workflow_tool_should_raise_when_no_runtime_tools_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -516,11 +543,15 @@ def test_get_workflow_tool_should_raise_when_no_runtime_tools_found(monkeypatch:
 
     controller = MagicMock()
     controller.get_tools.return_value = []
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=controller),
+    )
 
     # Act / Assert
     with pytest.raises(ValueError, match="Tool tool-1 not found"):
-        WorkflowToolManageService._get_workflow_tool("tenant-1", db_tool)
+        WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
 
 
 def test_get_workflow_tool_should_return_full_payload_for_synced_tool(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -547,13 +578,21 @@ def test_get_workflow_tool_should_return_full_payload_for_synced_tool(monkeypatc
 
     controller = MagicMock()
     controller.get_tools.return_value = [runtime_tool]
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=controller),
+    )
     monkeypatch.setattr(service_module.ToolLabelManager, "get_tool_labels", MagicMock(return_value=["ops"]))
     api_tool = MagicMock()
-    monkeypatch.setattr(service_module.ToolTransformService, "convert_tool_entity_to_api_entity", MagicMock(return_value=api_tool))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "convert_tool_entity_to_api_entity",
+        MagicMock(return_value=api_tool),
+    )
 
     # Act
-    result = WorkflowToolManageService._get_workflow_tool("tenant-1", db_tool)
+    result = WorkflowToolManageService._get_workflow_tool("tenant-1", cast(WorkflowToolProvider, db_tool))
 
     # Assert
     assert result["name"] == "tool-name"
@@ -576,7 +615,9 @@ def test_list_single_workflow_tools_should_raise_when_tool_missing(monkeypatch: 
         WorkflowToolManageService.list_single_workflow_tools("user-1", "tenant-1", "tool-1")
 
 
-def test_list_single_workflow_tools_should_raise_when_controller_returns_no_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_single_workflow_tools_should_raise_when_controller_returns_no_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     db_tool = SimpleNamespace(id="tool-1", tenant_id="tenant-1")
     db_session = MagicMock()
@@ -585,7 +626,11 @@ def test_list_single_workflow_tools_should_raise_when_controller_returns_no_tool
 
     controller = MagicMock()
     controller.get_tools.return_value = []
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=controller),
+    )
 
     # Act / Assert
     with pytest.raises(ValueError, match="Tool tool-1 not found"):
@@ -602,14 +647,21 @@ def test_list_single_workflow_tools_should_return_single_api_tool(monkeypatch: p
     runtime_tool = MagicMock()
     controller = MagicMock()
     controller.get_tools.return_value = [runtime_tool]
-    monkeypatch.setattr(service_module.ToolTransformService, "workflow_provider_to_controller", MagicMock(return_value=controller))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "workflow_provider_to_controller",
+        MagicMock(return_value=controller),
+    )
     monkeypatch.setattr(service_module.ToolLabelManager, "get_tool_labels", MagicMock(return_value=["ops"]))
     api_tool = MagicMock()
-    monkeypatch.setattr(service_module.ToolTransformService, "convert_tool_entity_to_api_entity", MagicMock(return_value=api_tool))
+    monkeypatch.setattr(
+        service_module.ToolTransformService,
+        "convert_tool_entity_to_api_entity",
+        MagicMock(return_value=api_tool),
+    )
 
     # Act
     result = WorkflowToolManageService.list_single_workflow_tools("user-1", "tenant-1", "tool-1")
 
     # Assert
     assert result == [api_tool]
-

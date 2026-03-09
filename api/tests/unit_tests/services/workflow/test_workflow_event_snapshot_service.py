@@ -1,4 +1,3 @@
-
 import json
 import queue
 from collections.abc import Sequence
@@ -230,20 +229,21 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
 
 import json
 import queue
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Event
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.app.entities.task_entities import StreamEvent
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
@@ -380,7 +380,7 @@ def test_get_message_context_should_return_none_when_no_message() -> None:
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(session_maker, "run-1")
+    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
 
     # Assert
     assert result is None
@@ -398,7 +398,7 @@ def test_get_message_context_should_default_created_at_to_zero_when_message_has_
     session_maker = _SessionMaker(session)
 
     # Act
-    result = service_module._get_message_context(session_maker, "run-1")
+    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
 
     # Assert
     assert result is not None
@@ -650,7 +650,8 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
 
     # Assert
     assert events[0] == StreamEvent.PING.value
-    assert events[1]["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    finished_event = cast(Mapping[str, Any], events[1])
+    assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED.value
     assert buffer_state.stop_event.is_set() is True
     node_repo.get_execution_snapshots_by_workflow_run.assert_called_once()
     called_kwargs = node_repo.get_execution_snapshots_by_workflow_run.call_args.kwargs
@@ -795,4 +796,3 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     # Assert
     assert events[0] == StreamEvent.PING.value
     assert snapshot_builder.call_args.kwargs["pause_entity"] is None
-

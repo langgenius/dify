@@ -12,6 +12,7 @@ This test suite covers all functionality of the current VariableTruncator includ
 import functools
 import json
 import uuid
+from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
 
@@ -200,14 +201,14 @@ class TestArrayTruncation:
 
     def test_small_array_no_truncation(self, small_truncator: VariableTruncator):
         """Test that small arrays are not truncated."""
-        small_array = [1, 2]
+        small_array: list[object] = [1, 2]
         result = small_truncator._truncate_array(small_array, 1000)
         assert result.value == small_array
         assert result.truncated is False
 
     def test_array_element_limit_truncation(self, small_truncator: VariableTruncator):
         """Test that arrays over element limit are truncated."""
-        large_array = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
+        large_array: list[object] = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
         result = small_truncator._truncate_array(large_array, 1000)
 
         assert result.truncated is True
@@ -216,7 +217,7 @@ class TestArrayTruncation:
     def test_array_size_budget_truncation(self, small_truncator: VariableTruncator):
         """Test array truncation due to size budget constraints."""
         # Create array with strings that will exceed size budget
-        large_strings = ["very long string " * 5, "another long string " * 5]
+        large_strings: list[object] = ["very long string " * 5, "another long string " * 5]
         result = small_truncator._truncate_array(large_strings, 50)
 
         assert result.truncated is True
@@ -697,7 +698,7 @@ class _AbstractPassthrough(BaseTruncator):
         # Arrange / Act
         return super().truncate(segment)  # type: ignore[misc]
 
-    def truncate_variable_mapping(self, v: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
         # Arrange / Act
         return super().truncate_variable_mapping(v)  # type: ignore[misc]
 
@@ -778,7 +779,9 @@ def test_json_value_needs_truncation_should_match_expected_rules(value: Any, exp
     assert result is expected
 
 
-def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     truncator = VariableTruncator(max_size_bytes=10)
     forced_result = truncator_module._PartResult(value="this is too long", value_size=100, truncated=True)
@@ -792,7 +795,9 @@ def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_l
     assert isinstance(result.result, StringSegment)
 
 
-def test_truncate_segment_should_raise_assertion_for_unexpected_truncatable_segment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_truncate_segment_should_raise_assertion_for_unexpected_truncatable_segment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     truncator = VariableTruncator()
     monkeypatch.setattr(VariableTruncator, "_segment_need_truncation", lambda _segment: True)
@@ -837,11 +842,12 @@ def test_maybe_parent_child_structure_should_validate_shape() -> None:
     # Arrange
 
     # Act / Assert
-    assert (
-        VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": []}) is True
-    )
+    assert VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": []}) is True
     assert VariableTruncator._maybe_parent_child_structure({"parent_mode": 1, "parent_child_chunks": []}) is False
-    assert VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": "bad"}) is False
+    assert (
+        VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": "bad"})
+        is False
+    )
 
 
 def test_truncate_object_should_truncate_segment_values_inside_object() -> None:
@@ -878,7 +884,9 @@ def test_truncate_json_primitives_should_raise_assertion_for_unsupported_value_t
         truncator._truncate_json_primitives(object(), 100)  # type: ignore[arg-type]
 
 
-def test_truncate_should_apply_json_string_fallback_for_large_non_string_segment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_truncate_should_apply_json_string_fallback_for_large_non_string_segment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     truncator = VariableTruncator(max_size_bytes=10)
     forced_segment = ObjectSegment(value={"k": "v"})

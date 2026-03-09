@@ -565,7 +565,7 @@ class TestWebhookServiceUnit:
 
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -573,8 +573,11 @@ from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from models.enums import AppTriggerStatus
 from dify_graph.variables.types import SegmentType
+from models.enums import AppTriggerStatus
+from models.model import App
+from models.trigger import WorkflowWebhookTrigger
+from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
@@ -618,6 +621,18 @@ def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
     monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
 
 
+def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
+    return cast(WorkflowWebhookTrigger, SimpleNamespace(**kwargs))
+
+
+def _workflow(**kwargs: Any) -> Workflow:
+    return cast(Workflow, SimpleNamespace(**kwargs))
+
+
+def _app(**kwargs: Any) -> App:
+    return cast(App, SimpleNamespace(**kwargs))
+
+
 def test_get_webhook_trigger_and_workflow_should_raise_when_webhook_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     fake_session = MagicMock()
@@ -629,7 +644,9 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_webhook_not_found(mo
         WebhookService.get_webhook_trigger_and_workflow("webhook-1")
 
 
-def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     fake_session = MagicMock()
@@ -641,7 +658,9 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_not_foun
         WebhookService.get_webhook_trigger_and_workflow("webhook-1")
 
 
-def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_rate_limited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.RATE_LIMITED)
@@ -654,7 +673,9 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_rate_lim
         WebhookService.get_webhook_trigger_and_workflow("webhook-1")
 
 
-def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.DISABLED)
@@ -680,7 +701,9 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_workflow_not_found(m
         WebhookService.get_webhook_trigger_and_workflow("webhook-1")
 
 
-def test_get_webhook_trigger_and_workflow_should_return_values_for_non_debug_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_webhook_trigger_and_workflow_should_return_values_for_non_debug_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.ENABLED)
@@ -711,7 +734,9 @@ def test_get_webhook_trigger_and_workflow_should_return_values_for_debug_mode(mo
     _patch_session(monkeypatch, fake_session)
 
     # Act
-    got_trigger, got_workflow, got_node_config = WebhookService.get_webhook_trigger_and_workflow("webhook-1", is_debug=True)
+    got_trigger, got_workflow, got_node_config = WebhookService.get_webhook_trigger_and_workflow(
+        "webhook-1", is_debug=True
+    )
 
     # Assert
     assert got_trigger is webhook_trigger
@@ -815,9 +840,11 @@ def test_detect_binary_mimetype_should_fallback_when_magic_raises(monkeypatch: p
     assert result == "application/octet-stream"
 
 
-def test_process_file_uploads_should_use_octet_stream_fallback_when_mimetype_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_process_file_uploads_should_use_octet_stream_fallback_when_mimetype_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(created_by="user-1", tenant_id="tenant-1")
+    webhook_trigger = _workflow_trigger(created_by="user-1", tenant_id="tenant-1")
     file_obj = MagicMock()
     file_obj.to_dict.return_value = {"id": "f-1"}
     monkeypatch.setattr(WebhookService, "_create_file_from_binary", MagicMock(return_value=file_obj))
@@ -835,9 +862,11 @@ def test_process_file_uploads_should_use_octet_stream_fallback_when_mimetype_unk
     assert result == {"f": {"id": "f-1"}}
 
 
-def test_create_file_from_binary_should_call_tool_file_manager_and_file_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_file_from_binary_should_call_tool_file_manager_and_file_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(created_by="user-1", tenant_id="tenant-1")
+    webhook_trigger = _workflow_trigger(created_by="user-1", tenant_id="tenant-1")
     manager = MagicMock()
     manager.create_file_by_raw.return_value = SimpleNamespace(id="tool-file-1")
     monkeypatch.setattr(service_module, "ToolFileManager", MagicMock(return_value=manager))
@@ -883,7 +912,9 @@ def test_convert_form_value_should_raise_for_unsupported_type() -> None:
         WebhookService._convert_form_value("p", "x", SegmentType.FILE)
 
 
-def test_validate_json_value_should_return_original_for_unmapped_supported_segment_type(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_json_value_should_return_original_for_unmapped_supported_segment_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     warning_mock = MagicMock()
     monkeypatch.setattr(service_module.logger, "warning", warning_mock)
@@ -1015,20 +1046,22 @@ def test_build_workflow_inputs_should_include_expected_keys() -> None:
 
 def test_trigger_workflow_execution_should_trigger_async_workflow_successfully(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(
+    webhook_trigger = _workflow_trigger(
         app_id="app-1",
         node_id="node-1",
         tenant_id="tenant-1",
         webhook_id="webhook-1",
     )
-    workflow = SimpleNamespace(id="wf-1")
+    workflow = _workflow(id="wf-1")
     webhook_data = {"body": {"x": 1}}
 
     session = MagicMock()
     _patch_session(monkeypatch, session)
 
     end_user = SimpleNamespace(id="end-user-1")
-    monkeypatch.setattr(service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(return_value=end_user))
+    monkeypatch.setattr(
+        service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(return_value=end_user)
+    )
     quota_type = SimpleNamespace(TRIGGER=SimpleNamespace(consume=MagicMock()))
     monkeypatch.setattr(service_module, "QuotaType", quota_type)
     trigger_async_mock = MagicMock()
@@ -1045,18 +1078,22 @@ def test_trigger_workflow_execution_should_mark_tenant_rate_limited_when_quota_e
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(
+    webhook_trigger = _workflow_trigger(
         app_id="app-1",
         node_id="node-1",
         tenant_id="tenant-1",
         webhook_id="webhook-1",
     )
-    workflow = SimpleNamespace(id="wf-1")
+    workflow = _workflow(id="wf-1")
 
     session = MagicMock()
     _patch_session(monkeypatch, session)
 
-    monkeypatch.setattr(service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(return_value=SimpleNamespace(id="end-user-1")))
+    monkeypatch.setattr(
+        service_module.EndUserService,
+        "get_or_create_end_user_by_type",
+        MagicMock(return_value=SimpleNamespace(id="end-user-1")),
+    )
     quota_type = SimpleNamespace(
         TRIGGER=SimpleNamespace(
             consume=MagicMock(side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1))
@@ -1074,18 +1111,20 @@ def test_trigger_workflow_execution_should_mark_tenant_rate_limited_when_quota_e
 
 def test_trigger_workflow_execution_should_log_and_reraise_unexpected_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(
+    webhook_trigger = _workflow_trigger(
         app_id="app-1",
         node_id="node-1",
         tenant_id="tenant-1",
         webhook_id="webhook-1",
     )
-    workflow = SimpleNamespace(id="wf-1")
+    workflow = _workflow(id="wf-1")
 
     session = MagicMock()
     _patch_session(monkeypatch, session)
 
-    monkeypatch.setattr(service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(side_effect=RuntimeError("boom")))
+    monkeypatch.setattr(
+        service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(side_effect=RuntimeError("boom"))
+    )
     logger_exception_mock = MagicMock()
     monkeypatch.setattr(service_module.logger, "exception", logger_exception_mock)
 
@@ -1097,9 +1136,11 @@ def test_trigger_workflow_execution_should_log_and_reraise_unexpected_errors(mon
 
 def test_sync_webhook_relationships_should_raise_when_workflow_exceeds_node_limit() -> None:
     # Arrange
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", created_by="user-1")
-    workflow = SimpleNamespace(
-        walk_nodes=lambda _node_type: [(f"node-{i}", {}) for i in range(WebhookService.MAX_WEBHOOK_NODES_PER_WORKFLOW + 1)]
+    app = _app(id="app-1", tenant_id="tenant-1", created_by="user-1")
+    workflow = _workflow(
+        walk_nodes=lambda _node_type: [
+            (f"node-{i}", {}) for i in range(WebhookService.MAX_WEBHOOK_NODES_PER_WORKFLOW + 1)
+        ]
     )
 
     # Act / Assert
@@ -1109,8 +1150,8 @@ def test_sync_webhook_relationships_should_raise_when_workflow_exceeds_node_limi
 
 def test_sync_webhook_relationships_should_raise_when_lock_not_acquired(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", created_by="user-1")
-    workflow = SimpleNamespace(walk_nodes=lambda _node_type: [("node-1", {})])
+    app = _app(id="app-1", tenant_id="tenant-1", created_by="user-1")
+    workflow = _workflow(walk_nodes=lambda _node_type: [("node-1", {})])
 
     lock = MagicMock()
     lock.acquire.return_value = False
@@ -1126,8 +1167,8 @@ def test_sync_webhook_relationships_should_create_missing_records_and_delete_sta
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", created_by="user-1")
-    workflow = SimpleNamespace(walk_nodes=lambda _node_type: [("node-new", {})])
+    app = _app(id="app-1", tenant_id="tenant-1", created_by="user-1")
+    workflow = _workflow(walk_nodes=lambda _node_type: [("node-new", {})])
 
     class _WorkflowWebhookTrigger:
         app_id = "app_id"
@@ -1202,8 +1243,8 @@ def test_sync_webhook_relationships_should_create_missing_records_and_delete_sta
 
 def test_sync_webhook_relationships_should_log_when_lock_release_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", created_by="user-1")
-    workflow = SimpleNamespace(walk_nodes=lambda _node_type: [])
+    app = _app(id="app-1", tenant_id="tenant-1", created_by="user-1")
+    workflow = _workflow(walk_nodes=lambda _node_type: [])
 
     class _Select:
         def where(self, *args: Any, **kwargs: Any) -> "_Select":

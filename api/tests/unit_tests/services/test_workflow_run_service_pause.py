@@ -182,12 +182,12 @@ class TestWorkflowRunService:
 
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
-from models import WorkflowRunTriggeredFrom
+from models import Account, App, EndUser, WorkflowRunTriggeredFrom
 from services import workflow_run_service as service_module
 from services.workflow_run_service import WorkflowRunService
 
@@ -205,6 +205,18 @@ def repository_factory_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock
 
     # Assert
     return node_repo, workflow_run_repo, factory
+
+
+def _app_model(**kwargs: Any) -> App:
+    return cast(App, SimpleNamespace(**kwargs))
+
+
+def _account(**kwargs: Any) -> Account:
+    return cast(Account, SimpleNamespace(**kwargs))
+
+
+def _end_user(**kwargs: Any) -> EndUser:
+    return cast(EndUser, SimpleNamespace(**kwargs))
 
 
 def test___init___should_create_sessionmaker_from_db_engine_when_session_factory_missing(
@@ -237,7 +249,7 @@ def test___init___should_create_sessionmaker_when_engine_is_provided(
     sessionmaker_mock = MagicMock(return_value=session_factory)
     monkeypatch.setattr(service_module, "Engine", FakeEngine)
     monkeypatch.setattr(service_module, "sessionmaker", sessionmaker_mock)
-    engine = FakeEngine()
+    engine = cast(Engine, FakeEngine())
 
     # Act
     service = WorkflowRunService(session_factory=engine)
@@ -271,7 +283,7 @@ def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
     # Arrange
     _, workflow_run_repo, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
+    app_model = _app_model(tenant_id="tenant-1", id="app-1")
     expected = MagicMock(name="pagination")
     workflow_run_repo.get_paginated_workflow_runs.return_value = expected
     args = {"limit": "7", "last_id": "last-1", "status": "succeeded"}
@@ -301,7 +313,7 @@ def test_get_paginate_advanced_chat_workflow_runs_should_attach_message_fields_w
 ) -> None:
     # Arrange
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
+    app_model = _app_model(tenant_id="tenant-1", id="app-1")
     run_with_message = SimpleNamespace(
         id="run-1",
         status="running",
@@ -330,7 +342,7 @@ def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
     # Arrange
     _, workflow_run_repo, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
+    app_model = _app_model(tenant_id="tenant-1", id="app-1")
     expected = MagicMock(name="workflow_run")
     workflow_run_repo.get_workflow_run_by_id.return_value = expected
 
@@ -352,7 +364,7 @@ def test_get_workflow_runs_count_should_forward_optional_filters(
     # Arrange
     _, workflow_run_repo, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
+    app_model = _app_model(tenant_id="tenant-1", id="app-1")
     expected = {"total": 3, "succeeded": 2}
     workflow_run_repo.get_workflow_runs_count.return_value = expected
 
@@ -382,8 +394,8 @@ def test_get_workflow_run_node_executions_should_return_empty_list_when_run_not_
     # Arrange
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
     monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=None))
-    app_model = SimpleNamespace(id="app-1")
-    user = SimpleNamespace(current_tenant_id="tenant-1")
+    app_model = _app_model(id="app-1")
+    user = _account(current_tenant_id="tenant-1")
 
     # Act
     result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
@@ -406,8 +418,8 @@ def test_get_workflow_run_node_executions_should_use_end_user_tenant_id(
             self.tenant_id = tenant_id
 
     monkeypatch.setattr(service_module, "EndUser", FakeEndUser)
-    user = FakeEndUser(tenant_id="tenant-end-user")
-    app_model = SimpleNamespace(id="app-1")
+    user = cast(EndUser, FakeEndUser(tenant_id="tenant-end-user"))
+    app_model = _app_model(id="app-1")
     expected = [SimpleNamespace(id="exec-1")]
     node_repo.get_executions_by_workflow_run.return_value = expected
 
@@ -431,8 +443,8 @@ def test_get_workflow_run_node_executions_should_use_account_current_tenant_id(
     node_repo, _, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
     monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
-    app_model = SimpleNamespace(id="app-1")
-    user = SimpleNamespace(current_tenant_id="tenant-account")
+    app_model = _app_model(id="app-1")
+    user = _account(current_tenant_id="tenant-account")
     expected = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
     node_repo.get_executions_by_workflow_run.return_value = expected
 
@@ -455,8 +467,8 @@ def test_get_workflow_run_node_executions_should_raise_when_resolved_tenant_id_i
     # Arrange
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
     monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
-    app_model = SimpleNamespace(id="app-1")
-    user = SimpleNamespace(current_tenant_id=None)
+    app_model = _app_model(id="app-1")
+    user = _account(current_tenant_id=None)
 
     # Act / Assert
     with pytest.raises(ValueError, match="tenant_id cannot be None"):

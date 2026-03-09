@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,6 +10,7 @@ from dify_graph.nodes import NodeType
 from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
 from dify_graph.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from models.trigger import WorkflowSchedulePlan
+from models.workflow import Workflow
 from services.errors.account import AccountNotFoundError
 from services.trigger import schedule_service as service_module
 from services.trigger.schedule_service import ScheduleService
@@ -20,7 +21,13 @@ def session_mock() -> MagicMock:
     return MagicMock(spec=Session)
 
 
-def test_create_schedule_should_create_and_flush_schedule(session_mock: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
+def _workflow(**kwargs: Any) -> Workflow:
+    return cast(Workflow, SimpleNamespace(**kwargs))
+
+
+def test_create_schedule_should_create_and_flush_schedule(
+    session_mock: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Arrange
     next_run = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
     monkeypatch.setattr(service_module, "calculate_next_run_at", MagicMock(return_value=next_run))
@@ -186,7 +193,9 @@ def test_update_next_run_at_should_raise_when_schedule_not_found(session_mock: M
         ScheduleService.update_next_run_at(session=session_mock, schedule_id="schedule-1")
 
 
-def test_update_next_run_at_should_recompute_and_flush(session_mock: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_next_run_at_should_recompute_and_flush(
+    session_mock: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Arrange
     schedule = MagicMock(spec=WorkflowSchedulePlan)
     schedule.cron_expression = "0 9 * * *"
@@ -265,7 +274,7 @@ def test_to_schedule_config_should_raise_for_invalid_mode() -> None:
 
 def test_extract_schedule_config_should_return_none_when_no_schedule_node() -> None:
     # Arrange
-    workflow = SimpleNamespace(graph_dict={"nodes": [{"id": "n1", "data": {"type": "start"}}]})
+    workflow = _workflow(graph_dict={"nodes": [{"id": "n1", "data": {"type": "start"}}]})
 
     # Act
     result = ScheduleService.extract_schedule_config(workflow=workflow)
@@ -276,7 +285,7 @@ def test_extract_schedule_config_should_return_none_when_no_schedule_node() -> N
 
 def test_extract_schedule_config_should_parse_cron_mode_node() -> None:
     # Arrange
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={
             "nodes": [
                 {
@@ -303,7 +312,7 @@ def test_extract_schedule_config_should_parse_cron_mode_node() -> None:
 
 def test_extract_schedule_config_should_parse_visual_mode_node(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={
             "nodes": [
                 {
@@ -331,7 +340,7 @@ def test_extract_schedule_config_should_parse_visual_mode_node(monkeypatch: pyte
 
 def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
     # Arrange
-    workflow = SimpleNamespace(graph_dict={})
+    workflow = _workflow(graph_dict={})
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
@@ -340,7 +349,7 @@ def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
 
 def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
     # Arrange
-    workflow = SimpleNamespace(
+    workflow = _workflow(
         graph_dict={
             "nodes": [
                 {

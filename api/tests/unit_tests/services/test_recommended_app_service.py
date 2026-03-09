@@ -316,7 +316,7 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result == expected_detail
@@ -346,7 +346,7 @@ class TestRecommendedAppServiceGetDetail:
             mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
             # Act
-            result = RecommendedAppService.get_recommend_app_detail(app_id)
+            result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
             # Assert
             assert result["name"] == f"App from {mode}"
@@ -369,7 +369,7 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result is None
@@ -392,7 +392,7 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result == {}
@@ -432,7 +432,7 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result["model_config"] == complex_model_config
@@ -444,13 +444,17 @@ class TestRecommendedAppServiceGetDetail:
 
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
+
+
+def _recommendation_detail(result: dict[str, Any] | None) -> dict[str, Any]:
+    return cast(dict[str, Any], result)
 
 
 @pytest.fixture
@@ -586,7 +590,7 @@ def test_get_recommend_app_detail_should_set_can_trial_when_trial_feature_enable
     mocked_db_session.query.return_value = query
 
     # Act
-    result = RecommendedAppService.get_recommend_app_detail("app-1")
+    result = cast(dict[str, Any], RecommendedAppService.get_recommend_app_detail("app-1"))
 
     # Assert
     assert result["id"] == "app-1"

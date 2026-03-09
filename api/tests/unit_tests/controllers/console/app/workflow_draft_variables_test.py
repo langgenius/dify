@@ -97,7 +97,7 @@ class TestWorkflowDraftVariableFields:
         )
 
         assert marshal(conv_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
-        expected_with_value = expected_without_value.copy()
+        expected_with_value: OrderedDict[str, Any] = expected_without_value.copy()
         expected_with_value["value"] = 1
         expected_with_value["full_content"] = None
         assert marshal(conv_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
@@ -129,7 +129,7 @@ class TestWorkflowDraftVariableFields:
             }
         )
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
-        expected_with_value = expected_without_value.copy()
+        expected_with_value: OrderedDict[str, Any] = expected_without_value.copy()
         expected_with_value["value"] = "a"
         expected_with_value["full_content"] = None
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
@@ -416,7 +416,7 @@ def test_workflow_file_variable_remote_url():
 
 import inspect
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -432,6 +432,7 @@ from dify_graph.variables.segment_group import SegmentGroup
 from dify_graph.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from dify_graph.variables.types import SegmentType
 from factories.variable_factory import build_segment
+from models import App
 
 
 @pytest.fixture
@@ -441,6 +442,10 @@ def flask_app() -> Flask:
 
 def _unwrap(method: Any) -> Any:
     return inspect.unwrap(method)
+
+
+def _app_model(**kwargs: Any) -> App:
+    return cast(App, SimpleNamespace(**kwargs))
 
 
 class _SessionContext:
@@ -547,7 +552,7 @@ def test_serialize_var_value_should_refresh_remote_url_for_file_segment(monkeypa
     variable.get_value.return_value = FileSegment(value=file)
 
     # Act
-    result = controller_module._serialize_var_value(variable)
+    result = cast(dict[str, Any], controller_module._serialize_var_value(variable))
 
     # Assert
     assert result["remote_url"] == "https://example.com/new.png"
@@ -573,7 +578,7 @@ def test_serialize_var_value_should_refresh_remote_urls_for_array_file_segment(
     variable.get_value.return_value = ArrayFileSegment(value=[file])
 
     # Act
-    result = controller_module._serialize_var_value(variable)
+    result = cast(list[dict[str, Any]], controller_module._serialize_var_value(variable))
 
     # Assert
     assert result[0]["remote_url"] == "https://example.com/new.png"
@@ -615,8 +620,12 @@ def test_workflow_variable_collection_get_should_raise_when_workflow_missing(
 ) -> None:
     # Arrange
     api = controller_module.WorkflowVariableCollectionApi()
-    app_model = SimpleNamespace(id="app-1")
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(is_workflow_exist=lambda **_: False)))
+    app_model = _app_model(id="app-1")
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(is_workflow_exist=lambda **_: False)),
+    )
 
     # Act / Assert
     with flask_app.test_request_context("/vars?page=1&limit=20"):
@@ -630,7 +639,7 @@ def test_workflow_variable_collection_get_should_return_variable_list(
 ) -> None:
     # Arrange
     api = controller_module.WorkflowVariableCollectionApi()
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model(id="app-1")
     expected = SimpleNamespace(variables=[], total=0)
     monkeypatch.setattr(
         controller_module,
@@ -653,7 +662,7 @@ def test_workflow_variable_collection_get_should_return_variable_list(
 def test_workflow_variable_collection_delete_should_delete_and_commit(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     api = controller_module.WorkflowVariableCollectionApi()
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model(id="app-1")
     db_obj, service_session = _patch_db(monkeypatch)
     service = SimpleNamespace(delete_workflow_variables=MagicMock())
     monkeypatch.setattr(controller_module, "WorkflowDraftVariableService", MagicMock(return_value=service))
@@ -671,7 +680,7 @@ def test_workflow_variable_collection_delete_should_delete_and_commit(monkeypatc
 def test_node_variable_collection_get_should_validate_node_and_return_values(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     api = controller_module.NodeVariableCollectionApi()
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model(id="app-1")
     expected = SimpleNamespace(variables=[])
     service = SimpleNamespace(list_node_variables=MagicMock(return_value=expected))
     monkeypatch.setattr(controller_module, "WorkflowDraftVariableService", MagicMock(return_value=service))
@@ -891,7 +900,11 @@ def test_variable_reset_api_put_should_raise_when_draft_workflow_missing(monkeyp
     api = controller_module.VariableResetApi()
     app_model = SimpleNamespace(id="app-1")
     _patch_db(monkeypatch)
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: None)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: None)),
+    )
     monkeypatch.setattr(controller_module, "WorkflowDraftVariableService", MagicMock())
 
     # Act / Assert
@@ -907,7 +920,11 @@ def test_variable_reset_api_put_should_return_204_when_reset_returns_none(monkey
     draft_workflow = SimpleNamespace(id="wf-1")
 
     db_obj, _ = _patch_db(monkeypatch)
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)),
+    )
     service = SimpleNamespace(
         get_variable=MagicMock(return_value=variable),
         reset_variable=MagicMock(return_value=None),
@@ -922,7 +939,9 @@ def test_variable_reset_api_put_should_return_204_when_reset_returns_none(monkey
     db_obj.session.commit.assert_called_once()
 
 
-def test_variable_reset_api_put_should_return_marshaled_variable_when_reset_returns_value(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_variable_reset_api_put_should_return_marshaled_variable_when_reset_returns_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     api = controller_module.VariableResetApi()
     app_model = SimpleNamespace(id="app-1")
@@ -931,7 +950,11 @@ def test_variable_reset_api_put_should_return_marshaled_variable_when_reset_retu
     reset_value = SimpleNamespace(id="reset-1")
 
     db_obj, _ = _patch_db(monkeypatch)
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)),
+    )
     service = SimpleNamespace(
         get_variable=MagicMock(return_value=variable),
         reset_variable=MagicMock(return_value=reset_value),
@@ -949,7 +972,7 @@ def test_variable_reset_api_put_should_return_marshaled_variable_when_reset_retu
 
 def test_get_variable_list_should_route_to_correct_service_method(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    app_model = SimpleNamespace(id="app-1")
+    app_model = _app_model(id="app-1")
     expected_conversation = SimpleNamespace(source="conversation")
     expected_system = SimpleNamespace(source="system")
     expected_node = SimpleNamespace(source="node")
@@ -973,18 +996,26 @@ def test_get_variable_list_should_route_to_correct_service_method(monkeypatch: p
     assert result_node is expected_node
 
 
-def test_conversation_variable_collection_get_should_raise_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_conversation_variable_collection_get_should_raise_when_draft_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     api = controller_module.ConversationVariableCollectionApi()
     app_model = SimpleNamespace(id="app-1")
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: None)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: None)),
+    )
 
     # Act / Assert
     with pytest.raises(NotFoundError):
         _unwrap(controller_module.ConversationVariableCollectionApi.get)(api, app_model)
 
 
-def test_conversation_variable_collection_get_should_prefill_commit_and_return_list(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_conversation_variable_collection_get_should_prefill_commit_and_return_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     api = controller_module.ConversationVariableCollectionApi()
     app_model = SimpleNamespace(id="app-1")
@@ -992,7 +1023,11 @@ def test_conversation_variable_collection_get_should_prefill_commit_and_return_l
     expected_list = SimpleNamespace(variables=[])
 
     db_obj, _ = _patch_db(monkeypatch)
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda *_: draft_workflow)),
+    )
     service = SimpleNamespace(prefill_conversation_variable_default_values=MagicMock())
     monkeypatch.setattr(controller_module, "WorkflowDraftVariableService", MagicMock(return_value=service))
     monkeypatch.setattr(controller_module, "_get_variable_list", MagicMock(return_value=expected_list))
@@ -1022,18 +1057,26 @@ def test_system_variable_collection_get_should_delegate_to_get_variable_list(mon
     get_list_mock.assert_called_once_with(app_model, SYSTEM_VARIABLE_NODE_ID)
 
 
-def test_environment_variable_collection_get_should_raise_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_environment_variable_collection_get_should_raise_when_workflow_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     api = controller_module.EnvironmentVariableCollectionApi()
     app_model = SimpleNamespace(id="app-1")
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda **_: None)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda **_: None)),
+    )
 
     # Act / Assert
     with pytest.raises(DraftWorkflowNotExist):
         _unwrap(controller_module.EnvironmentVariableCollectionApi.get)(api, app_model)
 
 
-def test_environment_variable_collection_get_should_return_env_variable_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_environment_variable_collection_get_should_return_env_variable_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     api = controller_module.EnvironmentVariableCollectionApi()
     app_model = SimpleNamespace(id="app-1")
@@ -1046,7 +1089,11 @@ def test_environment_variable_collection_get_should_return_env_variable_payload(
         value="secret",
     )
     workflow = SimpleNamespace(environment_variables=[env_var])
-    monkeypatch.setattr(controller_module, "WorkflowService", MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda **_: workflow)))
+    monkeypatch.setattr(
+        controller_module,
+        "WorkflowService",
+        MagicMock(return_value=SimpleNamespace(get_draft_workflow=lambda **_: workflow)),
+    )
 
     # Act
     result = _unwrap(controller_module.EnvironmentVariableCollectionApi.get)(api, app_model)

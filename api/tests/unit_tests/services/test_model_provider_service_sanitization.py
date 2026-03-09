@@ -176,7 +176,11 @@ def test__get_provider_configuration_should_raise_error_when_provider_is_missing
 def test_get_provider_list_should_filter_by_model_type_and_build_no_configure_status() -> None:
     # Arrange
     service, manager = _create_service_with_mocked_manager()
-    allowed = _build_provider_configuration(provider_name="openai", supported_model_types=[ModelType.LLM], custom_config_available=False)
+    allowed = _build_provider_configuration(
+        provider_name="openai",
+        supported_model_types=[ModelType.LLM],
+        custom_config_available=False,
+    )
     filtered = _build_provider_configuration(
         provider_name="embedding",
         supported_model_types=[ModelType.TEXT_EMBEDDING],
@@ -222,7 +226,9 @@ def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context()
                 },
             }
 
-    provider_configurations = SimpleNamespace(get_models=MagicMock(return_value=[_Model("gpt-4o"), _Model("gpt-4o-mini")]))
+    provider_configurations = SimpleNamespace(
+        get_models=MagicMock(return_value=[_Model("gpt-4o"), _Model("gpt-4o-mini")])
+    )
     manager.get_configurations.return_value = provider_configurations
 
     # Act

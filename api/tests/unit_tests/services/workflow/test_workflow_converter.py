@@ -436,7 +436,7 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
 
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -452,7 +452,7 @@ from core.app.app_config.entities import (
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from dify_graph.model_runtime.entities.llm_entities import LLMMode
 from dify_graph.nodes import NodeType
-from models.model import AppMode
+from models.model import Account, App, AppMode, AppModelConfig
 from services.workflow import workflow_converter as converter_module
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -460,6 +460,18 @@ from services.workflow.workflow_converter import WorkflowConverter
 @pytest.fixture
 def converter() -> WorkflowConverter:
     return WorkflowConverter()
+
+
+def _app_model(**kwargs: Any) -> App:
+    return cast(App, SimpleNamespace(**kwargs))
+
+
+def _account(**kwargs: Any) -> Account:
+    return cast(Account, SimpleNamespace(**kwargs))
+
+
+def _app_model_config(**kwargs: Any) -> AppModelConfig:
+    return cast(AppModelConfig, SimpleNamespace(**kwargs))
 
 
 def _build_start_graph() -> dict[str, Any]:
@@ -481,13 +493,13 @@ def _build_model_config(mode: str | LLMMode) -> ModelConfigEntity:
 
 def test_convert_to_workflow_should_raise_when_app_model_config_is_missing(converter: WorkflowConverter) -> None:
     # Arrange
-    app_model = SimpleNamespace(app_model_config=None)
+    app_model = _app_model(app_model_config=None)
 
     # Act / Assert
     with pytest.raises(ValueError, match="App model config is required"):
         converter.convert_to_workflow(
             app_model=app_model,
-            account=SimpleNamespace(id="account-1"),
+            account=_account(id="account-1"),
             name="new-app",
             icon_type="emoji",
             icon="robot",
@@ -519,9 +531,10 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     monkeypatch.setattr(converter_module, "App", FakeApp)
     db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), commit=MagicMock())
     monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
-    monkeypatch.setattr(converter_module.app_was_created, "send", MagicMock())
-    account = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(
+    send_mock = MagicMock()
+    monkeypatch.setattr(converter_module.app_was_created, "send", send_mock)
+    account = _account(id="account-1")
+    app_model = _app_model(
         tenant_id="tenant-1",
         name="Source App",
         mode=source_mode,
@@ -533,7 +546,7 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
         api_rpm=10,
         api_rph=100,
         is_public=False,
-        app_model_config=SimpleNamespace(id="config-1"),
+        app_model_config=_app_model_config(id="config-1"),
     )
 
     # Act
@@ -557,7 +570,7 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     db_session.add.assert_called_once()
     db_session.flush.assert_called_once()
     db_session.commit.assert_called_once()
-    converter_module.app_was_created.send.assert_called_once_with(new_app, account=account)
+    send_mock.assert_called_once_with(new_app, account=account)
 
 
 def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_and_features(
@@ -565,7 +578,7 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
     app_config = SimpleNamespace(
         variables=[SimpleNamespace(variable="name")],
         external_data_variables=[SimpleNamespace(variable="ext")],
@@ -630,7 +643,7 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     # Act
     workflow = converter.convert_app_model_config_to_workflow(
         app_model=app_model,
-        app_model_config=SimpleNamespace(id="cfg"),
+        app_model_config=_app_model_config(id="cfg"),
         account_id="account-1",
     )
 
@@ -650,7 +663,7 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
     app_config = SimpleNamespace(
         variables=[SimpleNamespace(variable="name")],
         external_data_variables=[],
@@ -696,7 +709,7 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     # Act
     workflow = converter.convert_app_model_config_to_workflow(
         app_model=app_model,
-        app_model_config=SimpleNamespace(id="cfg"),
+        app_model_config=_app_model_config(id="cfg"),
         account_id="account-1",
     )
 
@@ -716,7 +729,11 @@ def test_convert_to_app_config_should_route_to_correct_manager(
     agent_result = SimpleNamespace(kind="agent")
     chat_result = SimpleNamespace(kind="chat")
     completion_result = SimpleNamespace(kind="completion")
-    monkeypatch.setattr(converter_module.AgentChatAppConfigManager, "get_app_config", MagicMock(return_value=agent_result))
+    monkeypatch.setattr(
+        converter_module.AgentChatAppConfigManager,
+        "get_app_config",
+        MagicMock(return_value=agent_result),
+    )
     monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", MagicMock(return_value=chat_result))
     monkeypatch.setattr(
         converter_module.CompletionAppConfigManager,
@@ -726,20 +743,20 @@ def test_convert_to_app_config_should_route_to_correct_manager(
 
     # Act
     from_agent_mode = converter._convert_to_app_config(
-        app_model=SimpleNamespace(mode=AppMode.AGENT_CHAT, is_agent=False),
-        app_model_config=SimpleNamespace(id="cfg-1"),
+        app_model=_app_model(mode=AppMode.AGENT_CHAT, is_agent=False),
+        app_model_config=_app_model_config(id="cfg-1"),
     )
     from_agent_flag = converter._convert_to_app_config(
-        app_model=SimpleNamespace(mode=AppMode.CHAT, is_agent=True),
-        app_model_config=SimpleNamespace(id="cfg-2"),
+        app_model=_app_model(mode=AppMode.CHAT, is_agent=True),
+        app_model_config=_app_model_config(id="cfg-2"),
     )
     from_chat_mode = converter._convert_to_app_config(
-        app_model=SimpleNamespace(mode=AppMode.CHAT, is_agent=False),
-        app_model_config=SimpleNamespace(id="cfg-3"),
+        app_model=_app_model(mode=AppMode.CHAT, is_agent=False),
+        app_model_config=_app_model_config(id="cfg-3"),
     )
     from_completion_mode = converter._convert_to_app_config(
-        app_model=SimpleNamespace(mode=AppMode.COMPLETION, is_agent=False),
-        app_model_config=SimpleNamespace(id="cfg-4"),
+        app_model=_app_model(mode=AppMode.COMPLETION, is_agent=False),
+        app_model_config=_app_model_config(id="cfg-4"),
     )
 
     # Assert
@@ -751,18 +768,18 @@ def test_convert_to_app_config_should_route_to_correct_manager(
 
 def test_convert_to_app_config_should_raise_for_invalid_app_mode(converter: WorkflowConverter) -> None:
     # Arrange
-    app_model = SimpleNamespace(mode=AppMode.WORKFLOW, is_agent=False)
+    app_model = _app_model(mode=AppMode.WORKFLOW, is_agent=False)
 
     # Act / Assert
     with pytest.raises(ValueError, match="Invalid app mode"):
-        converter._convert_to_app_config(app_model=app_model, app_model_config=SimpleNamespace(id="cfg"))
+        converter._convert_to_app_config(app_model=app_model, app_model_config=_app_model_config(id="cfg"))
 
 
 def test_convert_to_http_request_node_should_skip_non_api_and_missing_extension_id(
     converter: WorkflowConverter,
 ) -> None:
     # Arrange
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
     external_data_variables = [
         ExternalDataVariableEntity(variable="skip_type", type="dataset", config={"api_based_extension_id": "x"}),
         ExternalDataVariableEntity(variable="skip_config", type="api", config={}),
@@ -944,8 +961,8 @@ def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converte
     # Act
     edge = converter._create_edge("start", "llm")
     updated_graph = converter._append_node(graph, node)
-    workflow_mode = converter._get_new_app_mode(SimpleNamespace(mode=AppMode.COMPLETION))
-    advanced_chat_mode = converter._get_new_app_mode(SimpleNamespace(mode=AppMode.CHAT))
+    workflow_mode = converter._get_new_app_mode(_app_model(mode=AppMode.COMPLETION))
+    advanced_chat_mode = converter._get_new_app_mode(_app_model(mode=AppMode.CHAT))
 
     # Assert
     assert edge == {"id": "start-llm", "source": "start", "target": "llm"}

@@ -1,15 +1,19 @@
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.mcp.types import Tool as MCPTool
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
 from core.tools.__base.tool import Tool
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderType
+from core.tools.plugin_tool.provider import PluginToolProviderController
+from models.tools import ApiToolProvider
 from services.tools import tools_transform_service
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -50,7 +54,9 @@ def _build_tool_provider_api_entity(**overrides: Any):
     return tools_transform_service.ToolProviderApiEntity(**default_payload)
 
 
-def test_get_tool_provider_icon_url_should_return_builtin_url_for_builtin_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_tool_provider_icon_url_should_return_builtin_url_for_builtin_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     monkeypatch.setattr(tools_transform_service.dify_config, "CONSOLE_API_URL", "https://console.example.com")
 
@@ -106,13 +112,18 @@ def test_repack_provider_should_repack_dict_icon_using_provider_metadata(monkeyp
     )
 
     # Act
-    ToolTransformService.repack_provider(tenant_id="tenant-1", provider=provider)
+    ToolTransformService.repack_provider(
+        tenant_id="tenant-1",
+        provider=cast(PluginDatasourceProviderEntity, provider),
+    )
 
     # Assert
     assert provider["icon"] == "repacked-icon-url"
 
 
-def test_repack_provider_should_use_plugin_icon_urls_for_plugin_tool_provider_entity(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_repack_provider_should_use_plugin_icon_urls_for_plugin_tool_provider_entity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     provider = _build_tool_provider_api_entity(plugin_id="plugin-1", icon="icon.png", icon_dark="icon-dark.png")
     get_icon_url_mock = MagicMock(side_effect=lambda tenant_id, filename: f"https://cdn/{tenant_id}/{filename}")
@@ -138,7 +149,10 @@ def test_repack_provider_should_repack_non_plugin_tool_provider_entity(monkeypat
     monkeypatch.setattr(ToolTransformService, "get_tool_provider_icon_url", repack_mock)
 
     # Act
-    ToolTransformService.repack_provider(tenant_id="tenant-1", provider=provider)
+    ToolTransformService.repack_provider(
+        tenant_id="tenant-1",
+        provider=cast(PluginDatasourceProviderEntity, provider),
+    )
 
     # Assert
     assert provider.icon == "repacked-provider-name"
@@ -161,7 +175,10 @@ def test_repack_provider_should_update_plugin_datasource_provider_icon(monkeypat
     )
 
     # Act
-    ToolTransformService.repack_provider(tenant_id="tenant-1", provider=provider)
+    ToolTransformService.repack_provider(
+        tenant_id="tenant-1",
+        provider=cast(PluginDatasourceProviderEntity, provider),
+    )
 
     # Assert
     assert provider.declaration.identity.icon == "https://cdn/tenant-1/db-icon.png"
@@ -198,14 +215,18 @@ def test_builtin_provider_to_user_provider_should_include_plugin_identity_for_pl
     provider_controller = _PluginController()
 
     # Act
-    result = ToolTransformService.builtin_provider_to_user_provider(provider_controller=provider_controller, db_provider=None)
+    result = ToolTransformService.builtin_provider_to_user_provider(
+        provider_controller=cast(PluginToolProviderController, provider_controller),
+        db_provider=None,
+    )
 
     # Assert
     assert result.plugin_id == "plugin-1"
     assert result.plugin_unique_identifier == "plugin-unique"
 
 
-def test_builtin_provider_to_user_provider_should_mark_team_authorization_when_provider_does_not_need_credentials() -> None:
+def test_builtin_provider_to_user_provider_should_mark_team_authorization_when_provider_does_not_need_credentials(
+) -> None:
     # Arrange
     schema_item = MagicMock()
     schema_item.to_basic_provider_config.return_value.name = "api_key"
@@ -222,7 +243,10 @@ def test_builtin_provider_to_user_provider_should_mark_team_authorization_when_p
     provider_controller.get_credentials_schema_by_type.return_value = [schema_item]
 
     # Act
-    result = ToolTransformService.builtin_provider_to_user_provider(provider_controller=provider_controller, db_provider=None)
+    result = ToolTransformService.builtin_provider_to_user_provider(
+        provider_controller=cast(BuiltinToolProviderController, provider_controller),
+        db_provider=None,
+    )
 
     # Assert
     assert result.is_team_authorization is True
@@ -254,7 +278,10 @@ def test_builtin_provider_to_user_provider_should_raise_when_tenant_id_missing_f
 
     # Act / Assert
     with pytest.raises(ValueError, match="Required tenant_id is missing"):
-        ToolTransformService.builtin_provider_to_user_provider(provider_controller=provider_controller, db_provider=db_provider)
+        ToolTransformService.builtin_provider_to_user_provider(
+            provider_controller=provider_controller,
+            db_provider=db_provider,
+        )
 
 
 def test_builtin_provider_to_user_provider_should_decrypt_and_mask_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -287,7 +314,10 @@ def test_builtin_provider_to_user_provider_should_decrypt_and_mask_credentials(m
     monkeypatch.setattr(tools_transform_service, "create_provider_encrypter", MagicMock(return_value=(encrypter, None)))
 
     # Act
-    result = ToolTransformService.builtin_provider_to_user_provider(provider_controller=provider_controller, db_provider=db_provider)
+    result = ToolTransformService.builtin_provider_to_user_provider(
+        provider_controller=provider_controller,
+        db_provider=db_provider,
+    )
 
     # Assert
     assert result.is_team_authorization is True
@@ -362,7 +392,9 @@ def test_workflow_provider_to_user_provider_should_include_labels_and_workflow_a
     assert result.workflow_app_id == "app-1"
 
 
-def test_mcp_provider_to_user_provider_should_build_entity_and_convert_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mcp_provider_to_user_provider_should_build_entity_and_convert_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     db_provider = MagicMock()
     db_provider.server_identifier = "server-1"
@@ -409,7 +441,11 @@ def test_mcp_provider_to_user_provider_should_build_entity_and_convert_configura
     )
 
     # Act
-    result = ToolTransformService.mcp_provider_to_user_provider(db_provider=db_provider, for_list=False, user_name="owner")
+    result = ToolTransformService.mcp_provider_to_user_provider(
+        db_provider=db_provider,
+        for_list=False,
+        user_name="owner",
+    )
 
     # Assert
     assert result.id == "server-1"
@@ -420,7 +456,9 @@ def test_mcp_provider_to_user_provider_should_build_entity_and_convert_configura
     assert isinstance(mcp_tools[0], MCPTool)
 
 
-def test_mcp_provider_to_user_provider_should_use_db_id_for_list_and_handle_invalid_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mcp_provider_to_user_provider_should_use_db_id_for_list_and_handle_invalid_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     db_provider = MagicMock()
     db_provider.server_identifier = "server-1"
@@ -450,7 +488,11 @@ def test_mcp_provider_to_user_provider_should_use_db_id_for_list_and_handle_inva
     monkeypatch.setattr(ToolTransformService, "mcp_tool_to_user_tool", mcp_tool_to_user_tool_mock)
 
     # Act
-    result = ToolTransformService.mcp_provider_to_user_provider(db_provider=db_provider, for_list=True, user_name="owner")
+    result = ToolTransformService.mcp_provider_to_user_provider(
+        db_provider=db_provider,
+        for_list=True,
+        user_name="owner",
+    )
 
     # Assert
     assert result.id == "db-id-1"
@@ -521,7 +563,9 @@ def test_api_provider_to_user_provider_should_raise_when_user_is_none() -> None:
         ToolTransformService.api_provider_to_user_provider(provider_controller=MagicMock(), db_provider=db_provider)
 
 
-def test_api_provider_to_user_provider_should_return_anonymous_on_user_lookup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_api_provider_to_user_provider_should_return_anonymous_on_user_lookup_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Arrange
     class _ApiProvider:
         def __init__(self) -> None:
@@ -548,7 +592,7 @@ def test_api_provider_to_user_provider_should_return_anonymous_on_user_lookup_fa
     # Act
     result = ToolTransformService.api_provider_to_user_provider(
         provider_controller=MagicMock(),
-        db_provider=db_provider,
+        db_provider=cast(ApiToolProvider, db_provider),
         decrypt_credentials=False,
     )
 
@@ -625,7 +669,11 @@ def test_convert_tool_entity_to_api_entity_should_merge_runtime_parameters_witho
     tool = _Tool()
 
     # Act
-    result = ToolTransformService.convert_tool_entity_to_api_entity(tool=tool, tenant_id="tenant-1", labels=["l1"])
+    result = ToolTransformService.convert_tool_entity_to_api_entity(
+        tool=cast(Tool, tool),
+        tenant_id="tenant-1",
+        labels=["l1"],
+    )
     monkeypatch.undo()
 
     # Assert
@@ -645,7 +693,10 @@ def test_convert_tool_entity_to_api_entity_should_convert_non_tool_bundle_shape(
     )
 
     # Act
-    result = ToolTransformService.convert_tool_entity_to_api_entity(tool=tool, tenant_id="tenant-1")
+    result = ToolTransformService.convert_tool_entity_to_api_entity(
+        tool=cast(ApiToolBundle, tool),
+        tenant_id="tenant-1",
+    )
 
     # Assert
     assert result.name == "operation-x"
