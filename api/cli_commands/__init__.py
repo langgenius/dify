@@ -2,7 +2,6 @@
 CLI command modules extracted from `commands.py`.
 """
 
-from cli_commands.file_cleanup import clear_orphaned_file_records, file_usage, remove_orphaned_files_on_storage
 from cli_commands.plugin import (
     extract_plugins,
     extract_unique_plugins,
@@ -14,6 +13,7 @@ from cli_commands.plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
+from cli_commands.storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
 
 __all__ = [
     "clear_orphaned_file_records",
@@ -23,6 +23,7 @@ __all__ = [
     "install_plugins",
     "install_rag_pipeline_plugins",
     "migrate_data_for_plugin",
+    "migrate_oss",
     "remove_orphaned_files_on_storage",
     "setup_datasource_oauth_client",
     "setup_system_tool_oauth_client",
