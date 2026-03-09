@@ -12,6 +12,7 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { notificationContract } from './console/notification'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -67,6 +68,7 @@ export const consoleRouterContract = {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,
