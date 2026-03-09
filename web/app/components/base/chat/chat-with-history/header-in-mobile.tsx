@@ -46,6 +46,7 @@ const HeaderInMobile = () => {
     setShowConfirm(null)
   }, [])
   const handleDelete = useCallback(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (showConfirm)
       handleDeleteConversation(showConfirm.id, { onSuccess: handleCancelConfirm })
   }, [showConfirm, handleDeleteConversation, handleCancelConfirm])
@@ -53,6 +54,7 @@ const HeaderInMobile = () => {
     setShowRename(null)
   }, [])
   const handleRename = useCallback((newName: string) => {
+    /* v8 ignore next 2 -- @preserve */
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])

@@ -1857,9 +1857,6 @@
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/date-and-time-picker/time-picker/header.tsx": {
@@ -1870,9 +1867,6 @@
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/date-and-time-picker/time-picker/options.tsx": {
@@ -2300,11 +2294,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-number/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/input-with-copy/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2446,11 +2435,8 @@
     "regexp/no-super-linear-backtracking": {
       "count": 3
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/mermaid/utils.ts": {
@@ -4766,9 +4752,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 10
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -4943,9 +4926,6 @@
       "count": 2
     },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
     "ts/no-explicit-any": {

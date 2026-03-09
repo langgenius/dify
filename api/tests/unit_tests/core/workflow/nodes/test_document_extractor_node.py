@@ -16,6 +16,7 @@ from dify_graph.nodes.document_extractor.node import (
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
+    _normalize_docx_zip,
 )
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment
@@ -385,3 +386,58 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
 
     assert expected_manual == result
+
+
+def _make_docx_zip(use_backslash: bool) -> bytes:
+    """Helper to build a minimal in-memory DOCX zip.
+
+    When use_backslash=True the ZIP entry names use backslash separators
+    (as produced by Evernote on Windows), otherwise forward slashes are used.
+    """
+    import zipfile
+
+    sep = "\\" if use_backslash else "/"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", b"<Types/>")
+        zf.writestr(f"_rels{sep}.rels", b"<Relationships/>")
+        zf.writestr(f"word{sep}document.xml", b"<w:document/>")
+        zf.writestr(f"word{sep}_rels{sep}document.xml.rels", b"<Relationships/>")
+    return buf.getvalue()
+
+
+def test_normalize_docx_zip_replaces_backslashes():
+    """ZIP entries with backslash separators must be rewritten to forward slashes."""
+    import zipfile
+
+    malformed = _make_docx_zip(use_backslash=True)
+    fixed = _normalize_docx_zip(malformed)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+    # No entry should contain a backslash after normalization
+    assert all("\\" not in name for name in names)
+
+
+def test_normalize_docx_zip_leaves_forward_slash_unchanged():
+    """ZIP entries that already use forward slashes must not be modified."""
+    import zipfile
+
+    normal = _make_docx_zip(use_backslash=False)
+    fixed = _normalize_docx_zip(normal)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+
+
+def test_normalize_docx_zip_returns_original_on_bad_zip():
+    """Non-zip bytes must be returned as-is without raising."""
+    garbage = b"not a zip file at all"
+    result = _normalize_docx_zip(garbage)
+    assert result == garbage
