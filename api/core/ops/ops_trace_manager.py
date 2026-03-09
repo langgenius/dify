@@ -84,7 +84,7 @@ def _lookup_credential_name(credential_id: str | None, provider_type: str | None
     if not model_cls:
         return ""
     with Session(db.engine) as session:
-        name = session.scalar(select(model_cls.name).where(model_cls.id == credential_id))
+        name = session.scalar(select(model_cls.name).where(model_cls.id == credential_id))  # type: ignore[attr-defined]
         return str(name) if name else ""
 
 
@@ -1384,7 +1384,7 @@ class TraceTask:
 
     def draft_node_execution_trace(self, **kwargs) -> DraftNodeExecutionTrace | dict:
         node_trace = self.node_execution_trace(**kwargs)
-        if not node_trace or not isinstance(node_trace, WorkflowNodeTraceInfo):
+        if not isinstance(node_trace, WorkflowNodeTraceInfo):
             return node_trace
         return DraftNodeExecutionTrace(**node_trace.model_dump())
 
