@@ -163,6 +163,18 @@ const ModelLoadBalancingModal = ({
         onSave?.(provider.provider)
         onClose?.()
       }
+      else {
+        notify({
+          type: 'error',
+          message: (res as { error?: string })?.error || t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }),
+        })
+      }
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }),
+      })
     }
     finally {
       setLoading(false)
@@ -218,7 +230,7 @@ const ModelLoadBalancingModal = ({
         }
       })
     }
-  }, [refetch, credential])
+  }, [refetch, onClose])
 
   const handleUpdateWhenSwitchCredential = useCallback(async () => {
     const result = await refetch()
@@ -250,7 +262,7 @@ const ModelLoadBalancingModal = ({
                   modelName={model!.model}
                 />
                 <ModelName
-                  className="system-md-regular grow text-text-secondary"
+                  className="grow text-text-secondary system-md-regular"
                   modelItem={model!}
                   showModelType
                   showMode

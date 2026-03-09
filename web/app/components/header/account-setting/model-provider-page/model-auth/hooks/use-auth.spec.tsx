@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import type {
   Credential,
   CustomModel,
   ModelProvider,
 } from '../../declarations'
 import { act, renderHook } from '@testing-library/react'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../declarations'
 import { useAuth } from './use-auth'
 
@@ -20,9 +22,13 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: () => ({ notify: mockNotify }),
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelModalHandler: () => mockOpenModelModal,
@@ -66,6 +72,12 @@ describe('useAuth', () => {
     model_type: ModelTypeEnum.textGeneration,
   }
 
+  const createWrapper = ({ children }: { children: ReactNode }) => (
+    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+      {children}
+    </ToastContext.Provider>
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteModelService.mockResolvedValue({ result: 'success' })
@@ -80,7 +92,7 @@ describe('useAuth', () => {
   })
 
   it('should open and close delete confirmation state', () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel))
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
 
     act(() => {
       result.current.openConfirmDelete(credential, model)
@@ -100,7 +112,7 @@ describe('useAuth', () => {
   })
 
   it('should activate credential, notify success, and refresh models', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel))
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel), { wrapper: createWrapper })
 
     await act(async () => {
       await result.current.handleActiveCredential(credential, model)
@@ -120,7 +132,7 @@ describe('useAuth', () => {
   })
 
   it('should close delete dialog without calling services when nothing is pending', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel))
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
 
     await act(async () => {
       await result.current.handleConfirmDelete()
@@ -137,7 +149,7 @@ describe('useAuth', () => {
     const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel, undefined, {
       isModelCredential: false,
       onRemove,
-    }))
+    }), { wrapper: createWrapper })
 
     act(() => {
       result.current.openConfirmDelete(credential, model)
@@ -161,7 +173,7 @@ describe('useAuth', () => {
     const onRemove = vi.fn()
     const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.customizableModel, undefined, {
       onRemove,
-    }))
+    }), { wrapper: createWrapper })
 
     act(() => {
       result.current.openConfirmDelete(undefined, model)
@@ -179,7 +191,7 @@ describe('useAuth', () => {
   })
 
   it('should add or edit credentials and refresh on successful save', async () => {
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel))
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
 
     await act(async () => {
       await result.current.handleSaveCredential({ api_key: 'new-key' })
@@ -200,7 +212,7 @@ describe('useAuth', () => {
     const deferred = createDeferred<{ result: string }>()
     mockAddProviderCredential.mockReturnValueOnce(deferred.promise)
 
-    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel))
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
 
     let first!: Promise<void>
     let second!: Promise<void>
@@ -226,7 +238,7 @@ describe('useAuth', () => {
       isModelCredential: true,
       onUpdate,
       mode: ModelModalModeEnum.configModelCredential,
-    }))
+    }), { wrapper: createWrapper })
 
     act(() => {
       result.current.handleOpenModal(credential, model)
@@ -243,5 +255,91 @@ describe('useAuth', () => {
         onUpdate,
       }),
     )
+  })
+
+  it('should not notify or refresh when handleSaveCredential returns non-success result', async () => {
+    mockAddProviderCredential.mockResolvedValue({ result: 'error' })
+
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+
+    await act(async () => {
+      await result.current.handleSaveCredential({ api_key: 'some-key' })
+    })
+
+    expect(mockAddProviderCredential).toHaveBeenCalledWith({ api_key: 'some-key' })
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockHandleRefreshModel).not.toHaveBeenCalled()
+  })
+
+  it('should pass undefined model and model_type when handleActiveCredential is called without a model parameter', async () => {
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+
+    await act(async () => {
+      await result.current.handleActiveCredential(credential)
+    })
+
+    expect(mockActiveProviderCredential).toHaveBeenCalledWith({
+      credential_id: 'cred-1',
+      model: undefined,
+      model_type: undefined,
+    })
+  })
+
+  // openConfirmDelete with credential only (no model): deleteCredentialId set, deleteModel stays null
+  it('should only set deleteCredentialId when openConfirmDelete is called without a model', () => {
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+
+    act(() => {
+      result.current.openConfirmDelete(credential, undefined)
+    })
+
+    expect(result.current.deleteCredentialId).toBe('cred-1')
+    expect(result.current.deleteModel).toBeNull()
+    expect(result.current.pendingOperationCredentialId.current).toBe('cred-1')
+    expect(result.current.pendingOperationModel.current).toBeNull()
+  })
+
+  // doingActionRef guard: second handleConfirmDelete call while first is in progress is a no-op
+  it('should ignore a second handleConfirmDelete call while the first is still in progress', async () => {
+    const deferred = createDeferred<{ result: string }>()
+    mockDeleteProviderCredential.mockReturnValueOnce(deferred.promise)
+
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+
+    act(() => {
+      result.current.openConfirmDelete(credential, model)
+    })
+
+    let first!: Promise<void>
+    let second!: Promise<void>
+
+    await act(async () => {
+      first = result.current.handleConfirmDelete()
+      second = result.current.handleConfirmDelete()
+      deferred.resolve({ result: 'success' })
+      await Promise.all([first, second])
+    })
+
+    expect(mockDeleteProviderCredential).toHaveBeenCalledTimes(1)
+  })
+
+  // doingActionRef guard: second handleActiveCredential call while first is in progress is a no-op
+  it('should ignore a second handleActiveCredential call while the first is still in progress', async () => {
+    const deferred = createDeferred<{ result: string }>()
+    mockActiveProviderCredential.mockReturnValueOnce(deferred.promise)
+
+    const { result } = renderHook(() => useAuth(provider, ConfigurationMethodEnum.predefinedModel), { wrapper: createWrapper })
+
+    let first!: Promise<void>
+    let second!: Promise<void>
+
+    await act(async () => {
+      first = result.current.handleActiveCredential(credential)
+      second = result.current.handleActiveCredential(credential)
+      deferred.resolve({ result: 'success' })
+      await Promise.all([first, second])
+    })
+
+    expect(mockActiveProviderCredential).toHaveBeenCalledTimes(1)
   })
 })
