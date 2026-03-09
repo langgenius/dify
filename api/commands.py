@@ -948,6 +948,8 @@ def clean_workflow_runs(
     """
     Clean workflow runs and related workflow data for free tenants.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     if (start_from is None) ^ (end_before is None):
         raise click.UsageError("--start-from and --end-before must be provided together.")
 
@@ -967,13 +969,16 @@ def clean_workflow_runs(
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
-    WorkflowRunCleanup(
-        days=before_days,
-        batch_size=batch_size,
-        start_from=start_from,
-        end_before=end_before,
-        dry_run=dry_run,
-    ).run()
+    try:
+        WorkflowRunCleanup(
+            days=before_days,
+            batch_size=batch_size,
+            start_from=start_from,
+            end_before=end_before,
+            dry_run=dry_run,
+        ).run()
+    finally:
+        flush_telemetry()
 
     end_time = datetime.datetime.now(datetime.UTC)
     elapsed = end_time - start_time

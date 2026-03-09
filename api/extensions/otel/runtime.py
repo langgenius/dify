@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import sys
@@ -5,7 +6,7 @@ from typing import Union
 
 from celery.signals import worker_init
 from flask_login import user_loaded_from_request, user_logged_in
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 from opentelemetry.propagate import set_global_textmap
 from opentelemetry.propagators.b3 import B3Format
 from opentelemetry.propagators.composite import CompositePropagator
@@ -31,9 +32,25 @@ def setup_context_propagation() -> None:
 
 
 def shutdown_tracer() -> None:
+    flush_telemetry()
+
+
+def flush_telemetry() -> None:
+    """
+    Best-effort flush for telemetry providers.
+
+    This is mainly used by short-lived command processes (e.g. Kubernetes CronJob)
+    so counters/histograms are exported before the process exits.
+    """
     provider = trace.get_tracer_provider()
     if hasattr(provider, "force_flush"):
-        provider.force_flush()
+        with contextlib.suppress(Exception):
+            provider.force_flush()
+
+    metric_provider = metrics.get_meter_provider()
+    if hasattr(metric_provider, "force_flush"):
+        with contextlib.suppress(Exception):
+            metric_provider.force_flush()
 
 
 def is_celery_worker():
