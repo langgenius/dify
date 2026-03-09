@@ -87,6 +87,38 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
     assert "is not an ArrayFileSegment" in result.error
 
 
+def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """Empty file list should return SUCCEEDED with empty documents and ArrayStringSegment([])."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Provide an actual ArrayFileSegment with an empty list
+    mock_graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(value=[])
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
+
+
+def test_run_none_only_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """A file list containing only None (e.g., [None]) should be filtered to [] and succeed."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Use a Mock to bypass type validation for None entries in the list
+    afs = Mock(spec=ArrayFileSegment)
+    afs.value = [None]
+    mock_graph_runtime_state.variable_pool.get.return_value = afs
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
+
+
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
