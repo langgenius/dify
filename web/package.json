@@ -219,7 +219,6 @@
     "agentation": "2.3.0",
     "autoprefixer": "10.4.27",
     "code-inspector-plugin": "1.4.3",
-    "cross-env": "10.1.0",
     "eslint": "10.0.3",
     "eslint-plugin-better-tailwindcss": "4.3.2",
     "eslint-plugin-hyoban": "0.14.1",
