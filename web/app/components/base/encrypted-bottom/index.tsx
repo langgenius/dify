@@ -20,7 +20,7 @@ export const EncryptedBottom = (props: Props) => {
   const { frontTextKey = DEFAULT_FRONT_KEY, backTextKey = DEFAULT_BACK_KEY, className } = props
 
   return (
-    <div className={cn('system-xs-regular flex items-center justify-center rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary', className)}>
+    <div className={cn('flex items-center justify-center rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary system-xs-regular', className)}>
       <RiLock2Fill className="mx-1 h-3 w-3 text-text-quaternary" />
       {t(frontTextKey, { ns: 'common' })}
       <Link

@@ -37,7 +37,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
     )
   }, [t])
   const getToneIcon = (toneId: number) => {
-    const className = 'mr-2 w-[14px] h-[14px]'
+    const className = 'mr-2 h-[14px] w-[14px]'
     const res = ({
       1: <Brush01 className={`${className} text-[#6938EF]`} />,
       2: <Scales02 className={`${className} text-indigo-600`} />,

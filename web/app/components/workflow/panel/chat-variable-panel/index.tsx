@@ -126,7 +126,7 @@ const ChatVariablePanel = () => {
         'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
-      <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
         {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
@@ -142,33 +142,33 @@ const ChatVariablePanel = () => {
       </div>
       {showTip && (
         <div className="shrink-0 px-3 pb-2 pt-2.5">
-          <div className="radius-2xl relative bg-background-section-burn p-3">
-            <div className="system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">TIPS</div>
-            <div className="system-sm-regular mb-4 mt-1 text-text-secondary">
+          <div className="relative bg-background-section-burn p-3 radius-2xl">
+            <div className="inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary system-2xs-medium-uppercase">TIPS</div>
+            <div className="mb-4 mt-1 text-text-secondary system-sm-regular">
               {t('chatVariable.panelDescription', { ns: 'workflow' })}
             </div>
             <div className="flex items-center gap-2">
-              <div className="radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
+              <div className="flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md radius-lg">
                 <BubbleX className="mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700" />
-                <div className="system-xs-semibold text-text-secondary">conversation_var</div>
-                <div className="system-2xs-regular text-text-tertiary">String</div>
+                <div className="text-text-secondary system-xs-semibold">conversation_var</div>
+                <div className="text-text-tertiary system-2xs-regular">String</div>
               </div>
               <div className="grow">
                 <div className="mb-2 flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
                     <LongArrowLeft className="h-2 grow text-text-quaternary" />
-                    <div className="system-2xs-medium shrink-0 text-text-tertiary">WRITE</div>
+                    <div className="shrink-0 text-text-tertiary system-2xs-medium">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
+                  <div className="grow truncate text-text-secondary system-xs-semibold">{t('blocks.assigner', { ns: 'workflow' })}</div>
                 </div>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
-                    <div className="system-2xs-medium shrink-0 text-text-tertiary">READ</div>
+                    <div className="shrink-0 text-text-tertiary system-2xs-medium">READ</div>
                     <LongArrowRight className="h-2 grow text-text-quaternary" />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
+                  <div className="grow truncate text-text-secondary system-xs-semibold">{t('blocks.llm', { ns: 'workflow' })}</div>
                 </div>
               </div>
             </div>

@@ -24,7 +24,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
       <div className="flex flex-col gap-4 self-stretch">
         <div className="flex flex-col gap-1 self-stretch">
           <div className="flex flex-col justify-center self-stretch">
-            <label className="system-sm-semibold text-text-secondary">{t('externalKnowledgeName', { ns: 'dataset' })}</label>
+            <label className="text-text-secondary system-sm-semibold">{t('externalKnowledgeName', { ns: 'dataset' })}</label>
           </div>
           <Input
             value={name}
@@ -34,7 +34,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
         </div>
         <div className="flex flex-col gap-1 self-stretch">
           <div className="flex flex-col justify-center self-stretch">
-            <label className="system-sm-semibold text-text-secondary">{t('externalKnowledgeDescription', { ns: 'dataset' })}</label>
+            <label className="text-text-secondary system-sm-semibold">{t('externalKnowledgeDescription', { ns: 'dataset' })}</label>
           </div>
           <div className="flex flex-col gap-1 self-stretch">
             <textarea

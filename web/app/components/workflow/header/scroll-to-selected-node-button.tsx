@@ -23,7 +23,7 @@ const ScrollToSelectedNodeButton: FC = () => {
   return (
     <div
       className={cn(
-        'system-xs-medium flex h-6 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-3 text-text-tertiary shadow-lg backdrop-blur-sm transition-colors duration-200 hover:text-text-accent',
+        'flex h-6 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-3 text-text-tertiary shadow-lg backdrop-blur-sm transition-colors duration-200 system-xs-medium hover:text-text-accent',
       )}
       onClick={handleScrollToSelectedNode}
     >

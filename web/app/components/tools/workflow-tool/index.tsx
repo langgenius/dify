@@ -178,7 +178,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               {/* name & icon */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">
+                <div className="py-2 text-text-primary system-sm-medium">
                   {t('createTool.name', { ns: 'tools' })}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
@@ -195,7 +195,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* name for tool call */}
               <div>
-                <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                <div className="flex items-center py-2 text-text-primary system-sm-medium">
                   {t('createTool.nameForToolCall', { ns: 'tools' })}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
@@ -219,7 +219,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* description */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.description', { ns: 'tools' })}</div>
                 <Textarea
                   placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
                   value={description}
@@ -228,7 +228,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Input  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                   <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
                     <thead className="uppercase text-text-tertiary">
@@ -282,7 +282,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Output  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                   <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
                     <thead className="uppercase text-text-tertiary">
@@ -329,12 +329,12 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tags */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
               {/* Privacy Policy */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
                 <Input
                   className="h-10"
                   value={privacyPolicy}
@@ -347,7 +347,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {!isAdd && onRemove && (
                 <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
               )}
-              <div className="flex space-x-2 ">
+              <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button
                   variant="primary"

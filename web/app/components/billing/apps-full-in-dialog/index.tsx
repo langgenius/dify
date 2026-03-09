@@ -44,18 +44,18 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
       <div className="flex justify-between">
         {!isTeam && (
           <div>
-            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+            <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip1', { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip1des', { ns: 'billing' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('apps.fullTip1des', { ns: 'billing' })}</div>
           </div>
         )}
         {isTeam && (
           <div>
-            <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
+            <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip2', { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip2des', { ns: 'billing' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('apps.fullTip2des', { ns: 'billing' })}</div>
           </div>
         )}
         {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
@@ -70,7 +70,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         )}
       </div>
       <div className="flex flex-col gap-2">
-        <div className="system-xs-medium flex items-center justify-between text-text-secondary">
+        <div className="flex items-center justify-between text-text-secondary system-xs-medium">
           <div>{t('usagePage.buildApps', { ns: 'billing' })}</div>
           <div>
             {usage}

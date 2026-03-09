@@ -61,14 +61,14 @@ const GetSchema: FC<Props> = ({
       <div ref={importURLRef}>
         <Button
           size="small"
-          className="space-x-1 "
+          className="space-x-1"
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
           <RiAddLine className="h-3 w-3" />
-          <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
+          <div className="text-text-secondary system-xs-medium">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=" absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
+          <div className="absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
             <div className="relative">
               <Input
                 type="text"
@@ -97,7 +97,7 @@ const GetSchema: FC<Props> = ({
           className="space-x-1"
           onClick={() => { setShowExamples(!showExamples) }}
         >
-          <div className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</div>
+          <div className="text-text-secondary system-xs-medium">{t('createTool.examples', { ns: 'tools' })}</div>
           <RiArrowDownSLine className="h-3 w-3" />
         </Button>
         {showExamples && (
@@ -109,7 +109,7 @@ const GetSchema: FC<Props> = ({
                   onChange(item.content)
                   setShowExamples(false)
                 }}
-                className="system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
+                className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary system-sm-regular hover:bg-components-panel-on-panel-item-bg-hover"
               >
                 {t(`createTool.exampleOptions.${item.key}`, { ns: 'tools' })}
               </div>

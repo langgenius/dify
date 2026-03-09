@@ -82,7 +82,7 @@ const PublishAsKnowledgePipelineModal = ({
         onClose={noop}
         className="relative !w-[520px] !p-0"
       >
-        <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
+        <div className="relative flex items-center p-6 pb-3 pr-14 text-text-primary title-2xl-semi-bold">
           {t('common.publishAs', { ns: 'pipeline' })}
           <div
             data-testid="publish-modal-close-btn"
@@ -95,7 +95,7 @@ const PublishAsKnowledgePipelineModal = ({
         <div className="px-6 py-3">
           <div className="mb-5 flex">
             <div className="mr-3 grow">
-              <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
+              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
                 {t('common.publishAsPipeline.name', { ns: 'pipeline' })}
               </div>
               <Input
@@ -115,7 +115,7 @@ const PublishAsKnowledgePipelineModal = ({
             />
           </div>
           <div>
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary ">
+            <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
               {t('common.publishAsPipeline.description', { ns: 'pipeline' })}
             </div>
             <Textarea

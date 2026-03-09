@@ -22,10 +22,10 @@ const LargeDataAlert: FC<Props> = ({
     <div className={cn('flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs', className)}>
       <div className="flex h-full w-0 grow items-center space-x-1">
         <RiInformation2Fill className="size-4 shrink-0 text-text-accent" />
-        <div className="system-xs-regular w-0 grow truncate text-text-primary">{text}</div>
+        <div className="w-0 grow truncate text-text-primary system-xs-regular">{text}</div>
       </div>
       {downloadUrl && (
-        <div className="system-xs-medium-uppercase ml-1 shrink-0 cursor-pointer text-text-accent">{t('debug.variableInspect.export', { ns: 'workflow' })}</div>
+        <div className="ml-1 shrink-0 cursor-pointer text-text-accent system-xs-medium-uppercase">{t('debug.variableInspect.export', { ns: 'workflow' })}</div>
       )}
     </div>
   )

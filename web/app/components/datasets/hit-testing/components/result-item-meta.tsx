@@ -33,7 +33,7 @@ const ResultItemMeta: FC<Props> = ({
           className={cn('w-fit group-hover:opacity-100')}
         />
         <Dot />
-        <div className="system-xs-medium text-text-tertiary">
+        <div className="text-text-tertiary system-xs-medium">
           {wordCount}
           {' '}
           {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}

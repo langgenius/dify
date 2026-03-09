@@ -59,7 +59,7 @@ const Dropdown = ({
           onBreadcrumbClick={handleBreadCrumbClick}
         />
       </PortalToFollowElemContent>
-      <span className="system-xs-regular text-divider-deep">/</span>
+      <span className="text-divider-deep system-xs-regular">/</span>
     </PortalToFollowElem>
   )
 }

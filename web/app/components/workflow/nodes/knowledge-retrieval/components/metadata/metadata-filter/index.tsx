@@ -43,7 +43,7 @@ const MetadataFilter = ({
       trigger={collapseIcon => (
         <div className="flex grow items-center justify-between pr-4">
           <div className="flex items-center">
-            <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
+            <div className="mr-0.5 text-text-secondary system-sm-semibold-uppercase">
               {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
             </div>
             <Tooltip
@@ -75,7 +75,7 @@ const MetadataFilter = ({
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
-              <div className="body-xs-regular px-4 text-text-tertiary">
+              <div className="px-4 text-text-tertiary body-xs-regular">
                 {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
               </div>
               <div className="mt-1 px-4">

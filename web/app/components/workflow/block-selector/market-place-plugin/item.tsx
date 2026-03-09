@@ -42,16 +42,16 @@ const Item: FC<Props> = ({
       />
       <div className="ml-2 flex w-0 grow">
         <div className="w-0 grow">
-          <div className="system-sm-medium h-4 truncate leading-4 text-text-primary ">{getLocalizedText(payload.label)}</div>
-          <div className="system-xs-regular h-5 truncate leading-5 text-text-tertiary">{getLocalizedText(payload.brief)}</div>
-          <div className="system-xs-regular flex space-x-1 text-text-tertiary">
+          <div className="h-4 truncate leading-4 text-text-primary system-sm-medium">{getLocalizedText(payload.label)}</div>
+          <div className="h-5 truncate leading-5 text-text-tertiary system-xs-regular">{getLocalizedText(payload.brief)}</div>
+          <div className="flex space-x-1 text-text-tertiary system-xs-regular">
             <div>{payload.org}</div>
             <div>·</div>
             <div>{t('install', { ns: 'plugin', num: formatNumber(payload.install_count || 0) })}</div>
           </div>
         </div>
         {/* Action */}
-        <div className={cn(!open ? 'hidden' : 'flex', 'system-xs-medium h-4 items-center space-x-1 text-components-button-secondary-accent-text group-hover/plugin:flex')}>
+        <div className={cn(!open ? 'hidden' : 'flex', 'h-4 items-center space-x-1 text-components-button-secondary-accent-text system-xs-medium group-hover/plugin:flex')}>
           <div
             className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
             onClick={showInstallModal}

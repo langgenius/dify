@@ -90,7 +90,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     provider={model}
                     modelName={modelItem.model}
                   />
-                  <div className="system-md-medium text-wrap break-words text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
+                  <div className="text-wrap break-words text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
                 </div>
                 {/* {currentProvider?.description && (
                   <div className='text-text-tertiary system-xs-regular'>{currentProvider?.description?.[language] || currentProvider?.description?.en_US}</div>
@@ -116,7 +116,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
                   && (
                     <div className="pt-2">
-                      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
+                      <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('model.capabilities', { ns: 'common' })}</div>
                       <div className="flex flex-wrap gap-1">
                         {modelItem.features?.map(feature => (
                           <FeatureIcon
@@ -143,7 +143,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   modelName={modelItem.model}
                 />
                 <ModelName
-                  className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                  className={cn('text-text-secondary system-sm-medium', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
                   modelItem={modelItem}
                 />
               </div>

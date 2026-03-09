@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from dify_graph.enums import InvokeFrom, UserFrom
+DIFY_RUN_CONTEXT_KEY = "_dify"
 
 
 class GraphInitParams(BaseModel):
@@ -18,11 +18,7 @@ class GraphInitParams(BaseModel):
     """
 
     # init params
-    tenant_id: str = Field(..., description="tenant / workspace id")
-    app_id: str = Field(..., description="app id")
     workflow_id: str = Field(..., description="workflow id")
     graph_config: Mapping[str, Any] = Field(..., description="graph config")
-    user_id: str = Field(..., description="user id")
-    user_from: UserFrom = Field(..., description="user from, account or end-user")
-    invoke_from: InvokeFrom = Field(..., description="invoke from, service-api, web-app, explore or debugger")
+    run_context: Mapping[str, Any] = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")

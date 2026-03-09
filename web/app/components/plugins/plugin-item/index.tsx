@@ -164,8 +164,8 @@ const PluginItem: FC<Props> = ({
           />
           {category === PluginCategoryEnum.extension && (
             <>
-              <div className="system-xs-regular mx-2 text-text-quaternary">·</div>
-              <div className="system-xs-regular flex items-center gap-x-1 overflow-hidden text-text-tertiary">
+              <div className="mx-2 text-text-quaternary system-xs-regular">·</div>
+              <div className="flex items-center gap-x-1 overflow-hidden text-text-tertiary system-xs-regular">
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
@@ -183,7 +183,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
+                  <div className="text-text-tertiary system-2xs-medium-uppercase">{t('from', { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="h-3 w-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
@@ -196,7 +196,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">
+                  <div className="text-text-tertiary system-2xs-medium-uppercase">
                     {t('from', { ns: 'plugin' })}
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
@@ -210,7 +210,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <div className="flex items-center gap-1">
                   <RiHardDrive3Line className="h-3 w-3 text-text-tertiary" />
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
+                  <div className="text-text-tertiary system-2xs-medium-uppercase">Local Plugin</div>
                 </div>
               </>
             )}
@@ -219,14 +219,14 @@ const PluginItem: FC<Props> = ({
               <>
                 <div className="flex items-center gap-1">
                   <RiBugLine className="h-3 w-3 text-text-warning" />
-                  <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
+                  <div className="text-text-warning system-2xs-medium-uppercase">Debugging Plugin</div>
                 </div>
               </>
             )}
         </div>
         {/* Deprecated */}
         {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
-          <div className="system-2xs-medium-uppercase flex shrink-0 items-center gap-x-2">
+          <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">
               {t('deprecated', { ns: 'plugin' })}

@@ -53,8 +53,8 @@ const ProviderCardComponent: FC<Props> = ({
           </div>
           <div className="mb-1 flex h-4 items-center justify-between">
             <div className="flex items-center">
-              <div className="system-xs-regular text-text-tertiary">{org}</div>
-              <div className="system-xs-regular mx-2 text-text-quaternary">·</div>
+              <div className="text-text-tertiary system-xs-regular">{org}</div>
+              <div className="mx-2 text-text-quaternary system-xs-regular">·</div>
               <DownloadCount downloadCount={payload.install_count || 0} />
             </div>
           </div>

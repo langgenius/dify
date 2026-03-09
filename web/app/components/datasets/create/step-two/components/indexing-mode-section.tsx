@@ -70,7 +70,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   return (
     <>
       {/* Index Mode */}
-      <div className="system-md-semibold mb-1 text-text-secondary">
+      <div className="mb-1 text-text-secondary system-md-semibold">
         {t('stepTwo.indexMode', { ns: 'datasetCreation' })}
       </div>
       <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           <div className="p-1">
             <AlertTriangle className="size-4 text-text-warning-secondary" />
           </div>
-          <span className="system-xs-medium text-text-primary">
+          <span className="text-text-primary system-xs-medium">
             {t('stepTwo.highQualityTip', { ns: 'datasetCreation' })}
           </span>
         </div>
@@ -168,7 +168,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
       {/* Economical index setting tip */}
       {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-        <div className="system-xs-medium mt-2 text-text-tertiary">
+        <div className="mt-2 text-text-tertiary system-xs-medium">
           {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
           <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>
             {t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}
@@ -179,7 +179,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       {/* Embedding model */}
       {indexType === IndexingType.QUALIFIED && (
         <div className="mt-5">
-          <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>
+          <div className={cn('mb-1 text-text-secondary system-md-semibold', datasetId && 'flex items-center justify-between')}>
             {t('form.embeddingModel', { ns: 'datasetSettings' })}
           </div>
           <ModelSelector
@@ -190,7 +190,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             onSelect={onEmbeddingModelChange}
           />
           {isModelAndRetrievalConfigDisabled && (
-            <div className="system-xs-medium mt-2 text-text-tertiary">
+            <div className="mt-2 text-text-tertiary system-xs-medium">
               {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
               <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>
                 {t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}
@@ -207,10 +207,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         {!isModelAndRetrievalConfigDisabled
           ? (
               <div className="mb-1">
-                <div className="system-md-semibold mb-0.5 text-text-secondary">
+                <div className="mb-0.5 text-text-secondary system-md-semibold">
                   {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                 </div>
-                <div className="body-xs-regular text-text-tertiary">
+                <div className="text-text-tertiary body-xs-regular">
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
@@ -224,7 +224,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
               </div>
             )
           : (
-              <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
+              <div className={cn('mb-0.5 text-text-secondary system-md-semibold', 'flex items-center justify-between')}>
                 <div>{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
               </div>
             )}

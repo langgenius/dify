@@ -19,8 +19,8 @@ const Signup = () => {
   return (
     <div className="mx-auto mt-8 w-full">
       <div className="mx-auto mb-10 w-full">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('signup.createAccount', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-2 text-text-tertiary">{t('signup.welcome', { ns: 'login' })}</p>
+        <h2 className="text-text-primary title-4xl-semi-bold">{t('signup.createAccount', { ns: 'login' })}</h2>
+        <p className="mt-2 text-text-tertiary body-md-regular">{t('signup.welcome', { ns: 'login' })}</p>
       </div>
       <MailForm onSuccess={handleInputMailSubmitted} />
     </div>

@@ -30,14 +30,14 @@ export default function CheckEmail(props: DeleteAccountProps) {
 
   return (
     <>
-      <div className="body-md-medium py-1 text-text-destructive">
+      <div className="py-1 text-text-destructive body-md-medium">
         {t('account.deleteTip', { ns: 'common' })}
       </div>
-      <div className="body-md-regular pb-2 pt-1 text-text-secondary">
+      <div className="pb-2 pt-1 text-text-secondary body-md-regular">
         {t('account.deletePrivacyLinkTip', { ns: 'common' })}
         <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
       </div>
-      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('account.deleteLabel', { ns: 'common' })}</label>
+      <label className="mb-1 mt-3 flex h-6 items-center text-text-secondary system-sm-semibold">{t('account.deleteLabel', { ns: 'common' })}</label>
       <Input
         placeholder={t('account.deletePlaceholder', { ns: 'common' }) as string}
         onChange={(e) => {

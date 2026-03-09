@@ -26,12 +26,12 @@ const Label = ({
       <label
         data-testid="label"
         htmlFor={htmlFor}
-        className={cn('system-sm-medium text-text-secondary', className)}
+        className={cn('text-text-secondary system-sm-medium', className)}
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className="system-xs-regular ml-1 text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
-      {isRequired && <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>}
+      {!isRequired && showOptional && <div className="ml-1 text-text-tertiary system-xs-regular">{t('label.optional', { ns: 'common' })}</div>}
+      {isRequired && <div className="ml-1 text-text-destructive-secondary system-xs-regular">*</div>}
       {tooltip && (
         <Tooltip
           popupContent={

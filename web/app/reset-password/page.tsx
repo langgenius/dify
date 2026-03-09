@@ -67,8 +67,8 @@ export default function CheckCode() {
         <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-2 text-text-secondary">
+        <h2 className="text-text-primary title-4xl-semi-bold">{t('resetPassword', { ns: 'login' })}</h2>
+        <p className="mt-2 text-text-secondary body-md-regular">
           {t('resetPasswordDesc', { ns: 'login' })}
         </p>
       </div>
@@ -76,7 +76,7 @@ export default function CheckCode() {
       <form onSubmit={noop}>
         <input type="text" className="hidden" />
         <div className="mb-2">
-          <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
+          <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">{t('email', { ns: 'login' })}</label>
           <div className="mt-1">
             <Input id="email" type="email" disabled={loading} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
           </div>
@@ -92,7 +92,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('backToLogin', { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t('backToLogin', { ns: 'login' })}</span>
       </Link>
     </div>
   )

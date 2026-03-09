@@ -45,7 +45,7 @@ const ParamConfigContent: FC = () => {
       <div className="text-base font-semibold leading-6 text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
       <div className="space-y-6 pt-3">
         <div>
-          <div className="mb-2 flex items-center  space-x-1">
+          <div className="mb-2 flex items-center space-x-1">
             <div className="text-[13px] font-semibold leading-[18px] text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
             <Tooltip
               popupContent={(

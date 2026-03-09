@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore } from '@/app/components/workflow/store'
@@ -114,7 +114,7 @@ const RunMode = ({
               <button
                 type="button"
                 className={cn(
-                  'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
+                  'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent system-xs-medium',
                 )}
                 disabled={true}
               >
@@ -130,7 +130,7 @@ const RunMode = ({
               >
                 <div
                   className={cn(
-                    'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                    'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent system-xs-medium hover:bg-state-accent-hover',
                   )}
                   style={{ userSelect: 'none' }}
                 >

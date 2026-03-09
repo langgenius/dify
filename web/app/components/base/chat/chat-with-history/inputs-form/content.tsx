@@ -48,9 +48,9 @@ const InputsFormContent = ({ showTip }: Props) => {
         <div key={form.variable} className="space-y-1">
           {form.type !== InputVarType.checkbox && (
             <div className="flex h-6 items-center gap-1">
-              <div className="system-md-semibold text-text-secondary">{form.label}</div>
+              <div className="text-text-secondary system-md-semibold">{form.label}</div>
               {!form.required && (
-                <div className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</div>
+                <div className="text-text-tertiary system-xs-regular">{t('panel.optional', { ns: 'workflow' })}</div>
               )}
             </div>
           )}
@@ -134,7 +134,7 @@ const InputsFormContent = ({ showTip }: Props) => {
         </div>
       ))}
       {showTip && (
-        <div className="system-xs-regular text-text-tertiary">{t('chat.chatFormTip', { ns: 'share' })}</div>
+        <div className="text-text-tertiary system-xs-regular">{t('chat.chatFormTip', { ns: 'share' })}</div>
       )}
     </div>
   )

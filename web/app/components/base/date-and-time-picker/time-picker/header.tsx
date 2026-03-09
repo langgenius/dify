@@ -11,7 +11,7 @@ const Header = ({
 
   return (
     <div className="flex flex-col border-b-[0.5px] border-divider-regular">
-      <div className="system-md-semibold flex items-center px-2 py-1.5 text-text-primary">
+      <div className="flex items-center px-2 py-1.5 text-text-primary system-md-semibold">
         {title || t('title.pickTime', { ns: 'time' })}
       </div>
     </div>

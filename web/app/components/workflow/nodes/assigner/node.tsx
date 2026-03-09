@@ -30,7 +30,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
           <div className="flex flex-col items-start gap-1 self-stretch">
             <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1">
-              <div className="system-xs-medium flex-1 text-text-tertiary">{t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}</div>
+              <div className="flex-1 text-text-tertiary system-xs-medium">{t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}</div>
             </div>
           </div>
         </div>

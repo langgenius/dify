@@ -49,11 +49,11 @@ const CreateCard = () => {
         <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-divider-regular bg-background-section group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
           <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
         </div>
-        <div className="system-md-semibold truncate text-text-primary">
+        <div className="truncate text-text-primary system-md-semibold">
           {t('creation.createFromScratch.title', { ns: 'datasetPipeline' })}
         </div>
       </div>
-      <p className="system-xs-regular line-clamp-3 px-4 py-1 text-text-tertiary">
+      <p className="line-clamp-3 px-4 py-1 text-text-tertiary system-xs-regular">
         {t('creation.createFromScratch.description', { ns: 'datasetPipeline' })}
       </p>
     </div>

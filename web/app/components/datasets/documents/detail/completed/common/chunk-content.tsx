@@ -185,7 +185,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className="body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
+      className="h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF] body-md-regular"
       value={question}
       placeholder={t('segment.contentPlaceholder', { ns: 'datasetDocuments' }) || ''}
       onChange={e => onQuestionChange(e.target.value)}

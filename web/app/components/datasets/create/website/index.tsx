@@ -60,7 +60,7 @@ const Website: FC<Props> = ({
   return (
     <div>
       <div className="mb-4">
-        <div className="system-md-medium mb-2 text-text-secondary">
+        <div className="mb-2 text-text-secondary system-md-medium">
           {t('stepOne.website.chooseProvider', { ns: 'datasetCreation' })}
         </div>
         <div className="flex space-x-2">
@@ -68,8 +68,8 @@ const Website: FC<Props> = ({
             <button
               type="button"
               className={cn('flex items-center justify-center rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.jinaReader
-                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary system-sm-medium'
+                : `border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-regular
                 hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
               onClick={() => {
                 setSelectedProvider(DataSourceProvider.jinaReader)
@@ -84,8 +84,8 @@ const Website: FC<Props> = ({
             <button
               type="button"
               className={cn('rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.fireCrawl
-                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary system-sm-medium'
+                : `border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-regular
                 hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
               onClick={() => {
                 setSelectedProvider(DataSourceProvider.fireCrawl)
@@ -99,8 +99,8 @@ const Website: FC<Props> = ({
             <button
               type="button"
               className={cn('flex items-center justify-center rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.waterCrawl
-                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary system-sm-medium'
+                : `border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-regular
                 hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
               onClick={() => {
                 setSelectedProvider(DataSourceProvider.waterCrawl)

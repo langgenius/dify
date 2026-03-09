@@ -27,7 +27,7 @@ const CheckboxField = ({
       <label
         htmlFor={field.name}
         className={cn(
-          'system-sm-medium grow cursor-pointer pt-1 text-text-secondary',
+          'grow cursor-pointer pt-1 text-text-secondary system-sm-medium',
           labelClassName,
         )}
         onClick={() => {

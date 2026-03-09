@@ -10,6 +10,9 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/modal`
   - `@/app/components/base/confirm`
   - `@/app/components/base/select` (including `custom` / `pure`)
+  - `@/app/components/base/popover`
+  - `@/app/components/base/dropdown`
+  - `@/app/components/base/dialog`
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`

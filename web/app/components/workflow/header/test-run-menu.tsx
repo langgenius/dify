@@ -157,7 +157,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     return (
       <div
         key={option.id}
-        className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+        className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
         onClick={() => handleSelect(option)}
       >
         <div className="flex min-w-0 flex-1 items-center">

@@ -31,7 +31,7 @@ const DocModeInfo = ({
 
   if (isExternalProvider) {
     return (
-      <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
+      <div className="flex items-center gap-x-3 text-text-tertiary system-2xs-medium-uppercase">
         <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>
       </div>
     )
@@ -48,7 +48,7 @@ const DocModeInfo = ({
     : ''
 
   return (
-    <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
+    <div className="flex items-center gap-x-3 text-text-tertiary system-2xs-medium-uppercase">
       {!!dataset.doc_form && (
         <span
           className="min-w-0 max-w-full truncate"
@@ -125,7 +125,7 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
         <div
-          className="system-md-semibold truncate text-text-secondary"
+          className="truncate text-text-secondary system-md-semibold"
           title={dataset.name}
         >
           {dataset.name}

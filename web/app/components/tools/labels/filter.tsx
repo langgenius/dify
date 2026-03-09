@@ -101,7 +101,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[1002]">
-          <div className="relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-[5px]">
+          <div className="relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="p-2">
               <Input
                 showLeftIcon

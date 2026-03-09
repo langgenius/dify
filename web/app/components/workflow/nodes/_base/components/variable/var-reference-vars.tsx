@@ -184,7 +184,7 @@ const Item: FC<ItemProps> = ({
         <div
           ref={itemRef}
           className={cn(
-            (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
+            (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
             isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
             className,
@@ -207,16 +207,16 @@ const Item: FC<ItemProps> = ({
             {isFlat && flatVarIcon}
 
             {!isEnv && !isChatVar && !isRagVariable && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{varName}</div>
+              <div title={itemData.variable} className="ml-1 w-0 grow truncate text-text-secondary system-sm-medium">{varName}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className="ml-1 w-0 grow truncate text-text-secondary system-sm-medium">{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className="ml-1 w-0 grow truncate text-text-secondary system-sm-medium">{itemData.variable.replace('conversation.', '')}</div>
             )}
             {isRagVariable && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
+              <div title={itemData.des} className="ml-1 w-0 grow truncate text-text-secondary system-sm-medium">{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
           <div className="ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
@@ -354,7 +354,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
                     {!item.isFlat && (
                       <div
-                        className="system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary"
+                        className="truncate px-3 leading-[22px] text-text-tertiary system-xs-medium-uppercase"
                         title={item.title}
                       >
                         {item.title}
@@ -379,10 +379,10 @@ const VarReferenceVars: FC<Props> = ({
                       />
                     ))}
                     {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
-                      <div className="relative mt-[14px] flex  items-center space-x-1">
+                      <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
-                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
-                        <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
+                        <div className="text-text-tertiary system-2xs-semibold-uppercase">{t('debug.lastOutput', { ns: 'workflow' })}</div>
+                        <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
                   </div>

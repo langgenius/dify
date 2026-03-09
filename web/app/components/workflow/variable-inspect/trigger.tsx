@@ -64,7 +64,7 @@ const VariableInspectTrigger: FC = () => {
     <div className={cn('flex items-center gap-1')}>
       {!isRunning && !currentVars.length && (
         <div
-          className={cn('system-2xs-semibold-uppercase flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+          className={cn('flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-sm system-2xs-semibold-uppercase hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => {
             if (getNodesReadOnly())
               return
@@ -77,7 +77,7 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && currentVars.length > 0 && (
         <>
           <div
-            className={cn('system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm system-xs-medium hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -87,7 +87,7 @@ const VariableInspectTrigger: FC = () => {
             {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
           </div>
           <div
-            className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm system-xs-medium hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -101,7 +101,7 @@ const VariableInspectTrigger: FC = () => {
       {isRunning && (
         <>
           <div
-            className="system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
+            className="flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm system-xs-medium hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
             <RiLoader2Line className="h-4 w-4 animate-spin" />

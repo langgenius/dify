@@ -131,16 +131,16 @@ const SettingBuiltInTool: FC<Props> = ({
           {infoSchemas.map((item, index) => (
             <div key={index} className="py-1">
               <div className="flex items-center gap-2">
-                <div className="code-sm-semibold text-text-secondary">{item.label[language]}</div>
-                <div className="system-xs-regular text-text-tertiary">
+                <div className="text-text-secondary code-sm-semibold">{item.label[language]}</div>
+                <div className="text-text-tertiary system-xs-regular">
                   {getType(item.type)}
                 </div>
                 {item.required && (
-                  <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
+                  <div className="text-text-warning-secondary system-xs-medium">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                 )}
               </div>
               {item.human_description && (
-                <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                <div className="mt-0.5 text-text-tertiary system-xs-regular">
                   {item.human_description?.[language]}
                 </div>
               )}
@@ -186,7 +186,7 @@ const SettingBuiltInTool: FC<Props> = ({
               </div>
               {showBackButton && (
                 <div
-                  className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
+                  className="mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary system-xs-semibold-uppercase"
                   onClick={onHide}
                 >
                   <RiArrowLeftLine className="h-4 w-4" />
@@ -201,7 +201,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   packageName={collection.name.split('/').pop() || ''}
                 />
               </div>
-              <div className="system-md-semibold mt-1 text-text-primary">{currTool?.label[language]}</div>
+              <div className="mt-1 text-text-primary system-md-semibold">{currTool?.label[language]}</div>
               {!!currTool?.description[language] && (
                 <Description className="mb-2 mt-3 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
               )}
@@ -240,13 +240,13 @@ const SettingBuiltInTool: FC<Props> = ({
                       />
                     )
                   : (
-                      <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+                      <div className="p-4 pb-1 text-text-primary system-sm-semibold-uppercase">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
                     )}
                 <div className="h-0 grow overflow-y-auto px-4">
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
                     <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                       <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
                     </div>
                   )}

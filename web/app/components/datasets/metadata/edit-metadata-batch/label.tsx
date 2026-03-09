@@ -16,7 +16,7 @@ const Label: FC<Props> = ({
 }) => {
   return (
     <div className={cn(
-      'system-xs-medium w-[136px] shrink-0 truncate text-text-tertiary',
+      'w-[136px] shrink-0 truncate text-text-tertiary system-xs-medium',
       isDeleted && 'text-text-quaternary line-through',
       className,
     )}

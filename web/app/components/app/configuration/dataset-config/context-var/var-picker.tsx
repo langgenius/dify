@@ -57,11 +57,11 @@ const VarPicker: FC<Props> = ({
       <PortalToFollowElemTrigger className={cn(triggerClassName)} onClick={() => setOpen(v => !v)}>
         <div className={cn(
           className,
-          notSetVar ? 'border-[#FEDF89] bg-[#FFFCF5] text-[#DC6803]' : ' border-components-button-secondary-border text-text-accent hover:bg-components-button-secondary-bg',
+          notSetVar ? 'border-[#FEDF89] bg-[#FFFCF5] text-[#DC6803]' : 'border-components-button-secondary-border text-text-accent hover:bg-components-button-secondary-bg',
           open ? 'bg-components-button-secondary-bg' : 'bg-transparent',
           `
-          flex h-8 cursor-pointer items-center justify-center space-x-1 rounded-lg border  px-2 text-[13px]
-          font-medium  shadow-xs
+          flex h-8 cursor-pointer items-center justify-center space-x-1 rounded-lg border px-2 text-[13px]
+          font-medium shadow-xs
           `,
         )}
         >
@@ -82,7 +82,7 @@ const VarPicker: FC<Props> = ({
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         {options.length > 0
           ? (
-              <div className="max-h-[50vh] w-[240px] overflow-y-auto rounded-lg  border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+              <div className="max-h-[50vh] w-[240px] overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
                 {options.map(({ name, value, type }, index) => (
                   <div
                     key={index}

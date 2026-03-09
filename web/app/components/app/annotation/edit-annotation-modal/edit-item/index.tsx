@@ -21,7 +21,7 @@ type Props = {
 }
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
-  <div className={cn(className, 'system-xs-medium flex h-[18px] items-center text-text-tertiary')}>
+  <div className={cn(className, 'flex h-[18px] items-center text-text-tertiary system-xs-medium')}>
     <RiEditFill className="mr-1 h-3.5 w-3.5" />
     <div>{title}</div>
     <div
@@ -75,21 +75,21 @@ const EditItem: FC<Props> = ({
         {avatar}
       </div>
       <div className="grow">
-        <div className="system-xs-semibold mb-1 text-text-primary">{name}</div>
-        <div className="system-sm-regular text-text-primary">{content}</div>
+        <div className="mb-1 text-text-primary system-xs-semibold">{name}</div>
+        <div className="text-text-primary system-sm-regular">{content}</div>
         {!isEdit
           ? (
               <div>
                 {showNewContent && (
                   <div className="mt-3">
                     <EditTitle title={editTitle} />
-                    <div className="system-sm-regular mt-1 text-text-primary">{newContent}</div>
+                    <div className="mt-1 text-text-primary system-sm-regular">{newContent}</div>
                   </div>
                 )}
                 <div className="mt-2 flex items-center">
                   {!readonly && (
                     <div
-                      className="system-xs-medium flex cursor-pointer items-center space-x-1 text-text-accent"
+                      className="flex cursor-pointer items-center space-x-1 text-text-accent system-xs-medium"
                       onClick={() => {
                         setIsEdit(true)
                       }}
@@ -100,7 +100,7 @@ const EditItem: FC<Props> = ({
                   )}
 
                   {showNewContent && (
-                    <div className="system-xs-medium ml-2 flex items-center text-text-tertiary">
+                    <div className="ml-2 flex items-center text-text-tertiary system-xs-medium">
                       <div className="mr-2">·</div>
                       <div
                         className="flex cursor-pointer items-center space-x-1"

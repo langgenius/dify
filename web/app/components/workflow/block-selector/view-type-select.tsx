@@ -47,7 +47,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.tree)}
       >
-        <RiNodeTree className="h-4 w-4 " />
+        <RiNodeTree className="h-4 w-4" />
       </div>
     </div>
   )
