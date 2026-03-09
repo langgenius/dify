@@ -6,6 +6,7 @@ import type {
 } from '../declarations'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   Popover,
@@ -119,7 +120,7 @@ const PopupItem: FC<PopupItemProps> = ({
                       hasCredits
                         ? (
                             <>
-                              <span className="i-custom-vender-line-financeandecommerce-credits-coin h-3 w-3" />
+                              <CreditsCoin className="h-3 w-3" />
                               <span className="ml-1">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
                             </>
                           )
