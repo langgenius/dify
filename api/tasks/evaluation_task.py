@@ -20,6 +20,7 @@ from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunne
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.evaluation.runners.snippet_evaluation_runner import SnippetEvaluationRunner
 from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluationRunner
 from core.workflow.node_events.base import NodeRunResult
 from extensions.ext_database import db
@@ -151,6 +152,8 @@ def _create_runner(
             return AgentEvaluationRunner(evaluation_instance, session)
         case EvaluationCategory.WORKFLOW:
             return WorkflowEvaluationRunner(evaluation_instance, session)
+        case EvaluationCategory.SNIPPET:
+            return SnippetEvaluationRunner(evaluation_instance, session)
         case _:
             raise ValueError(f"Unknown evaluation category: {category}")
 

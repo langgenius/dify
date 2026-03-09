@@ -132,6 +132,48 @@ class SnippetGenerateService:
         )
 
     @classmethod
+    def run_published(
+        cls,
+        snippet: CustomizedSnippet,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+    ) -> Mapping[str, Any]:
+        """
+        Run a snippet's published workflow in non-streaming (blocking) mode.
+
+        Similar to :meth:`generate` but targets the published workflow instead
+        of the draft, and returns the raw blocking response without SSE
+        wrapping.  Designed for programmatic callers such as evaluation runners.
+
+        :param snippet: CustomizedSnippet instance (must be published)
+        :param user: Account or EndUser initiating the run
+        :param args: Workflow inputs (must include "inputs" key)
+        :param invoke_from: Source of invocation
+        :return: Blocking response mapping with workflow outputs
+        :raises ValueError: If the snippet has no published workflow
+        """
+        snippet_service = SnippetService()
+        workflow = snippet_service.get_published_workflow(snippet)
+        if not workflow:
+            raise ValueError("No published workflow found for snippet")
+
+        # Inject a virtual Start node when the graph doesn't have one.
+        workflow = cls._ensure_start_node(workflow, snippet)
+
+        app_proxy = _SnippetAsApp(snippet)
+
+        response: Mapping[str, Any] = WorkflowAppGenerator().generate(
+            app_model=app_proxy,  # type: ignore[arg-type]
+            workflow=workflow,
+            user=user,
+            args=args,
+            invoke_from=invoke_from,
+            streaming=False,
+        )
+        return response
+
+    @classmethod
     def _ensure_start_node(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
         """
         Return *workflow* with a Start node.

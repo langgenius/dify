@@ -11,6 +11,7 @@ class EvaluationCategory(StrEnum):
     RETRIEVAL = "knowledge_retrieval"
     AGENT = "agent"
     WORKFLOW = "workflow"
+    SNIPPET = "snippet"
     RETRIEVAL_TEST = "retrieval_test"
 
 
