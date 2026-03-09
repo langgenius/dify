@@ -214,7 +214,7 @@ def _emit_metric_log(
         logger.debug("Enterprise metric/log dispatch unavailable, dropping: case=%s", case)
         return
 
-    tenant_id = context.get("tenant_id", "")
+    tenant_id = context.get("tenant_id") or ""
     event_id = str(uuid.uuid4())
 
     payload_for_envelope, payload_ref = _handle_payload_sizing(payload, tenant_id, event_id)
