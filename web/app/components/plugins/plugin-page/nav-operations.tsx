@@ -86,18 +86,16 @@ export const SubmitRequestDropdown = () => {
           </span>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className="min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
-          {getOptions(docLink).map(option => (
-            <DropdownItem
-              key={option.href}
-              href={option.href}
-              icon={option.icon}
-              text={t(option.labelKey, { ns: 'plugin' })}
-              onClick={() => setOpen(false)}
-            />
-          ))}
-        </div>
+      <PortalToFollowElemContent className="z-[1000] min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
+        {getOptions(docLink).map(option => (
+          <DropdownItem
+            key={option.href}
+            href={option.href}
+            icon={option.icon}
+            text={t(option.labelKey, { ns: 'plugin' })}
+            onClick={() => setOpen(false)}
+          />
+        ))}
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
