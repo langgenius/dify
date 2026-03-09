@@ -270,6 +270,24 @@ describe('useInstallMultiState', () => {
 
   // ==================== Error Handling ====================
   describe('Error Handling', () => {
+    it('should mark marketplace index as error when identifier is missing', async () => {
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.errorIndexes).toContain(0)
+      })
+    })
+
     it('should mark all marketplace indexes as errors on fetch failure', async () => {
       mockMarketplaceError = new Error('Fetch failed')
 

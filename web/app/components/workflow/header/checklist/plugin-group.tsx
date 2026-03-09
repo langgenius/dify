@@ -1,13 +1,19 @@
 import type { MouseEventHandler } from 'react'
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
-import { memo, useMemo, useState } from 'react'
+import type { Dependency } from '@/app/components/plugins/types'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import BlockIcon from '../../block-icon'
+import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
 import { ItemIndicator } from './item-indicator'
+
+function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
+  const withoutHash = identifier.split('@')[0]
+  const [, version] = withoutHash.split(':')
+  return version || undefined
+}
 
 export const ChecklistPluginGroup = memo(({
   items,
@@ -15,35 +21,37 @@ export const ChecklistPluginGroup = memo(({
   items: ChecklistItem[]
 }) => {
   const { t } = useTranslation()
-  const install = useInstallPackageFromMarketPlace()
-  const [installing, setInstalling] = useState(false)
 
   const identifiers = useMemo(
-    () => items
-      .map(i => i.pluginUniqueIdentifier)
-      .filter((id): id is string => Boolean(id)),
+    () => Array.from(
+      new Set(
+        items
+          .map(i => i.pluginUniqueIdentifier)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ),
     [items],
   )
 
-  const handleInstallAll: MouseEventHandler = async (e) => {
+  const dependencies = useMemo<Dependency[]>(() => {
+    return identifiers.map((identifier) => {
+      return {
+        type: 'marketplace',
+        value: {
+          marketplace_plugin_unique_identifier: identifier,
+          plugin_unique_identifier: identifier,
+          version: getVersionFromMarketplaceIdentifier(identifier),
+        },
+      }
+    })
+  }, [identifiers])
+
+  const handleInstallAll: MouseEventHandler = (e) => {
     e.stopPropagation()
-    if (installing || identifiers.length === 0)
+    if (dependencies.length === 0)
       return
-    setInstalling(true)
-    for (const id of identifiers) {
-      try {
-        const response = await install.mutateAsync(id)
-        if (response?.task_id) {
-          const { check } = checkTaskStatus()
-          await check({ taskId: response.task_id, pluginUniqueIdentifier: id })
-        }
-      }
-      catch {
-        // continue installing remaining plugins
-      }
-    }
-    setInstalling(false)
-    install.reset()
+    const { setDependencies } = usePluginDependencyStore.getState()
+    setDependencies(dependencies)
   }
 
   return (
@@ -59,16 +67,9 @@ export const ChecklistPluginGroup = memo(({
           variant="secondary"
           size="small"
           onClick={handleInstallAll}
-          disabled={installing || identifiers.length === 0}
+          disabled={dependencies.length === 0}
         >
-          {installing
-            ? (
-                <>
-                  {t('nodes.agent.pluginInstaller.installing', { ns: 'workflow' })}
-                  <span className="i-ri-loader-2-line ml-1 size-3 animate-spin" />
-                </>
-              )
-            : t('nodes.agent.pluginInstaller.install', { ns: 'workflow' })}
+          {t('nodes.agent.pluginInstaller.install', { ns: 'workflow' })}
         </Button>
       </div>
       <div className="p-1">
