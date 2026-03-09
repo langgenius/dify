@@ -7,4 +7,3 @@ class BasePluginEntity(BaseModel):
     id: str
     created_at: datetime
     updated_at: datetime
-    plugin_unique_identifier: str

@@ -158,6 +158,7 @@ class PluginEntity(PluginInstallation):
     name: str
     installation_id: str
     version: str
+    plugin_unique_identifier: str
 
     @model_validator(mode="after")
     def set_plugin_id(self):
