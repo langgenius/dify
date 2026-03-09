@@ -51,8 +51,10 @@ def flush_telemetry() -> None:
 
     metric_provider = metrics.get_meter_provider()
     if hasattr(metric_provider, "force_flush"):
-        with contextlib.suppress(Exception):
+        try:
             metric_provider.force_flush()
+        except Exception:
+            logger.exception("otel: failed to flush metric provider")
 
 
 def is_celery_worker():
