@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
+    NotChatAppError,
     NotCompletionAppError,
 )
 from controllers.web.message import (
@@ -125,7 +126,13 @@ class TestMessageSuggestedQuestionApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
         msg_id = uuid4()
         with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
-            with pytest.raises(NotCompletionAppError):
+            with pytest.raises(NotChatAppError):
+                MessageSuggestedQuestionApi().get(_completion_app(), _end_user(), msg_id)
+
+    def test_wrong_mode_raises(self, app: Flask) -> None:
+        msg_id = uuid4()
+        with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
+            with pytest.raises(NotChatAppError):
                 MessageSuggestedQuestionApi().get(_completion_app(), _end_user(), msg_id)
 
     @patch("controllers.web.message.MessageService.get_suggested_questions_after_answer")
