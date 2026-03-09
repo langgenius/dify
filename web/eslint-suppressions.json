@@ -4636,9 +4636,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 10
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
