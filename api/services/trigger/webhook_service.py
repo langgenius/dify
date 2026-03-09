@@ -546,7 +546,8 @@ class WebhookService:
             Any: The validated and converted value
 
         Raises:
-            ValueError: If validation or conversion fails
+            ValueError: If validation or conversion fails. The original validation
+                error is preserved as ``__cause__`` for debugging.
         """
         try:
             if is_form_data:
@@ -556,7 +557,7 @@ class WebhookService:
                 # JSON data should already be in correct types, just validate
                 return cls._validate_json_value(param_name, value, param_type)
         except Exception as e:
-            raise ValueError(f"Parameter '{param_name}' validation failed: {str(e)}")
+            raise ValueError(f"Parameter '{param_name}' validation failed: {str(e)}") from e
 
     @classmethod
     def _convert_form_value(cls, param_name: str, value: str, param_type: SegmentType | str) -> Any:
