@@ -15,12 +15,24 @@ const config: KnipConfig = {
   ignoreBinaries: [
     'only-allow',
   ],
-  ignoreDependencies: [],
+  ignoreDependencies: [
+    '@iconify-json/*',
+
+    '@storybook/addon-onboarding',
+
+    // vinext related
+    'react-server-dom-webpack',
+    '@vitejs/plugin-rsc',
+    '@mdx-js/rollup',
+
+    '@tsslint/compat-eslint',
+    '@tsslint/config',
+  ],
   rules: {
     files: 'warn',
-    dependencies: 'warn',
-    devDependencies: 'warn',
-    optionalPeerDependencies: 'warn',
+    dependencies: 'error',
+    devDependencies: 'error',
+    optionalPeerDependencies: 'error',
     unlisted: 'warn',
     unresolved: 'warn',
     exports: 'warn',
