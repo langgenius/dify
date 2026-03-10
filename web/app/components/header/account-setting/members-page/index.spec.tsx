@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
+import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -60,6 +61,9 @@ vi.mock('./transfer-ownership-modal', () => ({
       <button onClick={onClose}>Close Transfer Modal</button>
     </div>
   ),
+}))
+vi.mock('@/app/components/billing/upgrade-btn', () => ({
+  default: () => <div>Upgrade Button</div>,
 }))
 
 describe('MembersPage', () => {
@@ -190,5 +194,183 @@ describe('MembersPage', () => {
 
     expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Transfer ownership')).not.toBeInTheDocument()
+  })
+
+  it('should open and close edit workspace modal', async () => {
+    const user = userEvent.setup()
+
+    render(<MembersPage />)
+
+    await user.click(screen.getByTestId('edit-workspace-pencil'))
+    expect(screen.getByText('Edit Workspace Modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))
+    expect(screen.queryByText('Edit Workspace Modal')).not.toBeInTheDocument()
+  })
+
+  it('should close transfer ownership modal when close is clicked', async () => {
+    const user = userEvent.setup()
+
+    render(<MembersPage />)
+
+    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
+    expect(screen.getByText('Transfer Ownership Modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
+    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
+  })
+
+  it('should show pending status and you indicator', () => {
+    const pendingAccount: Member = {
+      ...mockAccounts[1],
+      status: 'pending',
+    }
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0], pendingAccount] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/members\.pending/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.you/i)).toBeInTheDocument() // Current user is owner@example.com
+  })
+
+  it('should show billing information for limited plan', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument() // accounts.length
+    expect(screen.getByText('/')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument() // plan.total.teamMembers
+  })
+
+  it('should show unlimited billing information', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: -1 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.unlimited/i)).toBeInTheDocument()
+  })
+
+  it('should show non-billing member format for team plan even when billing is enabled', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.team,
+        total: { teamMembers: 50 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
+  })
+
+  it('should show invite button when user is manager but not owner', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+    } as unknown as AppContextValue)
+
+    render(<MembersPage />)
+
+    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  })
+
+  it('should use created_at as fallback when last_active_at is empty', () => {
+    const memberNoLastActive: Member = {
+      ...mockAccounts[1],
+      last_active_at: '',
+      created_at: '1700000000',
+    }
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [memberNoLastActive] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1700000000000)
+  })
+
+  it('should not show plural s when only one account in billing layout', () => {
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('should not show plural s when only one account in non-billing layout', () => {
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('should show normal role as fallback for unknown role', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: false,
+    } as unknown as AppContextValue)
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+  })
+
+  it('should show upgrade button when member limit is full', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 2 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText('Upgrade Button')).toBeInTheDocument()
   })
 })

@@ -5,11 +5,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 
 
 class ToolApiEntity(BaseModel):
