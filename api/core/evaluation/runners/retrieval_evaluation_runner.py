@@ -24,8 +24,8 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
 
     def evaluate_metrics(
         self,
-        node_run_result_mapping: dict[str, NodeRunResult] | None,
-        node_run_result: NodeRunResult | None,
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None,
+        node_run_result_list: list[NodeRunResult] | None,
         default_metric: DefaultMetric | None,
         customized_metrics: CustomizedMetrics | None,
         model_provider: str,
