@@ -108,12 +108,13 @@ export const useNodeLoopInteractions = () => {
       handleNodeLoopRerender(parentId)
   }, [store, handleNodeLoopRerender])
 
-  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
+  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_LOOP_START_NODE)
+    const newIdMapping = { ...idMapping }
 
-    return childrenNodes.map((child, index) => {
+    const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const { defaultValue } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
@@ -139,8 +140,14 @@ export const useNodeLoopInteractions = () => {
         zIndex: LOOP_CHILDREN_Z_INDEX,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
+      newIdMapping[child.id] = newNode.id
       return newNode
     })
+
+    return {
+      copyChildren,
+      newIdMapping,
+    }
   }, [store, nodesMetaDataMap])
 
   return {

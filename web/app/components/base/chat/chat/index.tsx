@@ -75,6 +75,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
+  sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
@@ -119,6 +120,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   sidebarCollapseState,
   hideAvatar,
+  sendOnEnter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -332,8 +334,7 @@ const Chat: FC<ChatProps> = ({
               !noStopResponding && isResponding && (
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
-                    {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
-                    <div className="i-custom-vender-solid-mediaanddevices-stop-circle mr-[5px] h-3.5 w-3.5" />
+                    <div className="i-custom-vender-solid-mediaAndDevices-stop-circle mr-[5px] h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
@@ -364,6 +365,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendOnEnter={sendOnEnter}
                 />
               )
             }

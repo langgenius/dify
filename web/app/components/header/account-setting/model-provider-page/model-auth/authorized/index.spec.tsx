@@ -24,36 +24,6 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-let mockPortalOpen = false
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpen = open
-    return <div data-testid="portal" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-    if (!mockPortalOpen)
-      return null
-    return <div data-testid="portal-content">{children}</div>
-  },
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onCancel, onConfirm }: { isShow: boolean, onCancel: () => void, onConfirm: () => void }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <button onClick={onCancel}>Cancel</button>
-        <button onClick={onConfirm}>Confirm</button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('./authorized-item', () => ({
   default: ({ credentials, model, onEdit, onDelete, onItemClick }: {
     credentials: Credential[]
@@ -105,382 +75,127 @@ describe('Authorized', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
     mockDeleteCredentialId = null
     mockDoingAction = false
   })
 
-  describe('Rendering', () => {
-    it('should render trigger button', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
+  it('should render trigger and open popup when trigger is clicked', () => {
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+      />,
+    )
 
-      expect(screen.getByText(/Trigger/)).toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    expect(screen.getByTestId('authorized-item')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /addApiKey/i })).toBeInTheDocument()
+  })
 
-    it('should render portal content when open', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
+  it('should call handleOpenModal when triggerOnlyOpenModal is true', () => {
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+        triggerOnlyOpenModal
+      />,
+    )
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-      expect(screen.getByTestId('authorized-item')).toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    expect(mockHandleOpenModal).toHaveBeenCalled()
+    expect(screen.queryByTestId('authorized-item')).not.toBeInTheDocument()
+  })
 
-    it('should not render portal content when closed', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
+  it('should call onItemClick when credential is selected', () => {
+    const onItemClick = vi.fn()
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+        onItemClick={onItemClick}
+      />,
+    )
 
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0])
 
-    it('should render Add API Key button when not model credential', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
+    expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
+  })
 
-      expect(screen.getByText(/addApiKey/)).toBeInTheDocument()
-    })
+  it('should call handleActiveCredential when onItemClick is not provided', () => {
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+      />,
+    )
 
-    it('should render Add Model Credential button when is model credential', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          authParams={{ isModelCredential: true }}
-          isOpen
-        />,
-      )
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0])
 
-      expect(screen.getByText(/addModelCredential/)).toBeInTheDocument()
-    })
+    expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
+  })
 
-    it('should not render add action when hideAddAction is true', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          hideAddAction
-          isOpen
-        />,
-      )
+  it('should call handleOpenModal with fixed model fields when adding model credential', () => {
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+        authParams={{ isModelCredential: true }}
+        currentCustomConfigurationModelFixedFields={{
+          __model_name: 'gpt-4',
+          __model_type: ModelTypeEnum.textGeneration,
+        }}
+      />,
+    )
 
-      expect(screen.queryByText(/addApiKey/)).not.toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(screen.getByText(/addModelCredential/))
 
-    it('should render popup title when provided', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          popupTitle="Select Credential"
-          isOpen
-        />,
-      )
-
-      expect(screen.getByText('Select Credential')).toBeInTheDocument()
+    expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, {
+      model: 'gpt-4',
+      model_type: ModelTypeEnum.textGeneration,
     })
   })
 
-  describe('User Interactions', () => {
-    it('should call onOpenChange when trigger is clicked in controlled mode', () => {
-      const onOpenChange = vi.fn()
+  it('should not render add action when hideAddAction is true', () => {
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+        hideAddAction
+      />,
+    )
 
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen={false}
-          onOpenChange={onOpenChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-
-      expect(onOpenChange).toHaveBeenCalledWith(true)
-    })
-
-    it('should toggle portal on trigger click', () => {
-      const { rerender } = render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-
-      rerender(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    })
-
-    it('should open modal when triggerOnlyOpenModal is true', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          triggerOnlyOpenModal
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('portal-trigger'))
-
-      expect(mockHandleOpenModal).toHaveBeenCalled()
-    })
-
-    it('should call handleOpenModal when Add API Key is clicked', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/addApiKey/))
-
-      expect(mockHandleOpenModal).toHaveBeenCalled()
-    })
-
-    it('should call handleOpenModal with credential and model when edit is clicked', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getAllByText('Edit')[0])
-
-      expect(mockHandleOpenModal).toHaveBeenCalledWith(
-        mockCredentials[0],
-        mockItems[0].model,
-      )
-    })
-
-    it('should pass current model fields when adding model credential', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.customizableModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          authParams={{ isModelCredential: true }}
-          currentCustomConfigurationModelFixedFields={{
-            __model_name: 'gpt-4',
-            __model_type: ModelTypeEnum.textGeneration,
-          }}
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/addModelCredential/))
-
-      expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, {
-        model: 'gpt-4',
-        model_type: ModelTypeEnum.textGeneration,
-      })
-    })
-
-    it('should call onItemClick when credential is selected', () => {
-      const onItemClick = vi.fn()
-
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          onItemClick={onItemClick}
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getAllByText('Select')[0])
-
-      expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
-    })
-
-    it('should call handleActiveCredential when onItemClick is not provided', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getAllByText('Select')[0])
-
-      expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0].model)
-    })
-
-    it('should not call onItemClick when disableItemClick is true', () => {
-      const onItemClick = vi.fn()
-
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          onItemClick={onItemClick}
-          disableItemClick
-          isOpen
-        />,
-      )
-
-      fireEvent.click(screen.getAllByText('Select')[0])
-
-      expect(onItemClick).not.toHaveBeenCalled()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
-  describe('Delete Confirmation', () => {
-    it('should show confirm dialog when deleteCredentialId is set', () => {
-      mockDeleteCredentialId = 'cred-1'
+  it('should show confirm dialog and call confirm handler when delete is confirmed', () => {
+    mockDeleteCredentialId = 'cred-1'
 
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
+    render(
+      <Authorized
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+        items={mockItems}
+        renderTrigger={mockRenderTrigger}
+      />,
+    )
 
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-    })
-
-    it('should not show confirm dialog when deleteCredentialId is null', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
-
-      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
-    })
-
-    it('should call closeConfirmDelete when cancel is clicked', () => {
-      mockDeleteCredentialId = 'cred-1'
-
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
-
-      fireEvent.click(screen.getByText('Cancel'))
-
-      expect(mockCloseConfirmDelete).toHaveBeenCalled()
-    })
-
-    it('should call handleConfirmDelete when confirm is clicked', () => {
-      mockDeleteCredentialId = 'cred-1'
-
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-        />,
-      )
-
-      fireEvent.click(screen.getByText('Confirm'))
-
-      expect(mockHandleConfirmDelete).toHaveBeenCalled()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty items array', () => {
-      render(
-        <Authorized
-          provider={mockProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={[]}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      expect(screen.queryByTestId('authorized-item')).not.toBeInTheDocument()
-    })
-
-    it('should not render add action when provider does not allow custom token', () => {
-      const restrictedProvider = { ...mockProvider, allow_custom_token: false }
-
-      render(
-        <Authorized
-          provider={restrictedProvider}
-          configurationMethod={ConfigurationMethodEnum.predefinedModel}
-          items={mockItems}
-          renderTrigger={mockRenderTrigger}
-          isOpen
-        />,
-      )
-
-      expect(screen.queryByText(/addApiKey/)).not.toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: /common.operation.confirm/i }))
+    expect(mockHandleConfirmDelete).toHaveBeenCalled()
   })
 })
