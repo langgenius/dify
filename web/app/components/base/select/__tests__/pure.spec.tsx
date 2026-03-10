@@ -35,6 +35,11 @@ describe('PureSelect', () => {
       render(<PureSelect options={options} multiple={true} value={['apple', 'banana']} />)
       expect(screen.getByText(/selected/i)).toBeInTheDocument()
     })
+
+    it('should render placeholder in multiple mode when selected values are empty', () => {
+      render(<PureSelect options={options} multiple={true} value={[]} placeholder="Pick fruits" />)
+      expect(screen.getByTitle('Pick fruits')).toBeInTheDocument()
+    })
   })
 
   // Interaction behavior in single and multiple selection modes.
@@ -90,6 +95,23 @@ describe('PureSelect', () => {
       await user.click(screen.getAllByTitle('Apple')[0])
 
       expect(onChange).toHaveBeenCalledWith(['banana'])
+    })
+
+    it('should start with empty array when multiple value is undefined', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+
+      render(
+        <PureSelect
+          options={options}
+          multiple={true}
+          onChange={onChange}
+          containerProps={{ open: true }}
+        />,
+      )
+
+      await user.click(screen.getAllByTitle('Apple')[0])
+      expect(onChange).toHaveBeenCalledWith(['apple'])
     })
   })
 
