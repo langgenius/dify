@@ -308,6 +308,6 @@
     ]
   },
   "lint-staged": {
-    "*": "pnpm exec eslint --fix"
+    "*": "eslint --fix"
   }
 }
