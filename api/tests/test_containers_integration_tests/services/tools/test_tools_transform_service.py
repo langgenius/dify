@@ -61,7 +61,7 @@ class TestToolTransformService:
                 user_id="test_user_id",
                 provider="test_provider",
                 credential_type="api_key",
-                encrypted_credentials='{"api_key": "test_key"}',
+                encrypted_credentials=json.dumps({"api_key": "test_key"}),
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
@@ -76,7 +76,7 @@ class TestToolTransformService:
         elif provider_type == "mcp":
             provider = MCPToolProvider(
                 name=fake.company(),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
+                icon=json.dumps({"background": "#FF6B6B", "content": "🔧"}),
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
                 server_url="https://mcp.example.com",
