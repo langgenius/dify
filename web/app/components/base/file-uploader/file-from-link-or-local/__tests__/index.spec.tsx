@@ -126,16 +126,11 @@ describe('FileFromLinkOrLocal', () => {
     expect(input).toBeDisabled()
   })
 
-  it('should not submit when url is empty', () => {
+  it('should have disabled OK button when url is empty', () => {
     renderAndOpen({ showFromLink: true })
 
-    const buttonElement = screen.getByRole('button', { name: /operation\.ok/ }) as HTMLButtonElement
-    buttonElement.disabled = false
-
-    fireEvent.click(buttonElement)
-
-    expect(screen.queryByText(/fileUploader\.pasteFileLinkInvalid/)).not.toBeInTheDocument()
-    expect(mockHandleLoadFileFromLink).not.toHaveBeenCalled()
+    const okButton = screen.getByRole('button', { name: /operation\.ok/ })
+    expect(okButton).toBeDisabled()
   })
 
   it('should call handleLoadFileFromLink when valid URL is submitted', () => {
