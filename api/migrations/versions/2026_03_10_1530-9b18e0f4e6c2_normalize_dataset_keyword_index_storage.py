@@ -11,7 +11,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision = "9b18e0f4e6c2"
@@ -79,7 +79,13 @@ def upgrade():
         )
         batch_op.add_column(sa.Column("migrated_at", sa.DateTime(), nullable=True))
 
+    if context.is_offline_mode():
+        return
+
     conn = op.get_bind()
+    if conn is None:
+        return
+
     metadata = sa.MetaData()
     dataset_keyword_tables = sa.Table(
         "dataset_keyword_tables",
