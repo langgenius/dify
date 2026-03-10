@@ -184,9 +184,13 @@ class Jieba(BaseKeyword):
 
     def _migrate_legacy_keyword_index(self, dataset_keyword_table: DatasetKeywordTable) -> None:
         legacy_keyword_table_dict = dataset_keyword_table.keyword_table_dict
-        legacy_keyword_table = (
-            legacy_keyword_table_dict.get("__data__", {}).get("table", {}) if legacy_keyword_table_dict else {}
-        )
+        legacy_keyword_table: dict[str, set[str] | list[str]] = {}
+        if legacy_keyword_table_dict:
+            legacy_data = legacy_keyword_table_dict.get("__data__")
+            if isinstance(legacy_data, dict):
+                table_data = legacy_data.get("table")
+                if isinstance(table_data, dict):
+                    legacy_keyword_table = table_data
         segment_keywords = self._invert_legacy_keyword_table(legacy_keyword_table)
 
         self._delete_keyword_entries_for_dataset()
