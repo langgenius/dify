@@ -2648,11 +2648,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-with-copy/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/input/__tests__/index.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 5
@@ -3573,11 +3568,6 @@
       "count": 1
     }
   },
-  "app/components/billing/priority-label/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plans/cloud-plan-item/__tests__/button.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 2
@@ -3593,21 +3583,6 @@
       "count": 1
     }
   },
-  "app/components/custom/custom-web-app-brand/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/common/document-picker/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/document-picker/preview-document-picker.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/plans/self-hosted-plan-item/__tests__/index.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 2
@@ -3618,27 +3593,7 @@
       "count": 1
     }
   },
-  "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/image-uploader/store.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 4
-    }
-  },
-  "app/components/datasets/common/retrieval-method-info/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/common/retrieval-param-config/index.tsx": {
+  "app/components/billing/priority-label/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4504,9 +4459,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/utils.ts": {
