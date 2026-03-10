@@ -184,7 +184,7 @@ export default function Compliance() {
       <DropdownMenuSubContent
         popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
       >
-        <DropdownMenuGroup className="p-1">
+        <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
             label={t('compliance.soc2Type1', { ns: 'common' })}
