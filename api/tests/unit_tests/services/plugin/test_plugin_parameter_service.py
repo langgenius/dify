@@ -58,8 +58,7 @@ class TestGetDynamicSelectOptionsTool:
             mock_session = MagicMock()
             mock_session_cls.return_value.__enter__ = MagicMock(return_value=mock_session)
             mock_session_cls.return_value.__exit__ = MagicMock(return_value=False)
-            query_chain = mock_session.query.return_value.where.return_value
-            query_chain.where.return_value.where.return_value.first.return_value = db_record
+            mock_session.query.return_value.where.return_value.first.return_value = db_record
             mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
             result = PluginParameterService.get_dynamic_select_options(
