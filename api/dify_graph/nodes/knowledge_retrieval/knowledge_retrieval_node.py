@@ -14,7 +14,6 @@ from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import LLMUsageTrackingMixin
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
 from dify_graph.variables import (
     ArrayFileSegment,
@@ -47,8 +46,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     # Output variable for file
     _file_outputs: list["File"]
 
-    _llm_file_saver: LLMFileSaver
-
     def __init__(
         self,
         id: str,
@@ -56,8 +53,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         rag_retrieval: RAGRetrievalProtocol,
-        *,
-        llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
             id=id,
@@ -68,14 +63,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
         self._rag_retrieval = rag_retrieval
-
-        if llm_file_saver is None:
-            dify_ctx = self.require_dify_context()
-            llm_file_saver = FileSaverImpl(
-                user_id=dify_ctx.user_id,
-                tenant_id=dify_ctx.tenant_id,
-            )
-        self._llm_file_saver = llm_file_saver
 
     @classmethod
     def version(cls):
