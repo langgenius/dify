@@ -91,8 +91,8 @@ new primitives share the same z-index and rely on **DOM order** for stacking
 Once all legacy overlays are removed:
 
 1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
-2. Reduce Toast from `z-[9999]` to `z-[99]`.
-3. Remove this section from the migration guide.
+1. Reduce Toast from `z-[9999]` to `z-[99]`.
+1. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives
 
