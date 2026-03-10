@@ -136,11 +136,7 @@ class MockHologresClient:
             key = literals[0] if len(literals) > 0 else ""
             value = literals[1] if len(literals) > 1 else ""
             data = _mock_tables.get(table_name, {})
-            return [
-                (doc_id,)
-                for doc_id, row in data.items()
-                if json.loads(row.get("meta", "{}")).get(key) == value
-            ]
+            return [(doc_id,) for doc_id, row in data.items() if json.loads(row.get("meta", "{}")).get(key) == value]
 
         if "DELETE" in template.upper():
             table_name = next((v for t, v in params if t == "ident"), "")
@@ -156,9 +152,7 @@ class MockHologresClient:
                 value = literals[1] if len(literals) > 1 else ""
                 data = _mock_tables.get(table_name, {})
                 to_remove = [
-                    doc_id
-                    for doc_id, row in data.items()
-                    if json.loads(row.get("meta", "{}")).get(key) == value
+                    doc_id for doc_id, row in data.items() if json.loads(row.get("meta", "{}")).get(key) == value
                 ]
                 for did in to_remove:
                     data.pop(did, None)
