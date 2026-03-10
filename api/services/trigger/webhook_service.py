@@ -1,6 +1,7 @@
 import json
 import logging
 import mimetypes
+import re
 import secrets
 from collections.abc import Mapping
 from typing import Any
@@ -788,11 +789,14 @@ class WebhookService:
             raise
 
     @classmethod
-    def generate_webhook_response(cls, node_config: Mapping[str, Any]) -> tuple[dict[str, Any], int]:
+    def generate_webhook_response(
+        cls, node_config: Mapping[str, Any], webhook_data: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], int]:
         """Generate HTTP response based on node configuration.
 
         Args:
-            node_config: Node configuration containing response settings
+            node_config: Node configuration containing response settings.
+            webhook_data: Processed webhook data used for variable interpolation.
 
         Returns:
             tuple[dict[str, Any], int]: Response data and HTTP status code
@@ -802,6 +806,10 @@ class WebhookService:
         # Get configured status code and response body
         status_code = node_data.get("status_code", 200)
         response_body = node_data.get("response_body", "")
+
+        # Interpolate variables in response body before parsing
+        if response_body and webhook_data:
+            response_body = cls._interpolate_variables(response_body, webhook_data)
 
         # Parse response body as JSON if it's valid JSON, otherwise return as text
         try:
@@ -816,10 +824,66 @@ class WebhookService:
                     response_data = {"message": response_body}
             else:
                 response_data = {"status": "success", "message": "Webhook processed successfully"}
-        except:
+        except Exception:
             response_data = {"message": response_body or "Webhook processed successfully"}
 
         return response_data, status_code
+
+    @classmethod
+    def _interpolate_variables(cls, template: str, webhook_data: dict[str, Any]) -> str:
+        """Replace {{...}} placeholders in template with values from webhook_data.
+
+        Unresolvable placeholders are left unchanged.
+
+        Args:
+            template: String template containing {{namespace.key}} placeholders.
+            webhook_data: Processed webhook data used as the interpolation source.
+
+        Returns:
+            str: Template with all resolvable placeholders substituted.
+        """
+        namespace_map: dict[str, dict[str, Any]] = {
+            "req_body_params": webhook_data.get("body", {}),
+            "body": webhook_data.get("body", {}),
+            "req_query_params": webhook_data.get("query_params", {}),
+            "query_params": webhook_data.get("query_params", {}),
+            "req_header_params": webhook_data.get("headers", {}),
+            "header_params": webhook_data.get("headers", {}),
+        }
+
+        # Detect whether the template is a JSON structure to enable safe escaping.
+        is_json_template = template.strip().startswith(("{", "["))
+
+        def _resolve_path(parts: list[str]) -> str | None:
+            """Walk parts through namespace_map and return a string value, or None."""
+            if len(parts) < 2:
+                return None
+            value: Any = namespace_map.get(parts[0])
+            for key in parts[1:]:
+                if not isinstance(value, dict):
+                    return None
+                value = value.get(key)
+            if value is None:
+                return None
+            if isinstance(value, str):
+                # Escape string to prevent JSON injection; strip surrounding quotes added by json.dumps.
+                return json.dumps(value, ensure_ascii=False)[1:-1] if is_json_template else value
+            try:
+                return json.dumps(value, ensure_ascii=False)
+            except (TypeError, ValueError):
+                return str(value)
+
+        def _replace(match: re.Match) -> str:
+            expr = match.group(1).strip()
+            # Workflow editor format: {{#nodeId.namespace.key#}}: strip leading nodeId before resolving
+            if expr.startswith("#") and expr.endswith("#"):
+                parts = expr[1:-1].split(".")
+                resolved = _resolve_path(parts[1:]) if len(parts) >= 3 else None
+            else:
+                resolved = _resolve_path(expr.split("."))
+            return resolved if resolved is not None else match.group(0)
+
+        return re.sub(r"\{\{(.+?)\}\}", _replace, template)
 
     @classmethod
     def sync_webhook_relationships(cls, app: App, workflow: Workflow):
