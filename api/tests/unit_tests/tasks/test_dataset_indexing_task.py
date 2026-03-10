@@ -1106,13 +1106,17 @@ class TestAdvancedScenarios:
             _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
             # Assert
-            # Verify delete was called to clean up task key
-            mock_redis.delete.assert_called_once()
+            expected_task_key = f"tenant_document_indexing_task:{tenant_id}"
 
-            # Verify the correct key was deleted (contains tenant_id and "document_indexing")
-            delete_call_args = mock_redis.delete.call_args[0][0]
-            assert tenant_id in delete_call_args
-            assert "document_indexing" in delete_call_args
+            # Verify the task key for this tenant was deleted (do not assert call count; fixtures may be shared).
+            mock_redis.delete.assert_any_call(expected_task_key)
+
+            deleted_keys = [delete_call.args[0] for delete_call in mock_redis.delete.call_args_list if delete_call.args]
+            assert expected_task_key in deleted_keys
+
+            deleted_task_key = next(key for key in deleted_keys if key == expected_task_key)
+            assert tenant_id in deleted_task_key
+            assert "document_indexing" in deleted_task_key
 
     def test_billing_disabled_skips_limit_checks(
         self, dataset_id, document_ids, mock_db_session, mock_dataset, mock_indexing_runner, mock_feature_service
