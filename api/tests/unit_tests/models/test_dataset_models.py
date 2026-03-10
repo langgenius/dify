@@ -19,6 +19,7 @@ from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
     Dataset,
+    DatasetKeywordEntry,
     DatasetKeywordTable,
     DatasetProcessRule,
     Document,
@@ -859,6 +860,7 @@ class TestDatasetKeywordTable:
         # Assert
         assert keyword_table.dataset_id == dataset_id
         assert keyword_table.data_source_type == "database"  # Default value
+        assert keyword_table.storage_version == DatasetKeywordTable.STORAGE_VERSION_LEGACY
 
     def test_dataset_keyword_table_data_source_type(self):
         """Test dataset keyword table data source type."""
@@ -871,6 +873,24 @@ class TestDatasetKeywordTable:
 
         # Assert
         assert keyword_table.data_source_type == "file"
+
+
+class TestDatasetKeywordEntry:
+    """Test suite for DatasetKeywordEntry model."""
+
+    def test_dataset_keyword_entry_creation(self):
+        """Test creating a normalized dataset keyword entry."""
+        dataset_id = str(uuid4())
+
+        entry = DatasetKeywordEntry(
+            dataset_id=dataset_id,
+            keyword="test",
+            segment_id="node-1",
+        )
+
+        assert entry.dataset_id == dataset_id
+        assert entry.keyword == "test"
+        assert entry.segment_id == "node-1"
 
 
 class TestAppDatasetJoin:

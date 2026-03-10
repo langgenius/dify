@@ -1043,11 +1043,16 @@ class DatasetQuery(TypeBase):
 
 
 class DatasetKeywordTable(TypeBase):
+    """Legacy keyword index metadata row used to track blob/file migration status."""
+
     __tablename__ = "dataset_keyword_tables"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_keyword_table_pkey"),
         sa.Index("dataset_keyword_table_dataset_id_idx", "dataset_id"),
     )
+
+    STORAGE_VERSION_LEGACY = 1
+    STORAGE_VERSION_NORMALIZED = 2
 
     id: Mapped[str] = mapped_column(
         StringUUID,
@@ -1061,6 +1066,10 @@ class DatasetKeywordTable(TypeBase):
     data_source_type: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'database'"), default="database"
     )
+    storage_version: Mapped[int] = mapped_column(
+        sa.SmallInteger, nullable=False, server_default=sa.text("1"), default=1
+    )
+    migrated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     @property
     def keyword_table_dict(self) -> dict[str, set[Any]] | None:
@@ -1096,6 +1105,29 @@ class DatasetKeywordTable(TypeBase):
             except Exception:
                 logger.exception("Failed to load keyword table from file: %s", file_key)
                 return None
+
+
+class DatasetKeywordEntry(TypeBase):
+    """Normalized keyword index entry keyed by dataset keyword and retrieval segment node ID."""
+
+    __tablename__ = "dataset_keyword_entries"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_keyword_entry_pkey"),
+        sa.UniqueConstraint("dataset_id", "keyword", "segment_id", name="dataset_keyword_entry_unique_idx"),
+        sa.Index("dataset_keyword_entry_dataset_keyword_idx", "dataset_id", "keyword"),
+        sa.Index("dataset_keyword_entry_dataset_segment_idx", "dataset_id", "segment_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    keyword: Mapped[str] = mapped_column(String(255), nullable=False)
+    segment_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
 class Embedding(TypeBase):
