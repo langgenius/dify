@@ -20,6 +20,7 @@ from services.errors.account import (
     TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestAccountService:
@@ -53,7 +54,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -133,7 +134,7 @@ class TestAccountService:
                 email=email,
                 name=name,
                 interface_language="en-US",
-                password=fake.password(length=12),
+                password=generate_valid_password(fake),
             )
 
     def test_create_account_email_in_freeze(
@@ -145,7 +146,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
@@ -169,7 +170,7 @@ class TestAccountService:
         """
         fake = Faker()
         email = fake.email()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, password)
 
@@ -180,7 +181,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -208,8 +209,8 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        correct_password = fake.password(length=12)
-        wrong_password = fake.password(length=12)
+        correct_password = generate_valid_password(fake)
+        wrong_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -234,7 +235,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        new_password = fake.password(length=12)
+        new_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -267,7 +268,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -297,8 +298,8 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        old_password = fake.password(length=12)
-        new_password = fake.password(length=12)
+        old_password = generate_valid_password(fake)
+        new_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -327,9 +328,9 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        old_password = fake.password(length=12)
-        wrong_password = fake.password(length=12)
-        new_password = fake.password(length=12)
+        old_password = generate_valid_password(fake)
+        wrong_password = generate_valid_password(fake)
+        new_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -354,7 +355,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        old_password = fake.password(length=12)
+        old_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -378,7 +379,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies[
@@ -412,7 +413,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies[
@@ -437,7 +438,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies[
@@ -535,7 +536,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -563,7 +564,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         updated_name = fake.name()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -592,7 +593,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -615,7 +616,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -645,7 +646,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -684,7 +685,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -714,7 +715,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -747,7 +748,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -792,7 +793,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -825,7 +826,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -864,7 +865,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -892,7 +893,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -926,7 +927,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -957,7 +958,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -997,7 +998,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1043,7 +1044,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1080,7 +1081,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1110,7 +1111,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1139,7 +1140,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         wrong_code = fake.numerify(text="######")
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1259,7 +1260,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1291,10 +1292,10 @@ class TestTenantService:
         tenant_name = fake.company()
         email1 = fake.email()
         name1 = fake.name()
-        password1 = fake.password(length=12)
+        password1 = generate_valid_password(fake)
         email2 = fake.email()
         name2 = fake.name()
-        password2 = fake.password(length=12)
+        password2 = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1332,7 +1333,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1364,7 +1365,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant1_name = fake.company()
         tenant2_name = fake.company()
         # Setup mocks
@@ -1403,7 +1404,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies[
@@ -1441,7 +1442,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1466,7 +1467,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant1_name = fake.company()
         tenant2_name = fake.company()
         # Setup mocks
@@ -1507,7 +1508,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1534,7 +1535,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         tenant_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies[
@@ -1562,10 +1563,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         admin_email = fake.email()
         admin_name = fake.name()
-        admin_password = fake.password(length=12)
+        admin_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1631,7 +1632,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1664,10 +1665,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         member_email = fake.email()
         member_name = fake.name()
-        member_password = fake.password(length=12)
+        member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1705,7 +1706,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         invalid_action = "invalid_action_that_doesnt_exist"
         # Setup mocks
         mock_external_service_dependencies[
@@ -1738,7 +1739,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1770,10 +1771,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         member_email = fake.email()
         member_name = fake.name()
-        member_password = fake.password(length=12)
+        member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1829,7 +1830,7 @@ class TestTenantService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1861,10 +1862,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         non_member_email = fake.email()
         non_member_name = fake.name()
-        non_member_password = fake.password(length=12)
+        non_member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1900,10 +1901,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         member_email = fake.email()
         member_name = fake.name()
-        member_password = fake.password(length=12)
+        member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -1949,10 +1950,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         member_email = fake.email()
         member_name = fake.name()
-        member_password = fake.password(length=12)
+        member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -2006,10 +2007,10 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         member_email = fake.email()
         member_name = fake.name()
-        member_password = fake.password(length=12)
+        member_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -2071,7 +2072,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         workspace_name = fake.company()
         # Setup mocks
         mock_external_service_dependencies[
@@ -2110,7 +2111,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         existing_tenant_name = fake.company()
         new_workspace_name = fake.company()
         # Setup mocks
@@ -2151,7 +2152,7 @@ class TestTenantService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         workspace_name = fake.company()
         # Setup mocks to disable workspace creation
         mock_external_service_dependencies[
@@ -2178,13 +2179,13 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         admin_email = fake.email()
         admin_name = fake.name()
-        admin_password = fake.password(length=12)
+        admin_password = generate_valid_password(fake)
         normal_email = fake.email()
         normal_name = fake.name()
-        normal_password = fake.password(length=12)
+        normal_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -2244,13 +2245,13 @@ class TestTenantService:
         tenant_name = fake.company()
         owner_email = fake.email()
         owner_name = fake.name()
-        owner_password = fake.password(length=12)
+        owner_password = generate_valid_password(fake)
         operator_email = fake.email()
         operator_name = fake.name()
-        operator_password = fake.password(length=12)
+        operator_password = generate_valid_password(fake)
         normal_email = fake.email()
         normal_name = fake.name()
-        normal_password = fake.password(length=12)
+        normal_password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies[
             "feature_service"
@@ -2351,7 +2352,7 @@ class TestRegisterService:
         fake = Faker()
         admin_email = fake.email()
         admin_name = fake.name()
-        admin_password = fake.password(length=12)
+        admin_password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2399,7 +2400,7 @@ class TestRegisterService:
         fake = Faker()
         admin_email = fake.email()
         admin_name = fake.name()
-        admin_password = fake.password(length=12)
+        admin_password = generate_valid_password(fake)
         ip_address = fake.ipv4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2440,7 +2441,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2531,7 +2532,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2576,7 +2577,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2614,7 +2615,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2653,7 +2654,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2690,7 +2691,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         inviter_email = fake.email()
         inviter_name = fake.name()
-        inviter_password = fake.password(length=12)
+        inviter_password = generate_valid_password(fake)
         new_member_email = fake.email()
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
@@ -2760,10 +2761,10 @@ class TestRegisterService:
         tenant_name = fake.company()
         inviter_email = fake.email()
         inviter_name = fake.name()
-        inviter_password = fake.password(length=12)
+        inviter_password = generate_valid_password(fake)
         existing_member_email = fake.email()
         existing_member_name = fake.name()
-        existing_member_password = fake.password(length=12)
+        existing_member_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2824,10 +2825,10 @@ class TestRegisterService:
         tenant_name = fake.company()
         inviter_email = fake.email()
         inviter_name = fake.name()
-        inviter_password = fake.password(length=12)
+        inviter_password = generate_valid_password(fake)
         existing_pending_member_email = fake.email()
         existing_pending_member_name = fake.name()
-        existing_pending_member_password = fake.password(length=12)
+        existing_pending_member_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2914,10 +2915,10 @@ class TestRegisterService:
         tenant_name = fake.company()
         inviter_email = fake.email()
         inviter_name = fake.name()
-        inviter_password = fake.password(length=12)
+        inviter_password = generate_valid_password(fake)
         already_in_tenant_email = fake.email()
         already_in_tenant_name = fake.name()
-        already_in_tenant_password = fake.password(length=12)
+        already_in_tenant_password = generate_valid_password(fake)
         language = fake.random_element(elements=("en-US", "zh-CN"))
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2967,7 +2968,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -3011,7 +3012,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -3058,7 +3059,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -3101,7 +3102,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -3144,7 +3145,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -3212,7 +3213,7 @@ class TestRegisterService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         invalid_tenant_id = fake.uuid4()
         token = fake.uuid4()
         # Setup mocks
@@ -3263,7 +3264,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         token = fake.uuid4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -3313,7 +3314,7 @@ class TestRegisterService:
         tenant_name = fake.company()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         token = fake.uuid4()
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
