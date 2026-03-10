@@ -11,6 +11,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
+import models as models
 from alembic import context, op
 
 # revision identifiers, used by Alembic.
@@ -62,8 +63,8 @@ def _build_entry_rows(dataset_id: str, keyword_table_text: str) -> list[dict[str
 def upgrade():
     op.create_table(
         "dataset_keyword_entries",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("dataset_id", sa.String(length=36), nullable=False),
+        sa.Column("id", models.types.StringUUID(), nullable=False),
+        sa.Column("dataset_id", models.types.StringUUID(), nullable=False),
         sa.Column("keyword", sa.String(length=255), nullable=False),
         sa.Column("segment_id", sa.String(length=255), nullable=False),
         sa.PrimaryKeyConstraint("id", name="dataset_keyword_entry_pkey"),
@@ -90,8 +91,8 @@ def upgrade():
     dataset_keyword_tables = sa.Table(
         "dataset_keyword_tables",
         metadata,
-        sa.Column("id", sa.String(length=36)),
-        sa.Column("dataset_id", sa.String(length=36)),
+        sa.Column("id", models.types.StringUUID()),
+        sa.Column("dataset_id", models.types.StringUUID()),
         sa.Column("keyword_table", sa.Text()),
         sa.Column("data_source_type", sa.String(length=255)),
         sa.Column("storage_version", sa.SmallInteger()),
@@ -100,8 +101,8 @@ def upgrade():
     dataset_keyword_entries = sa.Table(
         "dataset_keyword_entries",
         metadata,
-        sa.Column("id", sa.String(length=36)),
-        sa.Column("dataset_id", sa.String(length=36)),
+        sa.Column("id", models.types.StringUUID()),
+        sa.Column("dataset_id", models.types.StringUUID()),
         sa.Column("keyword", sa.String(length=255)),
         sa.Column("segment_id", sa.String(length=255)),
     )
