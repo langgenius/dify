@@ -274,7 +274,8 @@ class TestEmailDeliveryTestHandler:
             recipients=[DeliveryTestEmailRecipient(email="test@example.com", form_token="token123")],
         )
 
-        subs = EmailDeliveryTestHandler._build_substitutions(context=context, recipient_email="test@example.com")
+        with patch.object(dify_config, "APP_WEB_URL", "http://example.com"):
+            subs = EmailDeliveryTestHandler._build_substitutions(context=context, recipient_email="test@example.com")
 
         assert subs["node_title"] == "title"
         assert subs["form_content"] == "content"
