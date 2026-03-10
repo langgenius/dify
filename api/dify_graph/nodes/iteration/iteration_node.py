@@ -235,7 +235,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             future_to_index: dict[
                 Future[
                     tuple[
-                        datetime,
+                        float,
                         list[GraphNodeEventBase],
                         object | None,
                         dict[str, Variable],
@@ -260,7 +260,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 try:
                     result = future.result()
                     (
-                        iter_start_at,
+                        iteration_duration,
                         events,
                         output_value,
                         conversation_snapshot,
@@ -273,8 +273,9 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                     # Yield all events from this iteration
                     yield from events
 
-                    # Update tokens and timing
-                    iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+                    # The worker computes duration before we replay buffered events here,
+                    # so slow downstream consumers don't inflate per-iteration timing.
+                    iter_run_map[str(index)] = iteration_duration
 
                     usage_accumulator[0] = self._merge_usage(usage_accumulator[0], iteration_usage)
 
@@ -304,7 +305,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         index: int,
         item: object,
         execution_context: "IExecutionContext",
-    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, dict[str, Variable], LLMUsage]:
+    ) -> tuple[float, list[GraphNodeEventBase], object | None, dict[str, Variable], LLMUsage]:
         """Execute a single iteration in parallel mode and return results."""
         with execution_context:
             iter_start_at = datetime.now(UTC).replace(tzinfo=None)
@@ -326,9 +327,10 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             conversation_snapshot = self._extract_conversation_variable_snapshot(
                 variable_pool=graph_engine.graph_runtime_state.variable_pool
             )
+            iteration_duration = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
             return (
-                iter_start_at,
+                iteration_duration,
                 events,
                 output_value,
                 conversation_snapshot,
