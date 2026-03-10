@@ -12,12 +12,18 @@ else:
 DIFY_RUN_CONTEXT_KEY: Final[Literal["_dify"]] = "_dify"
 
 
+@with_config(extra="allow")
 class GraphEdgeConfigDict(TypedDict, total=False):
     source: str
     target: str
     sourceHandle: str
+    targetHandle: str
+    id: str
+    type: str
+    data: Any
 
 
+@with_config(extra="allow")
 class GraphNodeConfigDict(TypedDict, total=False):
     id: str
     data: Any
