@@ -20,7 +20,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from libs import helper
@@ -239,7 +239,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotCompletionAppError()
+            raise NotChatAppError()
 
         message_id = str(message_id)
 

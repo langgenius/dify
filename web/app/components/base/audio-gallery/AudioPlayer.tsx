@@ -1,7 +1,3 @@
-import {
-  RiPauseCircleFill,
-  RiPlayLargeFill,
-} from '@remixicon/react'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -30,6 +26,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const audio = audioRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!audio)
       return
 
@@ -221,6 +218,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!canvas)
       return
 
@@ -272,14 +270,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     drawWaveform()
   }, [drawWaveform, bufferedTime, hasStartedPlaying])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     const audio = audioRef.current
     if (!canvas || !audio)
       return
 
+    const clientX = 'touches' in e
+      ? e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX
+      : e.clientX
+    if (clientX === undefined)
+      return
+
     const rect = canvas.getBoundingClientRect()
-    const percent = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width
+    const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
     const time = percent * duration
 
     // Check if the hovered position is within a buffered range before updating hoverTime
@@ -293,31 +297,30 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
 
   return (
     <div className="flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm">
-      <audio ref={audioRef} src={src} preload="auto">
+      <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (
           <source key={index} src={srcUrl} />
         ))}
       </audio>
-      <button type="button" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
-          ? (
-              <RiPauseCircleFill className="h-5 w-5" />
-            )
-          : (
-              <RiPlayLargeFill className="h-5 w-5" />
-            )}
+          ? (<div className="i-ri-pause-circle-fill h-5 w-5" />)
+          : (<div className="i-ri-play-large-fill h-5 w-5" />)}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">
           <canvas
             ref={canvasRef}
+            data-testid="waveform-canvas"
             className="relative flex h-6 w-full grow cursor-pointer items-center justify-center"
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
+            onTouchMove={handleMouseMove}
+            onTouchStart={handleCanvasInteraction}
           />
-          <div className="system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary">
+          <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
             <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>

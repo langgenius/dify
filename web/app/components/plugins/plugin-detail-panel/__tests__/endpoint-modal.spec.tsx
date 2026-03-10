@@ -158,11 +158,8 @@ describe('EndpointModal', () => {
         />,
       )
 
-      // Find the close button (ActionButton with RiCloseLine icon)
       const allButtons = screen.getAllByRole('button')
-      const closeButton = allButtons.find(btn => btn.classList.contains('action-btn'))
-      if (closeButton)
-        fireEvent.click(closeButton)
+      fireEvent.click(allButtons[0])
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -318,7 +315,16 @@ describe('EndpointModal', () => {
   })
 
   describe('Boolean Field Processing', () => {
-    it('should convert string "true" to boolean true', () => {
+    it.each([
+      { input: 'true', expected: true },
+      { input: '1', expected: true },
+      { input: 'True', expected: true },
+      { input: 'false', expected: false },
+      { input: 1, expected: true },
+      { input: 0, expected: false },
+      { input: true, expected: true },
+      { input: false, expected: false },
+    ])('should convert $input to $expected for boolean fields', ({ input, expected }) => {
       const schemasWithBoolean = [
         { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
       ] as unknown as FormSchema[]
@@ -326,7 +332,7 @@ describe('EndpointModal', () => {
       render(
         <EndpointModal
           formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: 'true' }}
+          defaultValues={{ enabled: input }}
           onCancel={mockOnCancel}
           onSaved={mockOnSaved}
           pluginDetail={mockPluginDetail}
@@ -335,147 +341,7 @@ describe('EndpointModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should convert string "1" to boolean true', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: '1' }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should convert string "True" to boolean true', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: 'True' }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should convert string "false" to boolean false', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: 'false' }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: false })
-    })
-
-    it('should convert number 1 to boolean true', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: 1 }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should convert number 0 to boolean false', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: 0 }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: false })
-    })
-
-    it('should preserve boolean true value', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: true }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: true })
-    })
-
-    it('should preserve boolean false value', () => {
-      const schemasWithBoolean = [
-        { name: 'enabled', label: 'Enabled', type: 'boolean', required: false, default: '' },
-      ] as unknown as FormSchema[]
-
-      render(
-        <EndpointModal
-          formSchemas={schemasWithBoolean}
-          defaultValues={{ enabled: false }}
-          onCancel={mockOnCancel}
-          onSaved={mockOnSaved}
-          pluginDetail={mockPluginDetail}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: false })
+      expect(mockOnSaved).toHaveBeenCalledWith({ enabled: expected })
     })
 
     it('should not process non-boolean fields', () => {

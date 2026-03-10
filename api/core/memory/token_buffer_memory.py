@@ -4,9 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.file import file_manager
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
@@ -14,8 +15,7 @@ from core.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile

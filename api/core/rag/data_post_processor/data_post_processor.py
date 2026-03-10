@@ -1,6 +1,4 @@
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
@@ -8,6 +6,8 @@ from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_type import RerankMode
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class DataPostProcessor:
