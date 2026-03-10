@@ -234,8 +234,8 @@ importers:
         specifier: 0.16.38
         version: 0.16.38
       ky:
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.14.3
+        version: 1.14.3
       lamejs:
         specifier: 1.2.1
         version: 1.2.1
@@ -5530,8 +5530,8 @@ packages:
   kolorist@1.8.0:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
 
-  ky@1.12.0:
-    resolution: {integrity: sha512-YRLmSUHCwOJRBMArtqMRLOmO7fewn3yOoui6aB8ERkRVXupa0UiaQaKbIXteMt4jUElhbdqTMsLFHs8APxxUoQ==}
+  ky@1.14.3:
+    resolution: {integrity: sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==}
     engines: {node: '>=18'}
 
   lamejs@1.2.1:
@@ -13292,7 +13292,7 @@ snapshots:
 
   kolorist@1.8.0: {}
 
-  ky@1.12.0: {}
+  ky@1.14.3: {}
 
   lamejs@1.2.1:
     dependencies:
