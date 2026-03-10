@@ -299,8 +299,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
           if (lastThought) {
-            const lastThoughtIndex = responseItem.agent_thoughts!.length - 1
-            responseItem.agent_thoughts![lastThoughtIndex].message_files = [...((lastThought as any).message_files ?? []), convertedFile]
+            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...((lastThought as any).message_files ?? []), convertedFile]
           }
           else {
             const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
@@ -322,7 +321,7 @@ export const useChat = (
             responseItem.agent_thoughts.push(thought)
           }
           else {
-            const lastThought = responseItem.agent_thoughts.at(-1)
+            const lastThought = responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1]
             if (lastThought && lastThought.id === thought.id) {
               thought.thought = lastThought.thought
               thought.message_files = lastThought.message_files
@@ -744,7 +743,7 @@ export const useChat = (
             content: isUseAgentThought ? '' : newResponseItem.answer,
             log: [
               ...newResponseItem.message,
-              ...(newResponseItem.message.at(-1).role !== 'assistant'
+              ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
                 ? [
                     {
                       role: 'assistant',
@@ -810,8 +809,7 @@ export const useChat = (
         const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
         if (lastThought) {
           const thought = lastThought as { message_files?: FileEntity[] }
-          const lastThoughtIndex = responseItem.agent_thoughts!.length - 1
-          responseItem.agent_thoughts![lastThoughtIndex].message_files = [...(thought.message_files ?? []), convertedFile]
+          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(thought.message_files ?? []), convertedFile]
         }
         // For non-agent mode, add files directly to responseItem.message_files
         else {
@@ -838,7 +836,7 @@ export const useChat = (
           response.agent_thoughts.push(thought)
         }
         else {
-          const lastThought = response.agent_thoughts.at(-1)
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
             thought.thought = lastThought.thought
