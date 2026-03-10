@@ -325,7 +325,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
     setChatItemTree(tree)
 
-    const lastMessageId = allChatItems.length > 0 ? allChatItems.at(-1)?.id : undefined
+    const lastMessageId = allChatItems.length > 0 ? allChatItems.at(-1)!.id : undefined
     setThreadChatItems(getThreadMessages(tree, lastMessageId))
 
     // Update pagination anchor ref with the oldest answer ID
