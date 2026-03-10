@@ -135,6 +135,11 @@
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
     const targetOrigin = new URL(baseUrl).origin;
 
+    // Pass sendOnEnter config as URL parameter
+    if (config.sendOnEnter === false) {
+      params.set('sendOnEnter', 'false');
+    }
+
     // pre-check the length of the URL
     const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
     // 1) CREATE the iframe immediately, so it can load in the background:

@@ -24,6 +24,18 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "ky"
+      - dependency-name: "tailwind-merge"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-markdown"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-syntax-highlighter"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-window"
+        update-types: ["version-update:semver-major"]
     groups:
       lexical:
         patterns:
@@ -33,6 +45,9 @@ updates:
         patterns:
           - "storybook"
           - "@storybook/*"
+      eslint-group:
+        patterns:
+          - "*eslint*"
       npm-dependencies:
         patterns:
           - "*"
@@ -41,3 +56,4 @@ updates:
           - "@lexical/*"
           - "storybook"
           - "@storybook/*"
+          - "*eslint*"
