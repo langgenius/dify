@@ -6,33 +6,6 @@ from typing import Any
 import click
 import sqlalchemy as sa
 
-from cli_commands import (
-    add_qdrant_index,
-    clear_orphaned_file_records,
-    convert_to_agent_apps,
-    create_tenant,
-    extract_plugins,
-    extract_unique_plugins,
-    file_usage,
-    fix_app_site_missing,
-    install_plugins,
-    install_rag_pipeline_plugins,
-    migrate_annotation_vector_database,
-    migrate_data_for_plugin,
-    migrate_knowledge_vector_database,
-    migrate_oss,
-    old_metadata_migration,
-    remove_orphaned_files_on_storage,
-    reset_email,
-    reset_encrypt_key_pair,
-    reset_password,
-    setup_datasource_oauth_client,
-    setup_system_tool_oauth_client,
-    setup_system_trigger_oauth_client,
-    transform_datasource_credentials,
-    upgrade_db,
-    vdb_migrate,
-)
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
@@ -42,36 +15,6 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
-
-DB_UPGRADE_LOCK_TTL_SECONDS = 60
-
-__all__ = [
-    "add_qdrant_index",
-    "clear_orphaned_file_records",
-    "convert_to_agent_apps",
-    "create_tenant",
-    "extract_plugins",
-    "extract_unique_plugins",
-    "file_usage",
-    "fix_app_site_missing",
-    "install_plugins",
-    "install_rag_pipeline_plugins",
-    "migrate_annotation_vector_database",
-    "migrate_data_for_plugin",
-    "migrate_knowledge_vector_database",
-    "migrate_oss",
-    "old_metadata_migration",
-    "remove_orphaned_files_on_storage",
-    "reset_email",
-    "reset_encrypt_key_pair",
-    "reset_password",
-    "setup_datasource_oauth_client",
-    "setup_system_tool_oauth_client",
-    "setup_system_trigger_oauth_client",
-    "transform_datasource_credentials",
-    "upgrade_db",
-    "vdb_migrate",
-]
 
 
 @click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")

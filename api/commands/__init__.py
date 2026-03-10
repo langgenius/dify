@@ -14,6 +14,16 @@ from .plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
+from .retention import (
+    archive_workflow_runs,
+    clean_expired_messages,
+    clean_workflow_runs,
+    cleanup_orphaned_draft_variables,
+    clear_free_plan_tenant_expired_logs,
+    delete_archived_workflow_runs,
+    export_app_messages,
+    restore_workflow_runs,
+)
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
 from .system import convert_to_agent_apps, fix_app_site_missing, reset_encrypt_key_pair, upgrade_db
 from .vector import (
@@ -26,9 +36,16 @@ from .vector import (
 
 __all__ = [
     "add_qdrant_index",
+    "archive_workflow_runs",
+    "clean_expired_messages",
+    "clean_workflow_runs",
+    "cleanup_orphaned_draft_variables",
+    "clear_free_plan_tenant_expired_logs",
     "clear_orphaned_file_records",
     "convert_to_agent_apps",
     "create_tenant",
+    "delete_archived_workflow_runs",
+    "export_app_messages",
     "extract_plugins",
     "extract_unique_plugins",
     "file_usage",
@@ -44,6 +61,7 @@ __all__ = [
     "reset_email",
     "reset_encrypt_key_pair",
     "reset_password",
+    "restore_workflow_runs",
     "setup_datasource_oauth_client",
     "setup_system_tool_oauth_client",
     "setup_system_trigger_oauth_client",
