@@ -1,8 +1,10 @@
 import type { Viewport } from 'next'
+import { Agentation } from 'agentation'
 import { Provider as JotaiProvider } from 'jotai'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { IS_DEV } from '@/config'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
@@ -11,7 +13,6 @@ import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
-import { ReactGrabLoader } from './components/devtools/react-grab/loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import SentryInitializer from './components/sentry-initializer'
@@ -57,7 +58,7 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        <ReactGrabLoader />
+        {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
       <body
@@ -93,6 +94,7 @@ const LocaleLayout = async ({
             </ThemeProvider>
           </JotaiProvider>
           <RoutePrefixHandle />
+          {IS_DEV && <Agentation />}
         </div>
       </body>
     </html>

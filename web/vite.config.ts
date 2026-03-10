@@ -5,8 +5,8 @@ import vinext from 'vinext'
 import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { reactGrabOpenFilePlugin } from './plugins/vite/react-grab-open-file'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
@@ -39,13 +39,19 @@ export default defineConfig(({ mode }) => {
           ]
         : [
             Inspect(),
-            react(),
-            vinext(),
-            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
-            reactGrabOpenFilePlugin({
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
+            vinext(),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
           ],
     resolve: {
       alias: {
@@ -58,13 +64,6 @@ export default defineConfig(({ mode }) => {
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
-            // Make Prism in lexical works
-            // https://github.com/vitejs/rolldown-vite/issues/396
-            rolldownOptions: {
-              output: {
-                strictExecutionOrder: true,
-              },
-            },
           },
           server: {
             port: 3000,
@@ -72,15 +71,6 @@ export default defineConfig(({ mode }) => {
           ssr: {
             // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
             noExternal: ['emoji-mart'],
-          },
-          // Make Prism in lexical works
-          // https://github.com/vitejs/rolldown-vite/issues/396
-          build: {
-            rolldownOptions: {
-              output: {
-                strictExecutionOrder: true,
-              },
-            },
           },
         }
       : {}),
