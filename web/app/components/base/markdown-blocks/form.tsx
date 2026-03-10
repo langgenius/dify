@@ -73,6 +73,10 @@ type HastElement = {
 
 type FormValue = string | boolean | Dayjs | undefined
 type FormValues = Record<string, FormValue>
+type EditState = {
+  source: HastElement[]
+  edits: FormValues
+}
 
 function getTextContent(node: HastElement): string {
   const textChild = node.children.find((c): c is HastText => c.type === 'text')
@@ -141,18 +145,33 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
     [typedNode.children],
   )
 
-  const [formValues, setFormValues] = useState<FormValues>(() => computeInitialFormValues(elementChildren))
-  const prevChildrenRef = React.useRef(elementChildren)
-  if (prevChildrenRef.current !== elementChildren) {
-    prevChildrenRef.current = elementChildren
-    setFormValues(computeInitialFormValues(elementChildren))
-  }
+  const baseFormValues = useMemo(
+    () => computeInitialFormValues(elementChildren),
+    [elementChildren],
+  )
+
+  const [editState, setEditState] = useState<EditState>(() => ({
+    source: elementChildren,
+    edits: {},
+  }))
+
+  const formValues = useMemo<FormValues>(() => {
+    if (editState.source === elementChildren)
+      return { ...baseFormValues, ...editState.edits }
+    return baseFormValues
+  }, [editState, baseFormValues, elementChildren])
 
   const updateValue = useCallback((name: string, value: FormValue) => {
     if (!isSafeName(name))
       return
-    setFormValues(prev => ({ ...prev, [name]: value }))
-  }, [])
+    setEditState(prev => ({
+      source: elementChildren,
+      edits: {
+        ...(prev.source === elementChildren ? prev.edits : {}),
+        [name]: value,
+      },
+    }))
+  }, [elementChildren])
 
   const getFormOutput = useCallback((): Record<string, string | boolean | undefined> => {
     const out = Object.create(null) as Record<string, string | boolean | undefined>
