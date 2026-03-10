@@ -448,6 +448,66 @@ describe('useChat', () => {
       expect(lastResponse.workflowProcess?.status).toBe('failed')
     })
 
+    it('should keep separate iteration traces for repeated executions of the same iteration node', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'iteration trace test' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onIterationStart({ data: { id: 'iter-run-1', node_id: 'iter-1' } })
+        callbacks.onIterationStart({ data: { id: 'iter-run-2', node_id: 'iter-1' } })
+        callbacks.onIterationFinish({ data: { id: 'iter-run-1', node_id: 'iter-1', status: 'succeeded' } })
+        callbacks.onIterationFinish({ data: { id: 'iter-run-2', node_id: 'iter-1', status: 'succeeded' } })
+      })
+
+      const tracing = result.current.chatList[1].workflowProcess?.tracing ?? []
+
+      expect(tracing).toHaveLength(2)
+      expect(tracing).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'iter-run-1', status: 'succeeded' }),
+        expect.objectContaining({ id: 'iter-run-2', status: 'succeeded' }),
+      ]))
+    })
+
+    it('should keep separate top-level traces for repeated executions of the same node', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'top-level trace test' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onNodeStarted({ data: { id: 'node-run-1', node_id: 'node-1', title: 'Node 1' } })
+        callbacks.onNodeStarted({ data: { id: 'node-run-2', node_id: 'node-1', title: 'Node 1 retry' } })
+        callbacks.onNodeFinished({ data: { id: 'node-run-1', node_id: 'node-1', status: 'succeeded' } })
+        callbacks.onNodeFinished({ data: { id: 'node-run-2', node_id: 'node-1', status: 'succeeded' } })
+      })
+
+      const tracing = result.current.chatList[1].workflowProcess?.tracing ?? []
+
+      expect(tracing).toHaveLength(2)
+      expect(tracing).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'node-run-1', status: 'succeeded' }),
+        expect.objectContaining({ id: 'node-run-2', status: 'succeeded' }),
+      ]))
+    })
+
     it('should handle early exits in tracing events during iteration or loop', async () => {
       let callbacks: HookCallbacks
 
@@ -483,7 +543,7 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { id: 'n-1', iteration_id: 'iter-1' } })
       })
 
-      const traceLen1 = result.current.chatList[result.current.chatList.length - 1].workflowProcess?.tracing?.length
+      const traceLen1 = result.current.chatList.at(-1)!.workflowProcess?.tracing?.length
       expect(traceLen1).toBe(0) // None added due to iteration early hits
     })
 
@@ -567,7 +627,7 @@ describe('useChat', () => {
 
       expect(result.current.chatList.some(item => item.id === 'question-m-child')).toBe(true)
       expect(result.current.chatList.some(item => item.id === 'm-child')).toBe(true)
-      expect(result.current.chatList[result.current.chatList.length - 1].content).toBe('child answer')
+      expect(result.current.chatList.at(-1)!.content).toBe('child answer')
     })
 
     it('should strip local file urls before sending payload', () => {
@@ -665,7 +725,7 @@ describe('useChat', () => {
       })
 
       expect(onGetConversationMessages).toHaveBeenCalled()
-      expect(result.current.chatList[result.current.chatList.length - 1].content).toBe('streamed content')
+      expect(result.current.chatList.at(-1)!.content).toBe('streamed content')
     })
 
     it('should clear suggested questions when suggestion fetch fails after completion', async () => {
@@ -711,7 +771,7 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { node_id: 'n-loop', id: 'n-loop' } })
       })
 
-      const latestResponse = result.current.chatList[result.current.chatList.length - 1]
+      const latestResponse = result.current.chatList.at(-1)!
       expect(latestResponse.workflowProcess?.tracing).toHaveLength(0)
     })
 
@@ -738,7 +798,7 @@ describe('useChat', () => {
         callbacks.onTTSChunk('m-th-bind', '')
       })
 
-      const latestResponse = result.current.chatList[result.current.chatList.length - 1]
+      const latestResponse = result.current.chatList.at(-1)!
       expect(latestResponse.id).toBe('m-th-bind')
       expect(latestResponse.conversationId).toBe('c-th-bind')
       expect(latestResponse.workflowProcess?.status).toBe('succeeded')
@@ -831,7 +891,7 @@ describe('useChat', () => {
         callbacks.onCompleted()
       })
 
-      const lastResponse = result.current.chatList[result.current.chatList.length - 1]
+      const lastResponse = result.current.chatList.at(-1)!
       expect(lastResponse.agent_thoughts![0].thought).toContain('resumed')
 
       expect(lastResponse.workflowProcess?.tracing?.length).toBeGreaterThan(0)

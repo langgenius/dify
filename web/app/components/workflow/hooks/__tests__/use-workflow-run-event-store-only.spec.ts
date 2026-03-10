@@ -178,6 +178,28 @@ describe('useWorkflowAgentLog', () => {
 
     expect(store.getState().workflowRunningData!.tracing![0].execution_metadata!.agent_log).toHaveLength(1)
   })
+
+  it('should attach the log to the matching execution id when a node runs multiple times', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'trace-1', node_id: 'n1', execution_metadata: {} },
+            { id: 'trace-2', node_id: 'n1', execution_metadata: {} },
+          ],
+        }),
+      },
+    })
+
+    result.current.handleWorkflowAgentLog({
+      data: { node_id: 'n1', node_execution_id: 'trace-2', message_id: 'm2' },
+    } as AgentLogResponse)
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing[0].execution_metadata!.agent_log).toBeUndefined()
+    expect(tracing[1].execution_metadata!.agent_log).toHaveLength(1)
+    expect(tracing[1].execution_metadata!.agent_log![0].message_id).toBe('m2')
+  })
 })
 
 describe('useWorkflowNodeHumanInputFormFilled', () => {

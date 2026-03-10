@@ -337,11 +337,12 @@ const Result: FC<IResultProps> = ({
         onIterationFinish: ({ data }) => {
           setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
             draft.expand = true
-            const iterationsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-            draft.tracing[iterationsIndex] = {
-              ...data,
-              expand: !!data.error,
+            const iterationsIndex = draft.tracing.findIndex(item => item.id === data.id)!
+            if (iterationsIndex > -1) {
+              draft.tracing[iterationsIndex] = {
+                ...data,
+                expand: !!data.error,
+              }
             }
           }))
         },
@@ -366,11 +367,12 @@ const Result: FC<IResultProps> = ({
         onLoopFinish: ({ data }) => {
           setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
             draft.expand = true
-            const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-            draft.tracing[loopsIndex] = {
-              ...data,
-              expand: !!data.error,
+            const loopsIndex = draft.tracing.findIndex(item => item.id === data.id)!
+            if (loopsIndex > -1) {
+              draft.tracing[loopsIndex] = {
+                ...data,
+                expand: !!data.error,
+              }
             }
           }))
         },

@@ -32,6 +32,7 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
   sseGet,
@@ -395,8 +396,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
+          const iterationIndex = tracing.findIndex(item => item.id === iterationFinishedData.id)!
           if (iterationIndex > -1) {
             tracing[iterationIndex] = {
               ...tracing[iterationIndex],
@@ -413,31 +413,24 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-          // if the node is already started, update the node
-          if (currentIndex > -1) {
-            responseItem.workflowProcess.tracing[currentIndex] = {
-              ...nodeStartedData,
-              status: NodeRunningStatus.Running,
-            }
-          }
-          else {
-            if (nodeStartedData.iteration_id)
-              return
-
-            responseItem.workflowProcess.tracing.push({
-              ...nodeStartedData,
-              status: WorkflowRunningStatus.Running,
-            })
-          }
+          upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
+            ...nodeStartedData,
+            status: WorkflowRunningStatus.Running,
+          })
         })
       },
       onNodeFinished: ({ data: nodeFinishedData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          if (params.loop_id)
+            return
+
           if (!responseItem.workflowProcess?.tracing)
             return
 
           if (nodeFinishedData.iteration_id)
+            return
+
+          if (nodeFinishedData.loop_id)
             return
 
           const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
@@ -481,8 +474,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          const loopIndex = tracing.findIndex(item => item.id === loopFinishedData.id)!
           if (loopIndex > -1) {
             tracing[loopIndex] = {
               ...tracing[loopIndex],
@@ -948,12 +940,13 @@ export const useChat = (
       },
       onIterationFinish: ({ data: iterationFinishedData }) => {
         const tracing = responseItem.workflowProcess!.tracing!
-        const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
-          && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
-        tracing[iterationIndex] = {
-          ...tracing[iterationIndex],
-          ...iterationFinishedData,
-          status: WorkflowRunningStatus.Succeeded,
+        const iterationIndex = tracing.findIndex(item => item.id === iterationFinishedData.id)!
+        if (iterationIndex > -1) {
+          tracing[iterationIndex] = {
+            ...tracing[iterationIndex],
+            ...iterationFinishedData,
+            status: WorkflowRunningStatus.Succeeded,
+          }
         }
 
         updateCurrentQAOnTree({
@@ -964,30 +957,18 @@ export const useChat = (
         })
       },
       onNodeStarted: ({ data: nodeStartedData }) => {
+        if (data.loop_id)
+          return
+
         if (!responseItem.workflowProcess)
           return
         if (!responseItem.workflowProcess.tracing)
           responseItem.workflowProcess.tracing = []
 
-        const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-        if (currentIndex > -1) {
-          responseItem.workflowProcess.tracing[currentIndex] = {
-            ...nodeStartedData,
-            status: NodeRunningStatus.Running,
-          }
-        }
-        else {
-          if (nodeStartedData.iteration_id)
-            return
-
-          if (data.loop_id)
-            return
-
-          responseItem.workflowProcess.tracing.push({
-            ...nodeStartedData,
-            status: WorkflowRunningStatus.Running,
-          })
-        }
+        upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
+          ...nodeStartedData,
+          status: WorkflowRunningStatus.Running,
+        })
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,
@@ -996,10 +977,13 @@ export const useChat = (
         })
       },
       onNodeFinished: ({ data: nodeFinishedData }) => {
+        if (data.loop_id)
+          return
+
         if (nodeFinishedData.iteration_id)
           return
 
-        if (data.loop_id)
+        if (nodeFinishedData.loop_id)
           return
 
         const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
@@ -1045,12 +1029,13 @@ export const useChat = (
       },
       onLoopFinish: ({ data: loopFinishedData }) => {
         const tracing = responseItem.workflowProcess!.tracing!
-        const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
-          && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
-        tracing[loopIndex] = {
-          ...tracing[loopIndex],
-          ...loopFinishedData,
-          status: WorkflowRunningStatus.Succeeded,
+        const loopIndex = tracing.findIndex(item => item.id === loopFinishedData.id)!
+        if (loopIndex > -1) {
+          tracing[loopIndex] = {
+            ...tracing[loopIndex],
+            ...loopFinishedData,
+            status: WorkflowRunningStatus.Succeeded,
+          }
         }
 
         updateCurrentQAOnTree({
