@@ -1,4 +1,5 @@
-import type { SimplePluginInfo } from '../react-markdown-wrapper'
+import type { StreamdownProps } from 'streamdown'
+import type { SimplePluginInfo } from '../streamdown-wrapper'
 import { render, screen } from '@testing-library/react'
 import { Markdown } from '../index'
 
@@ -16,9 +17,11 @@ vi.mock('next/dynamic', () => ({
 type CapturedProps = {
   latexContent: string
   pluginInfo?: SimplePluginInfo
-  customComponents?: Record<string, unknown>
+  customComponents?: StreamdownProps['components']
   customDisallowedElements?: string[]
-  rehypePlugins?: unknown[]
+  rehypePlugins?: StreamdownProps['rehypePlugins']
+  isAnimating?: StreamdownProps['isAnimating']
+  mode?: StreamdownProps['mode']
 }
 
 const getLastWrapperProps = (): CapturedProps => {
@@ -99,7 +102,7 @@ describe('Markdown', () => {
 
   it('should pass customComponents through', () => {
     const customComponents = {
-      h1: ({ children }: { children: React.ReactNode }) => <h1>{children}</h1>,
+      h1: ({ children }: { children?: React.ReactNode }) => <h1>{children}</h1>,
     }
     render(<Markdown content="# title" customComponents={customComponents} />)
     const props = getLastWrapperProps()
@@ -119,5 +122,17 @@ describe('Markdown', () => {
     render(<Markdown content="content" rehypePlugins={rehypePlugins} />)
     const props = getLastWrapperProps()
     expect(props.rehypePlugins).toBe(rehypePlugins)
+  })
+
+  it('should pass isAnimating through', () => {
+    render(<Markdown content="content" isAnimating={true} />)
+    const props = getLastWrapperProps()
+    expect(props.isAnimating).toBe(true)
+  })
+
+  it('should pass mode through', () => {
+    render(<Markdown content="content" mode="streaming" />)
+    const props = getLastWrapperProps()
+    expect(props.mode).toBe('streaming')
   })
 })
