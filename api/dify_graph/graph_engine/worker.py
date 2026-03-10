@@ -9,6 +9,7 @@ import queue
 import threading
 import time
 from collections.abc import Sequence
+from datetime import datetime
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
@@ -17,7 +18,7 @@ from dify_graph.context import IExecutionContext
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, is_node_result_event
+from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunStartedEvent, is_node_result_event
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from libs.datetime_utils import naive_utc_now
@@ -67,6 +68,7 @@ class Worker(threading.Thread):
         self._stop_event = threading.Event()
         self._layers = layers if layers is not None else []
         self._last_task_time = time.time()
+        self._current_node_started_at: datetime | None = None
 
     def stop(self) -> None:
         """Signal the worker to stop processing."""
@@ -106,10 +108,15 @@ class Worker(threading.Thread):
             self._last_task_time = time.time()
             node = self._graph.nodes[node_id]
             try:
+                self._current_node_started_at = None
                 self._execute_node(node)
                 self._ready_queue.task_done()
             except Exception as e:
-                self._event_queue.put(self._build_fallback_failure_event(node, e))
+                self._event_queue.put(
+                    self._build_fallback_failure_event(node, e, started_at=self._current_node_started_at)
+                )
+            finally:
+                self._current_node_started_at = None
 
     def _execute_node(self, node: Node) -> None:
         """
@@ -130,6 +137,8 @@ class Worker(threading.Thread):
                 try:
                     node_events = node.run()
                     for event in node_events:
+                        if isinstance(event, NodeRunStartedEvent):
+                            self._current_node_started_at = event.start_at
                         self._event_queue.put(event)
                         if is_node_result_event(event):
                             result_event = event
@@ -143,6 +152,8 @@ class Worker(threading.Thread):
             try:
                 node_events = node.run()
                 for event in node_events:
+                    if isinstance(event, NodeRunStartedEvent):
+                        self._current_node_started_at = event.start_at
                     self._event_queue.put(event)
                     if is_node_result_event(event):
                         result_event = event
@@ -172,7 +183,9 @@ class Worker(threading.Thread):
                 # Silently ignore layer errors to prevent disrupting node execution
                 continue
 
-    def _build_fallback_failure_event(self, node: Node, error: Exception) -> NodeRunFailedEvent:
+    def _build_fallback_failure_event(
+        self, node: Node, error: Exception, *, started_at: datetime | None = None
+    ) -> NodeRunFailedEvent:
         """Build a failed event when worker-level execution aborts before a node emits its own result event."""
         failure_time = naive_utc_now()
         error_message = str(error)
@@ -182,7 +195,7 @@ class Worker(threading.Thread):
             node_type=node.node_type,
             in_iteration_id=None,
             error=error_message,
-            start_at=failure_time,
+            start_at=started_at or failure_time,
             finished_at=failure_time,
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
