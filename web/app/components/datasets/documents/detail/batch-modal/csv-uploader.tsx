@@ -62,10 +62,10 @@ const CSVUploader: FC<Props> = ({
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
       .then((res: UploadResult) => {
-        const updatedFile = { ...fileItem.file, ...{
+        const updatedFile = Object.assign({}, fileItem.file, {
           id: res.id,
           ...(res as Partial<File>),
-        } } as File
+        }) as File
         const completeFile: FileItem = {
           fileID: fileItem.fileID,
           file: updatedFile,
@@ -126,7 +126,7 @@ const CSVUploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
@@ -148,7 +148,7 @@ const CSVUploader: FC<Props> = ({
       return ''
 
     const arr = currentFile.name.split('.')
-    return arr.at(-1)
+    return arr[arr.length - 1]
   }
 
   const isValid = useCallback((file?: File) => {
@@ -204,7 +204,7 @@ const CSVUploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle bg-components-panel-on-panel-item-bg-hover')}>
+          <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle  bg-components-panel-on-panel-item-bg-hover')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-secondary">

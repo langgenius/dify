@@ -85,7 +85,7 @@ function Confirm({
       setIsVisible(true)
     }
     else {
-      const timer = setTimeout(setIsVisible, 200, false)
+      const timer = setTimeout(() => setIsVisible(false), 200)
       return () => clearTimeout(timer)
     }
   }, [isShow])
@@ -119,11 +119,11 @@ function Confirm({
               asChild={false}
               triggerClassName="w-full"
             >
-              <div ref={titleRef} className="w-full truncate text-text-primary title-2xl-semi-bold">
+              <div ref={titleRef} className="title-2xl-semi-bold w-full truncate text-text-primary">
                 {title}
               </div>
             </Tooltip>
-            <div className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">{content}</div>
+            <div className="system-md-regular w-full whitespace-pre-wrap break-words text-text-tertiary">{content}</div>
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch p-6">
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}

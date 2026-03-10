@@ -58,7 +58,7 @@ const Uploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
@@ -121,7 +121,7 @@ const Uploader: FC<Props> = ({
           </div>
         )}
         {file && (
-          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:bg-components-panel-on-panel-item-bg-hover')}>
+          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', ' hover:bg-components-panel-on-panel-item-bg-hover')}>
             <div className="flex items-center justify-center p-3">
               <YamlIcon className="h-6 w-6 shrink-0" />
             </div>
