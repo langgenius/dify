@@ -385,14 +385,21 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["http_client"] is sentinel.http_client
 
     @pytest.mark.parametrize(
-        ("node_type", "constructor_name"),
+        ("node_type", "constructor_name", "expected_extra_kwargs"),
         [
-            (NodeType.LLM, "LLMNode"),
-            (NodeType.QUESTION_CLASSIFIER, "QuestionClassifierNode"),
-            (NodeType.PARAMETER_EXTRACTOR, "ParameterExtractorNode"),
+            (NodeType.LLM, "LLMNode", {"http_client": sentinel.http_client}),
+            (NodeType.QUESTION_CLASSIFIER, "QuestionClassifierNode", {"http_client": sentinel.http_client}),
+            (NodeType.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
         ],
     )
-    def test_creates_model_backed_nodes(self, monkeypatch, factory, node_type, constructor_name):
+    def test_creates_model_backed_nodes(
+        self,
+        monkeypatch,
+        factory,
+        node_type,
+        constructor_name,
+        expected_extra_kwargs,
+    ):
         created_node = object()
         constructor = MagicMock(return_value=created_node)
         build_model_instance = MagicMock(return_value=sentinel.model_instance)
@@ -424,6 +431,7 @@ class TestDifyNodeFactoryCreateNode:
             "model_factory": sentinel.model_factory,
             "model_instance": sentinel.model_instance,
             "memory": sentinel.memory,
+            **expected_extra_kwargs,
         }
 
 
