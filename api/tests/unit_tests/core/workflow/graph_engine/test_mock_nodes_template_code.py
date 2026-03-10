@@ -6,6 +6,7 @@ to ensure they work correctly with the TableTestRunner.
 """
 
 from configs import dify_config
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.nodes.code.limits import CodeNodeLimits
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
@@ -44,13 +45,17 @@ class TestMockTemplateTransformNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -103,13 +108,17 @@ class TestMockTemplateTransformNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -163,13 +172,17 @@ class TestMockTemplateTransformNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -221,13 +234,17 @@ class TestMockTemplateTransformNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -286,13 +303,17 @@ class TestMockCodeNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -348,13 +369,17 @@ class TestMockCodeNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -418,13 +443,17 @@ class TestMockCodeNode:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -490,13 +519,17 @@ class TestMockNodeFactory:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -531,13 +564,17 @@ class TestMockNodeFactory:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 
@@ -582,13 +619,17 @@ class TestMockNodeFactory:
 
         # Create test parameters
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
             call_depth=0,
         )
 

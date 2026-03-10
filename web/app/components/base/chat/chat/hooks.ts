@@ -30,7 +30,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
@@ -66,13 +66,13 @@ export const useChat = (
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { notify } = useToastContext()
-  const conversationId = useRef('')
-  const hasStopResponded = useRef(false)
+  const conversationIdRef = useRef('')
+  const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const pausedStateRef = useRef(false)
-  const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
@@ -165,7 +165,7 @@ export const useChat = (
   }, [])
 
   const handleStop = useCallback(() => {
-    hasStopResponded.current = true
+    hasStopRespondedRef.current = true
     handleResponding(false)
     if (stopChat && taskIdRef.current && !pausedStateRef.current)
       stopChat(taskIdRef.current)
@@ -178,11 +178,11 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback((cb?: any) => {
-    conversationId.current = ''
+    conversationIdRef.current = ''
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
-    setSuggestQuestions([])
+    setSuggestedQuestions([])
     cb?.()
   }, [handleStop])
 
@@ -245,7 +245,7 @@ export const useChat = (
         })
 
         if (isFirstMessage && newConversationId)
-          conversationId.current = newConversationId
+          conversationIdRef.current = newConversationId
 
         if (taskId)
           taskIdRef.current = taskId
@@ -257,19 +257,19 @@ export const useChat = (
           return
 
         if (onConversationComplete)
-          onConversationComplete(conversationId.current)
+          onConversationComplete(conversationIdRef.current)
 
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
           try {
             const { data }: any = await onGetSuggestedQuestions(
               messageId,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
             )
-            setSuggestQuestions(data)
+            setSuggestedQuestions(data)
           }
           // eslint-disable-next-line unused-imports/no-unused-vars
           catch (e) {
-            setSuggestQuestions([])
+            setSuggestedQuestions([])
           }
         }
       },
@@ -357,7 +357,7 @@ export const useChat = (
       },
       onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
-        hasStopResponded.current = false
+        hasStopRespondedRef.current = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             responseItem.workflowProcess.status = WorkflowRunningStatus.Running
@@ -609,7 +609,7 @@ export const useChat = (
       isPublicAPI,
     }: SendCallback,
   ) => {
-    setSuggestQuestions([])
+    setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
       notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
@@ -656,12 +656,12 @@ export const useChat = (
     }
 
     handleResponding(true)
-    hasStopResponded.current = false
+    hasStopRespondedRef.current = false
 
     const { query, files, inputs, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
-      conversation_id: conversationId.current,
+      conversation_id: conversationIdRef.current,
       files: getProcessedFiles(files || []),
       query,
       inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
@@ -707,7 +707,7 @@ export const useChat = (
         }
 
         if (isFirstMessage && newConversationId)
-          conversationId.current = newConversationId
+          conversationIdRef.current = newConversationId
 
         taskIdRef.current = taskId
         if (messageId)
@@ -727,11 +727,11 @@ export const useChat = (
           return
 
         if (onConversationComplete)
-          onConversationComplete(conversationId.current)
+          onConversationComplete(conversationIdRef.current)
 
-        if (conversationId.current && !hasStopResponded.current && onGetConversationMessages) {
+        if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
           const { data }: any = await onGetConversationMessages(
-            conversationId.current,
+            conversationIdRef.current,
             newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
           )
           const newResponseItem = data.find((item: any) => item.id === responseItem.id)
@@ -760,24 +760,24 @@ export const useChat = (
               tokens_per_second: newResponseItem.provider_response_latency > 0 ? (newResponseItem.answer_tokens / newResponseItem.provider_response_latency).toFixed(2) : undefined,
             },
             // for agent log
-            conversationId: conversationId.current,
+            conversationId: conversationIdRef.current,
             input: {
               inputs: newResponseItem.inputs,
               query: newResponseItem.query,
             },
           })
         }
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
           try {
             const { data }: any = await onGetSuggestedQuestions(
               responseItem.id,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
             )
-            setSuggestQuestions(data)
+            setSuggestedQuestions(data)
           }
           // eslint-disable-next-line unused-imports/no-unused-vars
           catch (e) {
-            setSuggestQuestions([])
+            setSuggestedQuestions([])
           }
         }
       },
@@ -867,6 +867,7 @@ export const useChat = (
             responseItem,
             parentId: data.parent_message_id,
           })
+          handleResponding(false)
           return
         }
         responseItem.citation = messageEnd.metadata?.retriever_resources || []
@@ -895,7 +896,7 @@ export const useChat = (
       onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
         // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
         if (conversation_id) {
-          conversationId.current = conversation_id
+          conversationIdRef.current = conversation_id
         }
         if (message_id && !hasSetResponseId) {
           questionItem.id = `question-${message_id}`

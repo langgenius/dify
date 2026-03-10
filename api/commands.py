@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now
 from libs.db_migration_lock import DbMigrationAutoRenewLock
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
@@ -2598,14 +2599,28 @@ def migrate_oss(
 @click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    required=True,
+    required=False,
+    default=None,
     help="Lower bound (inclusive) for created_at.",
 )
 @click.option(
     "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
-    required=True,
+    required=False,
+    default=None,
     help="Upper bound (exclusive) for created_at.",
+)
+@click.option(
+    "--from-days-ago",
+    type=int,
+    default=None,
+    help="Relative lower bound in days ago (inclusive). Must be used with --before-days.",
+)
+@click.option(
+    "--before-days",
+    type=int,
+    default=None,
+    help="Relative upper bound in days ago (exclusive). Required for relative mode.",
 )
 @click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
 @click.option(
@@ -2618,8 +2633,10 @@ def migrate_oss(
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
-    start_from: datetime.datetime,
-    end_before: datetime.datetime,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    from_days_ago: int | None,
+    before_days: int | None,
     dry_run: bool,
 ):
     """
@@ -2630,18 +2647,70 @@ def clean_expired_messages(
     start_at = time.perf_counter()
 
     try:
+        abs_mode = start_from is not None and end_before is not None
+        rel_mode = before_days is not None
+
+        if abs_mode and rel_mode:
+            raise click.UsageError(
+                "Options are mutually exclusive: use either (--start-from,--end-before) "
+                "or (--from-days-ago,--before-days)."
+            )
+
+        if from_days_ago is not None and before_days is None:
+            raise click.UsageError("--from-days-ago must be used together with --before-days.")
+
+        if (start_from is None) ^ (end_before is None):
+            raise click.UsageError("Both --start-from and --end-before are required when using absolute time range.")
+
+        if not abs_mode and not rel_mode:
+            raise click.UsageError(
+                "You must provide either (--start-from,--end-before) or (--before-days [--from-days-ago])."
+            )
+
+        if rel_mode:
+            assert before_days is not None
+            if before_days < 0:
+                raise click.UsageError("--before-days must be >= 0.")
+            if from_days_ago is not None:
+                if from_days_ago < 0:
+                    raise click.UsageError("--from-days-ago must be >= 0.")
+                if from_days_ago <= before_days:
+                    raise click.UsageError("--from-days-ago must be greater than --before-days.")
+
         # Create policy based on billing configuration
         # NOTE: graceful_period will be ignored when billing is disabled.
         policy = create_message_clean_policy(graceful_period_days=graceful_period)
 
         # Create and run the cleanup service
-        service = MessagesCleanService.from_time_range(
-            policy=policy,
-            start_from=start_from,
-            end_before=end_before,
-            batch_size=batch_size,
-            dry_run=dry_run,
-        )
+        if abs_mode:
+            assert start_from is not None
+            assert end_before is not None
+            service = MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
+        elif from_days_ago is None:
+            assert before_days is not None
+            service = MessagesCleanService.from_days(
+                policy=policy,
+                days=before_days,
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
+        else:
+            assert before_days is not None
+            assert from_days_ago is not None
+            now = naive_utc_now()
+            service = MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=now - datetime.timedelta(days=from_days_ago),
+                end_before=now - datetime.timedelta(days=before_days),
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
         stats = service.run()
 
         end_at = time.perf_counter()
@@ -2668,3 +2737,77 @@ def clean_expired_messages(
         raise
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
+
+
+@click.command("export-app-messages", help="Export messages for an app to JSONL.GZ.")
+@click.option("--app-id", required=True, help="Application ID to export messages for.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option(
+    "--filename",
+    required=True,
+    help="Base filename (relative path). Do not include suffix like .jsonl.gz.",
+)
+@click.option("--use-cloud-storage", is_flag=True, default=False, help="Upload to cloud storage instead of local file.")
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for cursor pagination.")
+@click.option("--dry-run", is_flag=True, default=False, help="Scan only, print stats without writing any file.")
+def export_app_messages(
+    app_id: str,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+    filename: str,
+    use_cloud_storage: bool,
+    batch_size: int,
+    dry_run: bool,
+):
+    if start_from and start_from >= end_before:
+        raise click.UsageError("--start-from must be before --end-before.")
+
+    from services.retention.conversation.message_export_service import AppMessageExportService
+
+    try:
+        validated_filename = AppMessageExportService.validate_export_filename(filename)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--filename") from e
+
+    click.echo(click.style(f"export_app_messages: starting export for app {app_id}.", fg="green"))
+    start_at = time.perf_counter()
+
+    try:
+        service = AppMessageExportService(
+            app_id=app_id,
+            end_before=end_before,
+            filename=validated_filename,
+            start_from=start_from,
+            batch_size=batch_size,
+            use_cloud_storage=use_cloud_storage,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        elapsed = time.perf_counter() - start_at
+        click.echo(
+            click.style(
+                f"export_app_messages: completed in {elapsed:.2f}s\n"
+                f"  - Batches: {stats.batches}\n"
+                f"  - Total messages: {stats.total_messages}\n"
+                f"  - Messages with feedback: {stats.messages_with_feedback}\n"
+                f"  - Total feedbacks: {stats.total_feedbacks}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        elapsed = time.perf_counter() - start_at
+        logger.exception("export_app_messages failed")
+        click.echo(click.style(f"export_app_messages: failed after {elapsed:.2f}s - {e}", fg="red"))
+        raise

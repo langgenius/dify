@@ -2,11 +2,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
-from extensions.ext_database import db
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -47,7 +47,7 @@ class TestTriggerProviderService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -84,7 +84,7 @@ class TestTriggerProviderService:
 
     def _create_test_subscription(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         tenant_id,
         user_id,
         provider_id,
@@ -135,14 +135,14 @@ class TestTriggerProviderService:
             expires_at=-1,
         )
 
-        db.session.add(subscription)
-        db.session.commit()
-        db.session.refresh(subscription)
+        db_session_with_containers.add(subscription)
+        db_session_with_containers.commit()
+        db_session_with_containers.refresh(subscription)
 
         return subscription
 
     def test_rebuild_trigger_subscription_success_with_merged_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful rebuild with credential merging (HIDDEN_VALUE handling).
@@ -217,7 +217,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "new-secret-value"  # New value
 
         # Verify database state was updated
-        db.session.refresh(subscription)
+        db_session_with_containers.refresh(subscription)
         assert subscription.name == "updated_name"
         assert subscription.parameters == {"param1": "updated_value"}
 
@@ -244,7 +244,7 @@ class TestTriggerProviderService:
         )
 
     def test_rebuild_trigger_subscription_with_all_new_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when all credentials are new (no HIDDEN_VALUE).
@@ -304,7 +304,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "completely-new-secret"
 
     def test_rebuild_trigger_subscription_with_all_hidden_values(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when all credentials are HIDDEN_VALUE (preserve all existing).
@@ -363,7 +363,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == original_credentials["api_secret"]
 
     def test_rebuild_trigger_subscription_with_missing_key_uses_unknown_value(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test rebuild when HIDDEN_VALUE is used for a key that doesn't exist in original.
@@ -422,7 +422,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["non_existent_key"] == UNKNOWN_VALUE
 
     def test_rebuild_trigger_subscription_rollback_on_error(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that transaction is rolled back on error.
@@ -470,12 +470,12 @@ class TestTriggerProviderService:
             )
 
         # Verify subscription state was not changed (rolled back)
-        db.session.refresh(subscription)
+        db_session_with_containers.refresh(subscription)
         assert subscription.name == original_name
         assert subscription.parameters == original_parameters
 
     def test_rebuild_trigger_subscription_subscription_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error when subscription is not found.
@@ -501,7 +501,7 @@ class TestTriggerProviderService:
             )
 
     def test_rebuild_trigger_subscription_name_uniqueness_check(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that name uniqueness is checked when updating name.
