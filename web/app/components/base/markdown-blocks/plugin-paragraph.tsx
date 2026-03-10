@@ -1,15 +1,10 @@
-/**
- * @fileoverview Paragraph component for rendering <p> tags in Markdown.
- * Extracted from the main markdown renderer for modularity.
- * Handles special rendering for paragraphs that directly contain an image.
- */
 import type { ExtraProps } from 'streamdown'
 import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import { getMarkdownImageURL } from './utils'
+import { getMarkdownImageURL, hasImageChild } from './utils'
 
 type HastChildNode = {
   tagName?: string
@@ -72,5 +67,8 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
       </div>
     )
   }
+  if (hasImageChild(childrenNode))
+    return <div className="markdown-p" data-testid="image-fallback-paragraph">{children}</div>
+
   return <p data-testid="standard-paragraph">{children}</p>
 }

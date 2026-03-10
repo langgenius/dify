@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { PluginParagraph } from '../plugin-paragraph'
-import { getMarkdownImageURL } from '../utils'
+import { getMarkdownImageURL, hasImageChild } from '../utils'
 
 // Mock dependencies
 vi.mock('@/service/use-plugins', () => ({
@@ -14,6 +14,7 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('../utils', () => ({
   getMarkdownImageURL: vi.fn(),
+  hasImageChild: vi.fn((): boolean => false),
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
@@ -169,5 +170,23 @@ describe('PluginParagraph', () => {
     const closeBtn = screen.getByText('Close')
     await user.click(closeBtn)
     expect(screen.queryByTestId('image-preview-modal')).not.toBeInTheDocument()
+  })
+
+  it('should render div instead of p when image is not the first child', () => {
+    vi.mocked(hasImageChild).mockReturnValue(true)
+
+    const node = mockNode([
+      { tagName: 'span' },
+      { tagName: 'img', properties: { src: 'test.png' } },
+    ])
+
+    render(
+      <PluginParagraph node={node}>
+        <span>Text</span>
+      </PluginParagraph>,
+    )
+
+    expect(screen.getByTestId('image-fallback-paragraph')).toBeInTheDocument()
+    expect(screen.getByTestId('image-fallback-paragraph').tagName).toBe('DIV')
   })
 })
