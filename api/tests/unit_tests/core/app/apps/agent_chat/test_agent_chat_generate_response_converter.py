@@ -147,6 +147,16 @@ class TestAgentChatAppGenerateResponseConverterStream:
         assert items[2]["event"] == "message_end"
         assert "metadata" in items[2]
         metadata = items[2]["metadata"]
-        assert "annotation_reply" in metadata
-        assert "usage" in metadata
+        assert "annotation_reply" not in metadata
+        assert "usage" not in metadata
+        assert metadata["retriever_resources"] == [
+            {
+                "segment_id": "s1",
+                "position": 1,
+                "document_name": "doc",
+                "score": 0.9,
+                "content": "content",
+                "summary": "summary",
+            }
+        ]
         assert items[3]["event"] == "error"

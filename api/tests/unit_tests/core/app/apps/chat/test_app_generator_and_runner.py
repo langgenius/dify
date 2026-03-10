@@ -30,6 +30,17 @@ class DummyQueueManager:
 
 
 class TestChatAppGenerator:
+    def test_generate_requires_query(self):
+        generator = ChatAppGenerator()
+        with pytest.raises(ValueError):
+            generator.generate(
+                app_model=SimpleNamespace(),
+                user=SimpleNamespace(),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+            )
+
     def test_generate_rejects_non_string_query(self):
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):

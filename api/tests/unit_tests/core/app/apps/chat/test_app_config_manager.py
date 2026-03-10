@@ -1,8 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import pytest
-
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from models.model import AppMode
@@ -113,17 +111,3 @@ class TestChatAppConfigManager:
         assert filtered["text_to_speech"] == 9
         assert filtered["retriever_resource"] == 10
         assert filtered["sensitive_word_avoidance"] == 11
-
-    def test_generate_requires_query(self):
-        from core.app.apps.chat.app_generator import ChatAppGenerator
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        generator = ChatAppGenerator()
-        with pytest.raises(ValueError):
-            generator.generate(
-                app_model=SimpleNamespace(),
-                user=SimpleNamespace(),
-                args={"inputs": {}},
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=False,
-            )
