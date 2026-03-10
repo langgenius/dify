@@ -2033,11 +2033,6 @@
       "count": 2
     }
   },
-  "app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
-    "e18e/prefer-array-at": {
-      "count": 6
-    }
-  },
   "app/components/base/chat/chat/__tests__/index.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 8
