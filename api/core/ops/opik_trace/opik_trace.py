@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 import uuid
@@ -44,6 +45,22 @@ def wrap_metadata(metadata, **kwargs):
     metadata.update(kwargs)
 
     return metadata
+
+
+def _seed_to_uuid4(seed: str) -> str:
+    """Derive a deterministic UUID4-formatted string from an arbitrary seed.
+
+    uuid4_to_uuid7 requires a valid UUID v4 string, but some Dify identifiers
+    are not UUIDs (e.g. a workflow_run_id with a "-root" suffix appended to
+    distinguish the root span from the trace).  This helper hashes the seed
+    with MD5 and patches the version/variant bits so the result satisfies the
+    UUID v4 contract.
+    """
+    raw = hashlib.md5(seed.encode()).digest()
+    ba = bytearray(raw)
+    ba[6] = (ba[6] & 0x0F) | 0x40  # version 4
+    ba[8] = (ba[8] & 0x3F) | 0x80  # variant 1
+    return str(uuid.UUID(bytes=bytes(ba)))
 
 
 def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
@@ -95,60 +112,52 @@ class OpikDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        dify_trace_id = trace_info.trace_id or trace_info.workflow_run_id
-        opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
         workflow_metadata = wrap_metadata(
             trace_info.metadata, message_id=trace_info.message_id, workflow_app_log_id=trace_info.workflow_app_log_id
         )
-        root_span_id = None
 
         if trace_info.message_id:
             dify_trace_id = trace_info.trace_id or trace_info.message_id
-            opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
-
-            trace_data = {
-                "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE,
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "thread_id": trace_info.conversation_id,
-                "tags": ["message", "workflow"],
-                "project_name": self.project,
-            }
-            self.add_trace(trace_data)
-
-            root_span_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_run_id)
-            span_data = {
-                "id": root_span_id,
-                "parent_span_id": None,
-                "trace_id": opik_trace_id,
-                "name": TraceTaskName.WORKFLOW_TRACE,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "tags": ["workflow"],
-                "project_name": self.project,
-            }
-            self.add_span(span_data)
+            trace_name = TraceTaskName.MESSAGE_TRACE
+            trace_tags = ["message", "workflow"]
+            root_span_seed = trace_info.workflow_run_id
         else:
-            trace_data = {
-                "id": opik_trace_id,
-                "name": TraceTaskName.MESSAGE_TRACE,
-                "start_time": trace_info.start_time,
-                "end_time": trace_info.end_time,
-                "metadata": workflow_metadata,
-                "input": wrap_dict("input", trace_info.workflow_run_inputs),
-                "output": wrap_dict("output", trace_info.workflow_run_outputs),
-                "thread_id": trace_info.conversation_id,
-                "tags": ["workflow"],
-                "project_name": self.project,
-            }
-            self.add_trace(trace_data)
+            dify_trace_id = trace_info.trace_id or trace_info.workflow_run_id
+            trace_name = TraceTaskName.WORKFLOW_TRACE
+            trace_tags = ["workflow"]
+            root_span_seed = _seed_to_uuid4(trace_info.workflow_run_id + "-root")
+
+        opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
+
+        trace_data = {
+            "id": opik_trace_id,
+            "name": trace_name,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": workflow_metadata,
+            "input": wrap_dict("input", trace_info.workflow_run_inputs),
+            "output": wrap_dict("output", trace_info.workflow_run_outputs),
+            "thread_id": trace_info.conversation_id,
+            "tags": trace_tags,
+            "project_name": self.project,
+        }
+        self.add_trace(trace_data)
+
+        root_span_id = prepare_opik_uuid(trace_info.start_time, root_span_seed)
+        span_data = {
+            "id": root_span_id,
+            "parent_span_id": None,
+            "trace_id": opik_trace_id,
+            "name": TraceTaskName.WORKFLOW_TRACE,
+            "input": wrap_dict("input", trace_info.workflow_run_inputs),
+            "output": wrap_dict("output", trace_info.workflow_run_outputs),
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
+            "metadata": workflow_metadata,
+            "tags": ["workflow"],
+            "project_name": self.project,
+        }
+        self.add_span(span_data)
 
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
@@ -231,15 +240,13 @@ class OpikDataTrace(BaseTraceInstance):
             else:
                 run_type = "tool"
 
-            parent_span_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
-
             if not total_tokens:
                 total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
 
             span_data = {
                 "trace_id": opik_trace_id,
                 "id": prepare_opik_uuid(created_at, node_execution_id),
-                "parent_span_id": prepare_opik_uuid(trace_info.start_time, parent_span_id),
+                "parent_span_id": root_span_id,
                 "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
