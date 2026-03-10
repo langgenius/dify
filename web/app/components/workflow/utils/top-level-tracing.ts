@@ -11,9 +11,7 @@ export const upsertTopLevelTracingNodeOnStart = (
   if (isNestedTracingNode(startedNode))
     return false
 
-  const currentIndex = startedNode.id
-    ? tracing.findIndex(item => item.id === startedNode.id)
-    : tracing.findIndex(item => item.node_id === startedNode.node_id)
+  const currentIndex = tracing.findIndex(item => item.id === startedNode.id)
   if (currentIndex > -1)
     // Started events are the authoritative snapshot for an execution; merging would retain stale client-side fields.
     tracing[currentIndex] = startedNode
