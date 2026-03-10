@@ -50,6 +50,7 @@ from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
 )
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
+from dify_graph.nodes.tool.tool_node import ToolNode
 from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
@@ -250,6 +251,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.DATASOURCE:
@@ -292,6 +294,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
@@ -306,6 +309,15 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+            )
+
+        if node_type == NodeType.TOOL:
+            return ToolNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                tool_file_manager_factory=self._http_request_tool_file_manager_factory(),
             )
 
         return node_class(

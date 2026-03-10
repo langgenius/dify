@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
 import ModelParameterModal from './index'
 
 let isAPIKeySet = true
-let parameterRules = [
+let parameterRules: Array<Record<string, unknown>> | undefined = [
   {
     name: 'temperature',
     label: { en_US: 'Temperature' },
@@ -62,42 +61,17 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-// Mock PortalToFollowElem components to control visibility and simplify testing
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  return {
-    PortalToFollowElem: ({ children }: { children: React.ReactNode }) => {
-      return (
-        <div>
-          <div data-testid="portal-wrapper">
-            {children}
-          </div>
-        </div>
-      )
-    },
-    PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-      <div data-testid="portal-trigger" onClick={onClick}>
-        {children}
-      </div>
-    ),
-    PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className: string }) => (
-      <div data-testid="portal-content" className={className}>
-        {children}
-      </div>
-    ),
-  }
-})
-
 vi.mock('./parameter-item', () => ({
-  default: ({ parameterRule, value, onChange, onSwitch }: { parameterRule: { name: string, label: { en_US: string } }, value: string | number, onChange: (v: number) => void, onSwitch: (checked: boolean, val: unknown) => void }) => (
+  default: ({ parameterRule, onChange, onSwitch }: {
+    parameterRule: { name: string, label: { en_US: string } }
+    onChange: (v: number) => void
+    onSwitch: (checked: boolean, val: unknown) => void
+  }) => (
     <div data-testid={`param-${parameterRule.name}`}>
       {parameterRule.label.en_US}
-      <input
-        aria-label={parameterRule.name}
-        value={value || ''}
-        onChange={e => onChange(Number(e.target.value))}
-      />
-      <button onClick={() => onSwitch?.(false, undefined)}>Remove</button>
-      <button onClick={() => onSwitch?.(true, 'assigned')}>Add</button>
+      <button onClick={() => onChange(0.9)}>Change</button>
+      <button onClick={() => onSwitch(false, undefined)}>Remove</button>
+      <button onClick={() => onSwitch(true, 'assigned')}>Add</button>
     </div>
   ),
 }))
@@ -105,7 +79,6 @@ vi.mock('./parameter-item', () => ({
 vi.mock('../model-selector', () => ({
   default: ({ onSelect }: { onSelect: (value: { provider: string, model: string }) => void }) => (
     <div data-testid="model-selector">
-      Model Selector
       <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>Select GPT-4.1</button>
     </div>
   ),
@@ -121,16 +94,11 @@ vi.mock('./trigger', () => ({
   default: () => <button>Open Settings</button>,
 }))
 
-vi.mock('@/utils/classnames', () => ({
-  cn: (...args: (string | undefined | null | false)[]) => args.filter(Boolean).join(' '),
-}))
-
-// Mock config
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    PROVIDER_WITH_PRESET_TONE: ['openai'], // ensure presets mock renders
+    PROVIDER_WITH_PRESET_TONE: ['openai'],
   }
 })
 
@@ -188,21 +156,19 @@ describe('ModelParameterModal', () => {
     ]
   })
 
-  it('should render trigger and content', () => {
+  it('should render trigger and open modal content when trigger is clicked', () => {
     render(<ModelParameterModal {...defaultProps} />)
 
-    expect(screen.getByText('Open Settings')).toBeInTheDocument()
-    expect(screen.getByText('Temperature')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Open Settings'))
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
   })
 
-  it('should update params when changed and handle switch add/remove', () => {
+  it('should call onCompletionParamsChange when parameter changes and switch actions happen', () => {
     render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
 
-    const input = screen.getByLabelText('temperature')
-    fireEvent.change(input, { target: { value: '0.9' } })
-
+    fireEvent.click(screen.getByText('Change'))
     expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
       ...defaultProps.completionParams,
       temperature: 0.9,
@@ -218,56 +184,51 @@ describe('ModelParameterModal', () => {
     })
   })
 
-  it('should handle preset selection', () => {
+  it('should call onCompletionParamsChange when preset is selected', () => {
     render(<ModelParameterModal {...defaultProps} />)
-
+    fireEvent.click(screen.getByText('Open Settings'))
     fireEvent.click(screen.getByText('Preset 1'))
     expect(defaultProps.onCompletionParamsChange).toHaveBeenCalled()
   })
 
-  it('should handle debug mode toggle', () => {
-    const { rerender } = render(<ModelParameterModal {...defaultProps} />)
-    const toggle = screen.getByText(/debugAsMultipleModel/i)
-    fireEvent.click(toggle)
-    expect(defaultProps.onDebugWithMultipleModelChange).toHaveBeenCalled()
-
-    rerender(<ModelParameterModal {...defaultProps} debugWithMultipleModel />)
-    expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
-  })
-  it('should handle custom renderTrigger', () => {
-    const renderTrigger = vi.fn().mockReturnValue(<div>Custom Trigger</div>)
-    render(<ModelParameterModal {...defaultProps} renderTrigger={renderTrigger} readonly />)
-
-    expect(screen.getByText('Custom Trigger')).toBeInTheDocument()
-    expect(renderTrigger).toHaveBeenCalled()
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    expect(renderTrigger).toHaveBeenCalledTimes(1)
-  })
-
-  it('should handle model selection and advanced mode parameters', () => {
-    parameterRules = [
-      {
-        name: 'temperature',
-        label: { en_US: 'Temperature' },
-        type: 'float',
-        default: 0.7,
-        min: 0,
-        max: 1,
-        help: { en_US: 'Control randomness' },
-      },
-    ]
-    const { rerender } = render(<ModelParameterModal {...defaultProps} />)
-    expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
-
-    rerender(<ModelParameterModal {...defaultProps} isAdvancedMode />)
-    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
-
+  it('should call setModel when model selector picks another model', () => {
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
     fireEvent.click(screen.getByText('Select GPT-4.1'))
+
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
+  })
+
+  it('should toggle debug mode when debug footer is clicked', () => {
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+    fireEvent.click(screen.getByText(/debugAsMultipleModel/i))
+    expect(defaultProps.onDebugWithMultipleModelChange).toHaveBeenCalled()
+  })
+
+  it('should render loading state when parameter rules are loading', () => {
+    isRulesLoading = true
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('should not open content when readonly is true', () => {
+    render(<ModelParameterModal {...defaultProps} readonly />)
+    fireEvent.click(screen.getByText('Open Settings'))
+    expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+  })
+
+  it('should render no parameter items when rules are undefined', () => {
+    parameterRules = undefined
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })
