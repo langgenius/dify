@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from models.api_based_extension import APIBasedExtension
 from services.account_service import AccountService, TenantService
 from services.api_based_extension_service import APIBasedExtensionService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestAPIBasedExtensionService:
@@ -55,7 +56,7 @@ class TestAPIBasedExtensionService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
