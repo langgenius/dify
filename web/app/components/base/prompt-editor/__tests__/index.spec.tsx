@@ -77,8 +77,34 @@ vi.mock('lexical', async (importOriginal) => {
 })
 
 vi.mock('@lexical/react/LexicalComposer', () => ({
-  LexicalComposer: ({ children }: { children: ReactNode }) => (
-    <div data-testid="lexical-composer">{children}</div>
+  LexicalComposer: ({ initialConfig, children }: {
+    initialConfig: {
+      onError?: (error: Error) => void
+      nodes?: Array<{ replace?: unknown, with: (arg: { __text: string }) => void }>
+    }
+    children: ReactNode
+  }) => {
+    if (initialConfig?.onError) {
+      try {
+        initialConfig.onError(new Error('test error'))
+      }
+      catch (e) {
+        // ignore error
+        console.error(e)
+      }
+    }
+    if (initialConfig?.nodes) {
+      const textNodeConf = initialConfig.nodes.find((n: { replace?: unknown, with: (arg: { __text: string }) => void }) => n?.replace)
+      if (textNodeConf)
+        textNodeConf.with({ __text: 'test' })
+    }
+    return <div data-testid="lexical-composer">{children}</div>
+  },
+}))
+
+vi.mock('../plugins/shortcuts-popup-plugin', () => ({
+  default: ({ children }: { children: (closePortal: () => void, onInsert: () => void) => ReactNode }) => (
+    <div data-testid="shortcuts-popup-plugin">{children(vi.fn(), vi.fn())}</div>
   ),
 }))
 
@@ -318,6 +344,21 @@ describe('PromptEditor', () => {
         />,
       )
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render externalToolBlock when variableBlock is not shown', () => {
+      render(
+        <PromptEditor
+          variableBlock={{ show: false }}
+          externalToolBlock={{ show: true }}
+        />,
+      )
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should unmount component to cover onRef cleanup', () => {
+      const { unmount } = render(<PromptEditor />)
+      expect(() => unmount()).not.toThrow()
     })
 
     it('should render hitl block when show=true', () => {

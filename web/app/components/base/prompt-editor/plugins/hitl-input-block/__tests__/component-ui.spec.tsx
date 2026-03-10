@@ -4,7 +4,7 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { ValueSelector } from '@/app/components/workflow/types'
 
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import HITLInputComponentUI from '../component-ui'
 import { HITLInputNode } from '../node'

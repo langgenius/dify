@@ -9,6 +9,7 @@ import {
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   BlockEnum,
+  VarType,
 } from '@/app/components/workflow/types'
 import { CaptureEditorPlugin } from '../../test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
@@ -34,7 +35,7 @@ const createWorkflowNodesMap = (title = 'Node One'): WorkflowNodesMap => ({
 
 const createVar = (variable: string): Var => ({
   variable,
-  type: 'string',
+  type: VarType.string,
 })
 
 const createSelectorWithTransientPrefix = (prefix: string, suffix: string): string[] => {
