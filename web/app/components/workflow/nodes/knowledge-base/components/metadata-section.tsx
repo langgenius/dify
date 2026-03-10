@@ -189,7 +189,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                               {getAvailableMetadataOptions(item.metadata_id).map(opt => (
                                 <option key={opt.id} value={opt.id}>{opt.name}</option>
                               ))}
-                              {item.metadata_id && !getAvailableMetadataOptions(item.metadata_id).find(o => o.id === item.metadata_id) && (
+                              {item.metadata_id && !getAvailableMetadataOptions(item.metadata_id).some(o => o.id === item.metadata_id) && (
                                 <option value={item.metadata_id}>{userMetadata.find(m => m.id === item.metadata_id)?.name}</option>
                               )}
                             </select>
