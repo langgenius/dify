@@ -12961,9 +12961,6 @@
     }
   },
   "service/fetch.ts": {
-    "e18e/prefer-spread-syntax": {
-      "count": 1
-    },
     "e18e/prefer-static-regex": {
       "count": 1
     },
