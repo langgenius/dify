@@ -111,7 +111,14 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByRole('button'))
       const workspacesInMenu = screen.getAllByText('Workspace 1')
+<<<<<<< HEAD
       fireEvent.click(workspacesInMenu[workspacesInMenu.length - 1])
+=======
+      const currentWorkspaceMenuItem = workspacesInMenu.at(-1)
+      expect(currentWorkspaceMenuItem).toBeDefined()
+      if (currentWorkspaceMenuItem)
+        fireEvent.click(currentWorkspaceMenuItem)
+>>>>>>> 27ffc836f4 (fix: address type-check issues after upstream merge)
 
       // Assert
       expect(switchWorkspace).not.toHaveBeenCalled()

@@ -11,6 +11,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from core.workflow.enums import NodeType
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import (
@@ -26,7 +27,10 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
+<<<<<<< HEAD
 from dify_graph.enums import BuiltinNodeTypes, NodeType
+=======
+>>>>>>> 27ffc836f4 (fix: address type-check issues after upstream merge)
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
