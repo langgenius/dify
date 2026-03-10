@@ -213,7 +213,7 @@ class MilvusVector(BaseVector):
     @staticmethod
     def _sanitize_document_id(doc_id: str) -> str:
         """Sanitize a document ID to prevent expression injection in Milvus filters."""
-        sanitized = re.sub(r'[^a-zA-Z0-9\-_]', '', str(doc_id))
+        sanitized = re.sub(r"[^a-zA-Z0-9\-_]", "", str(doc_id))
         if sanitized != doc_id:
             logger.warning("Document ID sanitized: original contained unsafe characters")
         return sanitized
