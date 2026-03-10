@@ -6,19 +6,12 @@ type MdastNode = {
   [key: string]: unknown
 }
 
-/**
- * Recursively checks whether any child node is an <img> element.
- * Handles nested structures like linked images ([![alt](url)](link))
- * or formatted images (**![alt](url)**).
- */
 export const hasImageChild = (children: MdastNode[] | undefined): boolean => {
   return children?.some((child) => {
     if (child.tagName === 'img')
       return true
-    if (child.children)
-      return hasImageChild(child.children)
-    return false
-  }) || false
+    return child.children ? hasImageChild(child.children) : false
+  }) ?? false
 }
 
 export const isValidUrl = (url: string): boolean => {

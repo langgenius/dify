@@ -1,11 +1,6 @@
 import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
-/**
- * @fileoverview Paragraph component for rendering <p> tags in Markdown.
- * Extracted from the main markdown renderer for modularity.
- * Handles special rendering for paragraphs that directly contain an image.
- */
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { getMarkdownImageURL, hasImageChild } from './utils'
@@ -66,10 +61,8 @@ export const PluginParagraph: React.FC<PluginParagraphProps> = ({ pluginInfo, no
       </div>
     )
   }
-  // Use <div> instead of <p> when any child is an image to avoid invalid
-  // HTML nesting (<div> inside <p>) which causes React hydration warnings.
   if (hasImageChild(childrenNode))
-    return <div className="markdown-p" data-testid="standard-paragraph">{children}</div>
+    return <div className="markdown-p" data-testid="image-fallback-paragraph">{children}</div>
 
   return <p data-testid="standard-paragraph">{children}</p>
 }
