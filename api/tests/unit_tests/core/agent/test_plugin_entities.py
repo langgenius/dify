@@ -131,8 +131,10 @@ class TestAgentStrategyParameter:
 
     @pytest.mark.parametrize("invalid_type", [None, "invalid_type", 999, [], {}, ["bad"], {"bad": 1}])
     def test_invalid_type_raises_validation_error(self, invalid_type) -> None:
-        with pytest.raises(ValidationError):
-            AgentStrategyParameter(type=invalid_type, name="x", label="y")
+        with pytest.raises(ValidationError) as exc_info:
+            AgentStrategyParameter(type=invalid_type, name="x", label=I18nObject(en_US="y", zh_Hans="y"))
+
+        assert any(error["loc"] == ("type",) for error in exc_info.value.errors())
 
     def test_init_frontend_parameter_calls_external(self, mocker) -> None:
         mock_func = mocker.patch(
