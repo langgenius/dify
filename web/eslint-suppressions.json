@@ -6810,11 +6810,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/index.tsx": {
-    "e18e/prefer-array-some": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 3
@@ -12731,9 +12726,6 @@
     }
   },
   "service/use-plugins.ts": {
-    "e18e/prefer-array-some": {
-      "count": 1
-    },
     "e18e/prefer-static-regex": {
       "count": 2
     },

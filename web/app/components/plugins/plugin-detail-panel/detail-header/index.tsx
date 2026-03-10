@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -191,25 +191,43 @@ const DetailHeader = ({
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
-              <Tooltip popupContent={t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
-                <div>
-                  <Badge className="mr-1 cursor-pointer px-1">
-                    <AutoUpdateLine className="size-3" />
-                  </Badge>
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={0}
+                  render={(
+                    <div>
+                      <Badge className="mr-1 cursor-pointer px-1">
+                        <AutoUpdateLine className="size-3" />
+                      </Badge>
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}
+                </TooltipContent>
               </Tooltip>
             )}
 
             {/* Update Button */}
             {(hasNewVersion || isFromGitHub) && (
-              <Button
-                variant="secondary-accent"
-                size="small"
-                className="!h-5"
-                onClick={handleTriggerLatestUpdate}
-              >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  delay={300}
+                  render={(
+                    <Button
+                      variant="secondary-accent"
+                      size="small"
+                      className="!h-5"
+                      onClick={handleTriggerLatestUpdate}
+                    >
+                      {t('detailPanel.operation.update', { ns: 'plugin' })}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 

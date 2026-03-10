@@ -2,7 +2,9 @@ import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -84,31 +86,42 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
           sideOffset={4}
           alignOffset={0}
           trigger={(
-            <span
+            <Badge
               className={cn(
-                'relative inline-flex min-w-5 items-center justify-center gap-[3px] rounded-md border border-divider-deep bg-state-base-hover px-[5px] py-[2px] text-text-tertiary system-xs-medium-uppercase',
-                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover-alt',
+                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
               )}
-            >
-              <span>{version}</span>
-              {isFromMarketplace && <span aria-hidden className="i-ri-arrow-left-right-line h-3 w-3" />}
-              {hasNewVersion && (
-                <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-state-destructive-solid" />
+              uppercase={false}
+              text={(
+                <>
+                  <span>{version}</span>
+                  {isFromMarketplace && <span aria-hidden className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
+                </>
               )}
-            </span>
+              hasRedCornerMark={hasNewVersion}
+            />
           )}
         />
       )}
 
       {(hasNewVersion || isFromGitHub) && (
-        <Button
-          variant="secondary-accent"
-          size="small"
-          className="!h-5"
-          onClick={handleTriggerLatestUpdate}
-        >
-          {t('detailPanel.operation.update', { ns: 'plugin' })}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            delay={300}
+            render={(
+              <Button
+                variant="secondary-accent"
+                size="small"
+                className="!h-5"
+                onClick={handleTriggerLatestUpdate}
+              >
+                {t('detailPanel.operation.update', { ns: 'plugin' })}
+              </Button>
+            )}
+          />
+          <TooltipContent>
+            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <OperationDropdown
@@ -118,7 +131,6 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
-        popupClassName="w-[192px]"
       />
 
       <HeaderModals

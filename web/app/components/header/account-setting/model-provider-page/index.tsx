@@ -2,13 +2,15 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
@@ -45,18 +47,18 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
   }, [providers])
-  const { data: installedPlugins } = useCheckInstalled({
-    pluginIds: allPluginIds,
+  const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
+    input: { body: { plugin_ids: allPluginIds } },
     enabled: allPluginIds.length > 0,
-  })
+    staleTime: 0,
+  }))
+  const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {
     const map = new Map<string, PluginDetail>()
-    if (installedPlugins?.plugins) {
-      for (const plugin of installedPlugins.plugins)
-        map.set(plugin.plugin_id, plugin)
-    }
+    for (const plugin of enrichedPlugins)
+      map.set(plugin.plugin_id, plugin)
     return map
-  }, [installedPlugins])
+  }, [enrichedPlugins])
   const enableMarketplace = systemFeatures?.enable_marketplace ?? false
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
@@ -72,7 +74,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         provider.custom_configuration.status === CustomConfigurationStatusEnum.active
         || (
           provider.system_configuration.enabled === true
-          && provider.system_configuration.quota_configurations.find(item => item.quota_type === provider.system_configuration.current_quota_type)
+          && provider.system_configuration.quota_configurations.some(item => item.quota_type === provider.system_configuration.current_quota_type)
         )
       ) {
         configuredProviders.push(provider)
