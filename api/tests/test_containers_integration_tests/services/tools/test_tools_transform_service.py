@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -27,7 +28,7 @@ class TestToolTransformService:
                 }
 
     def _create_test_tool_provider(
-        self, db_session_with_containers, mock_external_service_dependencies, provider_type="api"
+        self, db_session_with_containers: Session, mock_external_service_dependencies, provider_type="api"
     ):
         """
         Helper method to create a test tool provider for testing.
@@ -88,14 +89,12 @@ class TestToolTransformService:
         else:
             raise ValueError(f"Unknown provider type: {provider_type}")
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         return provider
 
-    def test_get_plugin_icon_url_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_plugin_icon_url_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful plugin icon URL generation.
 
@@ -125,7 +124,7 @@ class TestToolTransformService:
         assert result == expected_url
 
     def test_get_plugin_icon_url_with_empty_console_url(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test plugin icon URL generation when CONSOLE_API_URL is empty.
@@ -155,7 +154,7 @@ class TestToolTransformService:
         assert result == expected_url
 
     def test_get_tool_provider_icon_url_builtin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for builtin providers.
@@ -193,7 +192,7 @@ class TestToolTransformService:
         assert result == expected_encoded
 
     def test_get_tool_provider_icon_url_api_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for API providers.
@@ -219,7 +218,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_api_invalid_json(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tool provider icon URL generation for API providers with invalid JSON.
@@ -245,7 +244,7 @@ class TestToolTransformService:
         assert result["content"] == "😁" or result["content"] == "\ud83d\ude01"
 
     def test_get_tool_provider_icon_url_workflow_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for workflow providers.
@@ -270,7 +269,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_mcp_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful tool provider icon URL generation for MCP providers.
@@ -295,7 +294,7 @@ class TestToolTransformService:
         assert result["content"] == "🔧"
 
     def test_get_tool_provider_icon_url_unknown_type(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tool provider icon URL generation for unknown provider types.
@@ -316,7 +315,9 @@ class TestToolTransformService:
         # Assert: Verify the expected outcomes
         assert result == ""
 
-    def test_repack_provider_dict_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_dict_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful provider repacking with dictionary input.
 
@@ -340,7 +341,9 @@ class TestToolTransformService:
         # Note: provider name may contain spaces that get URL encoded
         assert provider["name"].replace(" ", "%20") in provider["icon"] or provider["name"] in provider["icon"]
 
-    def test_repack_provider_entity_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_entity_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful provider repacking with ToolProviderApiEntity input.
 
@@ -388,7 +391,7 @@ class TestToolTransformService:
         assert "test_icon_dark.png" in provider.icon_dark
 
     def test_repack_provider_entity_no_plugin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful provider repacking with ToolProviderApiEntity input without plugin_id.
@@ -434,7 +437,9 @@ class TestToolTransformService:
         assert provider.icon_dark["background"] == "#252525"
         assert provider.icon_dark["content"] == "🔧"
 
-    def test_repack_provider_entity_no_dark_icon(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_repack_provider_entity_no_dark_icon(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test provider repacking with ToolProviderApiEntity input without dark icon.
 
@@ -476,7 +481,7 @@ class TestToolTransformService:
         assert provider.icon_dark == ""
 
     def test_builtin_provider_to_user_provider_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of builtin provider to user provider.
@@ -544,7 +549,7 @@ class TestToolTransformService:
         assert result.original_credentials == {"api_key": "decrypted_key"}
 
     def test_builtin_provider_to_user_provider_plugin_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of builtin provider to user provider with plugin.
@@ -588,7 +593,7 @@ class TestToolTransformService:
         assert result.allow_delete is False
 
     def test_builtin_provider_to_user_provider_no_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of builtin provider to user provider without credentials.
@@ -629,7 +634,9 @@ class TestToolTransformService:
         assert result.allow_delete is False
         assert result.masked_credentials == {"api_key": ""}
 
-    def test_api_provider_to_controller_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_api_provider_to_controller_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful conversion of API provider to controller.
 
@@ -654,10 +661,8 @@ class TestToolTransformService:
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -668,7 +673,7 @@ class TestToolTransformService:
         # Additional assertions would depend on the actual controller implementation
 
     def test_api_provider_to_controller_api_key_query(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of API provider to controller with api_key_query auth type.
@@ -692,10 +697,8 @@ class TestToolTransformService:
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -705,7 +708,7 @@ class TestToolTransformService:
         assert hasattr(result, "from_db")
 
     def test_api_provider_to_controller_backward_compatibility(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of API provider to controller with backward compatibility auth types.
@@ -730,10 +733,8 @@ class TestToolTransformService:
             tools_str="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Act: Execute the method under test
         result = ToolTransformService.api_provider_to_controller(provider)
@@ -743,7 +744,7 @@ class TestToolTransformService:
         assert hasattr(result, "from_db")
 
     def test_workflow_provider_to_controller_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of workflow provider to controller.
@@ -768,10 +769,8 @@ class TestToolTransformService:
             parameter_configuration="[]",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         # Mock the WorkflowToolProviderController.from_db method to avoid app dependency
         with patch("services.tools.tools_transform_service.WorkflowToolProviderController.from_db") as mock_from_db:

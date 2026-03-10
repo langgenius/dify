@@ -545,7 +545,7 @@ class TestExternalDatasetServiceProcessExternalApi:
             params={},
         )
 
-        from core.workflow.nodes.http_request.exc import InvalidHttpMethodError
+        from dify_graph.nodes.http_request.exc import InvalidHttpMethodError
 
         with pytest.raises(InvalidHttpMethodError):
             ExternalDatasetService.process_external_api(settings, files=None)

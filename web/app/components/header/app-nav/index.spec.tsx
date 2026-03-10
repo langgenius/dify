@@ -264,4 +264,78 @@ describe('AppNav', () => {
     await user.click(screen.getByTestId('load-more'))
     expect(fetchNextPage).not.toHaveBeenCalled()
   })
+
+  // Non-editor link path: isCurrentWorkspaceEditor=false → link ends with /overview
+  it('should build overview links when user is not editor', () => {
+    // Arrange
+    setupDefaultMocks({ isEditor: false })
+
+    // Act
+    render(<AppNav />)
+
+    // Assert
+    expect(screen.getByText('App 1 -> /app/app-1/overview')).toBeInTheDocument()
+  })
+
+  // !!appId false: query disabled, no nav items
+  it('should render no nav items when appId is undefined', () => {
+    // Arrange
+    setupDefaultMocks()
+    mockUseParams.mockReturnValue({} as ReturnType<typeof useParams>)
+    mockUseInfiniteAppList.mockReturnValue({
+      data: undefined,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useInfiniteAppList>)
+
+    // Act
+    render(<AppNav />)
+
+    // Assert
+    const navItems = screen.getByTestId('nav-items')
+    expect(navItems.children).toHaveLength(0)
+  })
+
+  // ADVANCED_CHAT OR branch: editor + ADVANCED_CHAT mode → link ends with /workflow
+  it('should build workflow link for ADVANCED_CHAT mode when user is editor', () => {
+    // Arrange
+    setupDefaultMocks({
+      isEditor: true,
+      appData: [
+        {
+          id: 'app-3',
+          name: 'Chat App',
+          mode: AppModeEnum.ADVANCED_CHAT,
+          icon_type: 'emoji',
+          icon: '💬',
+          icon_background: null,
+          icon_url: null,
+        },
+      ],
+    })
+
+    // Act
+    render(<AppNav />)
+
+    // Assert
+    expect(screen.getByText('Chat App -> /app/app-3/workflow')).toBeInTheDocument()
+  })
+
+  // No-match update path: appDetail.id doesn't match any nav item
+  it('should not change nav item names when appDetail id does not match any item', async () => {
+    // Arrange
+    setupDefaultMocks({ isEditor: true })
+    const { rerender } = render(<AppNav />)
+
+    // Act - set appDetail to a non-matching id
+    mockAppDetail = { id: 'non-existent-id', name: 'Unknown' }
+    rerender(<AppNav />)
+
+    // Assert - original name should be unchanged
+    await waitFor(() => {
+      expect(screen.getByText('App 1 -> /app/app-1/configuration')).toBeInTheDocument()
+    })
+  })
 })
