@@ -322,13 +322,14 @@ def test_retrieve_tokens_returns_defaults_when_optional_fields_missing() -> None
 
 def test_retrieve_tokens_returns_none_when_access_token_missing() -> None:
     # Arrange
-    entity = _build_mcp_provider_entity()
+    entity = _build_mcp_provider_entity().model_copy(update={"credentials": {"token": "encrypted"}})
 
-    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value={"access_token": ""}):
+    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value={"access_token": ""}) as mock_decrypt:
         # Act
         tokens = entity.retrieve_tokens()
 
     # Assert
+    mock_decrypt.assert_called_once()
     assert tokens is None
 
 
