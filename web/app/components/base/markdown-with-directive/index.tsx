@@ -34,17 +34,21 @@ function isMdastRoot(node: Parameters<typeof visit>[0]): node is MdastRoot {
   return candidate.type === 'root' && Array.isArray(candidate.children)
 }
 
+// Move the regex to module scope to avoid recompilation
+const DIRECTIVE_ATTRIBUTE_BLOCK_REGEX = /^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i
+const ATTRIBUTE_BLOCK_REGEX = /\{([^}\n]*)\}/g
+
 function normalizeDirectiveAttributeBlocks(markdown: string): string {
   const lines = markdown.split('\n')
 
   return lines.map((line) => {
-    const match = line.match(/^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i)
+    const match = line.match(DIRECTIVE_ATTRIBUTE_BLOCK_REGEX)
     if (!match)
       return line
 
     const directivePrefix = match[1]
     const attributeBlocks = match[2]
-    const attrMatches = [...attributeBlocks.matchAll(/\{([^}\n]*)\}/g)]
+    const attrMatches = [...attributeBlocks.matchAll(ATTRIBUTE_BLOCK_REGEX)]
     if (attrMatches.length === 0)
       return line
 
@@ -99,6 +103,8 @@ function isValidDirectiveAst(tree: Parameters<typeof visit>[0]): boolean {
   return isValid
 }
 
+const UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX = /^\s*:{2,}[a-z][\w-]*/im
+
 function hasUnparsedDirectiveLikeText(tree: Parameters<typeof visit>[0]): boolean {
   let hasInvalidText = false
 
@@ -108,7 +114,7 @@ function hasUnparsedDirectiveLikeText(tree: Parameters<typeof visit>[0]): boolea
 
     const textNode = node as { value?: string }
     const value = textNode.value || ''
-    if (/^\s*:{2,}[a-z][\w-]*/im.test(value))
+    if (UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX.test(value))
       hasInvalidText = true
   })
 
