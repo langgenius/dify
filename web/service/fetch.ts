@@ -41,6 +41,8 @@ export type ResponseError = {
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async (_request, _options, response) => {
     const clonedResponse = response.clone()
+    // Keep a separate error response readable after ky cleans up hook internals.
+    const errorResponse = response.clone()
     if (!/^([23])\d{2}$/.test(String(clonedResponse.status))) {
       const bodyJson = clonedResponse.json() as Promise<ResponseError>
       switch (clonedResponse.status) {
@@ -53,14 +55,14 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
           })
           break
         case 401:
-          return Promise.reject(response)
+          return Promise.reject(errorResponse)
         // fall through
         default:
           bodyJson.then((data: ResponseError) => {
             if (!otherOptions.silent)
               Toast.notify({ type: 'error', message: data.message })
           })
-          return Promise.reject(response)
+          return Promise.reject(errorResponse)
       }
     }
   }
@@ -137,7 +139,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
         redirect: 'follow',
-      }
+      } as const
     : {
         mode: 'cors',
         credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -146,8 +148,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         }),
         method: 'GET',
         redirect: 'follow',
-      }
-  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+      } as const
+  const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
   const headers = new Headers(headersFromProps || {})
 
   const {
