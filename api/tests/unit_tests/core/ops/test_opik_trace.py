@@ -7,6 +7,7 @@ Covers:
 - workflow_trace without message_id: node spans parent to root_span_id (not workflow_app_log_id)
 - workflow_trace with message_id still creates root span keyed on workflow_run_id (unchanged path)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -135,8 +136,7 @@ class TestWorkflowTraceWithoutMessageId:
             patch("core.ops.opik_trace.opik_trace.db") as mock_db,
             patch("core.ops.opik_trace.opik_trace.sessionmaker"),
             patch(
-                "core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory"
-                ".create_workflow_node_execution_repository",
+                "core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
                 return_value=fake_repo,
             ),
         ):
@@ -268,8 +268,7 @@ class TestWorkflowTraceWithMessageId:
             patch("core.ops.opik_trace.opik_trace.db") as mock_db,
             patch("core.ops.opik_trace.opik_trace.sessionmaker"),
             patch(
-                "core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory"
-                ".create_workflow_node_execution_repository",
+                "core.ops.opik_trace.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
                 return_value=fake_repo,
             ),
         ):
