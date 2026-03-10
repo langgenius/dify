@@ -66,19 +66,16 @@ class PluginManagerService:
     def try_pre_uninstall_plugin(cls, body: PreUninstallPluginRequest):
         try:
             # the invocation must be synchronous.
-            EnterprisePluginManagerRequest.send_request(  # pyright: ignore[reportUnknownMemberType]
+            EnterprisePluginManagerRequest.send_request(
                 "POST",
                 "/pre-uninstall-plugin",
-                json=body.model_dump(),  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                json=body.model_dump(),
                 raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
-                """
-                failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s, 
-                this may cause plugin %s to be automatically garbage collected
-                """,
+                "failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s",
                 body.tenant_id,
                 body.plugin_unique_identifier,
             )
