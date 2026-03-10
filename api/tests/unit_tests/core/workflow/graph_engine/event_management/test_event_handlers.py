@@ -14,6 +14,7 @@ from dify_graph.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.entities import RetryConfig
 from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
 
 
@@ -38,7 +39,7 @@ class _StubNode:
         self.retry = False
 
 
-def _build_event_handler(node_id: str) -> tuple[EventHandler, EventManager, GraphExecution]:
+def _build_event_handler(node_id: str) -> tuple[EventHandler, EventManager, GraphExecution, VariablePool]:
     """Construct an EventHandler with in-memory dependencies for testing."""
 
     node = _StubNode(node_id)
@@ -63,14 +64,14 @@ def _build_event_handler(node_id: str) -> tuple[EventHandler, EventManager, Grap
         error_handler=_StubErrorHandler(),
     )
 
-    return handler, event_manager, graph_execution
+    return handler, event_manager, graph_execution, variable_pool
 
 
 def test_retry_does_not_emit_additional_start_event() -> None:
     """Ensure retry attempts do not produce duplicate start events."""
 
     node_id = "test-node"
-    handler, event_manager, graph_execution = _build_event_handler(node_id)
+    handler, event_manager, graph_execution, _ = _build_event_handler(node_id)
 
     execution_id = "exec-1"
     node_type = NodeType.CODE
@@ -117,3 +118,30 @@ def test_retry_does_not_emit_additional_start_event() -> None:
 
     node_execution = graph_execution.get_or_create_node_execution(node_id)
     assert node_execution.retry_count == 1
+
+
+def test_store_node_outputs_rebuilds_file_mapping_to_file_segment() -> None:
+    """Ensure JSON-like file payloads are restored before writing to the variable pool."""
+
+    node_id = "test-node"
+    handler, _, _, variable_pool = _build_event_handler(node_id)
+
+    handler._store_node_outputs(
+        node_id,
+        {
+            "input_file": {
+                "dify_model_identity": "__dify__file__",
+                "tenant_id": "tenant-1",
+                "type": "image",
+                "transfer_method": "remote_url",
+                "remote_url": "https://example.com/file.png",
+                "filename": "file.png",
+                "extension": ".png",
+                "mime_type": "image/png",
+                "size": 1,
+            }
+        },
+    )
+
+    segment = variable_pool.get([node_id, "input_file"])
+    assert isinstance(segment, FileSegment)

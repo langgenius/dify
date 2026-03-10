@@ -58,7 +58,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             session_factory: SQLAlchemy sessionmaker or engine for fallback operations
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
-            triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
+            triggered_from: Source of the execution trigger (for example DEBUGGING, APP_RUN, or RERUN)
         """
         # Store session factory for fallback operations
         if isinstance(session_factory, Engine):

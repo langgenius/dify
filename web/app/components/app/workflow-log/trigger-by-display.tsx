@@ -33,6 +33,7 @@ const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: any, 
     'webhook': t('triggerBy.webhook', { ns: 'appLog' }),
     'schedule': t('triggerBy.schedule', { ns: 'appLog' }),
     'plugin': t('triggerBy.plugin', { ns: 'appLog' }),
+    'rerun': t('triggerBy.rerun', { ns: 'appLog' }),
     'rag-pipeline-run': t('triggerBy.ragPipelineRun', { ns: 'appLog' }),
     'rag-pipeline-debugging': t('triggerBy.ragPipelineDebugging', { ns: 'appLog' }),
   }
@@ -82,6 +83,7 @@ const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: Trigg
         />
       )
     case 'debugging':
+    case 'rerun':
       return (
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
           <Code className="h-4 w-4 text-text-primary-on-surface" />
@@ -123,7 +125,7 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
         {icon}
       </div>
       {showText && (
-        <span className="system-sm-regular text-text-secondary">
+        <span className="text-text-secondary system-sm-regular">
           {displayName}
         </span>
       )}

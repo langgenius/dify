@@ -19,6 +19,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
+from dify_graph.entities.workflow_execution import WorkflowRunRerunMetadata
 from dify_graph.enums import (
     SystemVariableKey,
     WorkflowExecutionStatus,
@@ -27,6 +28,7 @@ from dify_graph.enums import (
     WorkflowType,
 )
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_engine.replay import normalize_execution_metadata
 from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
@@ -81,6 +83,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         trace_manager: TraceQueueManager | None = None,
+        rerun_metadata: WorkflowRunRerunMetadata | None = None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
@@ -88,6 +91,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._trace_manager = trace_manager
+        self._rerun_metadata = rerun_metadata
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
@@ -168,6 +172,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             inputs=self._prepare_workflow_inputs(),
             started_at=naive_utc_now(),
         )
+        workflow_execution.rerun_metadata = self._rerun_metadata
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
@@ -356,19 +361,26 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         finished_at = naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)
         start_at = snapshot.created_at if snapshot else domain_execution.created_at
+        metadata = normalize_execution_metadata(node_result.metadata)
+        is_replay = metadata.get(WorkflowNodeExecutionMetadataKey.EXECUTION_MODE) == "replay"
         domain_execution.status = status
         domain_execution.finished_at = finished_at
-        domain_execution.elapsed_time = max((finished_at - start_at).total_seconds(), 0.0)
+        domain_execution.elapsed_time = 0.0 if is_replay else max((finished_at - start_at).total_seconds(), 0.0)
 
         if error:
             domain_execution.error = error
 
         if update_outputs:
+            if is_replay:
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
+            if node_result.edge_source_handle and node_result.edge_source_handle != "source":
+                metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = node_result.edge_source_handle
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
                 outputs=node_result.outputs,
-                metadata=node_result.metadata,
+                metadata=metadata or None,
             )
 
         self._workflow_node_execution_repository.save(domain_execution)

@@ -112,6 +112,14 @@ def _create_workflow_run_from_execution(
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
     workflow_run.finished_at = execution.finished_at
+    if execution.rerun_metadata is not None:
+        rerun_metadata = execution.rerun_metadata
+        workflow_run.rerun_from_workflow_run_id = rerun_metadata.rerun_from_workflow_run_id
+        workflow_run.rerun_from_node_id = rerun_metadata.rerun_from_node_id
+        workflow_run.rerun_overrides = json.dumps(rerun_metadata.rerun_overrides, ensure_ascii=False)
+        workflow_run.rerun_scope = json.dumps(rerun_metadata.rerun_scope.model_dump(mode="json"), ensure_ascii=False)
+        workflow_run.rerun_chain_root_workflow_run_id = rerun_metadata.rerun_chain_root_workflow_run_id
+        workflow_run.rerun_kind = rerun_metadata.rerun_kind
 
     return workflow_run
 

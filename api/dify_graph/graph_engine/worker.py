@@ -5,25 +5,42 @@ Workers pull node IDs from the ready_queue, execute nodes, and push events
 to the event_queue for the dispatcher to process.
 """
 
+import copy
+import logging
 import queue
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
 from dify_graph.context import IExecutionContext
+from dify_graph.enums import NodeExecutionType, WorkflowNodeExecutionMetadataKey
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, is_node_result_event
+from dify_graph.graph_engine.replay import (
+    ExecutionStrategyDecision,
+    NodeExecutionStrategyResolver,
+    ReplayExecutionExecutor,
+    normalize_execution_metadata,
+)
+from dify_graph.graph_events import (
+    GraphNodeEventBase,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
+    NodeRunRetryEvent,
+    is_node_result_event,
+)
 from dify_graph.nodes.base.node import Node
 
 from .ready_queue import ReadyQueue
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 @final
@@ -44,6 +61,8 @@ class Worker(threading.Thread):
         layers: Sequence[GraphEngineLayer],
         worker_id: int = 0,
         execution_context: IExecutionContext | None = None,
+        node_execution_strategy_resolver: NodeExecutionStrategyResolver | None = None,
+        replay_execution_executor: ReplayExecutionExecutor | None = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -65,6 +84,8 @@ class Worker(threading.Thread):
         self._stop_event = threading.Event()
         self._layers = layers if layers is not None else []
         self._last_task_time = time.time()
+        self._node_execution_strategy_resolver = node_execution_strategy_resolver
+        self._replay_execution_executor = replay_execution_executor
 
     def stop(self) -> None:
         """Signal the worker to stop processing."""
@@ -125,6 +146,8 @@ class Worker(threading.Thread):
             node: The node instance to execute
         """
         node.ensure_execution_id()
+        execution_decision = self._resolve_execution_strategy(node)
+        self._log_execution_strategy(node=node, decision=execution_decision)
 
         error: Exception | None = None
         result_event: GraphNodeEventBase | None = None
@@ -134,8 +157,7 @@ class Worker(threading.Thread):
             with self._execution_context:
                 self._invoke_node_run_start_hooks(node)
                 try:
-                    node_events = node.run()
-                    for event in node_events:
+                    for event in self._run_node_events(node=node, decision=execution_decision):
                         self._event_queue.put(event)
                         if is_node_result_event(event):
                             result_event = event
@@ -147,8 +169,7 @@ class Worker(threading.Thread):
         else:
             self._invoke_node_run_start_hooks(node)
             try:
-                node_events = node.run()
-                for event in node_events:
+                for event in self._run_node_events(node=node, decision=execution_decision):
                     self._event_queue.put(event)
                     if is_node_result_event(event):
                         result_event = event
@@ -157,6 +178,131 @@ class Worker(threading.Thread):
                 raise
             finally:
                 self._invoke_node_run_end_hooks(node, error, result_event)
+
+    def _run_node_events(
+        self,
+        *,
+        node: Node,
+        decision: ExecutionStrategyDecision,
+    ) -> Generator[GraphNodeEventBase, None, None]:
+        effective_decision = decision
+
+        if effective_decision.mode == "replay":
+            replay_snapshot = effective_decision.snapshot
+            if replay_snapshot is not None and self._replay_execution_executor is not None:
+                try:
+                    replay_events = self._replay_execution_executor.execute(node=node, snapshot=replay_snapshot)
+                    for event in replay_events:
+                        self._inject_execution_metadata(event=event, decision=effective_decision)
+                        yield event
+                    return
+                except Exception:
+                    logger.exception(
+                        "Replay node execution failed, fallback to real. node_id=%s execution_id=%s",
+                        node.id,
+                        node.execution_id,
+                    )
+                    effective_decision = ExecutionStrategyDecision.real(reason="replay_executor_failed")
+            else:
+                effective_decision = ExecutionStrategyDecision.real(reason="replay_executor_unavailable")
+
+            self._log_execution_strategy(node=node, decision=effective_decision)
+
+        for event in node.run():
+            self._inject_execution_metadata(event=event, decision=effective_decision)
+            yield event
+
+    def _resolve_execution_strategy(self, node: Node) -> ExecutionStrategyDecision:
+        resolver = self._node_execution_strategy_resolver
+        if resolver is None:
+            return ExecutionStrategyDecision.real()
+        return resolver.resolve(node_id=node.id, is_branch_node=node.execution_type == NodeExecutionType.BRANCH)
+
+    def _inject_execution_metadata(self, *, event: GraphNodeEventBase, decision: ExecutionStrategyDecision) -> None:
+        if not (is_node_result_event(event) or isinstance(event, (NodeRunExceptionEvent, NodeRunRetryEvent))):
+            return
+        if self._node_execution_strategy_resolver is None:
+            return
+
+        self._apply_override_outputs(event=event)
+
+        metadata = normalize_execution_metadata(event.node_run_result.metadata)
+        metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] = decision.mode
+        if decision.mode == "real" and decision.reason:
+            metadata[WorkflowNodeExecutionMetadataKey.STRATEGY_REASON] = decision.reason
+
+        if decision.mode == "replay" and decision.snapshot is not None:
+            metadata[WorkflowNodeExecutionMetadataKey.SOURCE_WORKFLOW_RUN_ID] = decision.snapshot.source_workflow_run_id
+            metadata[WorkflowNodeExecutionMetadataKey.SOURCE_NODE_EXECUTION_ID] = (
+                decision.snapshot.source_node_execution_id
+            )
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = 0
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = 0
+            replay_edge_source_handle = decision.snapshot.resolved_edge_source_handle()
+            if replay_edge_source_handle:
+                metadata[WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE] = replay_edge_source_handle
+                event.node_run_result.edge_source_handle = replay_edge_source_handle
+
+        if event.node_run_result.edge_source_handle and event.node_run_result.edge_source_handle != "source":
+            metadata.setdefault(
+                WorkflowNodeExecutionMetadataKey.EDGE_SOURCE_HANDLE,
+                event.node_run_result.edge_source_handle,
+            )
+
+        event.node_run_result.metadata = metadata
+
+    def _apply_override_outputs(self, *, event: GraphNodeEventBase) -> None:
+        outputs = event.node_run_result.outputs
+        if not isinstance(outputs, Mapping) or not outputs:
+            return
+
+        resolver = self._node_execution_strategy_resolver
+        if resolver is None:
+            return
+
+        has_override_selector = getattr(resolver, "has_override_selector", None)
+        if not callable(has_override_selector):
+            return
+
+        node = self._graph.nodes.get(event.node_id)
+        if node is None:
+            return
+        variable_pool = node.graph_runtime_state.variable_pool
+
+        merged_outputs = dict(outputs)
+        updated = False
+        for variable_name in outputs:
+            if not isinstance(variable_name, str):
+                continue
+            if not has_override_selector(node_id=event.node_id, variable_name=variable_name):
+                continue
+
+            override_segment = variable_pool.get([event.node_id, variable_name])
+            if override_segment is None:
+                continue
+
+            merged_outputs[variable_name] = copy.deepcopy(override_segment.value)
+            updated = True
+
+        if updated:
+            event.node_run_result.outputs = merged_outputs
+
+    @staticmethod
+    def _log_execution_strategy(*, node: Node, decision: ExecutionStrategyDecision) -> None:
+        if decision.mode == "real" and decision.reason is None:
+            return
+
+        source_workflow_run_id = decision.snapshot.source_workflow_run_id if decision.snapshot is not None else None
+        source_node_execution_id = decision.snapshot.source_node_execution_id if decision.snapshot is not None else None
+        logger.info(
+            "Rerun node strategy node_id=%s execution_mode=%s strategy_reason=%s source_workflow_run_id=%s "
+            "source_node_execution_id=%s",
+            node.id,
+            decision.mode,
+            decision.reason,
+            source_workflow_run_id,
+            source_node_execution_id,
+        )
 
     def _invoke_node_run_start_hooks(self, node: Node) -> None:
         """Invoke on_node_run_start hooks for all layers."""

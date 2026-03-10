@@ -1,5 +1,6 @@
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
@@ -35,6 +36,107 @@ class WorkflowRunService:
             self._session_factory
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+
+    @staticmethod
+    def _normalize_workflow_run_status(status: Any) -> str | None:
+        if status is None:
+            return None
+        if isinstance(status, str):
+            return status
+
+        status_value = getattr(status, "value", None)
+        if isinstance(status_value, str):
+            return status_value
+
+        return str(status)
+
+    def _build_rerun_source_workflow_run(self, source_run: WorkflowRun | None) -> dict[str, Any] | None:
+        if source_run is None:
+            return None
+
+        return {
+            "id": source_run.id,
+            "status": self._normalize_workflow_run_status(source_run.status),
+            "finished_at": source_run.finished_at,
+        }
+
+    @staticmethod
+    def _extract_rerun_from_node_title(workflow_run: WorkflowRun | None) -> str | None:
+        if workflow_run is None or not workflow_run.rerun_from_node_id:
+            return None
+
+        source_node_id = workflow_run.rerun_from_node_id
+        graph = workflow_run.graph_dict
+        nodes = graph.get("nodes") if isinstance(graph, Mapping) else None
+        if not isinstance(nodes, list):
+            return None
+
+        for node in nodes:
+            if not isinstance(node, Mapping):
+                continue
+            if str(node.get("id")) != source_node_id:
+                continue
+
+            node_data = node.get("data")
+            if isinstance(node_data, Mapping):
+                node_title = node_data.get("title")
+                if isinstance(node_title, str) and node_title:
+                    return node_title
+
+            fallback_title = node.get("title")
+            if isinstance(fallback_title, str) and fallback_title:
+                return fallback_title
+
+            return None
+
+        return None
+
+    def _attach_rerun_source_workflow_run(self, app_model: App, workflow_run: WorkflowRun | None) -> None:
+        if workflow_run is None:
+            return
+
+        workflow_run_obj = cast("Any", workflow_run)
+        workflow_run_obj.rerun_from_node_title = self._extract_rerun_from_node_title(workflow_run)
+
+        source_run_id = workflow_run.rerun_from_workflow_run_id
+        if not source_run_id:
+            workflow_run_obj.rerun_source_workflow_run = None
+            return
+
+        source_run = self._workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_id=source_run_id,
+        )
+        workflow_run_obj.rerun_source_workflow_run = self._build_rerun_source_workflow_run(source_run)
+
+    def _attach_rerun_source_workflow_runs(self, app_model: App, workflow_runs: Sequence[WorkflowRun]) -> None:
+        source_run_ids = {
+            workflow_run.rerun_from_workflow_run_id
+            for workflow_run in workflow_runs
+            if workflow_run.rerun_from_workflow_run_id
+        }
+
+        if not source_run_ids:
+            for workflow_run in workflow_runs:
+                workflow_run_obj = cast("Any", workflow_run)
+                workflow_run_obj.rerun_from_node_title = self._extract_rerun_from_node_title(workflow_run)
+                workflow_run_obj.rerun_source_workflow_run = None
+            return
+
+        source_runs = self._workflow_run_repo.get_workflow_runs_by_ids(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_ids=tuple(source_run_ids),
+        )
+        source_runs_by_id: dict[str, WorkflowRun] = {source_run.id: source_run for source_run in source_runs}
+
+        for workflow_run in workflow_runs:
+            source_run_id = workflow_run.rerun_from_workflow_run_id
+            source_run = source_runs_by_id.get(source_run_id) if source_run_id else None
+            workflow_run_obj = cast("Any", workflow_run)
+            workflow_run_obj.rerun_from_node_title = self._extract_rerun_from_node_title(workflow_run)
+            workflow_run_obj.rerun_source_workflow_run = self._build_rerun_source_workflow_run(source_run)
 
     def get_paginate_advanced_chat_workflow_runs(
         self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING
@@ -73,7 +175,12 @@ class WorkflowRunService:
         return pagination
 
     def get_paginate_workflow_runs(
-        self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING
+        self,
+        app_model: App,
+        args: dict,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom] = (
+            WorkflowRunTriggeredFrom.DEBUGGING
+        ),
     ) -> InfiniteScrollPagination:
         """
         Get workflow run list
@@ -86,7 +193,7 @@ class WorkflowRunService:
         last_id = args.get("last_id")
         status = args.get("status")
 
-        return self._workflow_run_repo.get_paginated_workflow_runs(
+        pagination = self._workflow_run_repo.get_paginated_workflow_runs(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             triggered_from=triggered_from,
@@ -94,6 +201,8 @@ class WorkflowRunService:
             last_id=last_id,
             status=status,
         )
+        self._attach_rerun_source_workflow_runs(app_model=app_model, workflow_runs=pagination.data)
+        return pagination
 
     def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun | None:
         """
@@ -102,18 +211,22 @@ class WorkflowRunService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        return self._workflow_run_repo.get_workflow_run_by_id(
+        workflow_run = self._workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             run_id=run_id,
         )
+        self._attach_rerun_source_workflow_run(app_model=app_model, workflow_run=workflow_run)
+        return workflow_run
 
     def get_workflow_runs_count(
         self,
         app_model: App,
         status: str | None = None,
         time_range: str | None = None,
-        triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom] = (
+            WorkflowRunTriggeredFrom.DEBUGGING
+        ),
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics

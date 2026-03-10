@@ -76,6 +76,7 @@
   "triggerBy.plugin": "Plugin",
   "triggerBy.ragPipelineDebugging": "RAG Debugging",
   "triggerBy.ragPipelineRun": "RAG Pipeline",
+  "triggerBy.rerun": "Rerun",
   "triggerBy.schedule": "Schedule",
   "triggerBy.webhook": "Webhook",
   "viewLog": "View Log",

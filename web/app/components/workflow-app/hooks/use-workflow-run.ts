@@ -6,6 +6,7 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { usePathname } from 'next/navigation'
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useReactFlow,
   useStoreApi,
@@ -38,10 +39,25 @@ type HandleRunOptions = {
   pluginNodeId?: string
   allNodeIds?: string[]
 }
+type HandleRunParams = {
+  token?: string
+  appId?: string
+} & Record<string, unknown>
+
+type SetupRunSessionOptions = {
+  syncDraft?: boolean
+  abortCurrentRun?: boolean
+}
 
 type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
-
-const controllerKeyMap: Record<DebuggableTriggerType, string> = {
+type DebugControllerKey = '__webhookDebugAbortController' | '__pluginDebugAbortController' | '__allTriggersDebugAbortController' | '__scheduleDebugAbortController'
+type DebugControllerWindow = Window & {
+  __webhookDebugAbortController?: AbortController
+  __pluginDebugAbortController?: AbortController
+  __allTriggersDebugAbortController?: AbortController
+  __scheduleDebugAbortController?: AbortController
+}
+const controllerKeyMap: Record<DebuggableTriggerType, DebugControllerKey> = {
   [TriggerType.Webhook]: '__webhookDebugAbortController',
   [TriggerType.Plugin]: '__pluginDebugAbortController',
   [TriggerType.All]: '__allTriggersDebugAbortController',
@@ -55,7 +71,43 @@ const debugLabelMap: Record<DebuggableTriggerType, string> = {
   [TriggerType.Schedule]: 'Schedule',
 }
 
+const getDebugControllerWindow = (): DebugControllerWindow => window as DebugControllerWindow
+
+const getStringValue = (value: unknown): string | undefined => {
+  if (typeof value === 'string')
+    return value
+  return undefined
+}
+
+type ForwardSseCallbacks = {
+  onNodeStarted?: IOtherOptions['onNodeStarted']
+  onNodeFinished?: IOtherOptions['onNodeFinished']
+  onIterationStart?: IOtherOptions['onIterationStart']
+  onIterationNext?: IOtherOptions['onIterationNext']
+  onIterationFinish?: IOtherOptions['onIterationFinish']
+  onLoopStart?: IOtherOptions['onLoopStart']
+  onLoopNext?: IOtherOptions['onLoopNext']
+  onLoopFinish?: IOtherOptions['onLoopFinish']
+  onNodeRetry?: IOtherOptions['onNodeRetry']
+  onAgentLog?: IOtherOptions['onAgentLog']
+  onWorkflowPaused?: IOtherOptions['onWorkflowPaused']
+  onHumanInputRequired?: IOtherOptions['onHumanInputRequired']
+  onHumanInputFormFilled?: IOtherOptions['onHumanInputFormFilled']
+  onHumanInputFormTimeout?: IOtherOptions['onHumanInputFormTimeout']
+}
+
+type CreateSseCallbacksOptions = {
+  runHistoryUrl: string
+  clientWidth: number
+  clientHeight: number
+  forwardCallbacks?: ForwardSseCallbacks
+  continueFromPause?: (workflowRunId: string) => void
+  onTTSChunk?: IOtherOptions['onTTSChunk']
+  onTTSEnd?: IOtherOptions['onTTSEnd']
+}
+
 export const useWorkflowRun = () => {
+  const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -73,6 +125,30 @@ export const useWorkflowRun = () => {
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const getRerunErrorMessage = useCallback((code?: string, fallbackMessage?: string) => {
+    switch (code) {
+      case 'invalid_param':
+        return t('debug.rerun.errors.invalidParam', { ns: 'workflow' })
+      case 'workflow_run_not_found':
+      case 'target_node_not_found':
+        return t('debug.rerun.errors.notFound', { ns: 'workflow' })
+      case 'workflow_run_not_ended':
+        return t('debug.rerun.errors.sourceNotEnded', { ns: 'workflow' })
+      case 'unsupported_target_node_scope':
+        return t('debug.rerun.errors.unsupportedScope', { ns: 'workflow' })
+      case 'override_selector_invalid':
+      case 'override_out_of_scope':
+      case 'override_type_mismatch':
+        return t('debug.rerun.errors.overrideInvalid', { ns: 'workflow' })
+      case 'unsupported_app_mode':
+        return t('debug.rerun.errors.unsupportedAppMode', { ns: 'workflow' })
+      case 'rerun_execution_failed':
+        return t('debug.rerun.errors.executionFailed', { ns: 'workflow' })
+      default:
+        return fallbackMessage || t('debug.rerun.errors.executionFailed', { ns: 'workflow' })
+    }
+  }, [t])
 
   const {
     handleWorkflowStarted,
@@ -147,13 +223,57 @@ export const useWorkflowRun = () => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
-  const handleRun = useCallback(async (
-    params: any,
-    callback?: IOtherOptions,
-    options?: HandleRunOptions,
-  ) => {
-    const runMode: HandleRunMode = options?.mode ?? TriggerType.UserInput
-    const resolvedParams = params ?? {}
+  const clearAbortController = useCallback(() => {
+    abortControllerRef.current = null
+    const debugWindow = getDebugControllerWindow()
+    delete debugWindow.__webhookDebugAbortController
+    delete debugWindow.__pluginDebugAbortController
+    delete debugWindow.__scheduleDebugAbortController
+    delete debugWindow.__allTriggersDebugAbortController
+  }, [])
+
+  const clearListeningState = useCallback(() => {
+    const state = workflowStore.getState()
+    state.setIsListening(false)
+    state.setListeningTriggerType(null)
+    state.setListeningTriggerNodeId(null)
+    state.setListeningTriggerNodeIds([])
+    state.setListeningTriggerIsAll(false)
+  }, [workflowStore])
+
+  const setWorkflowRunningState = useCallback(() => {
+    workflowStore.getState().setWorkflowRunningData({
+      result: {
+        status: WorkflowRunningStatus.Running,
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
+      },
+      tracing: [],
+      resultText: '',
+    })
+  }, [workflowStore])
+
+  const setWorkflowFailedState = useCallback((message: string, withResultText = true) => {
+    const failedData = {
+      result: {
+        status: WorkflowRunningStatus.Failed,
+        error: message,
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
+      },
+      tracing: [],
+      ...(withResultText ? { resultText: '' } : {}),
+    }
+
+    workflowStore.getState().setWorkflowRunningData(failedData)
+  }, [workflowStore])
+
+  const setupRunSession = useCallback(async ({
+    syncDraft = false,
+    abortCurrentRun = false,
+  }: SetupRunSessionOptions = {}) => {
     const {
       getNodes,
       setNodes,
@@ -165,7 +285,141 @@ export const useWorkflowRun = () => {
       })
     })
     setNodes(newNodes)
-    await doSyncWorkflowDraft()
+
+    if (syncDraft)
+      await doSyncWorkflowDraft()
+
+    if (abortCurrentRun) {
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
+    }
+  }, [store, doSyncWorkflowDraft])
+
+  const createSseCallbacks = useCallback(({
+    runHistoryUrl,
+    clientWidth,
+    clientHeight,
+    forwardCallbacks,
+    continueFromPause,
+    onTTSChunk,
+    onTTSEnd,
+  }: CreateSseCallbacksOptions): IOtherOptions => {
+    const callbacks: IOtherOptions = {
+      onNodeStarted: (params) => {
+        handleWorkflowNodeStarted(params, { clientWidth, clientHeight })
+        if (forwardCallbacks?.onNodeStarted)
+          forwardCallbacks.onNodeStarted(params)
+      },
+      onNodeFinished: (params) => {
+        handleWorkflowNodeFinished(params)
+        if (forwardCallbacks?.onNodeFinished)
+          forwardCallbacks.onNodeFinished(params)
+      },
+      onIterationStart: (params) => {
+        handleWorkflowNodeIterationStarted(params, { clientWidth, clientHeight })
+        if (forwardCallbacks?.onIterationStart)
+          forwardCallbacks.onIterationStart(params)
+      },
+      onIterationNext: (params) => {
+        handleWorkflowNodeIterationNext(params)
+        if (forwardCallbacks?.onIterationNext)
+          forwardCallbacks.onIterationNext(params)
+      },
+      onIterationFinish: (params) => {
+        handleWorkflowNodeIterationFinished(params)
+        if (forwardCallbacks?.onIterationFinish)
+          forwardCallbacks.onIterationFinish(params)
+      },
+      onLoopStart: (params) => {
+        handleWorkflowNodeLoopStarted(params, { clientWidth, clientHeight })
+        if (forwardCallbacks?.onLoopStart)
+          forwardCallbacks.onLoopStart(params)
+      },
+      onLoopNext: (params) => {
+        handleWorkflowNodeLoopNext(params)
+        if (forwardCallbacks?.onLoopNext)
+          forwardCallbacks.onLoopNext(params)
+      },
+      onLoopFinish: (params) => {
+        handleWorkflowNodeLoopFinished(params)
+        if (forwardCallbacks?.onLoopFinish)
+          forwardCallbacks.onLoopFinish(params)
+      },
+      onNodeRetry: (params) => {
+        handleWorkflowNodeRetry(params)
+        if (forwardCallbacks?.onNodeRetry)
+          forwardCallbacks.onNodeRetry(params)
+      },
+      onAgentLog: (params) => {
+        handleWorkflowAgentLog(params)
+        if (forwardCallbacks?.onAgentLog)
+          forwardCallbacks.onAgentLog(params)
+      },
+      onTextChunk: (params) => {
+        handleWorkflowTextChunk(params)
+      },
+      onTextReplace: (params) => {
+        handleWorkflowTextReplace(params)
+      },
+      onWorkflowPaused: (params) => {
+        handleWorkflowPaused()
+        invalidateRunHistory(runHistoryUrl)
+        if (forwardCallbacks?.onWorkflowPaused)
+          forwardCallbacks.onWorkflowPaused(params)
+        continueFromPause?.(params.workflow_run_id)
+      },
+      onHumanInputRequired: (params) => {
+        handleWorkflowNodeHumanInputRequired(params)
+        if (forwardCallbacks?.onHumanInputRequired)
+          forwardCallbacks.onHumanInputRequired(params)
+      },
+      onHumanInputFormFilled: (params) => {
+        handleWorkflowNodeHumanInputFormFilled(params)
+        if (forwardCallbacks?.onHumanInputFormFilled)
+          forwardCallbacks.onHumanInputFormFilled(params)
+      },
+      onHumanInputFormTimeout: (params) => {
+        handleWorkflowNodeHumanInputFormTimeout(params)
+        if (forwardCallbacks?.onHumanInputFormTimeout)
+          forwardCallbacks.onHumanInputFormTimeout(params)
+      },
+    }
+
+    if (onTTSChunk)
+      callbacks.onTTSChunk = onTTSChunk
+
+    if (onTTSEnd)
+      callbacks.onTTSEnd = onTTSEnd
+
+    return callbacks
+  }, [
+    handleWorkflowNodeStarted,
+    handleWorkflowNodeFinished,
+    handleWorkflowNodeIterationStarted,
+    handleWorkflowNodeIterationNext,
+    handleWorkflowNodeIterationFinished,
+    handleWorkflowNodeLoopStarted,
+    handleWorkflowNodeLoopNext,
+    handleWorkflowNodeLoopFinished,
+    handleWorkflowNodeRetry,
+    handleWorkflowAgentLog,
+    handleWorkflowTextChunk,
+    handleWorkflowTextReplace,
+    handleWorkflowPaused,
+    handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormFilled,
+    handleWorkflowNodeHumanInputFormTimeout,
+    invalidateRunHistory,
+  ])
+
+  const handleRun = useCallback(async (
+    params: HandleRunParams | undefined,
+    callback?: IOtherOptions,
+    options?: HandleRunOptions,
+  ) => {
+    const runMode: HandleRunMode = options?.mode ?? TriggerType.UserInput
+    const resolvedParams = params ?? {}
+    await setupRunSession({ syncDraft: true })
 
     const {
       onWorkflowStarted,
@@ -268,7 +522,6 @@ export const useWorkflowRun = () => {
     abortControllerRef.current = null
 
     const {
-      setWorkflowRunningData,
       setIsListening,
       setShowVariableInspectPanel,
       setListeningTriggerType,
@@ -296,16 +549,7 @@ export const useWorkflowRun = () => {
         setListeningTriggerNodeIds([options.pluginNodeId])
       else
         setListeningTriggerNodeIds([])
-      setWorkflowRunningData({
-        result: {
-          status: WorkflowRunningStatus.Running,
-          inputs_truncated: false,
-          process_data_truncated: false,
-          outputs_truncated: false,
-        },
-        tracing: [],
-        resultText: '',
-      })
+      setWorkflowRunningState()
     }
     else {
       setIsListening(false)
@@ -313,16 +557,7 @@ export const useWorkflowRun = () => {
       setListeningTriggerNodeId(null)
       setListeningTriggerNodeIds([])
       setListeningTriggerIsAll(false)
-      setWorkflowRunningData({
-        result: {
-          status: WorkflowRunningStatus.Running,
-          inputs_truncated: false,
-          process_data_truncated: false,
-          outputs_truncated: false,
-        },
-        tracing: [],
-        resultText: '',
-      })
+      setWorkflowRunningState()
     }
 
     let ttsUrl = ''
@@ -347,32 +582,15 @@ export const useWorkflowRun = () => {
       return player
     }
 
-    const clearAbortController = () => {
-      abortControllerRef.current = null
-      delete (window as any).__webhookDebugAbortController
-      delete (window as any).__pluginDebugAbortController
-      delete (window as any).__scheduleDebugAbortController
-      delete (window as any).__allTriggersDebugAbortController
-    }
-
-    const clearListeningState = () => {
-      const state = workflowStore.getState()
-      state.setIsListening(false)
-      state.setListeningTriggerType(null)
-      state.setListeningTriggerNodeId(null)
-      state.setListeningTriggerNodeIds([])
-      state.setListeningTriggerIsAll(false)
-    }
-
-    const wrappedOnError = (params: any) => {
+    const wrappedOnError = (message: string) => {
       clearAbortController()
       handleWorkflowFailed()
       invalidateRunHistory(runHistoryUrl)
       clearListeningState()
 
       if (onError)
-        onError(params)
-      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: params.error, node_type: params.node_type })
+        onError(message)
+      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: message })
     }
 
     const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError?: boolean, errorMessage?: string) => {
@@ -382,7 +600,51 @@ export const useWorkflowRun = () => {
         onCompleted(hasError, errorMessage)
     }
 
-    const baseSseOptions: IOtherOptions = {
+    let baseSseOptions: IOtherOptions
+    const baseSharedCallbacks = createSseCallbacks({
+      runHistoryUrl,
+      clientWidth,
+      clientHeight,
+      forwardCallbacks: {
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onWorkflowPaused,
+        onHumanInputRequired,
+        onHumanInputFormFilled,
+        onHumanInputFormTimeout,
+      },
+      continueFromPause: (workflowRunId) => {
+        sseGet(
+          `/workflow/${workflowRunId}/events`,
+          {},
+          baseSseOptions,
+        )
+      },
+      onTTSChunk: (messageId: string, audio: string) => {
+        if (!audio || audio === '')
+          return
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer) {
+          audioPlayer.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        }
+      },
+      onTTSEnd: (messageId: string, audio: string) => {
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer)
+          audioPlayer.playAudioWithAudio(audio, false)
+      },
+    })
+
+    baseSseOptions = {
       ...restCallback,
       onWorkflowStarted: (params) => {
         handleWorkflowStarted(params)
@@ -403,133 +665,9 @@ export const useWorkflowRun = () => {
           invalidAllLastRun()
         }
       },
-      onNodeStarted: (params) => {
-        handleWorkflowNodeStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onNodeStarted)
-          onNodeStarted(params)
-      },
-      onNodeFinished: (params) => {
-        handleWorkflowNodeFinished(params)
-
-        if (onNodeFinished)
-          onNodeFinished(params)
-      },
-      onIterationStart: (params) => {
-        handleWorkflowNodeIterationStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onIterationStart)
-          onIterationStart(params)
-      },
-      onIterationNext: (params) => {
-        handleWorkflowNodeIterationNext(params)
-
-        if (onIterationNext)
-          onIterationNext(params)
-      },
-      onIterationFinish: (params) => {
-        handleWorkflowNodeIterationFinished(params)
-
-        if (onIterationFinish)
-          onIterationFinish(params)
-      },
-      onLoopStart: (params) => {
-        handleWorkflowNodeLoopStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onLoopStart)
-          onLoopStart(params)
-      },
-      onLoopNext: (params) => {
-        handleWorkflowNodeLoopNext(params)
-
-        if (onLoopNext)
-          onLoopNext(params)
-      },
-      onLoopFinish: (params) => {
-        handleWorkflowNodeLoopFinished(params)
-
-        if (onLoopFinish)
-          onLoopFinish(params)
-      },
-      onNodeRetry: (params) => {
-        handleWorkflowNodeRetry(params)
-
-        if (onNodeRetry)
-          onNodeRetry(params)
-      },
-      onAgentLog: (params) => {
-        handleWorkflowAgentLog(params)
-
-        if (onAgentLog)
-          onAgentLog(params)
-      },
-      onTextChunk: (params) => {
-        handleWorkflowTextChunk(params)
-      },
-      onTextReplace: (params) => {
-        handleWorkflowTextReplace(params)
-      },
-      onTTSChunk: (messageId: string, audio: string) => {
-        if (!audio || audio === '')
-          return
-        const audioPlayer = getOrCreatePlayer()
-        if (audioPlayer) {
-          audioPlayer.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
-        }
-      },
-      onTTSEnd: (messageId: string, audio: string) => {
-        const audioPlayer = getOrCreatePlayer()
-        if (audioPlayer)
-          audioPlayer.playAudioWithAudio(audio, false)
-      },
-      onWorkflowPaused: (params) => {
-        handleWorkflowPaused()
-        invalidateRunHistory(runHistoryUrl)
-        if (onWorkflowPaused)
-          onWorkflowPaused(params)
-        const url = `/workflow/${params.workflow_run_id}/events`
-        sseGet(
-          url,
-          {},
-          baseSseOptions,
-        )
-      },
-      onHumanInputRequired: (params) => {
-        handleWorkflowNodeHumanInputRequired(params)
-        if (onHumanInputRequired)
-          onHumanInputRequired(params)
-      },
-      onHumanInputFormFilled: (params) => {
-        handleWorkflowNodeHumanInputFormFilled(params)
-        if (onHumanInputFormFilled)
-          onHumanInputFormFilled(params)
-      },
-      onHumanInputFormTimeout: (params) => {
-        handleWorkflowNodeHumanInputFormTimeout(params)
-        if (onHumanInputFormTimeout)
-          onHumanInputFormTimeout(params)
-      },
       onError: wrappedOnError,
       onCompleted: wrappedOnCompleted,
+      ...baseSharedCallbacks,
     }
 
     const waitWithAbort = (signal: AbortSignal, delay: number) => new Promise<void>((resolve) => {
@@ -546,7 +684,8 @@ export const useWorkflowRun = () => {
 
       const controllerKey = controllerKeyMap[debugType]
 
-        ; (window as any)[controllerKey] = controller
+      const debugWindow = getDebugControllerWindow()
+      debugWindow[controllerKey] = controller
 
       const debugLabel = debugLabelMap[debugType]
 
@@ -572,9 +711,9 @@ export const useWorkflowRun = () => {
           const contentType = response.headers.get('content-type') || ''
 
           if (contentType.includes(ContentType.json)) {
-            let data: any = null
+            let data: Record<string, unknown> | null = null
             try {
-              data = await response.json()
+              data = await response.json() as Record<string, unknown>
             }
             catch (jsonError) {
               console.error(`handleRun: ${debugLabel.toLowerCase()} debug response parse error`, jsonError)
@@ -588,7 +727,8 @@ export const useWorkflowRun = () => {
               return
 
             if (data?.status === 'waiting') {
-              const delay = Number(data.retry_in) || 2000
+              const retryIn = typeof data.retry_in === 'number' ? data.retry_in : Number(data.retry_in)
+              const delay = Number.isNaN(retryIn) ? 2000 : retryIn
               await waitWithAbort(controller.signal, delay)
               if (controller.signal.aborted)
                 return
@@ -596,19 +736,10 @@ export const useWorkflowRun = () => {
               return
             }
 
-            const errorMessage = data?.message || `${debugLabel} debug failed`
+            const errorMessage = getStringValue(data?.message) || `${debugLabel} debug failed`
             Toast.notify({ type: 'error', message: errorMessage })
             clearAbortController()
-            setWorkflowRunningData({
-              result: {
-                status: WorkflowRunningStatus.Failed,
-                error: errorMessage,
-                inputs_truncated: false,
-                process_data_truncated: false,
-                outputs_truncated: false,
-              },
-              tracing: [],
-            })
+            setWorkflowFailedState(errorMessage, false)
             clearListeningState()
             return
           }
@@ -653,20 +784,11 @@ export const useWorkflowRun = () => {
           if (controller.signal.aborted)
             return
           if (error instanceof Response) {
-            const data = await error.clone().json() as Record<string, any>
-            const { error: respError } = data || {}
+            const data = await error.clone().json() as Record<string, unknown>
+            const respError = getStringValue(data?.error) || `${debugLabel} debug failed`
             Toast.notify({ type: 'error', message: respError })
             clearAbortController()
-            setWorkflowRunningData({
-              result: {
-                status: WorkflowRunningStatus.Failed,
-                error: respError,
-                inputs_truncated: false,
-                process_data_truncated: false,
-                outputs_truncated: false,
-              },
-              tracing: [],
-            })
+            setWorkflowFailedState(respError, false)
           }
           clearListeningState()
         }
@@ -695,7 +817,46 @@ export const useWorkflowRun = () => {
       return
     }
 
-    const finalCallbacks: IOtherOptions = {
+    let finalCallbacks: IOtherOptions
+    const finalSharedCallbacks = createSseCallbacks({
+      runHistoryUrl,
+      clientWidth,
+      clientHeight,
+      forwardCallbacks: {
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onWorkflowPaused,
+        onHumanInputRequired,
+        onHumanInputFormFilled,
+        onHumanInputFormTimeout,
+      },
+      continueFromPause: (workflowRunId) => {
+        sseGet(
+          `/workflow/${workflowRunId}/events`,
+          {},
+          finalCallbacks,
+        )
+      },
+      onTTSChunk: (messageId: string, audio: string) => {
+        if (!audio || audio === '')
+          return
+        player?.playAudioWithAudio(audio, true)
+        AudioPlayerManager.getInstance().resetMsgId(messageId)
+      },
+      onTTSEnd: (messageId: string, audio: string) => {
+        player?.playAudioWithAudio(audio, false)
+      },
+    })
+
+    finalCallbacks = {
       ...baseSseOptions,
       getAbortController: (controller: AbortController) => {
         abortControllerRef.current = controller
@@ -718,126 +879,7 @@ export const useWorkflowRun = () => {
         if (onError)
           onError(params)
       },
-      onNodeStarted: (params) => {
-        handleWorkflowNodeStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onNodeStarted)
-          onNodeStarted(params)
-      },
-      onNodeFinished: (params) => {
-        handleWorkflowNodeFinished(params)
-
-        if (onNodeFinished)
-          onNodeFinished(params)
-      },
-      onIterationStart: (params) => {
-        handleWorkflowNodeIterationStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onIterationStart)
-          onIterationStart(params)
-      },
-      onIterationNext: (params) => {
-        handleWorkflowNodeIterationNext(params)
-
-        if (onIterationNext)
-          onIterationNext(params)
-      },
-      onIterationFinish: (params) => {
-        handleWorkflowNodeIterationFinished(params)
-
-        if (onIterationFinish)
-          onIterationFinish(params)
-      },
-      onLoopStart: (params) => {
-        handleWorkflowNodeLoopStarted(
-          params,
-          {
-            clientWidth,
-            clientHeight,
-          },
-        )
-
-        if (onLoopStart)
-          onLoopStart(params)
-      },
-      onLoopNext: (params) => {
-        handleWorkflowNodeLoopNext(params)
-
-        if (onLoopNext)
-          onLoopNext(params)
-      },
-      onLoopFinish: (params) => {
-        handleWorkflowNodeLoopFinished(params)
-
-        if (onLoopFinish)
-          onLoopFinish(params)
-      },
-      onNodeRetry: (params) => {
-        handleWorkflowNodeRetry(params)
-
-        if (onNodeRetry)
-          onNodeRetry(params)
-      },
-      onAgentLog: (params) => {
-        handleWorkflowAgentLog(params)
-
-        if (onAgentLog)
-          onAgentLog(params)
-      },
-      onTextChunk: (params) => {
-        handleWorkflowTextChunk(params)
-      },
-      onTextReplace: (params) => {
-        handleWorkflowTextReplace(params)
-      },
-      onTTSChunk: (messageId: string, audio: string) => {
-        if (!audio || audio === '')
-          return
-        player?.playAudioWithAudio(audio, true)
-        AudioPlayerManager.getInstance().resetMsgId(messageId)
-      },
-      onTTSEnd: (messageId: string, audio: string) => {
-        player?.playAudioWithAudio(audio, false)
-      },
-      onWorkflowPaused: (params) => {
-        handleWorkflowPaused()
-        invalidateRunHistory(runHistoryUrl)
-        if (onWorkflowPaused)
-          onWorkflowPaused(params)
-        const url = `/workflow/${params.workflow_run_id}/events`
-        sseGet(
-          url,
-          {},
-          finalCallbacks,
-        )
-      },
-      onHumanInputRequired: (params) => {
-        handleWorkflowNodeHumanInputRequired(params)
-        if (onHumanInputRequired)
-          onHumanInputRequired(params)
-      },
-      onHumanInputFormFilled: (params) => {
-        handleWorkflowNodeHumanInputFormFilled(params)
-        if (onHumanInputFormFilled)
-          onHumanInputFormFilled(params)
-      },
-      onHumanInputFormTimeout: (params) => {
-        handleWorkflowNodeHumanInputFormTimeout(params)
-        if (onHumanInputFormTimeout)
-          onHumanInputFormTimeout(params)
-      },
+      ...finalSharedCallbacks,
       ...restCallback,
     }
 
@@ -848,7 +890,251 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
+  }, [
+    workflowStore,
+    pathname,
+    handleWorkflowFailed,
+    flowId,
+    handleWorkflowStarted,
+    handleWorkflowFinished,
+    fetchInspectVars,
+    invalidAllLastRun,
+    invalidateRunHistory,
+    clearAbortController,
+    clearListeningState,
+    setupRunSession,
+    setWorkflowRunningState,
+    setWorkflowFailedState,
+    createSseCallbacks,
+  ])
+
+  const handleRerun = useCallback(async ({
+    sourceRunId,
+    targetNodeId,
+    overrides,
+  }: {
+    sourceRunId: string
+    targetNodeId: string
+    overrides: Array<{ selector: string[], value: unknown }>
+  }) => {
+    const appDetail = useAppStore.getState().appDetail
+    if (!appDetail?.id)
+      return
+
+    if (appDetail.mode !== AppModeEnum.WORKFLOW) {
+      Toast.notify({
+        type: 'error',
+        message: getRerunErrorMessage('unsupported_app_mode'),
+      })
+      return
+    }
+
+    await setupRunSession({ abortCurrentRun: true })
+
+    const {
+      historyWorkflowData,
+      setHistoryWorkflowData,
+      setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
+      setIsListening,
+      setListeningTriggerType,
+      setListeningTriggerNodeId,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
+      setVariableInspectMode,
+      clearRerunContext,
+    } = workflowStore.getState()
+
+    if (historyWorkflowData) {
+      handleLoadBackupDraft()
+      setHistoryWorkflowData(undefined)
+    }
+
+    setShowDebugAndPreviewPanel(true)
+    setShowInputsPanel(false)
+    setIsListening(false)
+    setListeningTriggerType(null)
+    setListeningTriggerNodeId(null)
+    setListeningTriggerNodeIds([])
+    setListeningTriggerIsAll(false)
+    setVariableInspectMode('cache')
+    clearRerunContext()
+    setWorkflowRunningState()
+
+    const runHistoryUrl = `/apps/${appDetail.id}/workflow-runs`
+    const workflowContainer = document.getElementById('workflow-container')
+    const clientWidth = workflowContainer?.clientWidth || 0
+    const clientHeight = workflowContainer?.clientHeight || 0
+
+    let rerunSseOptions: IOtherOptions
+    const rerunSharedCallbacks = createSseCallbacks({
+      runHistoryUrl,
+      clientWidth,
+      clientHeight,
+      continueFromPause: (workflowRunId) => {
+        sseGet(`/workflow/${workflowRunId}/events`, {}, rerunSseOptions)
+      },
+    })
+
+    rerunSseOptions = {
+      onWorkflowStarted: (params) => {
+        handleWorkflowStarted(params)
+        invalidateRunHistory(runHistoryUrl)
+      },
+      onWorkflowFinished: (params) => {
+        handleWorkflowFinished(params)
+        invalidateRunHistory(runHistoryUrl)
+        fetchInspectVars({})
+        invalidAllLastRun()
+      },
+      ...rerunSharedCallbacks,
+      onError: (message, code) => {
+        const userFacingMessage = getRerunErrorMessage(code, message)
+        Toast.notify({
+          type: 'error',
+          message: userFacingMessage,
+        })
+        handleWorkflowFailed()
+        invalidateRunHistory(runHistoryUrl)
+        clearAbortController()
+        clearListeningState()
+      },
+      onCompleted: () => {
+        clearAbortController()
+        clearListeningState()
+      },
+    }
+
+    try {
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
+      const response = await post<Response>(
+        `/apps/${appDetail.id}/workflow-runs/${sourceRunId}/rerun`,
+        {
+          body: {
+            target_node_id: targetNodeId,
+            overrides,
+            streaming: true,
+          },
+          signal: controller.signal,
+        },
+        {
+          needAllResponseContent: true,
+          silent: true,
+        },
+      )
+
+      if (controller.signal.aborted)
+        return
+
+      if (!response) {
+        const fallbackMessage = getRerunErrorMessage(undefined)
+        Toast.notify({
+          type: 'error',
+          message: fallbackMessage,
+        })
+        setWorkflowFailedState(fallbackMessage)
+        clearAbortController()
+        clearListeningState()
+        return
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes(ContentType.json)) {
+        const data = await response.json() as Record<string, unknown>
+        const errorCode = getStringValue(data?.code)
+        const errorMessage = getStringValue(data?.message) || getStringValue(data?.error)
+        const userFacingMessage = getRerunErrorMessage(errorCode, errorMessage)
+        Toast.notify({
+          type: 'error',
+          message: userFacingMessage,
+        })
+        setWorkflowFailedState(userFacingMessage)
+        clearAbortController()
+        clearListeningState()
+        return
+      }
+
+      handleStream(
+        response,
+        rerunSseOptions.onData ?? noop,
+        rerunSseOptions.onCompleted,
+        rerunSseOptions.onThought,
+        rerunSseOptions.onMessageEnd,
+        rerunSseOptions.onMessageReplace,
+        rerunSseOptions.onFile,
+        rerunSseOptions.onWorkflowStarted,
+        rerunSseOptions.onWorkflowFinished,
+        rerunSseOptions.onNodeStarted,
+        rerunSseOptions.onNodeFinished,
+        rerunSseOptions.onIterationStart,
+        rerunSseOptions.onIterationNext,
+        rerunSseOptions.onIterationFinish,
+        rerunSseOptions.onLoopStart,
+        rerunSseOptions.onLoopNext,
+        rerunSseOptions.onLoopFinish,
+        rerunSseOptions.onNodeRetry,
+        rerunSseOptions.onParallelBranchStarted,
+        rerunSseOptions.onParallelBranchFinished,
+        rerunSseOptions.onTextChunk,
+        rerunSseOptions.onTTSChunk,
+        rerunSseOptions.onTTSEnd,
+        rerunSseOptions.onTextReplace,
+        rerunSseOptions.onAgentLog,
+        rerunSseOptions.onHumanInputRequired,
+        rerunSseOptions.onHumanInputFormFilled,
+        rerunSseOptions.onHumanInputFormTimeout,
+        rerunSseOptions.onWorkflowPaused,
+        rerunSseOptions.onDataSourceNodeProcessing,
+        rerunSseOptions.onDataSourceNodeCompleted,
+        rerunSseOptions.onDataSourceNodeError,
+      )
+    }
+    catch (error) {
+      if (abortControllerRef.current?.signal.aborted)
+        return
+
+      if (error instanceof Response) {
+        const data = await error.clone().json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>
+        const code = getStringValue(data?.code)
+        const message = getStringValue(data?.message) || getStringValue(data?.error)
+        const userFacingMessage = getRerunErrorMessage(code, message)
+        Toast.notify({
+          type: 'error',
+          message: userFacingMessage,
+        })
+        setWorkflowFailedState(userFacingMessage)
+      }
+      else {
+        const fallbackMessage = getRerunErrorMessage(undefined)
+        Toast.notify({
+          type: 'error',
+          message: fallbackMessage,
+        })
+        setWorkflowFailedState(fallbackMessage)
+      }
+
+      clearAbortController()
+      clearListeningState()
+    }
+  }, [
+    workflowStore,
+    handleLoadBackupDraft,
+    handleWorkflowStarted,
+    handleWorkflowFinished,
+    handleWorkflowFailed,
+    invalidateRunHistory,
+    fetchInspectVars,
+    invalidAllLastRun,
+    getRerunErrorMessage,
+    setupRunSession,
+    setWorkflowRunningState,
+    setWorkflowFailedState,
+    clearAbortController,
+    clearListeningState,
+    createSseCallbacks,
+  ])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
@@ -884,19 +1170,20 @@ export const useWorkflowRun = () => {
     }
 
     // Try webhook debug controller from global variable first
-    const webhookController = (window as any).__webhookDebugAbortController
+    const debugWindow = getDebugControllerWindow()
+    const webhookController = debugWindow.__webhookDebugAbortController
     if (webhookController)
       webhookController.abort()
 
-    const pluginController = (window as any).__pluginDebugAbortController
+    const pluginController = debugWindow.__pluginDebugAbortController
     if (pluginController)
       pluginController.abort()
 
-    const scheduleController = (window as any).__scheduleDebugAbortController
+    const scheduleController = debugWindow.__scheduleDebugAbortController
     if (scheduleController)
       scheduleController.abort()
 
-    const allTriggerController = (window as any).__allTriggersDebugAbortController
+    const allTriggerController = debugWindow.__allTriggersDebugAbortController
     if (allTriggerController)
       allTriggerController.abort()
 
@@ -939,6 +1226,7 @@ export const useWorkflowRun = () => {
     handleBackupDraft,
     handleLoadBackupDraft,
     handleRun,
+    handleRerun,
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
   }

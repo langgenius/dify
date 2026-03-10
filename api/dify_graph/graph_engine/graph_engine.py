@@ -47,6 +47,7 @@ from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
+from .replay import NodeExecutionStrategyResolver, ReplayExecutionExecutor
 from .worker_management import WorkerPool
 
 if TYPE_CHECKING:
@@ -77,6 +78,8 @@ class GraphEngine:
         command_channel: CommandChannel,
         config: GraphEngineConfig = _DEFAULT_CONFIG,
         child_engine_builder: ChildGraphEngineBuilderProtocol | None = None,
+        node_execution_strategy_resolver: NodeExecutionStrategyResolver | None = None,
+        replay_execution_executor: ReplayExecutionExecutor | None = None,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
@@ -165,6 +168,8 @@ class GraphEngine:
             layers=self._layers,
             execution_context=execution_context,
             config=self._config,
+            node_execution_strategy_resolver=node_execution_strategy_resolver,
+            replay_execution_executor=replay_execution_executor,
         )
 
         # === Orchestration ===

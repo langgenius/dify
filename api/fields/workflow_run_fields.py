@@ -4,6 +4,12 @@ from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
+rerun_source_workflow_run_fields = {
+    "id": fields.String,
+    "status": fields.String,
+    "finished_at": TimestampField,
+}
+
 workflow_run_for_log_fields = {
     "id": fields.String,
     "version": fields.String,
@@ -40,6 +46,7 @@ workflow_run_for_list_fields = {
     "id": fields.String,
     "version": fields.String,
     "status": fields.String,
+    "triggered_from": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,
     "total_steps": fields.Integer,
@@ -48,6 +55,16 @@ workflow_run_for_list_fields = {
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
     "retry_index": fields.Integer,
+    "rerun_from_workflow_run_id": fields.String,
+    "rerun_from_node_id": fields.String,
+    "rerun_from_node_title": fields.String,
+    "rerun_chain_root_workflow_run_id": fields.String,
+    "rerun_kind": fields.String,
+    "rerun_source_workflow_run": fields.Nested(
+        rerun_source_workflow_run_fields,
+        attribute="rerun_source_workflow_run",
+        allow_null=True,
+    ),
 }
 
 advanced_chat_workflow_run_for_list_fields = {
@@ -90,6 +107,7 @@ workflow_run_count_fields = {
 workflow_run_detail_fields = {
     "id": fields.String,
     "version": fields.String,
+    "triggered_from": fields.String,
     "graph": fields.Raw(attribute="graph_dict"),
     "inputs": fields.Raw(attribute="inputs_dict"),
     "status": fields.String,
@@ -104,6 +122,18 @@ workflow_run_detail_fields = {
     "created_at": TimestampField,
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
+    "rerun_from_workflow_run_id": fields.String,
+    "rerun_from_node_id": fields.String,
+    "rerun_from_node_title": fields.String,
+    "rerun_overrides": fields.Raw(attribute="rerun_overrides_dict"),
+    "rerun_scope": fields.Raw(attribute="rerun_scope_dict"),
+    "rerun_chain_root_workflow_run_id": fields.String,
+    "rerun_kind": fields.String,
+    "rerun_source_workflow_run": fields.Nested(
+        rerun_source_workflow_run_fields,
+        attribute="rerun_source_workflow_run",
+        allow_null=True,
+    ),
 }
 
 retry_event_field = {

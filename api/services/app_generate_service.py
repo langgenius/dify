@@ -37,6 +37,13 @@ if TYPE_CHECKING:
 
 class AppGenerateService:
     @staticmethod
+    def build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+        """
+        Public wrapper used by modules that need streaming task start synchronization.
+        """
+        return AppGenerateService._build_streaming_task_on_subscribe(start_task)
+
+    @staticmethod
     def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
         """
         Build a subscription callback that coordinates when the background task starts.

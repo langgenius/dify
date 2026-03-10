@@ -24,7 +24,7 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
 )
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import NodeType
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -79,6 +79,7 @@ class TestWorkflowResponseConverter:
         *,
         node_execution_id: str,
         process_data: Mapping[str, Any] | None = None,
+        execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey | str, Any] | None = None,
     ) -> QueueNodeSucceededEvent:
         """Create a QueueNodeSucceededEvent for testing."""
         return QueueNodeSucceededEvent(
@@ -91,7 +92,7 @@ class TestWorkflowResponseConverter:
             inputs={},
             process_data=process_data or {},
             outputs={},
-            execution_metadata={},
+            execution_metadata=execution_metadata or {},
         )
 
     def create_node_retry_event(
@@ -233,6 +234,43 @@ class TestWorkflowResponseConverter:
         assert response is not None
         assert response.data.process_data == {}
         assert response.data.process_data_truncated is False
+
+    def test_workflow_node_finish_response_zeroes_replay_elapsed_and_usage_metadata(self):
+        """Replay node finish events should be displayed as skipped with zeroed usage metrics."""
+        converter = self.create_workflow_response_converter()
+
+        converter.workflow_start_to_stream_response(
+            task_id="bootstrap",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+        start_event = self.create_node_started_event()
+        converter.workflow_node_start_to_stream_response(
+            event=start_event,
+            task_id="test-task-id",
+        )
+
+        event = self.create_node_succeeded_event(
+            node_execution_id=start_event.node_execution_id,
+            execution_metadata={
+                WorkflowNodeExecutionMetadataKey.EXECUTION_MODE: "replay",
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 321,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 9.99,
+            },
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test-task-id",
+        )
+
+        assert response is not None
+        assert response.data.elapsed_time == 0.0
+        assert response.data.execution_metadata is not None
+        assert response.data.execution_metadata[WorkflowNodeExecutionMetadataKey.EXECUTION_MODE] == "replay"
+        assert response.data.execution_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 0
+        assert response.data.execution_metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == 0
 
     def test_workflow_node_retry_response_uses_truncated_process_data(self):
         """Test that node retry response uses get_response_process_data()."""

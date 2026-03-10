@@ -42,7 +42,6 @@ from sqlalchemy.orm import Session
 
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.enums import WorkflowType
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
@@ -55,7 +54,7 @@ from repositories.types import (
 )
 
 
-class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
+class APIWorkflowRunRepository(Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 
@@ -121,6 +120,29 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> Sequence[WorkflowRun]:
+        """
+        Get multiple workflow runs by IDs.
+
+        Retrieves workflow runs in batch with tenant and app isolation.
+        This is intended for list enrichment scenarios to avoid N+1
+        lookups for related workflow run metadata.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            run_ids: Workflow run identifiers to fetch
+
+        Returns:
+            Sequence of found WorkflowRun objects. Missing IDs are omitted.
+        """
+        ...
+
     def get_workflow_run_by_id_without_tenant(
         self,
         run_id: str,
@@ -150,7 +172,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         status: str | None = None,
         time_range: str | None = None,
     ) -> dict[str, int]:
@@ -163,7 +185,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Args:
             tenant_id: Tenant identifier for multi-tenant isolation
             app_id: Application identifier
-            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            triggered_from: Filter by trigger source(s) (e.g., "debugging", "app-run", or list of values)
             status: Optional filter by specific status
             time_range: Optional time range filter (e.g., "7d", "4h", "30m", "30s")
                        Filters records based on created_at field

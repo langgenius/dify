@@ -80,6 +80,10 @@ def download(f: File, /) -> bytes:
         FileTransferMethod.LOCAL_FILE,
         FileTransferMethod.DATASOURCE_FILE,
     ):
+        # Backward compatibility: legacy runtime snapshots may restore File with missing
+        # storage_key (often serialized as literal "None"). Fall back to signed URL download.
+        if _is_missing_storage_key(f.storage_key):
+            return _download_file_content_from_signed_url(f)
         return _download_file_content(f.storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
         if f.remote_url is None:
@@ -98,21 +102,22 @@ def _download_file_content(path: str, /) -> bytes:
     return data
 
 
-def _get_encoded_string(f: File, /) -> str:
-    match f.transfer_method:
-        case FileTransferMethod.REMOTE_URL:
-            if f.remote_url is None:
-                raise ValueError("Missing file remote_url")
-            response = get_workflow_file_runtime().http_get(f.remote_url, follow_redirects=True)
-            response.raise_for_status()
-            data = response.content
-        case FileTransferMethod.LOCAL_FILE:
-            data = _download_file_content(f.storage_key)
-        case FileTransferMethod.TOOL_FILE:
-            data = _download_file_content(f.storage_key)
-        case FileTransferMethod.DATASOURCE_FILE:
-            data = _download_file_content(f.storage_key)
+def _is_missing_storage_key(storage_key: str) -> bool:
+    normalized = storage_key.strip().lower()
+    return not normalized or normalized == "none"
 
+
+def _download_file_content_from_signed_url(file: File) -> bytes:
+    signed_url = file.generate_url(for_external=False)
+    if not signed_url:
+        raise ValueError("Missing signed url for file download")
+    response = get_workflow_file_runtime().http_get(signed_url, follow_redirects=True)
+    response.raise_for_status()
+    return response.content
+
+
+def _get_encoded_string(f: File, /) -> str:
+    data = download(f)
     return base64.b64encode(data).decode("utf-8")
 
 
