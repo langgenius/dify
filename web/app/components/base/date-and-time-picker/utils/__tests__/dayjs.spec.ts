@@ -20,7 +20,7 @@ describe('dayjs utilities', () => {
     const result = toDayjs('07:15 PM', { timezone: tz })
     expect(result).toBeDefined()
     expect(result?.format('HH:mm')).toBe('19:15')
-    expect(result?.utcOffset()).toBe(getDateWithTimezone({ timezone: tz }).utcOffset())
+    expect(result?.utcOffset()).toBe(getDateWithTimezone({ timezone: tz }).startOf('day').utcOffset())
   })
 
   it('isDayjsObject detects dayjs instances', () => {
