@@ -262,12 +262,9 @@ class Jieba(BaseKeyword):
             return []
 
         match_count = func.count(DatasetKeywordEntry.keyword).label("match_count")
-        stmt = (
-            select(DatasetKeywordEntry.segment_id, match_count)
-            .where(
-                DatasetKeywordEntry.dataset_id == self.dataset.id,
-                DatasetKeywordEntry.keyword.in_(keywords),
-            )
+        stmt = select(DatasetKeywordEntry.segment_id, match_count).where(
+            DatasetKeywordEntry.dataset_id == self.dataset.id,
+            DatasetKeywordEntry.keyword.in_(keywords),
         )
         if document_ids_filter:
             stmt = stmt.join(
