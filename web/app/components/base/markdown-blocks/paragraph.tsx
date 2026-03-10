@@ -5,37 +5,42 @@
  * nesting <div> inside <p> which causes hydration warnings in Next.js.
  */
 import * as React from 'react'
+import type { Element } from 'hast'
 import ImageGallery from '@/app/components/base/image-gallery'
 
-const Paragraph = (paragraph: any) => {
-  const { node }: any = paragraph
-  const children_node = node.children
+interface ParagraphProps {
+  node: Element
+  children: React.ReactNode
+}
 
-  // Check if any child is an image (not just the first one)
-  const hasImage = children_node?.some(
-    (child: any) => 'tagName' in child && child.tagName === 'img',
-  )
+const Paragraph = ({ node, children }: ParagraphProps) => {
+  const childrenNodes = node.children
 
-  // If paragraph contains any image, render as div to avoid <div> inside <p> hydration error
-  if (hasImage) {
-    // If the first child is an image, use the special ImageGallery rendering
-    if (children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
-      return (
-        <div className="markdown-img-wrapper">
-          <ImageGallery srcs={[children_node[0].properties.src]} />
-          {
-            Array.isArray(paragraph.children) && paragraph.children.length > 1 && (
-              <div className="mt-2">{paragraph.children.slice(1)}</div>
-            )
-          }
-        </div>
-      )
-    }
-    // For images in the middle/end of paragraph, wrap in div instead of p
-    return <div className="markdown-paragraph">{paragraph.children}</div>
+  // Find the first image index in one pass
+  const firstImageIndex = childrenNodes?.findIndex(
+    (child): child is Element =>
+      child.type === 'element' && child.tagName === 'img',
+  ) ?? -1
+
+  // No image in paragraph, render a normal <p>
+  if (firstImageIndex === -1)
+    return <p>{children}</p>
+
+  // Image is the first element, use special gallery layout
+  if (firstImageIndex === 0) {
+    const firstChild = childrenNodes[0] as Element
+    return (
+      <div className="markdown-img-wrapper">
+        <ImageGallery srcs={[(firstChild.properties?.src as string) || '']} />
+        {Array.isArray(children) && children.length > 1 && (
+          <div className="mt-2">{children.slice(1)}</div>
+        )}
+      </div>
+    )
   }
 
-  return <p>{paragraph.children}</p>
+  // Image is present but not first, render as div to avoid invalid nesting
+  return <div className="markdown-paragraph">{children}</div>
 }
 
 export default Paragraph
