@@ -13,12 +13,12 @@ from core.virtual_environment.__base.helpers import pipeline
 
 from ..bash.dify_cli import DifyCliConfig, DifyCliLocator
 from ..entities import DifyCli
-from .base import AsyncSandboxInitializer
+from .base import SyncSandboxInitializer
 
 logger = logging.getLogger(__name__)
 
 
-class DifyCliInitializer(AsyncSandboxInitializer):
+class DifyCliInitializer(SyncSandboxInitializer):
     def __init__(
         self,
         tenant_id: str,

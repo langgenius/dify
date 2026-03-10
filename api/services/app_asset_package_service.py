@@ -6,6 +6,13 @@ separated from AppAssetService to avoid circular imports.
 Dependency flow:
     core/* -> AppAssetPackageService -> AppAssetService
     (core modules can import this service without circular dependency)
+
+Inline content optimisation:
+    ``AssetItem`` objects returned by the build pipeline may carry an
+    in-process *content* field (e.g. resolved ``.md`` skill documents).
+    ``AppAssetService.to_download_items()`` converts these into unified
+    ``SandboxDownloadItem`` instances, and ``ZipSandbox.download_items()``
+    handles both inline and remote items natively.
 """
 
 import logging
@@ -19,7 +26,7 @@ from core.app_assets.builder.file_builder import FileBuilder
 from core.app_assets.builder.skill_builder import SkillBuilder
 from core.app_assets.entities.assets import AssetItem
 from core.app_assets.storage import AssetPaths
-from core.zip_sandbox import SandboxDownloadItem, ZipSandbox
+from core.zip_sandbox import ZipSandbox
 from models.app_asset import AppAssets
 from models.model import App
 
@@ -84,15 +91,12 @@ class AppAssetPackageService:
     ) -> None:
         """Package assets into a ZIP and upload directly to the given URL.
 
-        When *assets* is empty an empty ZIP is written directly to storage
-        using *storage_key*, bypassing the HTTP ticket URL.  This avoids a
-        ``ConnectionError`` when the api process cannot reach the ticket
-        endpoint (e.g. ``localhost:80`` inside a Docker container where nginx
-        runs in a separate service).
+        Uses ``AppAssetService.to_download_items()`` to convert assets
+        into unified download items, then ``ZipSandbox.download_items()``
+        handles both inline content and remote presigned URLs natively.
 
-        For non-empty assets the ZIP is built inside a remote sandbox VM
-        which uploads via ``curl`` to *upload_url* (the sandbox container
-        *can* reach the ticket endpoint thanks to socat forwarding).
+        When *assets* is empty an empty ZIP is written directly to storage
+        using *storage_key*, bypassing the HTTP ticket URL.
         """
         from services.app_asset_service import AppAssetService
 
@@ -119,12 +123,8 @@ class AppAssetPackageService:
                 requests.put(upload_url, data=buf.getvalue(), timeout=30)
             return
 
-        asset_storage = AppAssetService.get_storage()
-        keys = [AssetPaths.draft(tenant_id, app_id, asset.asset_id) for asset in assets]
-        download_urls = asset_storage.get_download_urls(keys)
-        download_items = [
-            SandboxDownloadItem(url=url, path=asset.path) for asset, url in zip(assets, download_urls, strict=True)
-        ]
+        download_items = AppAssetService.to_download_items(assets)
+
         with ZipSandbox(tenant_id=tenant_id, user_id=user_id, app_id="asset-packager") as zs:
             zs.download_items(download_items)
             archive = zs.zip()
@@ -134,7 +134,11 @@ class AppAssetPackageService:
     def publish(session: Session, app_model: App, account_id: str, workflow_id: str) -> AppAssets:
         """Publish app assets for a workflow.
 
-        Creates a versioned copy of draft assets and packages them for runtime use.
+        Creates a versioned copy of draft assets and packages them for
+        runtime use.  The build ZIP contains resolved ``.md`` content
+        (inline from ``SkillBuilder``) and raw draft content for all
+        other files.  A separate source ZIP snapshots the raw drafts for
+        later export.
         """
         from services.app_asset_service import AppAssetService
 
@@ -159,10 +163,11 @@ class AppAssetPackageService:
 
         asset_storage = AppAssetService.get_storage()
         accessor = AppAssetService.get_accessor(tenant_id, app_id)
-        pipeline = AssetBuildPipeline([SkillBuilder(accessor=accessor, storage=asset_storage), FileBuilder()])
+        build_pipeline = AssetBuildPipeline([SkillBuilder(accessor=accessor), FileBuilder()])
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
-        built_assets = pipeline.build_all(tree, ctx)
+        built_assets = build_pipeline.build_all(tree, ctx)
 
+        # Runtime ZIP: resolved .md (inline) + raw draft (remote).
         runtime_zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
         runtime_upload_url = asset_storage.get_upload_url(runtime_zip_key)
         AppAssetPackageService.package_and_upload(
@@ -174,6 +179,7 @@ class AppAssetPackageService:
             storage_key=runtime_zip_key,
         )
 
+        # Source ZIP: all raw draft content (for export/restore).
         source_items = AppAssetService.get_draft_assets(tenant_id, app_id)
         source_key = AssetPaths.source_zip(tenant_id, app_id, workflow_id)
         source_upload_url = asset_storage.get_upload_url(source_key)
@@ -187,28 +193,3 @@ class AppAssetPackageService:
         )
 
         return published
-
-    @staticmethod
-    def build_assets(tenant_id: str, app_id: str, assets: AppAssets) -> None:
-        """Build resolved draft assets without packaging into a zip."""
-        from services.app_asset_service import AppAssetService
-
-        tree = assets.asset_tree
-
-        asset_storage = AppAssetService.get_storage()
-        accessor = AppAssetService.get_accessor(tenant_id, app_id)
-        pipeline = AssetBuildPipeline([SkillBuilder(accessor=accessor, storage=asset_storage), FileBuilder()])
-        ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
-        built_assets: list[AssetItem] = pipeline.build_all(tree, ctx)
-
-        user_id = getattr(assets, "updated_by", None) or getattr(assets, "created_by", None) or "system"
-        key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
-        upload_url = asset_storage.get_upload_url(key)
-        AppAssetPackageService.package_and_upload(
-            assets=built_assets,
-            upload_url=upload_url,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            user_id=user_id,
-            storage_key=key,
-        )

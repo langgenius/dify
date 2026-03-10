@@ -347,3 +347,6 @@ class AppAssetFileTree(BaseModel):
             build_view(root_node, "")
 
         return [tree_views[n.id] for n in by_parent.get(None, [])]
+
+    def empty(self) -> bool:
+        return len(self.nodes) == 0

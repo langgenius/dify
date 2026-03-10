@@ -7,7 +7,6 @@ from typing import Any, cast
 
 from core.file import File, FileTransferMethod
 from core.sandbox.bash.session import SANDBOX_READY_TIMEOUT
-from core.sandbox.services.asset_download_service import AssetDownloadItem
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment, FileSegment
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
@@ -15,6 +14,7 @@ from core.virtual_environment.__base.helpers import pipeline
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.zip_sandbox import SandboxDownloadItem
 
 from .entities import FileUploadNodeData
 from .exc import FileUploadDownloadError, FileUploadNodeError
@@ -90,7 +90,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
 
         try:
             sandbox.wait_ready(timeout=SANDBOX_READY_TIMEOUT)
-            download_items: list[AssetDownloadItem] = self._build_download_items(files)
+            download_items: list[SandboxDownloadItem] = self._build_download_items(files)
             sandbox_paths = self._upload(sandbox.vm, download_items)
             file_names = [PurePosixPath(path).name for path in sandbox_paths]
             process_data = {
@@ -178,9 +178,9 @@ class FileUploadNode(Node[FileUploadNodeData]):
             return files
         return []
 
-    def _build_download_items(self, files: Sequence[File]) -> list[AssetDownloadItem]:
+    def _build_download_items(self, files: Sequence[File]) -> list[SandboxDownloadItem]:
         used_paths: set[str] = set()
-        items: list[AssetDownloadItem] = []
+        items: list[SandboxDownloadItem] = []
         for index, file in enumerate(files):
             file_url = self._get_download_url(file)
 
@@ -198,7 +198,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
                     dedupe += 1
 
             used_paths.add(filename)
-            items.append(AssetDownloadItem(path=filename, url=file_url))
+            items.append(SandboxDownloadItem(path=filename, url=file_url))
         return items
 
     @staticmethod
@@ -208,7 +208,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
             normalized = normalized.lstrip("/")
         return normalized or "."
 
-    def _upload(self, vm: Any, items: list[AssetDownloadItem]) -> list[str]:
+    def _upload(self, vm: Any, items: list[SandboxDownloadItem]) -> list[str]:
         p = pipeline(vm)
         out_paths: list[str] = []
         for item in items:

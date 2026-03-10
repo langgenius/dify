@@ -1,3 +1,19 @@
+"""Service for creating and managing sandbox instances.
+
+Three creation paths:
+
+- ``create()`` — published runtime.  Downloads the pre-built ZIP via
+  ``AppAssetsInitializer`` and loads the ``SkillBundle`` via
+  ``SkillInitializer``.
+
+- ``create_draft()`` / ``create_for_single_step()`` — draft runtime.
+  ``DraftAppAssetsInitializer`` runs the build pipeline on the fly,
+  compiles ``.md`` skills (saving the ``SkillBundle`` to Redis/S3 as a
+  side-effect), and pushes resolved content as inline base64 into the
+  sandbox.  ``SkillInitializer`` then loads the bundle from Redis/S3.
+  No separate ``build_assets()`` call is needed.
+"""
+
 import logging
 
 from core.sandbox.builder import SandboxBuilder
@@ -11,7 +27,6 @@ from core.sandbox.initializer.skill_initializer import SkillInitializer
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from extensions.ext_storage import storage
-from services.app_asset_package_service import AppAssetPackageService
 from services.app_asset_service import AppAssetService
 
 logger = logging.getLogger(__name__)
@@ -67,7 +82,6 @@ class SandboxService:
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
-        AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
         archive_storage = ArchiveSandboxStorage(
             tenant_id, app_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]
@@ -101,7 +115,6 @@ class SandboxService:
         if not assets:
             raise ValueError(f"No assets found for tid={tenant_id}, app_id={app_id}")
 
-        AppAssetPackageService.build_assets(tenant_id, app_id, assets)
         sandbox_id = SandboxBuilder.draft_id(user_id)
         archive_storage = ArchiveSandboxStorage(
             tenant_id, app_id, sandbox_id, storage.storage_runner, exclude_patterns=[AppAssets.PATH]

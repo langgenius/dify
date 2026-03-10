@@ -104,12 +104,6 @@ def test_build_zip_storage_key():
     assert key == f"app_assets/{tid}/{aid}/artifacts/{assets_id}.zip"
 
 
-def test_resolved_storage_key():
-    tid, aid, assets_id, nid = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
-    key = AssetPaths.resolved(tid, aid, assets_id, nid)
-    assert key == f"app_assets/{tid}/{aid}/artifacts/{assets_id}/resolved/{nid}"
-
-
 def test_skill_bundle_storage_key():
     tid, aid, assets_id = str(uuid4()), str(uuid4()), str(uuid4())
     key = AssetPaths.skill_bundle(tid, aid, assets_id)

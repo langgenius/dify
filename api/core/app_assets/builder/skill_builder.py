@@ -1,14 +1,25 @@
+"""Builder that compiles ``.md`` skill documents into resolved content.
+
+The builder reads raw draft content from the DB-backed accessor, parses
+each into a ``SkillDocument``, assembles a ``SkillBundle`` (with
+transitive tool/file dependency resolution), and returns ``AssetItem``
+objects whose *content* field carries the resolved bytes in-process.
+
+No S3 writes happen here — the only persistence is the ``SkillBundle``
+saved via ``SkillManager`` (S3 + Redis cache invalidation) so that
+downstream consumers (``SkillInitializer``, ``DifyCliInitializer``) can
+load it later.
+"""
+
 import json
 import logging
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.app_assets.accessor import CachedContentAccessor
 from core.app_assets.entities import AssetItem
-from core.app_assets.storage import AssetPaths
 from core.skill.assembler import SkillBundleAssembler
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
-from extensions.storage.base_storage import BaseStorage
 
 from .base import BuildContext
 
@@ -18,12 +29,10 @@ logger = logging.getLogger(__name__)
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _accessor: CachedContentAccessor
-    _storage: BaseStorage
 
-    def __init__(self, accessor: CachedContentAccessor, storage: BaseStorage) -> None:
+    def __init__(self, accessor: CachedContentAccessor) -> None:
         self._nodes = []
         self._accessor = accessor
-        self._storage = storage
 
     def accept(self, node: AppAssetNode) -> bool:
         return node.extension == "md"
@@ -66,15 +75,14 @@ class SkillBuilder:
             skill = bundle.get(node.id)
             if skill is None:
                 continue
-            storage_key = AssetPaths.resolved(ctx.tenant_id, ctx.app_id, ctx.build_id, node.id)
-            self._storage.save(storage_key, skill.content.encode("utf-8"))
             items.append(
                 AssetItem(
                     asset_id=node.id,
                     path=path,
                     file_name=node.name,
                     extension=node.extension or "",
-                    storage_key=storage_key,
+                    storage_key="",
+                    content=skill.content.encode("utf-8"),
                 )
             )
         return items

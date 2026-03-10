@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import base64
 import posixpath
-from dataclasses import dataclass
+import shlex
 from io import BytesIO
 from pathlib import PurePosixPath
 from types import TracebackType
@@ -20,32 +21,10 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from services.sandbox.sandbox_provider_service import SandboxProviderService
 
 from .cli_strategy import CliZipStrategy
+from .entities import SandboxDownloadItem, SandboxFile, SandboxUploadItem
 from .node_strategy import NodeZipStrategy
 from .python_strategy import PythonZipStrategy
 from .strategy import ZipStrategy
-
-
-@dataclass(frozen=True)
-class SandboxDownloadItem:
-    """Item for downloading: URL -> sandbox path."""
-
-    url: str
-    path: str
-
-
-@dataclass(frozen=True)
-class SandboxUploadItem:
-    """Item for uploading: sandbox path -> URL."""
-
-    path: str
-    url: str
-
-
-@dataclass(frozen=True)
-class SandboxFile:
-    """A handle to a file in the sandbox."""
-
-    path: str
 
 
 class ZipSandbox:
@@ -221,6 +200,12 @@ class ZipSandbox:
     # ========== Download operations ==========
 
     def download_items(self, items: list[SandboxDownloadItem], *, dest_dir: str = ".") -> list[str]:
+        """Download or write items into the sandbox via a single pipeline.
+
+        Remote items (with *url*) are fetched via ``curl``.  Inline items
+        (with *content*) are written via ``base64 -d`` heredoc.  Both go
+        through the same pipeline — no branching at the structural level.
+        """
         if not items:
             return []
 
@@ -238,7 +223,10 @@ class ZipSandbox:
             out_dir = posixpath.dirname(out_path)
             if out_dir not in ("", "."):
                 p.add(["mkdir", "-p", out_dir], error_message="Failed to create download directory")
-            p.add(["curl", "-fsSL", item.url, "-o", out_path], error_message="Failed to download file")
+            p.add(
+                self.to_download_command(item, out_path),
+                error_message=f"Failed to write {item.path}",
+            )
 
         try:
             p.execute(timeout=self._DEFAULT_TIMEOUT_SECONDS, raise_on_error=True)
@@ -246,6 +234,14 @@ class ZipSandbox:
             raise RuntimeError(str(exc)) from exc
 
         return out_paths
+
+    @staticmethod
+    def to_download_command(item: SandboxDownloadItem, out_path: str) -> list[str]:
+        """Return the shell command to materialise *item* at *out_path*."""
+        if item.content is not None:
+            encoded = base64.b64encode(item.content).decode("ascii")
+            return ["sh", "-c", f"base64 -d <<'_B64_' > {shlex.quote(out_path)}\n{encoded}\n_B64_"]
+        return ["curl", "-fsSL", item.url, "-o", out_path]
 
     def download_archive(self, archive_url: str, *, path: str = "input.tar.gz") -> str:
         path = self._normalize_path(path)

@@ -37,7 +37,7 @@ from core.app.entities.app_bundle_entities import (
     BundleManifest,
 )
 from core.app_assets.storage import AssetPaths
-from core.zip_sandbox import SandboxDownloadItem, SandboxUploadItem, ZipSandbox
+from core.zip_sandbox import SandboxUploadItem, ZipSandbox
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.storage.cached_presign_storage import CachedPresignStorage
@@ -131,16 +131,10 @@ class AppBundleService:
             else:
                 asset_items = AppAssetService.get_draft_assets(tenant_id, app_id)
                 if asset_items:
-                    asset_urls = asset_storage.get_download_urls(
-                        [AssetPaths.draft(tenant_id, app_id, a.asset_id) for a in asset_items], expires_in
-                    )
-                    zs.download_items(
-                        [
-                            SandboxDownloadItem(url=url, path=f"{safe_name}/{a.path}")
-                            for a, url in zip(asset_items, asset_urls, strict=True)
-                        ],
-                        dest_dir="bundle_root",
-                    )
+                    accessor = AppAssetService.get_accessor(tenant_id, app_id)
+                    resolved = accessor.resolve_items(asset_items)
+                    download_items = AppAssetService.to_download_items(resolved, path_prefix=safe_name)
+                    zs.download_items(download_items, dest_dir="bundle_root")
 
             archive = zs.zip(src="bundle_root", include_base=False)
             zs.upload(archive, upload_url)

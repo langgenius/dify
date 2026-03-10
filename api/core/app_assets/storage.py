@@ -38,15 +38,6 @@ class AssetPaths:
         return f"{_BASE}/{tenant_id}/{app_id}/artifacts/{assets_id}.zip"
 
     @staticmethod
-    def resolved(tenant_id: str, app_id: str, assets_id: str, node_id: str) -> str:
-        """app_assets/{tenant}/{app}/artifacts/{assets_id}/resolved/{node_id}"""
-        _check_uuid(tenant_id, "tenant_id")
-        _check_uuid(app_id, "app_id")
-        _check_uuid(assets_id, "assets_id")
-        _check_uuid(node_id, "node_id")
-        return f"{_BASE}/{tenant_id}/{app_id}/artifacts/{assets_id}/resolved/{node_id}"
-
-    @staticmethod
     def skill_bundle(tenant_id: str, app_id: str, assets_id: str) -> str:
         """app_assets/{tenant}/{app}/artifacts/{assets_id}/skill_artifact_set.json"""
         _check_uuid(tenant_id, "tenant_id")

@@ -6,12 +6,9 @@ All methods accept an AppAssetNode parameter to identify the target.
 CachedContentAccessor is the primary entry point:
 - Reads DB first, misses fall through to S3 with sync backfill.
 - Writes go to both DB and S3 (dual-write).
-- Wraps an internal StorageContentAccessor for S3 I/O.
-
-Public helper:
-- should_mirror(extension) — the ONLY place that maps file extensions to the
-  "should this node use DB mirror?" decision. All callers (presigned-upload
-  gating, etc.) should use this function instead of hard-coding extension checks.
+- resolve_items() batch-enriches AssetItem lists with DB-cached content
+  (extension-agnostic), so callers never need to filter by extension.
+- Wraps an internal _StorageAccessor for S3 I/O.
 
 Collaborators:
     - services.asset_content_service.AssetContentService (DB layer)
@@ -24,28 +21,12 @@ from __future__ import annotations
 import logging
 
 from core.app.entities.app_asset_entities import AppAssetNode
+from core.app_assets.entities.assets import AssetItem
 from core.app_assets.storage import AssetPaths
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from services.asset_content_service import AssetContentService
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Extension-based policy — the single source of truth
-# ---------------------------------------------------------------------------
-
-_MIRROR_EXTENSIONS: frozenset[str] = frozenset({"md"})
-
-
-def should_mirror(extension: str) -> bool:
-    """Return True if files with *extension* should be cached in DB.
-
-    This is the ONLY place that maps file extensions to the inline-mirror
-    decision.  All other modules should call this function instead of
-    checking extensions directly.
-    """
-    return extension.lower() in _MIRROR_EXTENSIONS
-
 
 # ---------------------------------------------------------------------------
 # S3-only implementation (internal, used as inner delegate)
@@ -161,6 +142,38 @@ class CachedContentAccessor:
             size=len(content),
         )
         self._inner.save(node, content)
+
+    def resolve_items(self, items: list[AssetItem]) -> list[AssetItem]:
+        """Batch-enrich asset items with DB-cached content.
+
+        Queries by ``asset_id`` only — extension-agnostic.  Items without
+        a DB cache row keep their original *content* value (typically
+        ``None``), so only genuinely cached assets (e.g. ``.md`` skill
+        documents) get populated.
+
+        This eliminates the need for callers to filter by file extension
+        before deciding whether to read from the DB cache.
+        """
+        if not items:
+            return items
+
+        node_ids = [a.asset_id for a in items]
+        cached = AssetContentService.get_many(self._tenant_id, self._app_id, node_ids)
+
+        if not cached:
+            return items
+
+        return [
+            AssetItem(
+                asset_id=a.asset_id,
+                path=a.path,
+                file_name=a.file_name,
+                extension=a.extension,
+                storage_key=a.storage_key,
+                content=cached[a.asset_id].encode("utf-8") if a.asset_id in cached else a.content,
+            )
+            for a in items
+        ]
 
     def delete(self, node: AppAssetNode) -> None:
         AssetContentService.delete(self._tenant_id, self._app_id, node.id)
