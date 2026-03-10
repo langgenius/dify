@@ -263,7 +263,7 @@ const Configuration: FC = () => {
 
     formattingChangedDispatcher()
     let newDatasets = data
-    if (data.find(item => !item.name)) { // has not loaded selected dataset
+    if (data.some(item => !item.name)) { // has not loaded selected dataset
       const newSelected = produce(data, (draft) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database

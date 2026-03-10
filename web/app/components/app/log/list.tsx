@@ -157,7 +157,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
         log: [
           ...(item.message ?? []),
-          ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
+          ...(item.message.at(-1)?.role !== 'assistant'
             ? [
                 {
                   role: 'assistant',
@@ -325,7 +325,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
     setChatItemTree(tree)
 
-    const lastMessageId = allChatItems.length > 0 ? allChatItems[allChatItems.length - 1].id : undefined
+    const lastMessageId = allChatItems.length > 0 ? allChatItems.at(-1)?.id : undefined
     setThreadChatItems(getThreadMessages(tree, lastMessageId))
 
     // Update pagination anchor ref with the oldest answer ID

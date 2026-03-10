@@ -179,7 +179,7 @@ const Debug: FC<IDebug> = ({
       return false
     }
 
-    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+    if (completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
       notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }

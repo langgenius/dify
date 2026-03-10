@@ -62,10 +62,10 @@ const CSVUploader: FC<Props> = ({
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
       .then((res: UploadResult) => {
-        const updatedFile = Object.assign({}, fileItem.file, {
+        const updatedFile = { ...fileItem.file, ...{
           id: res.id,
           ...(res as Partial<File>),
-        }) as File
+        } } as File
         const completeFile: FileItem = {
           fileID: fileItem.fileID,
           file: updatedFile,
@@ -126,7 +126,7 @@ const CSVUploader: FC<Props> = ({
     setDragging(false)
     if (!e.dataTransfer)
       return
-    const files = Array.from(e.dataTransfer.files)
+    const files = [...e.dataTransfer.files]
     if (files.length > 1) {
       notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
@@ -148,7 +148,7 @@ const CSVUploader: FC<Props> = ({
       return ''
 
     const arr = currentFile.name.split('.')
-    return arr[arr.length - 1]
+    return arr.at(-1)
   }
 
   const isValid = useCallback((file?: File) => {
