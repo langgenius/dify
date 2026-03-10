@@ -1,5 +1,5 @@
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast, final
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from dify_graph.runtime import GraphRuntimeState
 
 
-LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
+LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(
@@ -169,7 +169,7 @@ class DifyNodeFactory(NodeFactory):
         node_data = typed_node_config["data"]
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
         node_type = node_data.type
-        node_init_kwargs = {
+        node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             NodeType.CODE: lambda: {
                 "code_executor": self._code_executor,
                 "code_limits": self._code_limits,
@@ -219,7 +219,8 @@ class DifyNodeFactory(NodeFactory):
             NodeType.TOOL: lambda: {
                 "tool_file_manager_factory": self._http_request_tool_file_manager_factory(),
             },
-        }.get(node_type, lambda: {})()
+        }
+        node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
             id=node_id,
             config=typed_node_config,
