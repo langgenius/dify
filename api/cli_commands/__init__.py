@@ -2,6 +2,7 @@
 CLI command modules extracted from `commands.py`.
 """
 
+from cli_commands.account import create_tenant, reset_email, reset_password
 from cli_commands.plugin import (
     extract_plugins,
     extract_unique_plugins,
@@ -25,6 +26,7 @@ from cli_commands.vector import (
 __all__ = [
     "add_qdrant_index",
     "clear_orphaned_file_records",
+    "create_tenant",
     "extract_plugins",
     "extract_unique_plugins",
     "file_usage",
@@ -36,6 +38,8 @@ __all__ = [
     "migrate_oss",
     "old_metadata_migration",
     "remove_orphaned_files_on_storage",
+    "reset_email",
+    "reset_password",
     "setup_datasource_oauth_client",
     "setup_system_tool_oauth_client",
     "setup_system_trigger_oauth_client",
