@@ -28,6 +28,6 @@ class SkillManager:
     @staticmethod
     def save_bundle(tenant_id: str, app_id: str, assets_id: str, bundle: SkillBundle) -> None:
         key = AssetPaths.skill_bundle(tenant_id, app_id, assets_id)
-        AppAssetService.get_storage().save(key, bundle.model_dump_json(indent=2).encode("utf-8"))
+        AppAssetService.get_storage().save(key, data=bundle.model_dump_json(indent=2).encode("utf-8"))
         cache_key = f"{_CACHE_PREFIX}:{tenant_id}:{app_id}:{assets_id}"
         redis_client.delete(cache_key)

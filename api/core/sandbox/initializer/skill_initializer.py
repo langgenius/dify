@@ -6,31 +6,29 @@ from core.sandbox.sandbox import Sandbox
 from core.skill import SkillAttrs
 from core.skill.skill_manager import SkillManager
 
-from .base import SyncSandboxInitializer
+from .base import SandboxInitializeContext, SyncSandboxInitializer
 
 logger = logging.getLogger(__name__)
 
 
 class SkillInitializer(SyncSandboxInitializer):
-    def __init__(
-        self,
-        tenant_id: str,
-        user_id: str,
-        app_id: str,
-        assets_id: str,
-    ) -> None:
-        self._tenant_id = tenant_id
-        self._app_id = app_id
-        self._user_id = user_id
-        self._assets_id = assets_id
+    """Ensure ``sandbox.attrs[BUNDLE]`` is populated for downstream consumers.
 
-    def initialize(self, sandbox: Sandbox) -> None:
+    In the draft path ``DraftAppAssetsInitializer`` already sets the
+    bundle on attrs from the in-memory build result, so this initializer
+    becomes a no-op.  In the published path no prior initializer sets
+    it, so we fall back to ``SkillManager.load_bundle()`` (Redis/S3).
+    """
+
+    def initialize(self, sandbox: Sandbox, ctx: SandboxInitializeContext) -> None:
+        # Draft path: bundle already populated by DraftAppAssetsInitializer.
+        if sandbox.attrs.has(SkillAttrs.BUNDLE):
+            return
+
+        # Published path: load from Redis/S3.
         bundle = SkillManager.load_bundle(
-            self._tenant_id,
-            self._app_id,
-            self._assets_id,
+            ctx.tenant_id,
+            ctx.app_id,
+            ctx.assets_id,
         )
-        sandbox.attrs.set(
-            SkillAttrs.BUNDLE,
-            bundle,
-        )
+        sandbox.attrs.set(SkillAttrs.BUNDLE, bundle)

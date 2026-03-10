@@ -5,10 +5,10 @@ each into a ``SkillDocument``, assembles a ``SkillBundle`` (with
 transitive tool/file dependency resolution), and returns ``AssetItem``
 objects whose *content* field carries the resolved bytes in-process.
 
-No S3 writes happen here — the only persistence is the ``SkillBundle``
-saved via ``SkillManager`` (S3 + Redis cache invalidation) so that
-downstream consumers (``SkillInitializer``, ``DifyCliInitializer``) can
-load it later.
+The assembled ``SkillBundle`` is persisted via ``SkillManager``
+(S3 + Redis) **and** retained on the ``bundle`` property so that
+callers (e.g. ``DraftAppAssetsInitializer``) can pass it directly to
+``sandbox.attrs`` without a redundant Redis/S3 round-trip.
 """
 
 import json
@@ -29,10 +29,17 @@ logger = logging.getLogger(__name__)
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _accessor: CachedContentAccessor
+    _bundle: SkillBundle | None
 
     def __init__(self, accessor: CachedContentAccessor) -> None:
         self._nodes = []
         self._accessor = accessor
+        self._bundle = None
+
+    @property
+    def bundle(self) -> SkillBundle | None:
+        """The ``SkillBundle`` produced by the last ``build()`` call, or *None*."""
+        return self._bundle
 
     def accept(self, node: AppAssetNode) -> bool:
         return node.extension == "md"
@@ -44,9 +51,9 @@ class SkillBuilder:
         from core.skill.skill_manager import SkillManager
 
         if not self._nodes:
-            SkillManager.save_bundle(
-                ctx.tenant_id, ctx.app_id, ctx.build_id, SkillBundle(assets_id=ctx.build_id, asset_tree=tree)
-            )
+            bundle = SkillBundle(assets_id=ctx.build_id, asset_tree=tree)
+            SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, bundle)
+            self._bundle = bundle
             return []
 
         # Batch-load all skill draft content in one DB query (with S3 fallback on miss).
@@ -69,6 +76,7 @@ class SkillBuilder:
 
         bundle = SkillBundleAssembler(tree).assemble_bundle(documents, ctx.build_id)
         SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, bundle)
+        self._bundle = bundle
 
         items: list[AssetItem] = []
         for node, path in self._nodes:

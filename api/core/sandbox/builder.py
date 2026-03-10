@@ -11,7 +11,7 @@ from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from .entities.sandbox_type import SandboxType
-from .initializer import AsyncSandboxInitializer, SandboxInitializer, SyncSandboxInitializer
+from .initializer import AsyncSandboxInitializer, SandboxInitializeContext, SandboxInitializer, SyncSandboxInitializer
 from .sandbox import Sandbox
 
 if TYPE_CHECKING:
@@ -125,10 +125,17 @@ class SandboxBuilder:
             assets_id=self._assets_id,
         )
 
+        ctx = SandboxInitializeContext(
+            tenant_id=self._tenant_id,
+            app_id=self._app_id,
+            assets_id=self._assets_id,
+            user_id=self._user_id,
+        )
+
         # Run synchronous initializers before marking sandbox as ready.
         for init in self._initializers:
             if isinstance(init, SyncSandboxInitializer):
-                init.initialize(sandbox)
+                init.initialize(sandbox, ctx)
 
         # Run sandbox setup asynchronously so workflow execution can proceed.
         # Capture the Flask app before starting the thread for database access.
@@ -143,7 +150,7 @@ class SandboxBuilder:
 
                         if sandbox.is_cancelled():
                             return
-                        init.initialize(sandbox)
+                        init.initialize(sandbox, ctx)
                     if sandbox.is_cancelled():
                         return
                     sandbox.mount()

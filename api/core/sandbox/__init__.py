@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .entities import AppAssets, DifyCli, SandboxProviderApiEntity, SandboxType
     from .initializer import (
         AsyncSandboxInitializer,
+        SandboxInitializeContext,
         SandboxInitializer,
         SyncSandboxInitializer,
     )
@@ -44,6 +45,7 @@ __all__ = [
     "Sandbox",
     "SandboxBashSession",
     "SandboxBuilder",
+    "SandboxInitializeContext",
     "SandboxInitializer",
     "SandboxManager",
     "SandboxProviderApiEntity",
@@ -72,6 +74,7 @@ _LAZY_IMPORTS = {
     "Sandbox": ("core.sandbox.sandbox", "Sandbox"),
     "SandboxBashSession": ("core.sandbox.bash.session", "SandboxBashSession"),
     "SandboxBuilder": ("core.sandbox.builder", "SandboxBuilder"),
+    "SandboxInitializeContext": ("core.sandbox.initializer", "SandboxInitializeContext"),
     "SandboxInitializer": ("core.sandbox.initializer", "SandboxInitializer"),
     "SandboxManager": ("core.sandbox.manager", "SandboxManager"),
     "SandboxProviderApiEntity": ("core.sandbox.entities", "SandboxProviderApiEntity"),
