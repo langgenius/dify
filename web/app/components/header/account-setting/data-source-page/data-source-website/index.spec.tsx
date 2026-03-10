@@ -195,4 +195,57 @@ describe('DataSourceWebsite Component', () => {
       expect(removeDataSourceApiKeyBinding).not.toHaveBeenCalled()
     })
   })
+
+  describe('Firecrawl Save Flow', () => {
+    it('should re-fetch sources after saving Firecrawl configuration', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.fireCrawl)
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
+      expect(screen.getByText('datasetCreation.firecrawl.configFirecrawl')).toBeInTheDocument()
+      vi.mocked(fetchDataSources).mockClear()
+
+      // Act - fill in required API key field and save
+      const apiKeyInput = screen.getByPlaceholderText('datasetCreation.firecrawl.apiKeyPlaceholder')
+      fireEvent.change(apiKeyInput, { target: { value: 'test-key' } })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+
+      // Assert
+      await waitFor(() => {
+        expect(fetchDataSources).toHaveBeenCalled()
+        expect(screen.queryByText('datasetCreation.firecrawl.configFirecrawl')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Cancel Flow', () => {
+    it('should close watercrawl modal when cancel is clicked', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.waterCrawl)
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
+      expect(screen.getByText('datasetCreation.watercrawl.configWatercrawl')).toBeInTheDocument()
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      // Assert - modal closed
+      await waitFor(() => {
+        expect(screen.queryByText('datasetCreation.watercrawl.configWatercrawl')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close jina reader modal when cancel is clicked', async () => {
+      // Arrange
+      await renderAndWait(DataSourceProvider.jinaReader)
+      fireEvent.click(screen.getByText('common.dataSource.configure'))
+      expect(screen.getByText('datasetCreation.jinaReader.configJinaReader')).toBeInTheDocument()
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/i }))
+
+      // Assert - modal closed
+      await waitFor(() => {
+        expect(screen.queryByText('datasetCreation.jinaReader.configJinaReader')).not.toBeInTheDocument()
+      })
+    })
+  })
 })

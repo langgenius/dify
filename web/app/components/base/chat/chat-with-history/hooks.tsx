@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'

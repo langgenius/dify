@@ -9,8 +9,16 @@ import pytest
 
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueTextChunkEvent, QueueWorkflowPausedEvent
+from core.app.entities.queue_entities import (
+    QueuePingEvent,
+    QueueTextChunkEvent,
+    QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
+    QueueWorkflowSucceededEvent,
+)
+from core.app.entities.task_entities import StreamEvent
 from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import EndUser
@@ -185,3 +193,97 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
 
     assert message.answer == "beforeafter"
     assert message.status == MessageStatus.NORMAL
+
+
+def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None:
+    pipeline = _build_pipeline()
+    pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
+    pipeline._workflow_id = "workflow-1"
+    pipeline._ensure_workflow_initialized = mock.Mock()
+    runtime_state = SimpleNamespace()
+    pipeline._ensure_graph_runtime_initialized = mock.Mock(return_value=runtime_state)
+    pipeline._handle_advanced_chat_message_end_event = mock.Mock(
+        return_value=iter([SimpleNamespace(event=StreamEvent.MESSAGE_END)])
+    )
+    pipeline._workflow_response_converter = mock.Mock()
+    pipeline._workflow_response_converter.workflow_finish_to_stream_response.return_value = SimpleNamespace(
+        event=StreamEvent.WORKFLOW_FINISHED,
+        data=SimpleNamespace(status=WorkflowExecutionStatus.SUCCEEDED),
+    )
+
+    event = QueueWorkflowSucceededEvent(outputs={})
+    responses = list(pipeline._handle_workflow_succeeded_event(event))
+
+    assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
+
+
+def test_workflow_partial_success_emits_message_end_before_workflow_finished() -> None:
+    pipeline = _build_pipeline()
+    pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
+    pipeline._workflow_id = "workflow-1"
+    pipeline._ensure_workflow_initialized = mock.Mock()
+    runtime_state = SimpleNamespace()
+    pipeline._ensure_graph_runtime_initialized = mock.Mock(return_value=runtime_state)
+    pipeline._handle_advanced_chat_message_end_event = mock.Mock(
+        return_value=iter([SimpleNamespace(event=StreamEvent.MESSAGE_END)])
+    )
+    pipeline._workflow_response_converter = mock.Mock()
+    pipeline._workflow_response_converter.workflow_finish_to_stream_response.return_value = SimpleNamespace(
+        event=StreamEvent.WORKFLOW_FINISHED,
+        data=SimpleNamespace(status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED),
+    )
+
+    event = QueueWorkflowPartialSuccessEvent(exceptions_count=1, outputs={})
+    responses = list(pipeline._handle_workflow_partial_success_event(event))
+
+    assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
+
+
+def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
+    pipeline = _build_pipeline()
+    succeeded_event = QueueWorkflowSucceededEvent(outputs={})
+    ping_event = QueuePingEvent()
+    queue_messages = [
+        SimpleNamespace(event=succeeded_event),
+        SimpleNamespace(event=ping_event),
+    ]
+
+    pipeline._conversation_name_generate_thread = None
+    pipeline._base_task_pipeline = mock.Mock()
+    pipeline._base_task_pipeline.queue_manager = mock.Mock()
+    pipeline._base_task_pipeline.queue_manager.listen.return_value = iter(queue_messages)
+    pipeline._base_task_pipeline.ping_stream_response = mock.Mock(return_value=SimpleNamespace(event=StreamEvent.PING))
+    pipeline._handle_workflow_succeeded_event = mock.Mock(
+        return_value=iter([SimpleNamespace(event=StreamEvent.WORKFLOW_FINISHED)])
+    )
+
+    responses = list(pipeline._process_stream_response())
+
+    assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
+    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event, trace_manager=None)
+    pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
+
+
+def test_process_stream_response_breaks_after_workflow_partial_success() -> None:
+    pipeline = _build_pipeline()
+    partial_event = QueueWorkflowPartialSuccessEvent(exceptions_count=1, outputs={})
+    ping_event = QueuePingEvent()
+    queue_messages = [
+        SimpleNamespace(event=partial_event),
+        SimpleNamespace(event=ping_event),
+    ]
+
+    pipeline._conversation_name_generate_thread = None
+    pipeline._base_task_pipeline = mock.Mock()
+    pipeline._base_task_pipeline.queue_manager = mock.Mock()
+    pipeline._base_task_pipeline.queue_manager.listen.return_value = iter(queue_messages)
+    pipeline._base_task_pipeline.ping_stream_response = mock.Mock(return_value=SimpleNamespace(event=StreamEvent.PING))
+    pipeline._handle_workflow_partial_success_event = mock.Mock(
+        return_value=iter([SimpleNamespace(event=StreamEvent.WORKFLOW_FINISHED)])
+    )
+
+    responses = list(pipeline._process_stream_response())
+
+    assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
+    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event, trace_manager=None)
+    pipeline._base_task_pipeline.ping_stream_response.assert_not_called()

@@ -1,11 +1,13 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import {
   Dialog,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
 } from '../index'
@@ -29,7 +31,7 @@ describe('Dialog wrapper', () => {
   })
 
   describe('Props', () => {
-    it('should not render close button when closable is omitted', () => {
+    it('should not render close button when DialogCloseButton is not provided', () => {
       render(
         <Dialog open>
           <DialogContent>
@@ -41,20 +43,47 @@ describe('Dialog wrapper', () => {
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
 
-    it('should render close button when closable is true', () => {
+    it('should render explicit close button with custom aria-label', () => {
       render(
         <Dialog open>
-          <DialogContent closable>
+          <DialogContent>
+            <DialogCloseButton aria-label="Dismiss dialog" />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
       )
 
-      const dialog = screen.getByRole('dialog')
-      const closeButton = screen.getByRole('button', { name: 'Close' })
+      expect(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+    })
 
-      expect(dialog).toContainElement(closeButton)
-      expect(closeButton).toHaveAttribute('aria-label', 'Close')
+    it('should render default close button label when aria-label is omitted', () => {
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogCloseButton />
+            <span>Dialog body</span>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    })
+
+    it('should forward close button props to base primitive', () => {
+      const onClick = vi.fn()
+      render(
+        <Dialog open>
+          <DialogContent>
+            <DialogCloseButton data-testid="close-button" disabled onClick={onClick} />
+            <span>Dialog body</span>
+          </DialogContent>
+        </Dialog>,
+      )
+
+      const closeButton = screen.getByTestId('close-button')
+      expect(closeButton).toBeDisabled()
+      fireEvent.click(closeButton)
+      expect(onClick).not.toHaveBeenCalled()
     })
   })
 
@@ -65,6 +94,7 @@ describe('Dialog wrapper', () => {
       expect(DialogTitle).toBe(BaseDialog.Title)
       expect(DialogDescription).toBe(BaseDialog.Description)
       expect(DialogClose).toBe(BaseDialog.Close)
+      expect(DialogPortal).toBe(BaseDialog.Portal)
     })
   })
 })

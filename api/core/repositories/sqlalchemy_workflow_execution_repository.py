@@ -194,6 +194,13 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
+            existing_model = session.get(WorkflowRun, db_model.id)
+            if existing_model:
+                if existing_model.tenant_id != self._tenant_id:
+                    raise ValueError("Unauthorized access to workflow run")
+                # Preserve the original start time for pause/resume flows.
+                db_model.created_at = existing_model.created_at
+
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key
             session.merge(db_model)
