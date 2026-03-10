@@ -957,6 +957,7 @@ export const useChat = (
         })
       },
       onNodeStarted: ({ data: nodeStartedData }) => {
+        // `data` is the outer send payload for this request; loop child runs should not emit top-level node traces here.
         if (data.loop_id)
           return
 
@@ -977,6 +978,7 @@ export const useChat = (
         })
       },
       onNodeFinished: ({ data: nodeFinishedData }) => {
+        // Use the outer request payload here as well so loop child runs skip top-level finish handling entirely.
         if (data.loop_id)
           return
 

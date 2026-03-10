@@ -15,6 +15,7 @@ export const upsertTopLevelTracingNodeOnStart = (
     ? tracing.findIndex(item => item.id === startedNode.id)
     : tracing.findIndex(item => item.node_id === startedNode.node_id)
   if (currentIndex > -1)
+    // Started events are the authoritative snapshot for an execution; merging would retain stale client-side fields.
     tracing[currentIndex] = startedNode
   else
     tracing.push(startedNode)
