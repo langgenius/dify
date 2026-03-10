@@ -9,16 +9,18 @@ import queue
 import threading
 import time
 from collections.abc import Sequence
-from datetime import datetime
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
 from dify_graph.context import IExecutionContext
+from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, is_node_result_event
+from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
+from libs.datetime_utils import naive_utc_now
 
 from .ready_queue import ReadyQueue
 
@@ -107,17 +109,7 @@ class Worker(threading.Thread):
                 self._execute_node(node)
                 self._ready_queue.task_done()
             except Exception as e:
-                failure_time = datetime.now()
-                error_event = NodeRunFailedEvent(
-                    id=node.execution_id,
-                    node_id=node.id,
-                    node_type=node.node_type,
-                    in_iteration_id=None,
-                    error=str(e),
-                    start_at=failure_time,
-                    finished_at=failure_time,
-                )
-                self._event_queue.put(error_event)
+                self._event_queue.put(self._build_fallback_failure_event(node, e))
 
     def _execute_node(self, node: Node) -> None:
         """
@@ -179,3 +171,22 @@ class Worker(threading.Thread):
             except Exception:
                 # Silently ignore layer errors to prevent disrupting node execution
                 continue
+
+    def _build_fallback_failure_event(self, node: Node, error: Exception) -> NodeRunFailedEvent:
+        """Build a failed event when worker-level execution aborts before a node emits its own result event."""
+        failure_time = naive_utc_now()
+        error_message = str(error)
+        return NodeRunFailedEvent(
+            id=node.execution_id,
+            node_id=node.id,
+            node_type=node.node_type,
+            in_iteration_id=None,
+            error=error_message,
+            start_at=failure_time,
+            finished_at=failure_time,
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error_message,
+                error_type=type(error).__name__,
+            ),
+        )
