@@ -9396,14 +9396,8 @@
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
-    "e18e/prefer-array-some": {
-      "count": 5
-    },
-    "e18e/prefer-spread-syntax": {
-      "count": 1
-    },
     "ts/no-empty-object-type": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 4
@@ -9700,14 +9694,6 @@
   },
   "app/components/workflow/nodes/_base/components/install-plugin-button.tsx": {
     "e18e/prefer-spread-syntax": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/layout/field-title.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -10680,11 +10666,6 @@
   "app/components/workflow/nodes/knowledge-base/components/retrieval-setting/type.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/nodes/knowledge-base/node.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
