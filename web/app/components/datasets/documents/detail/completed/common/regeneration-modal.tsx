@@ -23,8 +23,8 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="text-text-primary title-2xl-semi-bold">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="text-text-secondary system-md-regular">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end gap-x-2 pt-6">
         <Button onClick={onCancel}>
@@ -46,8 +46,8 @@ const RegeneratingContent: FC = React.memo(() => {
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regeneratingTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="text-text-primary title-2xl-semi-bold">{t('segment.regeneratingTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="text-text-secondary system-md-regular">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="warning" destructive disabled className="inline-flex items-center gap-x-0.5">
@@ -80,8 +80,8 @@ const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = Rea
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationSuccessTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regenerationSuccessMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="text-text-primary title-2xl-semi-bold">{t('segment.regenerationSuccessTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="text-text-secondary system-md-regular">{t('segment.regenerationSuccessMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="primary" onClick={onClose}>

@@ -79,7 +79,7 @@ const Form: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className="mb-1 flex items-center justify-between">
-          <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">{label}</div>
+          <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">{label}</div>
           {isArrayLikeType && !isIteratorItemFile && (
             <AddButton onClick={handleAddContext} />
           )}

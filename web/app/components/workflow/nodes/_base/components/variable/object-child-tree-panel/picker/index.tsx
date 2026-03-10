@@ -47,13 +47,13 @@ export const PickerPanelMain: FC<Props> = ({
         <div className="flex">
           {root.nodeName && (
             <>
-              <div className="system-sm-medium max-w-[100px] truncate text-text-tertiary">{root.nodeName}</div>
-              <div className="system-sm-medium text-text-tertiary">.</div>
+              <div className="max-w-[100px] truncate text-text-tertiary system-sm-medium">{root.nodeName}</div>
+              <div className="text-text-tertiary system-sm-medium">.</div>
             </>
           )}
-          <div className="system-sm-medium text-text-secondary">{root.attrName}</div>
+          <div className="text-text-secondary system-sm-medium">{root.attrName}</div>
         </div>
-        <div className="system-xs-regular ml-2 truncate text-text-tertiary" title={root.attrAlias || 'object'}>{root.attrAlias || 'object'}</div>
+        <div className="ml-2 truncate text-text-tertiary system-xs-regular" title={root.attrAlias || 'object'}>{root.attrAlias || 'object'}</div>
       </div>
       {fieldNames.map(name => (
         <Field

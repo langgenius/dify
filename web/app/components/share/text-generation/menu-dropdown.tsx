@@ -85,7 +85,7 @@ const MenuDropdown: FC<Props> = ({
         <PortalToFollowElemContent className="z-50">
           <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
             <div className="p-1">
-              <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
+              <div className={cn('flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary system-md-regular')}>
                 <div className="grow">{t('theme.theme', { ns: 'common' })}</div>
                 <ThemeSwitcher />
               </div>
@@ -93,7 +93,7 @@ const MenuDropdown: FC<Props> = ({
             <Divider type="horizontal" className="my-0" />
             <div className="p-1">
               {data?.privacy_policy && (
-                <a href={data.privacy_policy} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
+                <a href={data.privacy_policy} target="_blank" className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover">
                   <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
                 </a>
               )}
@@ -102,7 +102,7 @@ const MenuDropdown: FC<Props> = ({
                   handleTrigger()
                   setShow(true)
                 }}
-                className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+                className="cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
               >
                 {t('userProfile.about', { ns: 'common' })}
               </div>
@@ -111,7 +111,7 @@ const MenuDropdown: FC<Props> = ({
               <div className="p-1">
                 <div
                   onClick={handleLogout}
-                  className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+                  className="cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
                 >
                   {t('userProfile.logout', { ns: 'common' })}
                 </div>

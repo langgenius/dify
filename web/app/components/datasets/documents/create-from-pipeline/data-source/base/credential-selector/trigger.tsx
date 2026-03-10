@@ -31,7 +31,7 @@ const Trigger = ({
         size={20}
       />
       <div className="flex grow items-center gap-x-1 overflow-hidden">
-        <span className="system-md-semibold grow truncate text-text-secondary">
+        <span className="grow truncate text-text-secondary system-md-semibold">
           {name}
         </span>
         <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />

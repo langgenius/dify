@@ -17,7 +17,7 @@ const EmptySearchResult = ({
   return (
     <div className="flex size-full flex-col items-center justify-center gap-y-2 rounded-[10px] bg-background-section p-6">
       <SearchMenu className="size-8 text-text-tertiary" />
-      <div className="system-sm-regular text-text-secondary">
+      <div className="text-text-secondary system-sm-regular">
         {t('onlineDrive.emptySearchResult', { ns: 'datasetPipeline' })}
       </div>
       <Button

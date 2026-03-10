@@ -75,17 +75,17 @@ const TestApi: FC<Props> = ({
           <div className="overflow-y-auto px-6 pt-2">
             <div className="space-y-4">
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
-                  <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${tempCredential.auth_type}`, { ns: 'tools' })}</div>
+                  <div className="text-text-primary system-xs-regular">{t(`createTool.authMethod.types.${tempCredential.auth_type}`, { ns: 'tools' })}</div>
                   <RiSettings2Line className="h-4 w-4 text-text-secondary" />
                 </div>
               </div>
 
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('test.parametersValue', { ns: 'tools' })}</div>
+                <div className="py-2 text-text-primary system-sm-medium">{t('test.parametersValue', { ns: 'tools' })}</div>
                 <div className="rounded-lg border border-divider-regular">
-                  <table className="system-xs-regular w-full font-normal text-text-secondary">
+                  <table className="w-full font-normal text-text-secondary system-xs-regular">
                     <thead className="uppercase text-text-tertiary">
                       <tr className="border-b border-divider-regular">
                         <th className="p-2 pl-3 font-medium">{t('test.parameters', { ns: 'tools' })}</th>
@@ -114,13 +114,13 @@ const TestApi: FC<Props> = ({
               </div>
 
             </div>
-            <Button variant="primary" className=" mt-4 h-10 w-full" loading={testing} disabled={testing} onClick={handleTest}>{t('test.title', { ns: 'tools' })}</Button>
+            <Button variant="primary" className="mt-4 h-10 w-full" loading={testing} disabled={testing} onClick={handleTest}>{t('test.title', { ns: 'tools' })}</Button>
             <div className="mt-6">
               <div className="flex items-center space-x-3">
-                <div className="system-xs-semibold text-text-tertiary">{t('test.testResult', { ns: 'tools' })}</div>
+                <div className="text-text-tertiary system-xs-semibold">{t('test.testResult', { ns: 'tools' })}</div>
                 <div className="bg-[rgb(243, 244, 246)] h-px w-0 grow"></div>
               </div>
-              <div className="system-xs-regular mt-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg bg-components-input-bg-normal px-3 py-2 text-text-secondary">
+              <div className="mt-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg bg-components-input-bg-normal px-3 py-2 text-text-secondary system-xs-regular">
                 {result || <span className="text-text-quaternary">{t('test.testResultPlaceholder', { ns: 'tools' })}</span>}
               </div>
             </div>

@@ -32,9 +32,9 @@ const LikedItem = ({
         <div className={cn('relative h-6 w-6 rounded-md')}>
           <AppIcon size="tiny" iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
         </div>
-        {!isMobile && <div className={cn(' system-sm-medium ml-2 truncate text-text-primary')}>{detail?.name || '--'}</div>}
+        {!isMobile && <div className={cn('ml-2 truncate text-text-primary system-sm-medium')}>{detail?.name || '--'}</div>}
       </div>
-      <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary group-hover/link-item:hidden">{appTypeMap[detail.mode]}</div>
+      <div className="shrink-0 text-text-tertiary system-2xs-medium-uppercase group-hover/link-item:hidden">{appTypeMap[detail.mode]}</div>
       <RiArrowRightUpLine className="hidden h-4 w-4 text-text-tertiary group-hover/link-item:block" />
     </Link>
   )

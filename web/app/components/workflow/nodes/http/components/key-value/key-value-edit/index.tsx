@@ -58,7 +58,7 @@ const KeyValueList: FC<Props> = ({
 
   return (
     <div className="overflow-hidden rounded-lg border border-divider-regular">
-      <div className={cn('system-xs-medium-uppercase flex h-7 items-center leading-7 text-text-tertiary')}>
+      <div className={cn('flex h-7 items-center leading-7 text-text-tertiary system-xs-medium-uppercase')}>
         <div className={cn('h-full border-r border-divider-regular pl-3', isSupportFile ? 'w-[140px]' : 'w-1/2')}>{t(`${i18nPrefix}.key`, { ns: 'workflow' })}</div>
         {isSupportFile && <div className="h-full w-[70px] shrink-0 border-r border-divider-regular pl-3">{t(`${i18nPrefix}.type`, { ns: 'workflow' })}</div>}
         <div className={cn('h-full items-center justify-between pl-3 pr-1', isSupportFile ? 'grow' : 'w-1/2')}>{t(`${i18nPrefix}.value`, { ns: 'workflow' })}</div>

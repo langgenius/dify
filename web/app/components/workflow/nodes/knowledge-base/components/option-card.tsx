@@ -108,7 +108,7 @@ const OptionCard = memo(({
         }
         <div className="grow py-1 pt-[1px]">
           <div className="flex items-center">
-            <div className="system-sm-medium flex grow items-center text-text-secondary">
+            <div className="flex grow items-center text-text-secondary system-sm-medium">
               {title}
               {
                 isRecommended && (
@@ -131,7 +131,7 @@ const OptionCard = memo(({
           </div>
           {
             description && (
-              <div className="system-xs-regular mt-1 text-text-tertiary">
+              <div className="mt-1 text-text-tertiary system-xs-regular">
                 {description}
               </div>
             )

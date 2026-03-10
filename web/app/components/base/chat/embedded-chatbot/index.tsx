@@ -54,7 +54,7 @@ const Chatbot = () => {
           'flex flex-col rounded-2xl',
           isMobile ? 'h-[calc(100vh_-_60px)] shadow-xs' : 'h-[100vh] bg-chatbot-bg',
         )}
-        style={isMobile ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '')) : {}}
+        style={isMobile ? { ...CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '') } : {}}
       >
         <Header
           isMobile={isMobile}
@@ -81,7 +81,7 @@ const Chatbot = () => {
               'flex shrink-0 items-center gap-1.5 px-2',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />

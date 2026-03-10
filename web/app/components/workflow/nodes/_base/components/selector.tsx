@@ -69,12 +69,12 @@ const TypeSelector: FC<Props> = ({
               className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pl-1 pr-0.5 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}
             >
               <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
-              {!readonly && <DropDownIcon className="h-3 w-3 " />}
+              {!readonly && <DropDownIcon className="h-3 w-3" />}
             </div>
           )}
 
       {(showOption && !readonly) && (
-        <div className={cn('absolute top-[24px] z-10 w-[120px]  select-none rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg', popupClassName)}>
+        <div className={cn('absolute top-[24px] z-10 w-[120px] select-none rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg', popupClassName)}>
           {list.map(item => (
             <div
               key={item.value}

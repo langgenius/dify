@@ -119,7 +119,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                 <div
                   onClick={() => onCreate('')}
                   className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover ',
+                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
                   )}
                 >
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default">

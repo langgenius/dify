@@ -34,7 +34,7 @@ const AppCard = ({
     }
   }, [setShowTryAppPanel, app.category])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4  shadow-xs hover:shadow-lg')}>
+    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -52,12 +52,12 @@ const AppCard = ({
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appBasicInfo.name}>{appBasicInfo.name}</span>
+            <span className="text-text-secondary system-md-semibold" title={appBasicInfo.name}>{appBasicInfo.name}</span>
           </div>
-          <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={app.app.mode} />
+          <AppTypeLabel className="text-text-tertiary system-2xs-medium-uppercase" type={app.app.mode} />
         </div>
       </div>
-      <div className="system-xs-regular py-1 text-text-tertiary">
+      <div className="py-1 text-text-tertiary system-xs-regular">
         <div className="line-clamp-3">
           {app.description}
         </div>

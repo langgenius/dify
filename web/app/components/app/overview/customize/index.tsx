@@ -59,7 +59,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           {' '}
           1
         </Tag>
-        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way1.name`, { ns: 'appOverview' })}</p>
+        <p className="my-2 text-text-secondary system-sm-medium">{t(`${prefixCustomize}.way1.name`, { ns: 'appOverview' })}</p>
         <div className="flex py-4">
           <StepNum>1</StepNum>
           <div className="flex flex-col">
@@ -113,7 +113,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           {' '}
           2
         </Tag>
-        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
+        <p className="my-2 text-text-secondary system-sm-medium">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
         <Button
           className="mt-2"
           onClick={() =>

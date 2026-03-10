@@ -39,13 +39,13 @@ const ListWithCollection = ({
           >
             <div className="flex items-end justify-between">
               <div>
-                <div className="title-xl-semi-bold text-text-primary">{collection.label[getLanguage(locale)]}</div>
-                <div className="system-xs-regular text-text-tertiary">{collection.description[getLanguage(locale)]}</div>
+                <div className="text-text-primary title-xl-semi-bold">{collection.label[getLanguage(locale)]}</div>
+                <div className="text-text-tertiary system-xs-regular">{collection.description[getLanguage(locale)]}</div>
               </div>
               {
                 collection.searchable && (
                   <div
-                    className="system-xs-medium flex cursor-pointer items-center text-text-accent "
+                    className="flex cursor-pointer items-center text-text-accent system-xs-medium"
                     onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}

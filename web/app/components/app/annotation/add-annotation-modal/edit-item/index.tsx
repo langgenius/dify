@@ -31,7 +31,7 @@ const EditItem: FC<Props> = ({
         {avatar}
       </div>
       <div className="grow">
-        <div className="system-xs-semibold mb-1 text-text-primary">{name}</div>
+        <div className="mb-1 text-text-primary system-xs-semibold">{name}</div>
         <Textarea
           value={content}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}

@@ -73,7 +73,7 @@ const DrawerPlus: FC<Props> = ({
       >
         <div className={cn(headerClassName, 'shrink-0 border-b border-divider-subtle py-4')}>
           <div className="flex h-6 items-center justify-between pl-6 pr-5">
-            <div className="system-xl-semibold text-text-primary">
+            <div className="text-text-primary system-xl-semibold">
               {title}
             </div>
             <div className="flex items-center">
@@ -86,7 +86,7 @@ const DrawerPlus: FC<Props> = ({
             </div>
           </div>
           {titleDescription && (
-            <div className="system-xs-regular pl-6 pr-10 text-text-tertiary">
+            <div className="pl-6 pr-10 text-text-tertiary system-xs-regular">
               {titleDescription}
             </div>
           )}

@@ -29,15 +29,15 @@ const MemberItem = ({
     >
       {leftIcon}
       <div className="grow">
-        <div className="system-sm-medium truncate text-text-secondary">
+        <div className="truncate text-text-secondary system-sm-medium">
           {name}
           {isMe && (
-            <span className="system-xs-regular text-text-tertiary">
+            <span className="text-text-tertiary system-xs-regular">
               {t('form.me', { ns: 'datasetSettings' })}
             </span>
           )}
         </div>
-        <div className="system-xs-regular truncate text-text-tertiary">{email}</div>
+        <div className="truncate text-text-tertiary system-xs-regular">{email}</div>
       </div>
       {isSelected && <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />}
     </div>

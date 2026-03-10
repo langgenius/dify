@@ -154,7 +154,7 @@ const SelectionContextmenu = () => {
   // Handle distribute nodes logic
   const handleDistributeNodes = useCallback((nodesToAlign: any[], nodes: any[], alignType: AlignType) => {
     // Sort nodes appropriately
-    const sortedNodes = [...nodesToAlign].sort((a, b) => {
+    const sortedNodes = nodesToAlign.toSorted((a, b) => {
       if (alignType === AlignType.DistributeHorizontal) {
         // Sort by left position for horizontal distribution
         return a.position.x - b.position.x
@@ -174,7 +174,7 @@ const SelectionContextmenu = () => {
     if (alignType === AlignType.DistributeHorizontal) {
       // Fixed positions - first node's left edge and last node's right edge
       const firstNodeLeft = sortedNodes[0].position.x
-      const lastNodeRight = sortedNodes[sortedNodes.length - 1].position.x + (sortedNodes[sortedNodes.length - 1].width || 0)
+      const lastNodeRight = sortedNodes.at(-1).position.x + (sortedNodes.at(-1).width || 0)
 
       // Total available space
       totalGap = lastNodeRight - firstNodeLeft
@@ -185,7 +185,7 @@ const SelectionContextmenu = () => {
     else {
       // Fixed positions - first node's top edge and last node's bottom edge
       const firstNodeTop = sortedNodes[0].position.y
-      const lastNodeBottom = sortedNodes[sortedNodes.length - 1].position.y + (sortedNodes[sortedNodes.length - 1].height || 0)
+      const lastNodeBottom = sortedNodes.at(-1).position.y + (sortedNodes.at(-1).height || 0)
 
       // Total available space
       totalGap = lastNodeBottom - firstNodeTop
@@ -383,7 +383,7 @@ const SelectionContextmenu = () => {
     >
       <div ref={menuRef} className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
         <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+          <div className="px-2 py-2 text-text-tertiary system-xs-medium">
             {t('operator.vertical', { ns: 'workflow' })}
           </div>
           <div
@@ -417,7 +417,7 @@ const SelectionContextmenu = () => {
         </div>
         <div className="h-px bg-divider-regular"></div>
         <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+          <div className="px-2 py-2 text-text-tertiary system-xs-medium">
             {t('operator.horizontal', { ns: 'workflow' })}
           </div>
           <div

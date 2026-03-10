@@ -36,11 +36,11 @@ const CopyFeedbackNew = ({ content }: Props) => {
         }
       >
         <div
-          className="group/copy flex w-full items-center gap-0.5 "
+          className="group/copy flex w-full items-center gap-0.5"
           onClick={onClickCopy}
         >
           <div
-            className="system-2xs-regular w-0 grow cursor-pointer truncate text-text-quaternary group-hover:text-text-tertiary"
+            className="w-0 grow cursor-pointer truncate text-text-quaternary system-2xs-regular group-hover:text-text-tertiary"
           >
             {content}
           </div>

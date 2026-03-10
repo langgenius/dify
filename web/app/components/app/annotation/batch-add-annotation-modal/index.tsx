@@ -52,7 +52,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
-        setTimeout(() => checkProcess(res.job_id), 2500)
+        setTimeout(checkProcess, 2500, res.job_id)
       if (res.job_status === ProcessStatus.ERROR)
         notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}` })
       if (res.job_status === ProcessStatus.COMPLETED) {
@@ -90,7 +90,7 @@ const BatchModal: FC<IBatchModalProps> = ({
 
   return (
     <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
-      <div className="system-xl-medium relative pb-1 text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
+      <div className="relative pb-1 text-text-primary system-xl-medium">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
@@ -107,7 +107,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       )}
 
       <div className="mt-[28px] flex justify-end pt-6">
-        <Button className="system-sm-medium mr-2 text-text-tertiary" onClick={onCancel}>
+        <Button className="mr-2 text-text-tertiary system-sm-medium" onClick={onCancel}>
           {t('batchModal.cancel', { ns: 'appAnnotation' })}
         </Button>
         <Button

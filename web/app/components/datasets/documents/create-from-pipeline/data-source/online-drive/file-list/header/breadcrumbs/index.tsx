@@ -41,7 +41,7 @@ const Breadcrumbs = ({
       needCollapsed: breadcrumbs.length > displayBreadcrumbNum,
       prefixBreadcrumbs: prefixToDisplay,
       collapsedBreadcrumbs,
-      lastBreadcrumb: breadcrumbs[breadcrumbs.length - 1],
+      lastBreadcrumb: breadcrumbs.at(-1),
     }
   }, [displayBreadcrumbNum, breadcrumbs])
 
@@ -83,16 +83,16 @@ const Breadcrumbs = ({
   return (
     <div className="flex grow items-center overflow-hidden">
       {showSearchResult && (
-        <div className="system-sm-medium text-test-secondary px-[5px]">
+        <div className="text-test-secondary px-[5px] system-sm-medium">
           {t('onlineDrive.breadcrumbs.searchResult', {
             ns: 'datasetPipeline',
             searchResultsLength,
-            folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
+            folderName: breadcrumbs.length > 0 ? breadcrumbs.at(-1) : bucket,
           })}
         </div>
       )}
       {!showSearchResult && showBucketListTitle && (
-        <div className="system-sm-medium text-test-secondary px-[5px]">
+        <div className="text-test-secondary px-[5px] system-sm-medium">
           {t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
         </div>
       )}

@@ -41,9 +41,9 @@ const NodeVariableItem = ({
   const isRagVar = isRagVariableVar(variable)
   const varName = useMemo(() => {
     if (isSystem)
-      return `sys.${variable[variable.length - 1]}`
+      return `sys.${variable.at(-1)}`
     if (isRagVar)
-      return variable[variable.length - 1]
+      return variable.at(-1)
     return variable.slice(1).join('.')
   }, [isRagVar, isSystem, variable])
 
@@ -80,7 +80,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
+          'ml-0.5 shrink truncate text-text-accent system-xs-medium',
           isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',

@@ -154,7 +154,7 @@ const MemoryConfig: FC<Props> = ({
                   size="md"
                   disabled={readonly}
                 />
-                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
+                <div className="text-text-tertiary system-xs-medium-uppercase">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
               </div>
               <div className="flex h-8 items-center space-x-2">
                 <Slider

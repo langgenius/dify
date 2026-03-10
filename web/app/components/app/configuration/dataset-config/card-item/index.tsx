@@ -68,7 +68,7 @@ const Item: FC<ItemProps> = ({
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className="system-sm-medium w-0 grow truncate text-text-secondary" title={config.name}>{config.name}</div>
+        <div className="w-0 grow truncate text-text-secondary system-sm-medium" title={config.name}>{config.name}</div>
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {

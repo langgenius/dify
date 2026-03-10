@@ -21,8 +21,8 @@ const WebsitePreview = ({
       <div className="flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4">
         <div className="flex grow flex-col gap-y-1">
           <div className="system-2xs-semibold-uppercase">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
-          <div className="title-md-semi-bold text-tex-primary">{currentWebsite.title}</div>
-          <div className="system-xs-medium flex gap-x-1  text-text-tertiary">
+          <div className="text-tex-primary title-md-semi-bold">{currentWebsite.title}</div>
+          <div className="flex gap-x-1 text-text-tertiary system-xs-medium">
             <RiGlobalLine className="size-3.5" />
             <span className="uppercase" title={currentWebsite.source_url}>{currentWebsite.source_url}</span>
             <span>·</span>
@@ -38,7 +38,7 @@ const WebsitePreview = ({
           <RiCloseLine className="size-[18px]" />
         </button>
       </div>
-      <div className="body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary">
+      <div className="grow overflow-hidden px-6 py-5 text-text-secondary body-md-regular">
         {currentWebsite.markdown}
       </div>
     </div>

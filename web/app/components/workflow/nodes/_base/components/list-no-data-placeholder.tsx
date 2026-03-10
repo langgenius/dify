@@ -10,7 +10,7 @@ const ListNoDataPlaceholder: FC<Props> = ({
   children,
 }) => {
   return (
-    <div className="system-xs-regular flex min-h-[42px] w-full items-center justify-center rounded-[10px] bg-background-section text-text-tertiary">
+    <div className="flex min-h-[42px] w-full items-center justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular">
       {children}
     </div>
   )

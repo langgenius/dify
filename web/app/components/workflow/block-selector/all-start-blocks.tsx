@@ -153,7 +153,7 @@ const AllStartBlocks = ({
             )}
             {shouldShowTriggerListTitle && (
               <div className="px-3 pb-1 pt-2">
-                <span className="system-xs-medium text-text-primary">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
+                <span className="text-text-primary system-xs-medium">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
               </div>
             )}
             <StartBlocks

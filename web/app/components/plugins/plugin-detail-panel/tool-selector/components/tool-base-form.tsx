@@ -47,7 +47,7 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
     <div className="flex flex-col gap-3 px-4 py-2">
       {/* Tool picker */}
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold flex h-6 items-center justify-between text-text-secondary">
+        <div className="flex h-6 items-center justify-between text-text-secondary system-sm-semibold">
           {t('detailPanel.toolSelector.toolLabel', { ns: 'plugin' })}
           {currentProvider?.plugin_unique_identifier && (
             <ReadmeEntrance
@@ -80,7 +80,7 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
 
       {/* Description */}
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+        <div className="flex h-6 items-center text-text-secondary system-sm-semibold">
           {t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}
         </div>
         <Textarea

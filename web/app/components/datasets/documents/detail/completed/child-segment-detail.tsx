@@ -76,13 +76,13 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
     <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t('segment.editChildChunk', { ns: 'datasetDocuments' })}</div>
+          <div className="text-text-primary system-xl-semibold">{t('segment.editChildChunk', { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t('segment.childChunk', { ns: 'datasetDocuments' }) as string} />
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
+            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">
+            <span className="text-text-tertiary system-xs-medium">
               {EditTimeText}
             </span>
           </div>

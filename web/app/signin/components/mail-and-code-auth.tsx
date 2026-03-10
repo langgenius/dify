@@ -64,7 +64,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     <form onSubmit={handleSubmit}>
       <input type="text" className="hidden" />
       <div className="mb-2">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
+        <label htmlFor="email" className="my-2 text-text-secondary system-md-semibold">{t('email', { ns: 'login' })}</label>
         <div className="mt-1">
           <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
         </div>

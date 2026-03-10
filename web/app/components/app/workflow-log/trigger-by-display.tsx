@@ -123,7 +123,7 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
         {icon}
       </div>
       {showText && (
-        <span className="system-sm-regular text-text-secondary">
+        <span className="text-text-secondary system-sm-regular">
           {displayName}
         </span>
       )}

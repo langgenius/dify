@@ -45,7 +45,7 @@ const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, 
       onClick={() => !disabled && onClick(value)}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center ">
+        <div className="flex items-center">
           <div className="mr-3 rounded-lg bg-indigo-50 p-1">
             <Icon className="h-4 w-4 text-indigo-600" />
           </div>
@@ -84,7 +84,7 @@ const AssistantTypePicker: FC<Props> = ({
     <>
       <div className="my-4 h-px bg-gray-100"></div>
       <div
-        className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'rounded-xl bg-gray-50 p-3 pr-4 ')}
+        className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'rounded-xl bg-gray-50 p-3 pr-4')}
         onClick={() => {
           if (isAgent) {
             setOpen(false)
@@ -93,7 +93,7 @@ const AssistantTypePicker: FC<Props> = ({
         }}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center ">
+          <div className="flex items-center">
             <div className="mr-3 rounded-lg bg-gray-200 p-1 group-hover:bg-white">
               <Settings04 className="h-4 w-4 text-gray-600 group-hover:text-[#155EEF]" />
             </div>

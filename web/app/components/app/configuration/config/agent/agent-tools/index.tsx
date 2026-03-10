@@ -209,11 +209,11 @@ const AgentTools: FC = () => {
                 )}
                 <div
                   className={cn(
-                    'system-xs-regular ml-1.5 flex w-0 grow items-center truncate',
+                    'ml-1.5 flex w-0 grow items-center truncate system-xs-regular',
                     (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
                   )}
                 >
-                  <span className="system-xs-medium pr-1.5 text-text-secondary">{getProviderShowName(item)}</span>
+                  <span className="pr-1.5 text-text-secondary system-xs-medium">{getProviderShowName(item)}</span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
                   {!item.isDeleted && !readonly && (
                     <Tooltip
@@ -268,7 +268,7 @@ const AgentTools: FC = () => {
                         needsDelay={false}
                       >
                         <div
-                          className="cursor-pointer rounded-md p-1  hover:bg-black/5"
+                          className="cursor-pointer rounded-md p-1 hover:bg-black/5"
                           onClick={() => {
                             setCurrentTool(item)
                             setIsShowSettingTool(true)

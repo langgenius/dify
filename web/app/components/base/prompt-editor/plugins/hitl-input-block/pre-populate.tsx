@@ -41,7 +41,7 @@ const Placeholder = ({
 }: PlaceholderProps) => {
   const { t } = useTranslation()
   return (
-    <div className="system-sm-regular mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary">
+    <div className="mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary system-sm-regular">
       <div className="flex flex-wrap items-center leading-5">
         <Trans
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}

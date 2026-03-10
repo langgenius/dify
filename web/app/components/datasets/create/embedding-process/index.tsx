@@ -39,7 +39,7 @@ const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
   const { t } = useTranslation()
 
   return (
-    <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
+    <div className="flex items-center gap-x-1 text-text-secondary system-md-semibold-uppercase">
       {isEmbedding && (
         <>
           <RiLoader2Fill className="size-4 animate-spin" />

@@ -80,12 +80,12 @@ const FileInAttachmentItem = ({
         </div>
         <div className="mr-1 w-0 grow">
           <div
-            className="system-xs-medium mb-0.5 flex items-center truncate text-text-secondary"
+            className="mb-0.5 flex items-center truncate text-text-secondary system-xs-medium"
             title={file.name}
           >
             <div className="truncate">{name}</div>
           </div>
-          <div className="system-2xs-medium-uppercase flex items-center text-text-tertiary">
+          <div className="flex items-center text-text-tertiary system-2xs-medium-uppercase">
             {
               ext && (
                 <span>{ext.toLowerCase()}</span>
@@ -93,7 +93,7 @@ const FileInAttachmentItem = ({
             }
             {
               ext && (
-                <span className="system-2xs-medium mx-1">•</span>
+                <span className="mx-1 system-2xs-medium">•</span>
               )
             }
             {

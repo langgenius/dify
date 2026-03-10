@@ -32,10 +32,10 @@ const Header = () => {
             : <DifyLogo />}
         </div>
         <div className="h-4 w-[1px] origin-center rotate-[11.31deg] bg-divider-regular" />
-        <p className="title-3xl-semi-bold relative mt-[-2px] text-text-primary">{t('account.account', { ns: 'common' })}</p>
+        <p className="relative mt-[-2px] text-text-primary title-3xl-semi-bold">{t('account.account', { ns: 'common' })}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <Button className="system-sm-medium gap-2 px-3 py-2" onClick={goToStudio}>
+        <Button className="gap-2 px-3 py-2 system-sm-medium" onClick={goToStudio}>
           <RiRobot2Line className="h-4 w-4" />
           <p>{t('account.studio', { ns: 'common' })}</p>
           <RiArrowRightUpLine className="h-4 w-4" />
