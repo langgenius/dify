@@ -110,7 +110,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     // Filter out keys that are not properly defined (either not exist or exist but without valid name)
     const newPromptVariables = keys.filter((key) => {
       // Check if key exists in external data tools
-      if (externalDataToolsConfig.some((item: ExternalDataTool) => item.variable === key))
+      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
         return false
 
       // Check if key exists in prompt variables

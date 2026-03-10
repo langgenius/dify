@@ -85,7 +85,7 @@ function Confirm({
       setIsVisible(true)
     }
     else {
-      const timer = setTimeout(setIsVisible, 200, false)
+      const timer = setTimeout(() => setIsVisible(false), 200)
       return () => clearTimeout(timer)
     }
   }, [isShow])
