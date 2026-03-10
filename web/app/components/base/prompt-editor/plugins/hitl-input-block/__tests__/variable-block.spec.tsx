@@ -32,6 +32,25 @@ const createWorkflowNodesMap = (title = 'Node One'): WorkflowNodesMap => ({
   },
 })
 
+const createVar = (variable: string): Var => ({
+  variable,
+  type: 'string',
+})
+
+const createSelectorWithTransientPrefix = (prefix: string, suffix: string): string[] => {
+  let accessCount = 0
+  const selector = [prefix, suffix]
+  return new Proxy(selector, {
+    get(target, property, receiver) {
+      if (property === '0') {
+        accessCount += 1
+        return accessCount > 4 ? undefined : prefix
+      }
+      return Reflect.get(target, property, receiver)
+    },
+  }) as unknown as string[]
+}
+
 const hasErrorIcon = (container: HTMLElement) => {
   return container.querySelector('svg.text-text-destructive') !== null
 }
@@ -153,7 +172,7 @@ describe('HITLInputVariableBlockComponent', () => {
       const { container } = renderVariableBlock({
         variables: ['conversation', 'session_id'],
         workflowNodesMap: {},
-        conversationVariables: [{ variable: 'conversation.session_id', type: 'string' } as Var],
+        conversationVariables: [createVar('conversation.session_id')],
       })
 
       expect(hasErrorIcon(container)).toBe(false)
@@ -176,7 +195,7 @@ describe('HITLInputVariableBlockComponent', () => {
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
         workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: [{ variable: 'rag.node-rag.chunk', type: 'string', isRagVariable: true } as Var],
+        ragVariables: [{ ...createVar('rag.node-rag.chunk'), isRagVariable: true }],
         getVarType,
       })
 
@@ -203,6 +222,75 @@ describe('HITLInputVariableBlockComponent', () => {
         nodeId: 'node-1',
         valueSelector: ['node-1', 'parent', 'child'],
       })
+    })
+  })
+
+  describe('Optional lists and selector fallbacks', () => {
+    it('should keep env variable valid when environmentVariables is not provided', () => {
+      const { container } = renderVariableBlock({
+        variables: ['env', 'api_key'],
+        workflowNodesMap: {},
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should evaluate env selector fallback when selector second segment is missing', () => {
+      const { container } = renderVariableBlock({
+        variables: ['env'],
+        workflowNodesMap: {},
+        environmentVariables: [createVar('env.')],
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should evaluate env selector fallback when selector prefix becomes undefined at lookup time', () => {
+      const { container } = renderVariableBlock({
+        variables: createSelectorWithTransientPrefix('env', 'api_key'),
+        workflowNodesMap: {},
+        environmentVariables: [createVar('.api_key')],
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should keep conversation variable valid when conversationVariables is not provided', () => {
+      const { container } = renderVariableBlock({
+        variables: ['conversation', 'session_id'],
+        workflowNodesMap: {},
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should evaluate conversation selector fallback when selector second segment is missing', () => {
+      const { container } = renderVariableBlock({
+        variables: ['conversation'],
+        workflowNodesMap: {},
+        conversationVariables: [createVar('conversation.')],
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should keep rag variable valid when ragVariables is not provided', () => {
+      const { container } = renderVariableBlock({
+        variables: ['rag', 'node-rag', 'chunk'],
+        workflowNodesMap: createWorkflowNodesMap(),
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
+    })
+
+    it('should evaluate rag selector fallbacks when node and key segments are missing', () => {
+      const { container } = renderVariableBlock({
+        variables: ['rag'],
+        workflowNodesMap: {},
+        ragVariables: [createVar('rag..')],
+      })
+
+      expect(hasErrorIcon(container)).toBe(false)
     })
   })
 })
