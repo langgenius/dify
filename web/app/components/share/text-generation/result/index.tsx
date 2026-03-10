@@ -551,6 +551,7 @@ const Result: FC<IResultProps> = ({
           }))
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
+          tempMessageId = workflowPausedData.workflow_run_id
           const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
           sseGet(
             url,
