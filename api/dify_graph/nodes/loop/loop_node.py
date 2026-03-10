@@ -11,6 +11,7 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.graph_events import (
     GraphNodeEventBase,
     GraphRunFailedEvent,
@@ -317,14 +318,15 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 # Get node class
                 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
                 if node_type not in NODE_TYPE_CLASSES_MAPPING:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
+                node_version = str(typed_sub_node_config["data"].version)
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:

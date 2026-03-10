@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 from typing_extensions import TypeIs
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -487,14 +488,15 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 # Get node class
                 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
                 if node_type not in NODE_TYPE_CLASSES_MAPPING:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
+                node_version = str(typed_sub_node_config["data"].version)
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
