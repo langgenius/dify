@@ -45,20 +45,13 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
         .json()
         .then(data => data as ResponseError)
         .catch(() => null)
+      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      switch (response.status) {
-        case 403:
-          if (errorData && !otherOptions.silent)
-            Toast.notify({ type: 'error', message: errorData.message })
-          if (errorData?.code === 'already_setup')
-            globalThis.location.href = `${globalThis.location.origin}/signin`
-          break
-        case 401:
-          break
-        default:
-          if (errorData && !otherOptions.silent)
-            Toast.notify({ type: 'error', message: errorData.message })
-      }
+      if (shouldNotifyError)
+        Toast.notify({ type: 'error', message: errorData.message })
+
+      if (response.status === 403 && errorData?.code === 'already_setup')
+        globalThis.location.href = `${globalThis.location.origin}/signin`
     }
   }
 }
