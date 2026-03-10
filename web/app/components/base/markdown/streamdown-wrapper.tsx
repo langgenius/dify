@@ -113,11 +113,17 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   const { input: _inputRequired, ...requiredRest }
     = (defaultSanitizeSchema.required ?? {})
 
+  // `name` is in the default `clobber` list, which prefixes every `name` value
+  // with `user-content-`.  Form fields need the original `name`, and our form
+  // component validates names with `isSafeName()`, so remove it.
+  const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
+
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
-    tagNames: Array.from(tagNamesSet),
+    tagNames: [...tagNamesSet],
     attributes: mergedAttributes,
     required: requiredRest,
+    clobber,
   }
 
   return [
@@ -190,7 +196,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       a: Link,
       p: pProps => pluginInfo ? <PluginParagraph {...pProps} pluginInfo={pluginInfo} /> : <Paragraph {...pProps} />,
       button: MarkdownButton,
-      form: MarkdownForm,
+      form: MarkdownForm as ComponentType,
       details: ThinkBlock as ComponentType,
       ...customComponents,
     }),

@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import dayjs from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import MarkdownForm from '../form'
 
+const UNSUPPORTED_TAG_ARTICLE_RE = /Unsupported tag:\s*article/
+const UNSUPPORTED_TAG_RE = /Unsupported tag/
+
 type TextNode = {
   type: 'text'
   value: string
@@ -16,6 +19,8 @@ type ElementNode = {
 }
 
 type RootNode = {
+  type: 'element'
+  tagName: 'form'
   properties: Record<string, unknown>
   children: Array<ElementNode | TextNode>
 }
@@ -63,6 +68,8 @@ const createRootNode = (
   children: Array<ElementNode | TextNode>,
   properties: Record<string, unknown> = {},
 ): RootNode => ({
+  type: 'element',
+  tagName: 'form',
   properties,
   children,
 })
@@ -89,7 +96,7 @@ describe('MarkdownForm', () => {
       expect(screen.getByPlaceholderText('Enter name')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('Enter bio')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
-      expect(screen.getByText(/Unsupported tag:\s*article/)).toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_ARTICLE_RE)).toBeInTheDocument()
     })
   })
 
@@ -236,7 +243,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      const triggerText = await screen.findByTitle('Paris')
+      const triggerText = await screen.findByText('Paris')
       await user.click(triggerText)
       await user.click(await screen.findByText('Tokyo'))
       await user.click(screen.getByRole('button', { name: 'Submit' }))
@@ -657,7 +664,7 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-      expect(screen.getByText(/Unsupported tag/)).toBeInTheDocument()
+      expect(screen.getByText(UNSUPPORTED_TAG_RE)).toBeInTheDocument()
     })
   })
 

@@ -13,6 +13,7 @@ import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
 
+const NODE_ID_RE = /#([^#.]+)([.#])/g
 const i18nPrefix = 'nodes.humanInput'
 
 type FormContentPreviewProps = {
@@ -57,7 +58,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
               const path = String(node?.properties?.dataPath ?? '')
               let newPath = path
               if (path) {
-                newPath = path.replace(/#([^#.]+)([.#])/g, (match, nodeId, sep) => {
+                newPath = path.replace(NODE_ID_RE, (match, nodeId, sep) => {
                   return `#${nodeName(nodeId)}${sep}`
                 })
               }

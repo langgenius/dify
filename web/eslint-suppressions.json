@@ -2129,14 +2129,8 @@
     }
   },
   "app/components/base/chat/chat/chat-input-area/index.tsx": {
-    "e18e/prefer-array-some": {
-      "count": 1
-    },
     "e18e/prefer-static-regex": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 3
@@ -2181,12 +2175,6 @@
     }
   },
   "app/components/base/chat/chat/index.tsx": {
-    "e18e/prefer-array-at": {
-      "count": 1
-    },
-    "e18e/prefer-timer-args": {
-      "count": 1
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -2223,9 +2211,6 @@
     }
   },
   "app/components/base/chat/embedded-chatbot/chat-wrapper.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -3206,11 +3191,6 @@
       "count": 12
     }
   },
-  "app/components/base/markdown-blocks/__tests__/form.spec.tsx": {
-    "e18e/prefer-static-regex": {
-      "count": 1
-    }
-  },
   "app/components/base/markdown-blocks/__tests__/music.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 2
@@ -3240,17 +3220,6 @@
     },
     "ts/no-explicit-any": {
       "count": 9
-    }
-  },
-  "app/components/base/markdown-blocks/form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {
@@ -8853,9 +8822,6 @@
     }
   },
   "app/components/share/text-generation/result/index.tsx": {
-    "e18e/prefer-array-some": {
-      "count": 2
-    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     },

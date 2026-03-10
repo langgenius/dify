@@ -2,6 +2,8 @@ import type { PropsWithChildren, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import StreamdownWrapper from '../streamdown-wrapper'
 
+const TILDE_RANGE_RE = /0\.3~8mm/
+
 vi.mock('@/app/components/base/markdown-blocks', () => ({
   AudioBlock: ({ children }: PropsWithChildren) => <div data-testid="audio-block">{children}</div>,
   Img: ({ alt }: { alt?: string }) => <span data-testid="img">{alt}</span>,
@@ -35,7 +37,7 @@ describe('StreamdownWrapper', () => {
 
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
       // The content should contain the tilde as literal text
-      expect(screen.getByText(/0\.3~8mm/)).toBeInTheDocument()
+      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
       expect(document.querySelector('del')).toBeNull()
     })
 
@@ -66,7 +68,7 @@ describe('StreamdownWrapper', () => {
       expect(delElements[0].textContent).toBe('removed feature')
 
       // Single tilde should remain as literal text
-      expect(screen.getByText(/0\.3~8mm/)).toBeInTheDocument()
+      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
     })
   })
 

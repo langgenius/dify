@@ -1,7 +1,7 @@
 import type { Dayjs } from 'dayjs'
 import type { ButtonProps } from '@/app/components/base/button'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Button from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'
@@ -9,8 +9,8 @@ import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -67,7 +67,7 @@ type HastText = {
 type HastElement = {
   type: 'element'
   tagName: string
-  properties: Record<string, string | number | boolean | string[] | null | undefined>
+  properties: Record<string, unknown>
   children: Array<HastElement | HastText>
 }
 
@@ -83,6 +83,35 @@ function str(val: unknown): string {
   if (val == null)
     return ''
   return String(val)
+}
+
+function computeInitialFormValues(children: HastElement[]): FormValues {
+  const init: FormValues = Object.create(null) as FormValues
+  for (const child of children) {
+    if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
+      continue
+    const name = child.properties.name
+    if (!isSafeName(name))
+      continue
+
+    const type = child.tagName === SUPPORTED_TAGS.INPUT ? str(child.properties.type) : ''
+
+    if (type === SUPPORTED_TYPES.HIDDEN) {
+      init[name] = str(child.properties.value)
+    }
+    else if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME || type === SUPPORTED_TYPES.TIME) {
+      const raw = child.properties.value
+      init[name] = raw != null ? toDayjs(String(raw)) : undefined
+    }
+    else if (type === SUPPORTED_TYPES.CHECKBOX) {
+      const { checked, value } = child.properties
+      init[name] = !!checked || value === true || value === 'true'
+    }
+    else {
+      init[name] = child.properties.value != null ? str(child.properties.value) : undefined
+    }
+  }
+  return init
 }
 
 function getElementKey(child: HastElement, index: number): string {
@@ -102,10 +131,9 @@ function getElementKey(child: HastElement, index: number): string {
   return `${tag}-${index}`
 }
 
-const MarkdownForm = ({ node }: any) => {
-  const typedNode = node as HastElement
+const MarkdownForm = ({ node }: { node: HastElement }) => {
+  const typedNode = node
   const { onSend } = useChatContext()
-  const [formValues, setFormValues] = useState<FormValues>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const elementChildren = useMemo(
@@ -113,33 +141,12 @@ const MarkdownForm = ({ node }: any) => {
     [typedNode.children],
   )
 
-  useEffect(() => {
-    const init: FormValues = Object.create(null) as FormValues
-    for (const child of elementChildren) {
-      if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
-        continue
-      const name = child.properties.name
-      if (!isSafeName(name))
-        continue
-
-      const type = child.tagName === SUPPORTED_TAGS.INPUT ? str(child.properties.type) : ''
-
-      if (type === SUPPORTED_TYPES.HIDDEN) {
-        init[name] = str(child.properties.value)
-      }
-      else if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME || type === SUPPORTED_TYPES.TIME) {
-        const raw = child.properties.value
-        init[name] = raw != null ? toDayjs(String(raw)) : undefined
-      }
-      else if (type === SUPPORTED_TYPES.CHECKBOX) {
-        init[name] = false
-      }
-      else {
-        init[name] = child.properties.value != null ? str(child.properties.value) : undefined
-      }
-    }
-    setFormValues(init)
-  }, [elementChildren])
+  const [formValues, setFormValues] = useState<FormValues>(() => computeInitialFormValues(elementChildren))
+  const prevChildrenRef = React.useRef(elementChildren)
+  if (prevChildrenRef.current !== elementChildren) {
+    prevChildrenRef.current = elementChildren
+    setFormValues(computeInitialFormValues(elementChildren))
+  }
 
   const updateValue = useCallback((name: string, value: FormValue) => {
     if (!isSafeName(name))
@@ -282,12 +289,18 @@ const MarkdownForm = ({ node }: any) => {
             return (
               <Select
                 key={key}
-                allowSearch={false}
-                className="w-full"
-                items={options.map(option => ({ name: option, value: option }))}
                 defaultValue={formValues[name] as string | undefined}
-                onSelect={item => updateValue(name, item.value as string)}
-              />
+                onValueChange={val => updateValue(name, val as string)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map(option => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )
           }
 
