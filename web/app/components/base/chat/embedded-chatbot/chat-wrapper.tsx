@@ -58,6 +58,15 @@ const ChatWrapper = () => {
     appSourceType,
   } = useEmbeddedChatbotContext()
 
+  // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
+  const sendOnEnter = useMemo(() => {
+    if (typeof window === 'undefined')
+      return true
+    const urlParams = new URLSearchParams(window.location.search)
+    const param = urlParams.get('sendOnEnter')
+    return param !== 'false'
+  }, [])
+
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
@@ -321,6 +330,7 @@ const ChatWrapper = () => {
       themeBuilder={themeBuilder}
       switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
+      sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url
           ? (
