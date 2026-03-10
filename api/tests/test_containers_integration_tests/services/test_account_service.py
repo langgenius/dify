@@ -267,7 +267,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         name = fake.name()
-        password = fake.password(length=12)
+        password = "Test12345678"
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
