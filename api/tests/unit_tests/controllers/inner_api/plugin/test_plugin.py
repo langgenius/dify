@@ -36,14 +36,24 @@ def _extract_raw_post(cls):
     """Extract the raw post() method from a plugin endpoint class.
 
     Plugin endpoint methods are wrapped by several decorators (get_user_tenant,
-    setup_required, plugin_inner_api_only, plugin_data).  The plugin_data
-    decorator does not use @wraps, so inspect.unwrap() stops there.  This
-    helper walks the closure of the innermost plugin_data wrapper to retrieve
-    the original post(self, user_model, tenant_model, payload) function.
+    setup_required, plugin_inner_api_only, plugin_data). These decorators
+    use @wraps where possible. This helper ensures we retrieve the original
+    post(self, user_model, tenant_model, payload) function by unwrapping
+    and, if necessary, walking the closure of the innermost wrapper.
     """
     bottom = inspect.unwrap(cls.post)
-    # plugin_data's decorated_view closes over (payload_type, view_func)
-    return bottom.__closure__[1].cell_contents
+
+    # If unwrap() didn't get us to the raw function (e.g. if a decorator
+    # missed @wraps), try to extract it from the closure if it looks like
+    # a plugin_data or similar wrapper that closes over 'view_func'.
+    if hasattr(bottom, "__code__") and "view_func" in bottom.__code__.co_freevars:
+        try:
+            idx = bottom.__code__.co_freevars.index("view_func")
+            return bottom.__closure__[idx].cell_contents
+        except (AttributeError, TypeError, IndexError):
+            pass
+
+    return bottom
 
 
 class TestPluginInvokeLLMApi:
