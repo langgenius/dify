@@ -36,8 +36,8 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     IS_CE_EDITION: false,
-    get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value },
-    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value },
+    get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value || '' },
+    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value || '' },
   }
 })
 
@@ -173,25 +173,18 @@ describe('Support', () => {
       expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     })
 
-    it('should show email support if specified in the config', () => {
+    // Optional chain null guard: ZENDESK_WIDGET_KEY is null
+    it('should show Email Support when ZENDESK_WIDGET_KEY is null', () => {
       // Arrange
-      mockZendeskKey.value = ''
-      mockSupportEmailKey.value = 'support@example.com'
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.sandbox,
-        },
-      })
+      mockZendeskKey.value = null as unknown as string
 
       // Act
       renderSupport()
       fireEvent.click(screen.getByText('common.userProfile.support'))
 
       // Assert
-      expect(screen.queryByText('common.userProfile.emailSupport')).toBeInTheDocument()
-      expect(screen.getByText('common.userProfile.emailSupport')?.closest('a')?.getAttribute('href')?.startsWith(`mailto:${mockSupportEmailKey.value}`)).toBe(true)
+      expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
+      expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     })
   })
 

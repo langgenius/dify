@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -41,6 +42,24 @@ class FileUploadConfig(BaseModel):
     allowed_file_extensions: Sequence[str] = Field(default_factory=list)
     allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
     number_limits: int = 0
+
+
+class ToolFile(BaseModel):
+    id: UUID = Field(default_factory=uuid4, description="Unique identifier for the file")
+    user_id: UUID = Field(..., description="ID of the user who owns this file")
+    tenant_id: UUID = Field(..., description="ID of the tenant/organization")
+    conversation_id: UUID | None = Field(None, description="ID of the associated conversation")
+    file_key: str = Field(..., max_length=255, description="Storage key for the file")
+    mimetype: str = Field(..., max_length=255, description="MIME type of the file")
+    original_url: str | None = Field(
+        None, max_length=2048, description="Original URL if file was fetched from external source"
+    )
+    name: str = Field(default="", max_length=255, description="Display name of the file")
+    size: int = Field(default=-1, ge=-1, description="File size in bytes (-1 if unknown)")
+
+    class Config:
+        from_attributes = True  # Enable ORM mode for SQLAlchemy compatibility
+        populate_by_name = True
 
 
 class File(BaseModel):

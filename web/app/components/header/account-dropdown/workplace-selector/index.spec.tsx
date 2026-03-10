@@ -111,7 +111,7 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByRole('button'))
       const workspacesInMenu = screen.getAllByText('Workspace 1')
-      fireEvent.click(workspacesInMenu[workspacesInMenu.length - 1])
+      fireEvent.click(workspacesInMenu.at(-1))
 
       // Assert
       expect(switchWorkspace).not.toHaveBeenCalled()
@@ -134,6 +134,34 @@ describe('WorkplaceSelector', () => {
           message: 'common.provider.saveFailed',
         })
       })
+    })
+  })
+
+  describe('Edge Cases', () => {
+    // find() returns undefined: no workspace with current: true
+    it('should not crash when no workspace has current: true', () => {
+      // Arrange
+      vi.mocked(useWorkspacesContext).mockReturnValue({
+        workspaces: [
+          { id: '1', name: 'Workspace 1', current: false, plan: 'professional', status: 'normal', created_at: Date.now() },
+        ],
+      })
+
+      // Act & Assert - should not throw
+      expect(() => renderComponent()).not.toThrow()
+    })
+
+    // name[0]?.toLocaleUpperCase() undefined: workspace with empty name
+    it('should not crash when workspace name is empty string', () => {
+      // Arrange
+      vi.mocked(useWorkspacesContext).mockReturnValue({
+        workspaces: [
+          { id: '1', name: '', current: true, plan: 'sandbox', status: 'normal', created_at: Date.now() },
+        ],
+      })
+
+      // Act & Assert - should not throw
+      expect(() => renderComponent()).not.toThrow()
     })
   })
 })

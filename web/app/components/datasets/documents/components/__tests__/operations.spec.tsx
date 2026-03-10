@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Operations from '../operations'
 
@@ -355,16 +356,14 @@ describe('Operations', () => {
     })
 
     it('should show rename modal when rename is clicked', async () => {
+      const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
       await openPopover()
-      const renameButton = screen.getByText('datasetDocuments.list.table.rename')
-      await act(async () => {
-        fireEvent.click(renameButton)
-      })
-      // Rename modal should be shown
-      await waitFor(() => {
-        expect(screen.getByDisplayValue('Test Document')).toBeInTheDocument()
-      })
+      const renameAction = screen.getByText('datasetDocuments.list.table.rename').parentElement as HTMLElement
+      await user.click(renameAction)
+
+      const renameInput = await screen.findByRole('textbox')
+      expect(renameInput).toHaveValue('Test Document')
     })
 
     it('should call sync for notion data source', async () => {

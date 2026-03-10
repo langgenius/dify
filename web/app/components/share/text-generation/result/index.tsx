@@ -192,7 +192,7 @@ const Result: FC<IResultProps> = ({
 
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
-      if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      if (completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
         notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return false
       }
@@ -219,7 +219,7 @@ const Result: FC<IResultProps> = ({
       return false
     }
 
-    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+    if (completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
       notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
@@ -551,6 +551,7 @@ const Result: FC<IResultProps> = ({
           }))
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
+          tempMessageId = workflowPausedData.workflow_run_id
           const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
           sseGet(
             url,
