@@ -76,7 +76,9 @@ class ToolNode(Node[ToolNodeData]):
         tool_info = {
             "provider_type": self.node_data.provider_type.value,
             "provider_id": self.node_data.provider_id,
+            "tool_name": self.node_data.tool_name,
             "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
+            "credential_id": self.node_data.credential_id,
         }
 
         # get tool runtime

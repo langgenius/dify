@@ -15,22 +15,32 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
-from core.ops.entities.config_entity import OPS_FILE_PATH, TracingProviderEnum
+from core.ops.entities.config_entity import (
+    OPS_FILE_PATH,
+    TracingProviderEnum,
+)
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
+    DraftNodeExecutionTrace,
     GenerateNameTraceInfo,
     MessageTraceInfo,
     ModerationTraceInfo,
+    PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     TaskData,
     ToolTraceInfo,
     TraceTaskName,
+    WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.engine import db
+from models.account import Tenant
+from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -40,9 +50,142 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _lookup_app_and_workspace_names(app_id: str | None, tenant_id: str | None) -> tuple[str, str]:
+    """Return (app_name, workspace_name) for the given IDs. Falls back to empty strings."""
+    app_name = ""
+    workspace_name = ""
+    if not app_id and not tenant_id:
+        return app_name, workspace_name
+    with Session(db.engine) as session:
+        if app_id:
+            name = session.scalar(select(App.name).where(App.id == app_id))
+            if name:
+                app_name = name
+        if tenant_id:
+            name = session.scalar(select(Tenant.name).where(Tenant.id == tenant_id))
+            if name:
+                workspace_name = name
+    return app_name, workspace_name
+
+
+_PROVIDER_TYPE_TO_MODEL: dict[str, type] = {
+    "builtin": BuiltinToolProvider,
+    "plugin": BuiltinToolProvider,
+    "api": ApiToolProvider,
+    "workflow": WorkflowToolProvider,
+    "mcp": MCPToolProvider,
+}
+
+
+def _lookup_credential_name(credential_id: str | None, provider_type: str | None) -> str:
+    if not credential_id:
+        return ""
+    model_cls = _PROVIDER_TYPE_TO_MODEL.get(provider_type or "")
+    if not model_cls:
+        return ""
+    with Session(db.engine) as session:
+        name = session.scalar(select(model_cls.name).where(model_cls.id == credential_id))  # type: ignore[attr-defined]
+        return str(name) if name else ""
+
+
+def _lookup_llm_credential_info(
+    tenant_id: str | None, provider: str | None, model: str | None, model_type: str | None = "llm"
+) -> tuple[str | None, str]:
+    """
+    Lookup LLM credential ID and name for the given provider and model.
+    Returns (credential_id, credential_name).
+
+    Handles async timing issues gracefully - if credential is deleted between lookups,
+    returns the ID but empty name rather than failing.
+    """
+    if not tenant_id or not provider:
+        return None, ""
+
+    try:
+        with Session(db.engine) as session:
+            # Try to find provider-level or model-level configuration
+            provider_record = session.scalar(
+                select(Provider).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name == provider,
+                    Provider.provider_type == ProviderType.CUSTOM,
+                )
+            )
+
+            if not provider_record:
+                return None, ""
+
+            # Check if there's a model-specific config
+            credential_id = None
+            credential_name = ""
+            is_model_level = False
+
+            if model:
+                # Try model-level first
+                model_record = session.scalar(
+                    select(ProviderModel).where(
+                        ProviderModel.tenant_id == tenant_id,
+                        ProviderModel.provider_name == provider,
+                        ProviderModel.model_name == model,
+                        ProviderModel.model_type == model_type,
+                    )
+                )
+
+                if model_record and model_record.credential_id:
+                    credential_id = model_record.credential_id
+                    is_model_level = True
+
+            if not credential_id and provider_record.credential_id:
+                # Fall back to provider-level credential
+                credential_id = provider_record.credential_id
+                is_model_level = False
+
+            # Lookup credential_name if we have credential_id
+            if credential_id:
+                try:
+                    if is_model_level:
+                        # Query ProviderModelCredential
+                        cred_name = session.scalar(
+                            select(ProviderModelCredential.credential_name).where(
+                                ProviderModelCredential.id == credential_id
+                            )
+                        )
+                    else:
+                        # Query ProviderCredential
+                        cred_name = session.scalar(
+                            select(ProviderCredential.credential_name).where(ProviderCredential.id == credential_id)
+                        )
+
+                    if cred_name:
+                        credential_name = str(cred_name)
+                except Exception as e:
+                    # Credential might have been deleted between lookups (async timing)
+                    # Return ID but empty name rather than failing
+                    logger.warning(
+                        "Failed to lookup credential name for credential_id=%s (provider=%s, model=%s): %s",
+                        credential_id,
+                        provider,
+                        model,
+                        str(e),
+                    )
+
+            return credential_id, credential_name
+    except Exception as e:
+        # Database query failed or other unexpected error
+        # Return empty rather than propagating error to telemetry emission
+        logger.warning(
+            "Failed to lookup LLM credential info for tenant_id=%s, provider=%s, model=%s: %s",
+            tenant_id,
+            provider,
+            model,
+            str(e),
+        )
+        return None, ""
+
+
 class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, key: str) -> dict[str, Any]:
-        match key:
+    def __getitem__(self, provider: str) -> dict[str, Any]:
+        match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -149,7 +292,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                 }
 
             case _:
-                raise KeyError(f"Unsupported tracing provider: {key}")
+                raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -314,6 +457,10 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
+        # Handle storage_id format (tenant-{uuid}) - not a real app_id
+        if isinstance(app_id, str) and app_id.startswith("tenant-"):
+            return None
+
         app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
@@ -466,8 +613,6 @@ class TraceTask:
 
     @classmethod
     def _get_workflow_run_repo(cls):
-        from repositories.factory import DifyAPIRepositoryFactory
-
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
@@ -477,6 +622,56 @@ class TraceTask:
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo
+
+    @classmethod
+    def _get_user_id_from_metadata(cls, metadata: dict[str, Any]) -> str:
+        """Extract user ID from metadata, prioritizing end_user over account.
+
+        Returns the actual user ID (end_user or account) who invoked the workflow,
+        regardless of invoke_from context.
+        """
+        # Priority 1: End user (external users via API/WebApp)
+        if user_id := metadata.get("from_end_user_id"):
+            return f"end_user:{user_id}"
+
+        # Priority 2: Account user (internal users via console/debugger)
+        if user_id := metadata.get("from_account_id"):
+            return f"account:{user_id}"
+
+        # Priority 3: User (internal users via console/debugger)
+        if user_id := metadata.get("user_id"):
+            return f"user:{user_id}"
+
+        return "anonymous"
+
+    @classmethod
+    def _calculate_workflow_token_split(cls, workflow_run_id: str, tenant_id: str) -> tuple[int, int]:
+        from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+        from models.workflow import WorkflowNodeExecutionModel
+
+        with Session(db.engine) as session:
+            node_executions = session.scalars(
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                )
+            ).all()
+
+            total_prompt = 0
+            total_completion = 0
+
+            for node_exec in node_executions:
+                metadata = node_exec.execution_metadata_dict
+
+                prompt = metadata.get(WorkflowNodeExecutionMetadataKey.PROMPT_TOKENS)
+                if prompt is not None:
+                    total_prompt += prompt
+
+                completion = metadata.get(WorkflowNodeExecutionMetadataKey.COMPLETION_TOKENS)
+                if completion is not None:
+                    total_completion += completion
+
+            return (total_prompt, total_completion)
 
     def __init__(
         self,
@@ -498,6 +693,8 @@ class TraceTask:
         self.app_id = None
         self.trace_id = None
         self.kwargs = kwargs
+        if user_id is not None and "user_id" not in self.kwargs:
+            self.kwargs["user_id"] = user_id
         external_trace_id = kwargs.get("external_trace_id")
         if external_trace_id:
             self.trace_id = external_trace_id
@@ -511,7 +708,7 @@ class TraceTask:
             TraceTaskName.WORKFLOW_TRACE: lambda: self.workflow_trace(
                 workflow_run_id=self.workflow_run_id, conversation_id=self.conversation_id, user_id=self.user_id
             ),
-            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id),
+            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id, **self.kwargs),
             TraceTaskName.MODERATION_TRACE: lambda: self.moderation_trace(
                 message_id=self.message_id, timer=self.timer, **self.kwargs
             ),
@@ -527,6 +724,9 @@ class TraceTask:
             TraceTaskName.GENERATE_NAME_TRACE: lambda: self.generate_name_trace(
                 conversation_id=self.conversation_id, timer=self.timer, **self.kwargs
             ),
+            TraceTaskName.PROMPT_GENERATION_TRACE: lambda: self.prompt_generation_trace(**self.kwargs),
+            TraceTaskName.NODE_EXECUTION_TRACE: lambda: self.node_execution_trace(**self.kwargs),
+            TraceTaskName.DRAFT_NODE_EXECUTION_TRACE: lambda: self.draft_node_execution_trace(**self.kwargs),
         }
 
         return preprocess_map.get(self.trace_type, lambda: None)()
@@ -562,6 +762,10 @@ class TraceTask:
 
         total_tokens = workflow_run.total_tokens
 
+        prompt_tokens, completion_tokens = self._calculate_workflow_token_split(
+            workflow_run_id=workflow_run_id, tenant_id=tenant_id
+        )
+
         file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
@@ -582,7 +786,14 @@ class TraceTask:
                 )
                 message_id = session.scalar(message_data_stmt)
 
-        metadata = {
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
+
+        metadata: dict[str, Any] = {
             "workflow_id": workflow_id,
             "conversation_id": conversation_id,
             "workflow_run_id": workflow_run_id,
@@ -595,7 +806,13 @@ class TraceTask:
             "triggered_from": workflow_run.triggered_from,
             "user_id": user_id,
             "app_id": workflow_run.app_id,
+            "app_name": app_name,
+            "workspace_name": workspace_name,
         }
+
+        parent_trace_context = self.kwargs.get("parent_trace_context")
+        if parent_trace_context:
+            metadata["parent_trace_context"] = parent_trace_context
 
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
@@ -611,6 +828,8 @@ class TraceTask:
             workflow_run_version=workflow_run_version,
             error=error,
             total_tokens=total_tokens,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             file_list=file_list,
             query=query,
             metadata=metadata,
@@ -618,10 +837,11 @@ class TraceTask:
             message_id=message_id,
             start_time=workflow_run.created_at,
             end_time=workflow_run.finished_at,
+            invoked_by=self._get_user_id_from_metadata(metadata),
         )
         return workflow_trace_info
 
-    def message_trace(self, message_id: str | None):
+    def message_trace(self, message_id: str | None, **kwargs):
         if not message_id:
             return {}
         message_data = get_message_data(message_id)
@@ -644,6 +864,19 @@ class TraceTask:
 
         streaming_metrics = self._extract_streaming_metrics(message_data)
 
+        tenant_id = ""
+        with Session(db.engine) as session:
+            tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
+            if tid:
+                tenant_id = str(tid)
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
+
         metadata = {
             "conversation_id": message_data.conversation_id,
             "ls_provider": message_data.model_provider,
@@ -655,7 +888,14 @@ class TraceTask:
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
             "message_id": message_id,
+            "tenant_id": tenant_id,
+            "app_id": message_data.app_id,
+            "user_id": message_data.from_end_user_id or message_data.from_account_id,
+            "app_name": app_name,
+            "workspace_name": workspace_name,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         message_tokens = message_data.message_tokens
 
@@ -672,7 +912,9 @@ class TraceTask:
             outputs=message_data.answer,
             file_list=file_list,
             start_time=created_at,
-            end_time=created_at + timedelta(seconds=message_data.provider_response_latency),
+            end_time=message_data.updated_at
+            if message_data.updated_at and message_data.updated_at > created_at
+            else created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
@@ -697,6 +939,8 @@ class TraceTask:
             "preset_response": moderation_result.preset_response,
             "query": moderation_result.query,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         # get workflow_app_log_id
         workflow_app_log_id = None
@@ -738,6 +982,8 @@ class TraceTask:
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         # get workflow_app_log_id
         workflow_app_log_id = None
@@ -777,6 +1023,52 @@ class TraceTask:
         if not message_data:
             return {}
 
+        tenant_id = ""
+        with Session(db.engine) as session:
+            tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
+            if tid:
+                tenant_id = str(tid)
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
+        else:
+            app_name, workspace_name = "", ""
+
+        doc_list = [doc.model_dump() for doc in documents] if documents else []
+        dataset_ids: set[str] = set()
+        for doc in doc_list:
+            doc_meta = doc.get("metadata") or {}
+            did = doc_meta.get("dataset_id")
+            if did:
+                dataset_ids.add(did)
+
+        embedding_models: dict[str, dict[str, str]] = {}
+        if dataset_ids:
+            with Session(db.engine) as session:
+                rows = session.execute(
+                    select(Dataset.id, Dataset.embedding_model, Dataset.embedding_model_provider).where(
+                        Dataset.id.in_(list(dataset_ids))
+                    )
+                ).all()
+                for row in rows:
+                    embedding_models[str(row[0])] = {
+                        "embedding_model": row[1] or "",
+                        "embedding_model_provider": row[2] or "",
+                    }
+
+        # Extract rerank model info from retrieval_model kwargs
+        rerank_model_provider = ""
+        rerank_model_name = ""
+        if "retrieval_model" in kwargs:
+            retrieval_model = kwargs["retrieval_model"]
+            if isinstance(retrieval_model, dict):
+                reranking_model = retrieval_model.get("reranking_model")
+                if isinstance(reranking_model, dict):
+                    rerank_model_provider = reranking_model.get("reranking_provider_name", "")
+                    rerank_model_name = reranking_model.get("reranking_model_name", "")
+
         metadata = {
             "message_id": message_id,
             "ls_provider": message_data.model_provider,
@@ -787,13 +1079,23 @@ class TraceTask:
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
+            "tenant_id": tenant_id,
+            "app_id": message_data.app_id,
+            "user_id": message_data.from_end_user_id or message_data.from_account_id,
+            "app_name": app_name,
+            "workspace_name": workspace_name,
+            "embedding_models": embedding_models,
+            "rerank_model_provider": rerank_model_provider,
+            "rerank_model_name": rerank_model_name,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
             inputs=message_data.query or message_data.inputs,
-            documents=[doc.model_dump() for doc in documents] if documents else [],
+            documents=doc_list,
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
@@ -836,6 +1138,10 @@ class TraceTask:
             "error": error,
             "tool_parameters": tool_parameters,
         }
+        if message_data.workflow_run_id:
+            metadata["workflow_run_id"] = message_data.workflow_run_id
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         file_url = ""
         message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
@@ -890,6 +1196,8 @@ class TraceTask:
             "conversation_id": conversation_id,
             "tenant_id": tenant_id,
         }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
 
         generate_name_trace_info = GenerateNameTraceInfo(
             trace_id=self.trace_id,
@@ -903,6 +1211,182 @@ class TraceTask:
         )
 
         return generate_name_trace_info
+
+    def prompt_generation_trace(self, **kwargs) -> PromptGenerationTraceInfo | dict:
+        tenant_id = kwargs.get("tenant_id", "")
+        user_id = kwargs.get("user_id", "")
+        app_id = kwargs.get("app_id")
+        operation_type = kwargs.get("operation_type", "")
+        instruction = kwargs.get("instruction", "")
+        generated_output = kwargs.get("generated_output", "")
+
+        prompt_tokens = kwargs.get("prompt_tokens", 0)
+        completion_tokens = kwargs.get("completion_tokens", 0)
+        total_tokens = kwargs.get("total_tokens", 0)
+
+        model_provider = kwargs.get("model_provider", "")
+        model_name = kwargs.get("model_name", "")
+
+        latency = kwargs.get("latency", 0.0)
+
+        timer = kwargs.get("timer")
+        start_time = timer.get("start") if timer else None
+        end_time = timer.get("end") if timer else None
+
+        total_price = kwargs.get("total_price")
+        currency = kwargs.get("currency")
+
+        error = kwargs.get("error")
+
+        app_name = None
+        workspace_name = None
+        if app_id:
+            app_name, workspace_name = _lookup_app_and_workspace_names(app_id, tenant_id)
+
+        metadata = {
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "app_id": app_id or "",
+            "app_name": app_name,
+            "workspace_name": workspace_name,
+            "operation_type": operation_type,
+            "model_provider": model_provider,
+            "model_name": model_name,
+        }
+        if node_execution_id := kwargs.get("node_execution_id"):
+            metadata["node_execution_id"] = node_execution_id
+
+        return PromptGenerationTraceInfo(
+            trace_id=self.trace_id,
+            inputs=instruction,
+            outputs=generated_output,
+            start_time=start_time,
+            end_time=end_time,
+            metadata=metadata,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=app_id,
+            operation_type=operation_type,
+            instruction=instruction,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            model_provider=model_provider,
+            model_name=model_name,
+            latency=latency,
+            total_price=total_price,
+            currency=currency,
+            error=error,
+        )
+
+    def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict:
+        node_data: dict = kwargs.get("node_execution_data", {})
+        if not node_data:
+            return {}
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        if is_enterprise_telemetry_enabled():
+            app_name, workspace_name = _lookup_app_and_workspace_names(
+                node_data.get("app_id"), node_data.get("tenant_id")
+            )
+        else:
+            app_name, workspace_name = "", ""
+
+        # Try tool credential lookup first
+        credential_id = node_data.get("credential_id")
+        if is_enterprise_telemetry_enabled():
+            credential_name = _lookup_credential_name(credential_id, node_data.get("credential_provider_type"))
+            # If no credential_id found (e.g., LLM nodes), try LLM credential lookup
+            if not credential_id:
+                llm_cred_id, llm_cred_name = _lookup_llm_credential_info(
+                    tenant_id=node_data.get("tenant_id"),
+                    provider=node_data.get("model_provider"),
+                    model=node_data.get("model_name"),
+                    model_type="llm",
+                )
+                if llm_cred_id:
+                    credential_id = llm_cred_id
+                    credential_name = llm_cred_name
+        else:
+            credential_name = ""
+        metadata: dict[str, Any] = {
+            "tenant_id": node_data.get("tenant_id"),
+            "app_id": node_data.get("app_id"),
+            "app_name": app_name,
+            "workspace_name": workspace_name,
+            "user_id": node_data.get("user_id"),
+            "invoke_from": node_data.get("invoke_from"),
+            "credential_id": credential_id,
+            "credential_name": credential_name,
+            "dataset_ids": node_data.get("dataset_ids"),
+            "dataset_names": node_data.get("dataset_names"),
+            "plugin_name": node_data.get("plugin_name"),
+        }
+
+        parent_trace_context = node_data.get("parent_trace_context")
+        if parent_trace_context:
+            metadata["parent_trace_context"] = parent_trace_context
+
+        message_id: str | None = None
+        conversation_id = node_data.get("conversation_id")
+        workflow_execution_id = node_data.get("workflow_execution_id")
+        if conversation_id and workflow_execution_id and not parent_trace_context:
+            with Session(db.engine) as session:
+                msg_id = session.scalar(
+                    select(Message.id).where(
+                        Message.conversation_id == conversation_id,
+                        Message.workflow_run_id == workflow_execution_id,
+                    )
+                )
+                if msg_id:
+                    message_id = str(msg_id)
+                    metadata["message_id"] = message_id
+            if conversation_id:
+                metadata["conversation_id"] = conversation_id
+
+        return WorkflowNodeTraceInfo(
+            trace_id=self.trace_id,
+            message_id=message_id,
+            start_time=node_data.get("created_at"),
+            end_time=node_data.get("finished_at"),
+            metadata=metadata,
+            workflow_id=node_data.get("workflow_id", ""),
+            workflow_run_id=node_data.get("workflow_execution_id", ""),
+            tenant_id=node_data.get("tenant_id", ""),
+            node_execution_id=node_data.get("node_execution_id", ""),
+            node_id=node_data.get("node_id", ""),
+            node_type=node_data.get("node_type", ""),
+            title=node_data.get("title", ""),
+            status=node_data.get("status", ""),
+            error=node_data.get("error"),
+            elapsed_time=node_data.get("elapsed_time", 0.0),
+            index=node_data.get("index", 0),
+            predecessor_node_id=node_data.get("predecessor_node_id"),
+            total_tokens=node_data.get("total_tokens", 0),
+            total_price=node_data.get("total_price", 0.0),
+            currency=node_data.get("currency"),
+            model_provider=node_data.get("model_provider"),
+            model_name=node_data.get("model_name"),
+            prompt_tokens=node_data.get("prompt_tokens"),
+            completion_tokens=node_data.get("completion_tokens"),
+            tool_name=node_data.get("tool_name"),
+            iteration_id=node_data.get("iteration_id"),
+            iteration_index=node_data.get("iteration_index"),
+            loop_id=node_data.get("loop_id"),
+            loop_index=node_data.get("loop_index"),
+            parallel_id=node_data.get("parallel_id"),
+            node_inputs=node_data.get("node_inputs"),
+            node_outputs=node_data.get("node_outputs"),
+            process_data=node_data.get("process_data"),
+            invoked_by=self._get_user_id_from_metadata(metadata),
+        )
+
+    def draft_node_execution_trace(self, **kwargs) -> DraftNodeExecutionTrace | dict:
+        node_trace = self.node_execution_trace(**kwargs)
+        if not isinstance(node_trace, WorkflowNodeTraceInfo):
+            return node_trace
+        return DraftNodeExecutionTrace(**node_trace.model_dump())
 
     def _extract_streaming_metrics(self, message_data) -> dict:
         if not message_data.message_metadata:
@@ -937,13 +1421,17 @@ class TraceQueueManager:
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
         if trace_manager_timer is None:
             self.start_timer()
 
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self.trace_instance:
+            if self._enterprise_telemetry_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:
@@ -979,20 +1467,27 @@ class TraceQueueManager:
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
-                if task.app_id is None:
-                    continue
+                storage_id = task.app_id
+                if storage_id is None:
+                    tenant_id = task.kwargs.get("tenant_id")
+                    if tenant_id:
+                        storage_id = f"tenant-{tenant_id}"
+                    else:
+                        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
+                        continue
+
                 file_id = uuid4().hex
                 trace_info = task.execute()
 
                 task_data = TaskData(
-                    app_id=task.app_id,
+                    app_id=storage_id,
                     trace_info_type=type(trace_info).__name__,
                     trace_info=trace_info.model_dump() if trace_info else None,
                 )
-                file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
+                file_path = f"{OPS_FILE_PATH}{storage_id}/{file_id}.json"
                 storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
                 file_info = {
                     "file_id": file_id,
-                    "app_id": task.app_id,
+                    "app_id": storage_id,
                 }
                 process_trace_tasks.delay(file_info)  # type: ignore

@@ -1,5 +1,10 @@
 """
 Base parser interface and utilities for OpenTelemetry node parsers.
+
+Content gating: ``should_include_content()`` controls whether content-bearing
+span attributes (inputs, outputs, prompts, completions, documents) are written.
+Gate is only active in EE (``ENTERPRISE_ENABLED=True``) when
+``ENTERPRISE_INCLUDE_CONTENT=False``; CE behaviour is unchanged.
 """
 
 import json
@@ -9,12 +14,24 @@ from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
+from configs import dify_config
 from dify_graph.enums import NodeType
 from dify_graph.file.models import File
 from dify_graph.graph_events import GraphNodeEventBase
 from dify_graph.nodes.base.node import Node
 from dify_graph.variables import Segment
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+
+
+def should_include_content() -> bool:
+    """Return True if content should be written to spans.
+
+    CE (ENTERPRISE_ENABLED=False): always True — no behaviour change.
+    EE: follows ENTERPRISE_INCLUDE_CONTENT (default True).
+    """
+    if not dify_config.ENTERPRISE_ENABLED:
+        return True
+    return dify_config.ENTERPRISE_INCLUDE_CONTENT
 
 
 def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
@@ -105,10 +122,11 @@ class DefaultNodeOTelParser:
         # Extract inputs and outputs from result_event
         if result_event and result_event.node_run_result:
             node_run_result = result_event.node_run_result
-            if node_run_result.inputs:
-                span.set_attribute(ChainAttributes.INPUT_VALUE, safe_json_dumps(node_run_result.inputs))
-            if node_run_result.outputs:
-                span.set_attribute(ChainAttributes.OUTPUT_VALUE, safe_json_dumps(node_run_result.outputs))
+            if should_include_content():
+                if node_run_result.inputs:
+                    span.set_attribute(ChainAttributes.INPUT_VALUE, safe_json_dumps(node_run_result.inputs))
+                if node_run_result.outputs:
+                    span.set_attribute(ChainAttributes.OUTPUT_VALUE, safe_json_dumps(node_run_result.outputs))
 
         if error:
             span.record_exception(error)
