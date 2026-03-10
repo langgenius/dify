@@ -1,5 +1,3 @@
-import re
-
 from core.rag.cleaner.clean_processor import CleanProcessor
 
 
@@ -214,34 +212,13 @@ class TestCleanProcessor:
         expected = "[Text with (parens) and symbols](https://example.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
 
-    def test_clean_remove_urls_emails_image_placeholder_branch(self, monkeypatch):
-        """Test image placeholder branch execution in markdown URL removal flow."""
-        import core.rag.cleaner.clean_processor as clean_processor_module
-
-        real_sub = re.sub
-
-        class _ImageMatch:
-            @staticmethod
-            def group(index: int) -> str:
-                assert index == 1
-                return "https://example.com/image.png"
-
-        def fake_sub(pattern, repl, string, *args, **kwargs):
-            markdown_link_pattern = r"\[([^\]]*)\]\((https?://[^)]+)\)"
-            markdown_image_pattern = r"!\[.*?\]\((https?://[^)]+)\)"
-            if pattern == markdown_link_pattern and callable(repl):
-                # Keep text unchanged so the image path is exercised.
-                return string
-            if pattern == markdown_image_pattern and callable(repl):
-                return repl(_ImageMatch())
-            return real_sub(pattern, repl, string, *args, **kwargs)
-
-        monkeypatch.setattr(clean_processor_module.re, "sub", fake_sub)
-
+    def test_clean_remove_urls_emails_preserves_markdown_image_links(self):
+        """Remove plain URLs and emails while preserving markdown image links."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
-        result = CleanProcessor.clean("input text", process_rule)
+        text = "Email test@example.com and remove https://remove.com but keep ![diagram](https://example.com/image.png)"
+        result = CleanProcessor.clean(text, process_rule)
 
-        assert result == "![image](https://example.com/image.png)"
+        assert result == "Email  and remove  but keep ![diagram](https://example.com/image.png)"
 
     def test_filter_string_returns_input_text(self):
         """Test filter_string passthrough behavior."""
