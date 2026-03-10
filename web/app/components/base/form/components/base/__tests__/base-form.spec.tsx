@@ -1,8 +1,29 @@
 import type { AnyFieldApi, AnyFormApi } from '@tanstack/react-form'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import { useStore } from '@tanstack/react-form'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import BaseForm from '../base-form'
+
+vi.mock('@tanstack/react-form', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-form')>()
+  return {
+    ...actual,
+    useStore: vi.fn((store, selector) => {
+      // If a selector is provided, apply it to a mocked state or the store directly
+      if (selector) {
+        // If the store is a mock with state, use it; otherwise provide a default
+        try {
+          return selector(store?.state || { values: {} })
+        }
+        catch {
+          return {}
+        }
+      }
+      return store?.state?.values || {}
+    }),
+  }
+})
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
@@ -68,7 +89,9 @@ describe('BaseForm', () => {
     )
 
     await act(async () => {
-      fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement, {
+        defaultPrevented: true,
+      })
     })
     expect(onSubmit).toHaveBeenCalled()
   })
@@ -124,10 +147,9 @@ describe('BaseForm', () => {
   it('should use formFromProps if provided', () => {
     const mockState = { values: { kind: 'show' } }
     const mockStore = {
-      subscribe: vi.fn(() => vi.fn()),
-      getState: vi.fn(() => mockState),
       state: mockState,
     }
+    vi.mocked(useStore).mockReturnValueOnce(mockState.values)
     const mockForm = {
       store: mockStore,
       Field: ({ children, name }: { children: (field: AnyFieldApi) => React.ReactNode, name: string }) => children({
@@ -184,16 +206,16 @@ describe('BaseForm', () => {
 
   it('should render nothing if field name does not match schema in renderField', () => {
     const mockState = { values: { unknown: 'value' } }
+    const mockStore = {
+      state: mockState,
+    }
+    vi.mocked(useStore).mockReturnValueOnce(mockState.values)
     const mockForm = {
-      store: {
-        subscribe: vi.fn(() => vi.fn()),
-        getState: vi.fn(() => mockState),
-        state: mockState,
-      },
+      store: mockStore,
       Field: ({ children }: { children: (field: AnyFieldApi) => React.ReactNode }) => children({
         name: 'unknown', // field name not in baseSchemas
         state: { value: 'value', meta: { isTouched: false, errorMap: {} } },
-        form: { store: { subscribe: vi.fn(() => vi.fn()), getState: vi.fn(() => mockState) } },
+        form: { store: mockStore },
       } as unknown as AnyFieldApi),
       setFieldValue: vi.fn(),
     }
