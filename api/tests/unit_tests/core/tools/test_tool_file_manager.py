@@ -8,7 +8,7 @@ avoid real IO.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import httpx
 import pytest
@@ -26,6 +26,13 @@ def _setup_tool_file_signing(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 
     url = ToolFileManager.sign_file("tf-1", ".png")
     return dict(part.split("=", 1) for part in url.split("?", 1)[1].split("&"))
+
+
+def _patch_session_factory(session: Mock):
+    session_cm = MagicMock()
+    session_cm.__enter__.return_value = session
+    session_cm.__exit__.return_value = False
+    return patch("core.tools.tool_file_manager.session_factory.create_session", return_value=session_cm)
 
 
 def test_tool_file_manager_sign_verify_valid(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,7 +58,7 @@ def test_tool_file_manager_sign_verify_expired_timestamp(monkeypatch: pytest.Mon
 
 
 def test_create_file_by_raw_stores_file_and_persists_record() -> None:
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     session = Mock()
     session.refresh.side_effect = lambda model: setattr(model, "id", "tf-1")
 
@@ -63,9 +70,8 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
         patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
         patch("core.tools.tool_file_manager.guess_extension", return_value=".txt"),
         patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
-        patch("core.tools.tool_file_manager.Session") as session_cls,
+        _patch_session_factory(session),
     ):
-        session_cls.return_value.__enter__.return_value = session
         file_model = manager.create_file_by_raw(
             user_id="u1",
             tenant_id="t1",
@@ -83,7 +89,7 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
 
 
 def test_create_file_by_url_downloads_and_persists_record() -> None:
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     response = Mock()
     response.content = b"binary"
     response.headers = {"Content-Type": "application/octet-stream"}
@@ -98,10 +104,9 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
         patch("core.tools.tool_file_manager.storage") as storage,
         patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
         patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")),
-        patch("core.tools.tool_file_manager.Session") as session_cls,
+        _patch_session_factory(session),
         patch("core.tools.tool_file_manager.ssrf_proxy.get", return_value=response),
     ):
-        session_cls.return_value.__enter__.return_value = session
         file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
     assert file_model.file_key.startswith("tools/t1/")
@@ -112,7 +117,7 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
 
 
 def test_create_file_by_url_raises_on_timeout() -> None:
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
 
     with patch("core.tools.tool_file_manager.ssrf_proxy.get", side_effect=httpx.TimeoutException("timeout")):
         with pytest.raises(ValueError, match="timeout when downloading file"):
@@ -121,13 +126,12 @@ def test_create_file_by_url_raises_on_timeout() -> None:
 
 def test_get_file_binary_returns_none_when_not_found() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     session = Mock()
     session.query.return_value.where.return_value.first.return_value = None
 
     # Act
-    with patch("core.tools.tool_file_manager.Session") as session_cls:
-        session_cls.return_value.__enter__.return_value = session
+    with _patch_session_factory(session):
         result = manager.get_file_binary("missing")
 
     # Assert
@@ -136,7 +140,7 @@ def test_get_file_binary_returns_none_when_not_found() -> None:
 
 def test_get_file_binary_returns_bytes_when_found() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     tool_file = SimpleNamespace(file_key="k1", mimetype="text/plain")
     session = Mock()
     session.query.return_value.where.return_value.first.return_value = tool_file
@@ -144,8 +148,7 @@ def test_get_file_binary_returns_bytes_when_found() -> None:
     # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
         storage.load_once.return_value = b"hello"
-        with patch("core.tools.tool_file_manager.Session") as session_cls:
-            session_cls.return_value.__enter__.return_value = session
+        with _patch_session_factory(session):
             result = manager.get_file_binary("id1")
 
     # Assert
@@ -154,7 +157,7 @@ def test_get_file_binary_returns_bytes_when_found() -> None:
 
 def test_get_file_binary_by_message_file_id_when_messagefile_missing() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     session = Mock()
     first_query = Mock()
     second_query = Mock()
@@ -163,8 +166,7 @@ def test_get_file_binary_by_message_file_id_when_messagefile_missing() -> None:
     session.query.side_effect = [first_query, second_query]
 
     # Act
-    with patch("core.tools.tool_file_manager.Session") as session_cls:
-        session_cls.return_value.__enter__.return_value = session
+    with _patch_session_factory(session):
         result = manager.get_file_binary_by_message_file_id("mf-1")
 
     # Assert
@@ -173,7 +175,7 @@ def test_get_file_binary_by_message_file_id_when_messagefile_missing() -> None:
 
 def test_get_file_binary_by_message_file_id_when_url_is_none() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     message_file = SimpleNamespace(url=None)
     session = Mock()
     first_query = Mock()
@@ -183,8 +185,7 @@ def test_get_file_binary_by_message_file_id_when_url_is_none() -> None:
     session.query.side_effect = [first_query, second_query]
 
     # Act
-    with patch("core.tools.tool_file_manager.Session") as session_cls:
-        session_cls.return_value.__enter__.return_value = session
+    with _patch_session_factory(session):
         result = manager.get_file_binary_by_message_file_id("mf-1")
 
     # Assert
@@ -193,7 +194,7 @@ def test_get_file_binary_by_message_file_id_when_url_is_none() -> None:
 
 def test_get_file_binary_by_message_file_id_returns_bytes_when_found() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     message_file = SimpleNamespace(url="https://x/files/tools/tool123.png")
     tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
     session = Mock()
@@ -206,8 +207,7 @@ def test_get_file_binary_by_message_file_id_returns_bytes_when_found() -> None:
     # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
         storage.load_once.return_value = b"img"
-        with patch("core.tools.tool_file_manager.Session") as session_cls:
-            session_cls.return_value.__enter__.return_value = session
+        with _patch_session_factory(session):
             result = manager.get_file_binary_by_message_file_id("mf-1")
 
     # Assert
@@ -216,13 +216,12 @@ def test_get_file_binary_by_message_file_id_returns_bytes_when_found() -> None:
 
 def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     session = Mock()
     session.query.return_value.where.return_value.first.return_value = None
 
     # Act
-    with patch("core.tools.tool_file_manager.Session") as session_cls:
-        session_cls.return_value.__enter__.return_value = session
+    with _patch_session_factory(session):
         stream, tool_file = manager.get_file_generator_by_tool_file_id("tool123")
 
     # Assert
@@ -232,7 +231,7 @@ def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
 
 def test_get_file_generator_returns_stream_when_found() -> None:
     # Arrange
-    manager = ToolFileManager(engine=Mock())
+    manager = ToolFileManager()
     tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
     session = Mock()
     session.query.return_value.where.return_value.first.return_value = tool_file
@@ -241,8 +240,10 @@ def test_get_file_generator_returns_stream_when_found() -> None:
     with patch("core.tools.tool_file_manager.storage") as storage:
         stream = iter([b"a", b"b"])
         storage.load_stream.return_value = stream
-        with patch("core.tools.tool_file_manager.Session") as session_cls:
-            session_cls.return_value.__enter__.return_value = session
+        with (
+            _patch_session_factory(session),
+            patch("core.tools.tool_file_manager.ToolFilePydanticModel.model_validate", return_value="validated-file"),
+        ):
             result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
             assert list(result_stream) == [b"a", b"b"]
-            assert result_file is tool_file
+            assert result_file == "validated-file"
