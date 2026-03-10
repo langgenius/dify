@@ -13,8 +13,6 @@ export { default as Link } from './link'
 export { default as Paragraph } from './paragraph'
 export * from './plugin-img'
 export * from './plugin-paragraph'
-export { default as PreCode } from './pre-code'
 
-export { default as ScriptBlock } from './script-block'
 export { default as ThinkBlock } from './think-block'
 export { default as VideoBlock } from './video-block'
