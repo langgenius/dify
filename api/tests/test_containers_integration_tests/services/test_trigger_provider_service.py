@@ -10,6 +10,7 @@ from core.trigger.entities.entities import Subscription as TriggerSubscriptionEn
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from services.trigger.trigger_provider_service import TriggerProviderService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestTriggerProviderService:
@@ -75,7 +76,7 @@ class TestTriggerProviderService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
