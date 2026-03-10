@@ -67,11 +67,14 @@ def init_celery_worker(*args, **kwargs):
         from opentelemetry.metrics import get_meter_provider
         from opentelemetry.trace import get_tracer_provider
 
+        from extensions.otel.celery_sqlcommenter import setup_celery_sqlcommenter
+
         tracer_provider = get_tracer_provider()
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+        setup_celery_sqlcommenter()
 
 
 def is_instrument_flag_enabled() -> bool:
