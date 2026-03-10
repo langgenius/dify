@@ -408,6 +408,9 @@ export const useChat = (
       },
       onNodeStarted: ({ data: nodeStartedData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          if (params.loop_id)
+            return
+
           if (!responseItem.workflowProcess)
             return
           if (!responseItem.workflowProcess.tracing)
@@ -550,7 +553,7 @@ export const useChat = (
       {},
       otherOptions,
     )
-  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer])
+  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer, params.loop_id])
 
   const updateCurrentQAOnTree = useCallback(({
     parentId,
