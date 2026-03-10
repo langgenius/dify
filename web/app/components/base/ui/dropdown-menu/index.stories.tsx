@@ -8,6 +8,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
@@ -229,6 +230,22 @@ export const WithIcons: Story = {
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           Delete
         </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+}
+
+export const WithLinkItems: Story = {
+  render: () => (
+    <DropdownMenu>
+      <TriggerButton label="Open links" />
+      <DropdownMenuContent>
+        <DropdownMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
+          Dify Docs
+        </DropdownMenuLinkItem>
+        <DropdownMenuLinkItem href="https://roadmap.dify.ai" rel="noopener noreferrer" target="_blank">
+          Product Roadmap
+        </DropdownMenuLinkItem>
       </DropdownMenuContent>
     </DropdownMenu>
   ),
