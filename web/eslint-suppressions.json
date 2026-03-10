@@ -1394,6 +1394,9 @@
     }
   },
   "app/components/app/log/list.tsx": {
+    "e18e/prefer-array-at": {
+      "count": 2
+    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -1402,6 +1405,9 @@
     },
     "style/multiline-ternary": {
       "count": 2
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 12
     },
     "ts/no-explicit-any": {
       "count": 14
@@ -2170,6 +2176,9 @@
     }
   },
   "app/components/base/chat/chat/hooks.ts": {
+    "e18e/prefer-array-at": {
+      "count": 5
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -6659,6 +6668,11 @@
   },
   "app/components/header/account-about/index.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/workplace-selector/index.spec.tsx": {
+    "e18e/prefer-array-at": {
       "count": 1
     }
   },
