@@ -5,13 +5,13 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.graph_events import (
     GraphNodeEventBase,
     GraphRunFailedEvent,

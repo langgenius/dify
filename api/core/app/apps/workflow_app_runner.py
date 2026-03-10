@@ -63,7 +63,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.nodes import NodeType
 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
