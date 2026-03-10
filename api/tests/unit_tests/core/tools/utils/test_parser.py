@@ -368,24 +368,35 @@ def test_auto_parse_openapi_success():
 
 def test_auto_parse_openapi_then_swagger():
     openapi_content = '{"openapi": "3.0.0", "servers": [{"url": "https://x"}], "info": {"title": "x"}, "paths": {}}'
-
-    def _openapi_parser(schema, **kwargs):
-        if isinstance(schema, str):
-            raise ToolApiSchemaError("openapi error")
-        return ["swagger-bundle"]
+    loaded_content = {
+        "openapi": "3.0.0",
+        "servers": [{"url": "https://x"}],
+        "info": {"title": "x"},
+        "paths": {},
+    }
+    converted_swagger = {
+        "openapi": "3.0.0",
+        "servers": [{"url": "https://x"}],
+        "info": {"title": "x"},
+        "paths": {},
+    }
 
     with patch(
         "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle",
-        side_effect=_openapi_parser,
-    ):
+        side_effect=[ToolApiSchemaError("openapi error"), ["swagger-bundle"]],
+    ) as mock_parse_openapi:
         with patch(
             "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_swagger_to_openapi",
-            return_value={"openapi": "3.0.0", "servers": [{"url": "https://x"}], "info": {"title": "x"}, "paths": {}},
-        ):
+            return_value=converted_swagger,
+        ) as mock_parse_swagger:
             bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(openapi_content)
 
     assert bundles == ["swagger-bundle"]
-    assert schema_type == ApiProviderSchemaType.OPENAPI
+    assert schema_type == ApiProviderSchemaType.SWAGGER
+    mock_parse_swagger.assert_called_once_with(loaded_content, extra_info={}, warning={})
+    assert mock_parse_openapi.call_count == 2
+    mock_parse_openapi.assert_any_call(loaded_content, extra_info={}, warning={})
+    mock_parse_openapi.assert_any_call(converted_swagger, extra_info={}, warning={})
 
 
 def test_auto_parse_openapi_swagger_then_plugin():
