@@ -1,7 +1,8 @@
 import os
 
 from core.rag.datasource.vdb.hologres.hologres_vector import HologresVector, HologresVectorConfig
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
+from tests.integration_tests.vdb.__mock.hologres import setup_hologres_mock
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
 
 class HologresVectorTest(AbstractVectorTest):
@@ -28,8 +29,6 @@ class HologresVectorTest(AbstractVectorTest):
 
     def search_by_full_text(self):
         """Override: full-text index may not be immediately ready."""
-        from tests.integration_tests.vdb.test_vector_store import get_example_text
-
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) >= 0
 
@@ -45,7 +44,7 @@ class HologresVectorTest(AbstractVectorTest):
         return super().run_all_tests()
 
 
-def test_hologres_vector(setup_mock_redis):
+def test_hologres_vector(setup_mock_redis, setup_hologres_mock):
     """
     Test Hologres vector database implementation.
 
