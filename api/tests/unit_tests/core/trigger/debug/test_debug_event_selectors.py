@@ -11,7 +11,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.event_selectors import (
