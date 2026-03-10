@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from dify_graph.entities.exc import DefaultValueTypeError
 from dify_graph.enums import ErrorStrategy, NodeType
 
+# Project supports Python 3.11+, where `typing.Union[...]` is valid in `isinstance`.
 _NumberType = Union[int, float]
 
 
