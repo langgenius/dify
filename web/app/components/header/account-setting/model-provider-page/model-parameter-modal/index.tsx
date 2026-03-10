@@ -68,7 +68,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isPending: isLoading } = useModelParameterRules(provider, modelId)
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const {
     currentProvider,
     currentModel,
