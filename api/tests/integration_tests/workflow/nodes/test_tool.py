@@ -8,6 +8,7 @@ from core.workflow.node_factory import DifyNodeFactory
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.node_events import StreamCompletedEvent
+from dify_graph.nodes.protocols import ToolFileManagerProtocol
 from dify_graph.nodes.tool.tool_node import ToolNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -55,11 +56,14 @@ def init_tool_node(config: dict):
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
+    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+
     node = ToolNode(
         id=str(uuid.uuid4()),
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        tool_file_manager_factory=tool_file_manager_factory,
     )
     return node
 
