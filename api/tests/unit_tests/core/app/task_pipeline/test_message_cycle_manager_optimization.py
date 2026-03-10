@@ -218,9 +218,11 @@ class TestMessageCycleManagerOptimization:
         message_cycle_manager._application_generate_entity.extras = {"auto_generate_conversation_name": True}
         flask_app = object()
 
-        class DummyThread:
-            def __init__(self, target, kwargs):
-                self.target = target
+        class DummyTimer:
+            def __init__(self, interval, function, args=None, kwargs=None):
+                self.interval = interval
+                self.function = function
+                self.args = args or []
                 self.kwargs = kwargs
                 self.daemon = False
                 self.started = False
@@ -233,35 +235,31 @@ class TestMessageCycleManagerOptimization:
                 "core.app.task_pipeline.message_cycle_manager.current_app",
                 new=SimpleNamespace(_get_current_object=lambda: flask_app),
             ),
-            patch("core.app.task_pipeline.message_cycle_manager.time.sleep") as mock_sleep,
-            patch("core.app.task_pipeline.message_cycle_manager.Thread", DummyThread),
+            patch("core.app.task_pipeline.message_cycle_manager.Timer", DummyTimer),
         ):
             thread = message_cycle_manager.generate_conversation_name(conversation_id="conv-1", query="hello")
 
-        assert isinstance(thread, DummyThread)
+        assert isinstance(thread, DummyTimer)
+        assert thread.interval == 1
+        assert thread.function == message_cycle_manager._generate_conversation_name_worker
         assert thread.started is True
         assert thread.daemon is True
         assert thread.kwargs["flask_app"] is flask_app
         assert thread.kwargs["conversation_id"] == "conv-1"
         assert thread.kwargs["query"] == "hello"
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
-        mock_sleep.assert_called_once_with(1)
 
     def test_generate_conversation_name_skips_thread_when_auto_generate_disabled(self, message_cycle_manager):
         """Skip thread creation when auto naming is disabled but still mark conversation as not new."""
         message_cycle_manager._application_generate_entity.is_new_conversation = True
         message_cycle_manager._application_generate_entity.extras = {"auto_generate_conversation_name": False}
 
-        with (
-            patch("core.app.task_pipeline.message_cycle_manager.time.sleep") as mock_sleep,
-            patch("core.app.task_pipeline.message_cycle_manager.Thread") as mock_thread,
-        ):
+        with patch("core.app.task_pipeline.message_cycle_manager.Timer") as mock_timer:
             result = message_cycle_manager.generate_conversation_name(conversation_id="conv-2", query="hello")
 
         assert result is None
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
-        mock_sleep.assert_not_called()
-        mock_thread.assert_not_called()
+        mock_timer.assert_not_called()
 
     def test_generate_conversation_name_worker_returns_when_conversation_missing(self, message_cycle_manager):
         """Return early when the conversation cannot be found."""
