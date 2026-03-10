@@ -14,6 +14,7 @@ import {
 } from './console/explore'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
+import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -68,6 +69,10 @@ export const consoleRouterContract = {
   modelProviders: {
     models: modelProvidersModelsContract,
     changePreferredProviderType: changePreferredProviderTypeContract,
+  },
+  plugins: {
+    checkInstalled: pluginCheckInstalledContract,
+    latestVersions: pluginLatestVersionsContract,
   },
   billing: {
     invoices: invoicesContract,

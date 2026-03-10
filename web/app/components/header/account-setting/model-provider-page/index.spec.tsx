@@ -83,8 +83,21 @@ vi.mock('./system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: () => ({ data: undefined }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: () => ({ data: undefined }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    plugins: {
+      checkInstalled: { queryOptions: () => ({}) },
+      latestVersions: { queryOptions: () => ({}) },
+    },
+  },
 }))
 
 describe('ModelProviderPage', () => {

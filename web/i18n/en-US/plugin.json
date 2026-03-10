@@ -115,6 +115,7 @@
   "detailPanel.operation.install": "Install",
   "detailPanel.operation.remove": "Remove",
   "detailPanel.operation.update": "Update",
+  "detailPanel.operation.updateTooltip": "Update to access the latest models.",
   "detailPanel.operation.viewDetail": "View on Marketplace",
   "detailPanel.serviceOk": "Service OK",
   "detailPanel.strategyNum": "{{num}} {{strategy}} INCLUDED",

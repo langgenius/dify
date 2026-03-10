@@ -52,7 +52,7 @@ const OperationDropdown: FC<Props> = ({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName={cn('w-[160px]', popupClassName)}
+        popupClassName={cn('w-auto min-w-[160px]', popupClassName)}
       >
         {source === PluginSource.github && (
           <DropdownMenuItem onClick={onInfo}>
