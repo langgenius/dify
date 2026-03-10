@@ -336,6 +336,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -391,6 +392,7 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
@@ -415,6 +417,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     in_loop_id: str | None = None
     """loop id if node is in loop"""
     start_at: datetime
+    finished_at: datetime | None = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)

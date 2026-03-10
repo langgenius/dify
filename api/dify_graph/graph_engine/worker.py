@@ -107,13 +107,15 @@ class Worker(threading.Thread):
                 self._execute_node(node)
                 self._ready_queue.task_done()
             except Exception as e:
+                failure_time = datetime.now()
                 error_event = NodeRunFailedEvent(
                     id=node.execution_id,
                     node_id=node.id,
                     node_type=node.node_type,
                     in_iteration_id=None,
                     error=str(e),
-                    start_at=datetime.now(),
+                    start_at=failure_time,
+                    finished_at=failure_time,
                 )
                 self._event_queue.put(error_event)
 
