@@ -47,10 +47,10 @@ class TestToolTransformService:
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
-                schema='{"openapi": "3.0.0"}',
+                schema=json.dumps({"openapi": "3.0.0"}),
                 schema_type_str="openapi",
-                tools_str="[]",
-                credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
+                tools_str=json.dumps([]),
+                credentials_str=json.dumps({"auth_type": "api_key_header", "api_key": "test_key"}),
                 tenant_id="test_tenant_id",
                 user_id="test_user_id",
             )
