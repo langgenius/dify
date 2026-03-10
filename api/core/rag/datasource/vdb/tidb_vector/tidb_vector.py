@@ -146,11 +146,12 @@ class TiDBVector(BaseVector):
 
     def delete_by_ids(self, ids: list[str]):
         with Session(self._engine) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
+            placeholders = ",".join(":doc_id_{}".format(i) for i in range(len(ids)))
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({placeholders}); """
             )
-            result = session.execute(select_statement).fetchall()
+            params = {f"doc_id_{i}": doc_id for i, doc_id in enumerate(ids)}
+            result = session.execute(select_statement, params).fetchall()
         if result:
             ids = [item[0] for item in result]
             self._delete_by_ids(ids)
@@ -171,9 +172,9 @@ class TiDBVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         with Session(self._engine) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = '{value}'; """
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = :value; """
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -199,9 +200,11 @@ class TiDBVector(BaseVector):
         tidb_dist_func = self._get_distance_func()
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        extra_params: dict = {}
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
+            placeholders = ", ".join(f":did_{i}" for i in range(len(document_ids_filter)))
+            where_clause = f" WHERE meta->>'$.document_id' IN ({placeholders}) "
+            extra_params = {f"did_{i}": did for i, did in enumerate(document_ids_filter)}
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -224,6 +227,7 @@ class TiDBVector(BaseVector):
                     "query_vector_str": query_vector_str,
                     "distance": distance,
                     "top_k": top_k,
+                    **extra_params,
                 },
             )
             results = [(row[0], row[1], row[2]) for row in res]
