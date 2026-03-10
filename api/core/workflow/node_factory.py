@@ -22,6 +22,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType, SystemVariableKey
@@ -31,28 +32,19 @@ from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.memory import PromptMessageMemory
 from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
+from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
 from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.nodes.datasource import DatasourceNode
-from dify_graph.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
-from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from dify_graph.nodes.document_extractor import UnstructuredApiConfig
+from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
 )
-from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
-from dify_graph.nodes.tool.tool_node import ToolNode
 from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
@@ -174,171 +166,112 @@ class DifyNodeFactory(NodeFactory):
         """
         typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
         node_id = typed_node_config["id"]
-
-        # Get node type from config
         node_data = typed_node_config["data"]
+        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
         node_type = node_data.type
-
-        # Get node class
-        node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
-        if not node_mapping:
-            raise ValueError(f"No class mapping found for node type: {node_type}")
-
-        latest_node_class = node_mapping.get(LATEST_VERSION)
-        node_version = str(node_data.version)
-        matched_node_class = node_mapping.get(node_version)
-        node_class = matched_node_class or latest_node_class
-        if not node_class:
-            raise ValueError(f"No latest version class found for node type: {node_type}")
-
-        # Create node instance
-        if node_type == NodeType.CODE:
-            return CodeNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                code_executor=self._code_executor,
-                code_limits=self._code_limits,
-            )
-
-        if node_type == NodeType.TEMPLATE_TRANSFORM:
-            return TemplateTransformNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                template_renderer=self._template_renderer,
-                max_output_length=self._template_transform_max_output_length,
-            )
-
-        if node_type == NodeType.HTTP_REQUEST:
-            return HttpRequestNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                http_request_config=self._http_request_config,
-                http_client=self._http_request_http_client,
-                tool_file_manager_factory=self._http_request_tool_file_manager_factory,
-                file_manager=self._http_request_file_manager,
-            )
-
-        if node_type == NodeType.HUMAN_INPUT:
-            return HumanInputNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                form_repository=HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
-            )
-
-        if node_type == NodeType.KNOWLEDGE_INDEX:
-            return KnowledgeIndexNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                index_processor=IndexProcessor(),
-                summary_index_service=SummaryIndex(),
-            )
-
-        if node_type == NodeType.LLM:
-            llm_node_data = LLMNodeData.model_validate(node_data, from_attributes=True)
-            model_instance = self._build_model_instance_for_llm_node(llm_node_data)
-            memory = self._build_memory_for_llm_node(node_data=llm_node_data, model_instance=model_instance)
-            return LLMNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-                http_client=self._http_request_http_client,
-            )
-
-        if node_type == NodeType.DATASOURCE:
-            return DatasourceNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                datasource_manager=DatasourceManager,
-            )
-
-        if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
-            return KnowledgeRetrievalNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                rag_retrieval=self._rag_retrieval,
-            )
-
-        if node_type == NodeType.DOCUMENT_EXTRACTOR:
-            return DocumentExtractorNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                unstructured_api_config=self._document_extractor_unstructured_api_config,
-                http_client=self._http_request_http_client,
-            )
-
-        if node_type == NodeType.QUESTION_CLASSIFIER:
-            question_classifier_node_data = QuestionClassifierNodeData.model_validate(node_data, from_attributes=True)
-            model_instance = self._build_model_instance_for_llm_node(question_classifier_node_data)
-            memory = self._build_memory_for_llm_node(
-                node_data=question_classifier_node_data,
-                model_instance=model_instance,
-            )
-            return QuestionClassifierNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-                http_client=self._http_request_http_client,
-            )
-
-        if node_type == NodeType.PARAMETER_EXTRACTOR:
-            parameter_extractor_node_data = ParameterExtractorNodeData.model_validate(node_data, from_attributes=True)
-            model_instance = self._build_model_instance_for_llm_node(parameter_extractor_node_data)
-            memory = self._build_memory_for_llm_node(
-                node_data=parameter_extractor_node_data,
-                model_instance=model_instance,
-            )
-            return ParameterExtractorNode(
-                id=node_id,
-                config=typed_node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-            )
-
-        if node_type == NodeType.TOOL:
-            return ToolNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                tool_file_manager_factory=self._http_request_tool_file_manager_factory(),
-            )
-
+        node_init_kwargs = {
+            NodeType.CODE: lambda: {
+                "code_executor": self._code_executor,
+                "code_limits": self._code_limits,
+            },
+            NodeType.TEMPLATE_TRANSFORM: lambda: {
+                "template_renderer": self._template_renderer,
+                "max_output_length": self._template_transform_max_output_length,
+            },
+            NodeType.HTTP_REQUEST: lambda: {
+                "http_request_config": self._http_request_config,
+                "http_client": self._http_request_http_client,
+                "tool_file_manager_factory": self._http_request_tool_file_manager_factory,
+                "file_manager": self._http_request_file_manager,
+            },
+            NodeType.HUMAN_INPUT: lambda: {
+                "form_repository": HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
+            },
+            NodeType.KNOWLEDGE_INDEX: lambda: {
+                "index_processor": IndexProcessor(),
+                "summary_index_service": SummaryIndex(),
+            },
+            NodeType.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                include_http_client=True,
+            ),
+            NodeType.DATASOURCE: lambda: {
+                "datasource_manager": DatasourceManager,
+            },
+            NodeType.KNOWLEDGE_RETRIEVAL: lambda: {
+                "rag_retrieval": self._rag_retrieval,
+            },
+            NodeType.DOCUMENT_EXTRACTOR: lambda: {
+                "unstructured_api_config": self._document_extractor_unstructured_api_config,
+                "http_client": self._http_request_http_client,
+            },
+            NodeType.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                include_http_client=True,
+            ),
+            NodeType.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                include_http_client=False,
+            ),
+            NodeType.TOOL: lambda: {
+                "tool_file_manager_factory": self._http_request_tool_file_manager_factory(),
+            },
+        }.get(node_type, lambda: {})()
         return node_class(
             id=node_id,
             config=typed_node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
+            **node_init_kwargs,
         )
+
+    @staticmethod
+    def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
+        """
+        Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
+        """
+        return node_class.validate_node_data(node_data)
+
+    @staticmethod
+    def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+        node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
+        if not node_mapping:
+            raise ValueError(f"No class mapping found for node type: {node_type}")
+
+        latest_node_class = node_mapping.get(LATEST_VERSION)
+        matched_node_class = node_mapping.get(node_version)
+        node_class = matched_node_class or latest_node_class
+        if not node_class:
+            raise ValueError(f"No latest version class found for node type: {node_type}")
+        return node_class
+
+    def _build_llm_compatible_node_init_kwargs(
+        self,
+        *,
+        node_class: type[Node],
+        node_data: BaseNodeData,
+        include_http_client: bool,
+    ) -> dict[str, object]:
+        validated_node_data = cast(
+            LLMCompatibleNodeData,
+            self._validate_resolved_node_data(node_class=node_class, node_data=node_data),
+        )
+        model_instance = self._build_model_instance_for_llm_node(validated_node_data)
+        node_init_kwargs: dict[str, object] = {
+            "credentials_provider": self._llm_credentials_provider,
+            "model_factory": self._llm_model_factory,
+            "model_instance": model_instance,
+            "memory": self._build_memory_for_llm_node(
+                node_data=validated_node_data,
+                model_instance=model_instance,
+            ),
+        }
+        if include_http_client:
+            node_init_kwargs["http_client"] = self._http_request_http_client
+        return node_init_kwargs
 
     def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
         node_data_model = node_data.model

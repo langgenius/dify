@@ -260,9 +260,14 @@ class Node(Generic[NodeDataT]):
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        self._node_data = cast(NodeDataT, self._node_data_type.model_validate(config["data"], from_attributes=True))
+        self._node_data = self.validate_node_data(config["data"])
 
         self.post_init()
+
+    @classmethod
+    def validate_node_data(cls, node_data: BaseNodeData) -> NodeDataT:
+        """Validate shared graph node payloads against the subclass-declared NodeData model."""
+        return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
 
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
@@ -470,7 +475,7 @@ class Node(Generic[NodeDataT]):
         :return:
         """
         node_id = config["id"]
-        node_data = cast(NodeDataT, cls._node_data_type.model_validate(config["data"], from_attributes=True))
+        node_data = cls.validate_node_data(config["data"])
         data = cls._extract_variable_selector_to_variable_mapping(
             graph_config=graph_config,
             node_id=node_id,
