@@ -38,7 +38,7 @@ const FeatureCard = ({
     >
       <div className="mb-2 flex items-center gap-2">
         {icon}
-        <div className="system-sm-semibold flex grow items-center text-text-secondary">
+        <div className="flex grow items-center text-text-secondary system-sm-semibold">
           {title}
           {tooltip && (
             <Tooltip
@@ -48,10 +48,10 @@ const FeatureCard = ({
             </Tooltip>
           )}
         </div>
-        <Switch disabled={disabled} className="shrink-0" onChange={state => onChange?.(state)} defaultValue={value} />
+        <Switch disabled={disabled} className="shrink-0" onChange={state => onChange?.(state)} value={value} />
       </div>
       {description && (
-        <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{description}</div>
+        <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{description}</div>
       )}
       {children}
     </div>

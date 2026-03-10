@@ -1,36 +1,20 @@
 import type { NextConfig } from 'next'
-import process from 'node:process'
-import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
+import { env } from './env'
 
 const isDev = process.env.NODE_ENV === 'development'
-const withMDX = createMDX({
-  extension: /\.mdx?$/,
-  options: {
-    // If you use remark-gfm, you'll need to use next.config.mjs
-    // as the package is ESM only
-    // https://github.com/remarkjs/remark-gfm#install
-    remarkPlugins: [],
-    rehypePlugins: [],
-    // If you use `MDXProvider`, uncomment the following line.
-    // providerImportSource: "@mdx-js/react",
-  },
-})
-const withBundleAnalyzer = withBundleAnalyzerInit({
-  enabled: process.env.ANALYZE === 'true',
-})
+const withMDX = createMDX()
 
 // the default url to prevent parse url error when running jest
-const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
-const port = process.env.PORT || 3000
+const hasSetWebPrefix = env.NEXT_PUBLIC_WEB_PREFIX
+const port = env.PORT
 const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
-const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
+const remoteImageURLs = ([hasSetWebPrefix ? new URL(`${env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)) as URL[]
 
 const nextConfig: NextConfig = {
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  serverExternalPackages: ['esbuild'],
-  transpilePackages: ['echarts', 'zrender'],
+  basePath: env.NEXT_PUBLIC_BASE_PATH,
+  transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
@@ -53,7 +37,6 @@ const nextConfig: NextConfig = {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
-  reactStrictMode: true,
   async redirects() {
     return [
       {
@@ -72,4 +55,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withBundleAnalyzer(withMDX(nextConfig))
+export default withMDX(nextConfig)

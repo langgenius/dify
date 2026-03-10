@@ -270,7 +270,7 @@ function generateTypeDefinitions(
 
   // Generate type for each section
   for (const [section, pathsSet] of Object.entries(groups)) {
-    const paths = Array.from(pathsSet).sort()
+    const paths = pathsSet.toSorted()
     const typeName = `${sectionToTypeName(section)}Path`
     typeNames.push(typeName)
 
@@ -295,7 +295,7 @@ function generateTypeDefinitions(
 
   // Generate API reference type (English paths only)
   if (apiReferencePaths.length > 0) {
-    const sortedPaths = [...apiReferencePaths].sort()
+    const sortedPaths = apiReferencePaths.toSorted()
     lines.push('// API Reference paths (English, use apiReferencePathTranslations for other languages)')
     lines.push('export type ApiReferencePath =')
     for (const p of sortedPaths) {
@@ -377,7 +377,7 @@ async function main(): Promise<void> {
 
   for (const openapiPath of openApiPaths) {
     // Determine language from path
-    const langMatch = openapiPath.match(/^(en|zh|ja)\//)
+    const langMatch = /^(en|zh|ja)\//.exec(openapiPath)
     if (!langMatch)
       continue
 

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { InputNumber } from '@/app/components/base/input-number'
 import Tooltip from '@/app/components/base/tooltip'
+import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className="text-xs font-semibold leading-none text-text-secondary">{props.children}</label>
@@ -24,7 +25,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold mr-0.5">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
+        <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
@@ -46,12 +47,12 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
 }
 
 export const MaxLengthInput: FC<InputNumberProps> = (props) => {
-  const maxValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
+  const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
   const { t } = useTranslation()
   return (
     <FormField label={(
-      <div className="system-sm-semibold mb-1">
+      <div className="mb-1 system-sm-semibold">
         {t('stepTwo.maxLength', { ns: 'datasetCreation' })}
       </div>
     )}

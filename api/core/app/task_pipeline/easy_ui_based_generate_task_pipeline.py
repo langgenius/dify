@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,22 +44,24 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    TextPromptMessageContent,
-)
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.file.enums import FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+)
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +156,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             id=self._message_id,
                             mode=self._conversation_mode,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -167,7 +169,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             mode=self._conversation_mode,
                             conversation_id=self._conversation_id,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -216,14 +218,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = self._app_config.app_model_config_dict.get("text_to_speech")
+        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
         if (
             text_to_speech_dict
             and text_to_speech_dict.get("autoPlay") == "enabled"
             and text_to_speech_dict.get("enabled")
         ):
             publisher = AppGeneratorTTSPublisher(
-                tenant_id, text_to_speech_dict.get("voice", None), text_to_speech_dict.get("language", None)
+                tenant_id, text_to_speech_dict.get("voice", ""), text_to_speech_dict.get("language", None)
             )
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
             while True:
@@ -280,7 +282,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                 # handle output moderation
                 output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                    cast(str, self._task_state.llm_result.message.content)
+                    self._task_state.llm_result.message.get_text_content()
                 )
                 if output_moderation_answer:
                     self._task_state.llm_result.message.content = output_moderation_answer
@@ -394,7 +396,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_unit_price = usage.prompt_unit_price
         message.message_price_unit = usage.prompt_price_unit
         message.answer = (
-            PromptTemplateParser.remove_template_variables(cast(str, llm_result.message.content).strip())
+            PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
@@ -457,10 +459,38 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
         metadata_dict = self._task_state.metadata.model_dump()
+
+        # Fetch files associated with this message
+        files = None
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
+
+            if message_files:
+                # Fetch all required UploadFile objects in a single query to avoid N+1 problem
+                upload_file_ids = list(
+                    dict.fromkeys(
+                        mf.upload_file_id
+                        for mf in message_files
+                        if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+                    )
+                )
+                upload_files_map = {}
+                if upload_file_ids:
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+                    upload_files_map = {uf.id: uf for uf in upload_files}
+
+                files_list = []
+                for message_file in message_files:
+                    file_dict = prepare_file_dict(message_file, upload_files_map)
+                    files_list.append(file_dict)
+
+                files = files_list or None
+
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             metadata=metadata_dict,
+            files=files,
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:

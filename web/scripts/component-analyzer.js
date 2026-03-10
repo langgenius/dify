@@ -140,7 +140,7 @@ export class ComponentAnalyzer {
 
       maxMessages.forEach((msg) => {
         if (msg.ruleId === 'sonarjs/cognitive-complexity') {
-          const match = msg.message.match(complexityPattern)
+          const match = complexityPattern.exec(msg.message)
           if (match && match[1])
             max = Math.max(max, Number.parseInt(match[1], 10))
         }
@@ -290,7 +290,7 @@ export class ComponentAnalyzer {
         roots.add(root)
     })
 
-    return Array.from(roots)
+    return [...roots]
   }
 
   shouldSkipDir(dirName) {

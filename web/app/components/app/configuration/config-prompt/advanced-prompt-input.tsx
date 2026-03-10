@@ -20,7 +20,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -122,7 +122,7 @@ const AdvancedPromptInput: FC<Props> = ({
   }
   const handleBlur = () => {
     const keys = getVars(value)
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key, ''))
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.some(item => item.variable === key)).map(key => getNewVar(key, ''))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       showConfirmAddVar()

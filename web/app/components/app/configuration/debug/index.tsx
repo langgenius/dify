@@ -29,7 +29,7 @@ import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -179,7 +179,7 @@ const Debug: FC<IDebug> = ({
       return false
     }
 
-    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+    if (completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
       notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
@@ -394,7 +394,7 @@ const Debug: FC<IDebug> = ({
     <>
       <div className="shrink-0">
         <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
+          <div className="text-text-primary system-xl-semibold">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -539,7 +539,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
+                    <div className="text-text-quaternary system-sm-regular">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

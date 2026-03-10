@@ -4,10 +4,11 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
-from core.workflow.nodes.human_input.entities import (
+from core.db.session_factory import session_factory
+from dify_graph.nodes.human_input.entities import (
     DeliveryChannelConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -17,12 +18,12 @@ from core.workflow.nodes.human_input.entities import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.enums import (
+from dify_graph.nodes.human_input.enums import (
     DeliveryMethodType,
     HumanInputFormKind,
     HumanInputFormStatus,
 )
-from core.workflow.repositories.human_input_form_repository import (
+from dify_graph.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,
     HumanInputFormEntity,
@@ -198,12 +199,9 @@ class _InvalidTimeoutStatusError(ValueError):
 class HumanInputFormRepositoryImpl:
     def __init__(
         self,
-        session_factory: sessionmaker | Engine,
+        *,
         tenant_id: str,
     ):
-        if isinstance(session_factory, Engine):
-            session_factory = sessionmaker(bind=session_factory)
-        self._session_factory = session_factory
         self._tenant_id = tenant_id
 
     def _delivery_method_to_model(
@@ -217,7 +215,7 @@ class HumanInputFormRepositoryImpl:
             id=delivery_id,
             form_id=form_id,
             delivery_method_type=delivery_method.type,
-            delivery_config_id=delivery_method.id,
+            delivery_config_id=str(delivery_method.id),
             channel_payload=delivery_method.model_dump_json(),
         )
         recipients: list[HumanInputFormRecipient] = []
@@ -343,7 +341,7 @@ class HumanInputFormRepositoryImpl:
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         form_config: HumanInputNodeData = params.form_config
 
-        with self._session_factory(expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             # Generate unique form ID
             form_id = str(uuidv7())
             start_time = naive_utc_now()
@@ -435,7 +433,7 @@ class HumanInputFormRepositoryImpl:
             HumanInputForm.node_id == node_id,
             HumanInputForm.tenant_id == self._tenant_id,
         )
-        with self._session_factory(expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             form_model: HumanInputForm | None = session.scalars(form_query).first()
             if form_model is None:
                 return None
@@ -448,18 +446,13 @@ class HumanInputFormRepositoryImpl:
 class HumanInputFormSubmissionRepository:
     """Repository for fetching and submitting human input forms."""
 
-    def __init__(self, session_factory: sessionmaker | Engine):
-        if isinstance(session_factory, Engine):
-            session_factory = sessionmaker(bind=session_factory)
-        self._session_factory = session_factory
-
     def get_by_token(self, form_token: str) -> HumanInputFormRecord | None:
         query = (
             select(HumanInputFormRecipient)
             .options(selectinload(HumanInputFormRecipient.form))
             .where(HumanInputFormRecipient.access_token == form_token)
         )
-        with self._session_factory(expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             recipient_model = session.scalars(query).first()
             if recipient_model is None or recipient_model.form is None:
                 return None
@@ -478,7 +471,7 @@ class HumanInputFormSubmissionRepository:
                 HumanInputFormRecipient.recipient_type == recipient_type,
             )
         )
-        with self._session_factory(expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             recipient_model = session.scalars(query).first()
             if recipient_model is None or recipient_model.form is None:
                 return None
@@ -494,7 +487,7 @@ class HumanInputFormSubmissionRepository:
         submission_user_id: str | None,
         submission_end_user_id: str | None,
     ) -> HumanInputFormRecord:
-        with self._session_factory(expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             form_model = session.get(HumanInputForm, form_id)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")
@@ -524,7 +517,7 @@ class HumanInputFormSubmissionRepository:
         timeout_status: HumanInputFormStatus,
         reason: str | None = None,
     ) -> HumanInputFormRecord:
-        with self._session_factory(expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             form_model = session.get(HumanInputForm, form_id)
             if form_model is None:
                 raise FormNotFoundError(f"form not found, id={form_id}")

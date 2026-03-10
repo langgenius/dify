@@ -58,7 +58,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         modelName={model.model}
       />
       <ModelName
-        className="system-md-regular grow text-text-secondary"
+        className="grow text-text-secondary system-md-regular"
         modelItem={model}
         showModelType
         showMode
@@ -92,13 +92,13 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                   }
                   offset={{ mainAxis: 4 }}
                 >
-                  <Switch defaultValue={false} disabled size="md" />
+                  <Switch value={false} disabled size="md" />
                 </Tooltip>
               )
             : (isCurrentWorkspaceManager && (
                 <Switch
                   className="ml-2"
-                  defaultValue={model?.status === ModelStatusEnum.active}
+                  value={model?.status === ModelStatusEnum.active}
                   disabled={![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
                   size="md"
                   onChange={onEnablingStateChange}

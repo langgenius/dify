@@ -1,7 +1,6 @@
 import hashlib
 import logging
-import time
-from threading import Thread
+from threading import Thread, Timer
 from typing import Union
 
 from flask import Flask, current_app
@@ -64,7 +63,13 @@ class MessageCycleManager:
 
         # Use SQLAlchemy 2.x style session.scalar(select(...))
         with session_factory.create_session() as session:
-            message_file = session.scalar(select(MessageFile).where(MessageFile.message_id == message_id))
+            message_file = session.scalar(
+                select(MessageFile)
+                .where(
+                    MessageFile.message_id == message_id,
+                )
+                .where(MessageFile.belongs_to == "assistant")
+            )
 
         if message_file:
             self._message_has_file.add(message_id)
@@ -90,9 +95,9 @@ class MessageCycleManager:
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
             # time.sleep not block other logic
-            time.sleep(1)
-            thread = Thread(
-                target=self._generate_conversation_name_worker,
+            thread = Timer(
+                1,
+                self._generate_conversation_name_worker,
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "conversation_id": conversation_id,

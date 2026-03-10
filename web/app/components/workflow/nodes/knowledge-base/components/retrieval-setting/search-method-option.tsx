@@ -166,10 +166,10 @@ const SearchMethodOption = ({
             <div>
               {
                 showRerankModelSelectorSwitch && (
-                  <div className="system-sm-semibold mb-1 flex items-center text-text-secondary">
+                  <div className="mb-1 flex items-center text-text-secondary system-sm-semibold">
                     <Switch
                       className="mr-1"
-                      defaultValue={rerankingModelEnabled}
+                      value={rerankingModelEnabled ?? false}
                       onChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
@@ -192,7 +192,7 @@ const SearchMethodOption = ({
                   <div className="p-1">
                     <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
-                  <span className="system-xs-medium text-text-primary">
+                  <span className="text-text-primary system-xs-medium">
                     {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                   </span>
                 </div>

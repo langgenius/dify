@@ -92,7 +92,7 @@ const NotionPageSelector = ({
   }, [notionsPages?.notion_info])
 
   const defaultSelectedPagesId = useMemo(() => {
-    return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]
+    return [...[...pagesMapAndSelectedPagesId[1]], ...(value || [])]
   }, [pagesMapAndSelectedPagesId, value])
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(() => new Set(defaultSelectedPagesId))
 
@@ -113,9 +113,9 @@ const NotionPageSelector = ({
   }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
+    const selectedPages = Array.from(newSelectedPagesId, pageId => pagesMapAndSelectedPagesId[0][pageId])
 
-    setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
+    setSelectedPagesId(new Set([...newSelectedPagesId]))
     onSelect(selectedPages)
   }, [pagesMapAndSelectedPagesId, onSelect])
 
@@ -137,7 +137,7 @@ const NotionPageSelector = ({
   }
 
   return (
-    <div className="flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
         title="Choose notion pages"
@@ -162,7 +162,7 @@ const NotionPageSelector = ({
         <div className="overflow-hidden rounded-b-xl">
           {isFetchingNotionPages
             ? (
-                <div className="flex h-[296px] items-center justify-center">
+                <div className="flex h-[296px] items-center justify-center" data-testid="notion-page-selector-loading">
                   <Loading />
                 </div>
               )

@@ -204,23 +204,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         }
       }
       catch {
-        try {
-          // eslint-disable-next-line no-new-func
-          const result = new Function(`return ${trimmedContent}`)()
-          if (typeof result === 'object' && result !== null) {
-            setFinalChartOption(result)
-            setChartState('success')
-            processedRef.current = true
-            return
-          }
-        }
-        catch {
-          // If we have a complete JSON structure but it doesn't parse,
-          // it's likely an error rather than incomplete data
-          setChartState('error')
-          processedRef.current = true
-          return
-        }
+        // Avoid executing arbitrary code; require valid JSON for chart options.
+        setChartState('error')
+        processedRef.current = true
+        return
       }
     }
 
@@ -249,19 +236,9 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         }
       }
       catch {
-        try {
-          // eslint-disable-next-line no-new-func
-          const result = new Function(`return ${trimmedContent}`)()
-          if (typeof result === 'object' && result !== null) {
-            setFinalChartOption(result)
-            isValidOption = true
-          }
-        }
-        catch {
-          // Both parsing methods failed, but content looks complete
-          setChartState('error')
-          processedRef.current = true
-        }
+        // Only accept JSON to avoid executing arbitrary code from the message.
+        setChartState('error')
+        processedRef.current = true
       }
 
       if (isValidOption) {
@@ -422,7 +399,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             }}
             language={match?.[1]}
             showLineNumbers
-            PreTag="div"
           >
             {content}
           </SyntaxHighlighter>
@@ -436,7 +412,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   return (
     <div className="relative">
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
-        <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
+        <div className="text-text-secondary system-xs-semibold-uppercase">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>

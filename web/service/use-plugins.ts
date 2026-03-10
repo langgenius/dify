@@ -653,7 +653,7 @@ export const useMutationClearAllTaskPlugin = () => {
 export const usePluginManifestInfo = (pluginUID: string) => {
   return useQuery({
     enabled: !!pluginUID,
-    queryKey: [[NAME_SPACE, 'manifest', pluginUID]],
+    queryKey: [NAME_SPACE, 'manifest', pluginUID],
     queryFn: () => getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${pluginUID}`),
     retry: 0,
   })
@@ -685,7 +685,7 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
         return false
       try {
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
-        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
+        return !!modelId && modelsData.data.some(item => item.model === modelId)
       }
       catch {
         return false

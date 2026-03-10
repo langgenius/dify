@@ -22,7 +22,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -199,7 +199,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
         const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
 
-        const isUnconnected = !validNodes.find(n => n.id === node.id)
+        const isUnconnected = !validNodes.some(n => n.id === node.id)
         const shouldShowError = errorMessage || (isUnconnected && !canSkipConnectionCheck)
 
         if (shouldShowError) {
@@ -234,7 +234,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
     isRequiredNodesType.forEach((type: string) => {
-      if (!filteredNodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.some(node => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
           type,
@@ -320,7 +320,7 @@ export const useChecklistBeforePublish = () => {
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
     const knowledgeRetrievalNodes = filteredNodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
-      return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
+      return [...new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids])]
     }, [])
     let datasets: DataSet[] = []
     if (allDatasetIds.length > 0) {
@@ -391,7 +391,7 @@ export const useChecklistBeforePublish = () => {
 
       const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
       const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
-      const isUnconnected = !validNodes.find(n => n.id === node.id)
+      const isUnconnected = !validNodes.some(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
         notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
@@ -412,7 +412,7 @@ export const useChecklistBeforePublish = () => {
     for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
 
-      if (!filteredNodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.some(node => node.data.type === type)) {
         notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }

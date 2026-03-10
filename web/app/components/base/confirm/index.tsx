@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use `@/app/components/base/ui/alert-dialog` instead.
+ * See issue #32767 for migration details.
+ */
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -5,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '../button'
 import Tooltip from '../tooltip'
 
+/** @deprecated Use `@/app/components/base/ui/alert-dialog` instead. */
 export type IConfirm = {
   className?: string
   isShow: boolean
@@ -79,7 +85,7 @@ function Confirm({
       setIsVisible(true)
     }
     else {
-      const timer = setTimeout(() => setIsVisible(false), 200)
+      const timer = setTimeout(setIsVisible, 200, false)
       return () => clearTimeout(timer)
     }
   }, [isShow])
@@ -101,6 +107,7 @@ function Confirm({
         e.preventDefault()
         e.stopPropagation()
       }}
+      data-testid="confirm-overlay"
     >
       <div ref={dialogRef} className="relative w-full max-w-[480px] overflow-hidden">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
@@ -112,11 +119,11 @@ function Confirm({
               asChild={false}
               triggerClassName="w-full"
             >
-              <div ref={titleRef} className="title-2xl-semi-bold w-full truncate text-text-primary">
+              <div ref={titleRef} className="w-full truncate text-text-primary title-2xl-semi-bold">
                 {title}
               </div>
             </Tooltip>
-            <div className="system-md-regular w-full whitespace-pre-wrap break-words text-text-tertiary">{content}</div>
+            <div className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">{content}</div>
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch p-6">
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}

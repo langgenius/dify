@@ -35,11 +35,11 @@ const ConfigVision: FC = () => {
 
     const newFeatures = produce(features, (draft) => {
       if (value) {
-        draft.file!.allowed_file_types = Array.from(new Set([
+        draft.file!.allowed_file_types = [...new Set([
           ...(draft.file?.allowed_file_types || []),
           SupportUploadFileTypes.image,
           ...(isAllowVideoUpload ? [SupportUploadFileTypes.video] : []),
-        ]))
+        ])]
       }
       else {
         draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
@@ -69,7 +69,7 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
+        <div className="mr-1 text-text-secondary system-sm-semibold">{t('vision.name', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
@@ -83,7 +83,7 @@ const ConfigVision: FC = () => {
           ? (
               <>
                 <div className="mr-2 flex items-center gap-0.5">
-                  <div className="system-xs-medium-uppercase text-text-tertiary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
+                  <div className="text-text-tertiary system-xs-medium-uppercase">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
                   <Tooltip
                     popupContent={(
                       <div className="w-[180px]">
@@ -100,7 +100,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.high}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.high && 'hover:border-components-option-card-option-border',
                     )}
                   />
@@ -109,7 +109,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.low}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.low && 'hover:border-components-option-card-option-border',
                     )}
                   />
@@ -121,7 +121,7 @@ const ConfigVision: FC = () => {
                 <ParamConfig />
                 <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular"></div>
                 <Switch
-                  defaultValue={isImageEnabled}
+                  value={isImageEnabled}
                   onChange={handleChange}
                   size="md"
                 />

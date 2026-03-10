@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { IS_CE_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -98,8 +98,7 @@ export const useFileUpload = ({
       docx: 'docx',
     }
 
-    return [...supportTypes]
-      .map(item => extensionMap[item] || item)
+    return Array.from(supportTypes, item => extensionMap[item] || item)
       .map(item => item.toLowerCase())
       .filter((item, index, self) => self.indexOf(item) === index)
       .map(item => item.toUpperCase())
@@ -271,7 +270,7 @@ export const useFileUpload = ({
       if (!e.dataTransfer)
         return
       const nested = await Promise.all(
-        Array.from(e.dataTransfer.items).map((it) => {
+        Array.from(e.dataTransfer.items, (it) => {
           const entry = (it as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.()
           if (entry)
             return traverseFileEntry(entry)
@@ -303,7 +302,7 @@ export const useFileUpload = ({
   }, [onFileListUpdate])
 
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    let files = Array.from(e.target.files ?? []) as File[]
+    let files = [...e.target.files ?? []] as File[]
     files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
   }, [isValid, initialUpload, fileUploadConfig])
