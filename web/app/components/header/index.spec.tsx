@@ -6,10 +6,6 @@ function createMockComponent(testId: string) {
   return () => <div data-testid={testId} />
 }
 
-vi.mock('@/app/components/base/logo/dify-logo', () => ({
-  default: createMockComponent('dify-logo'),
-}))
-
 vi.mock('@/app/components/header/account-dropdown/workplace-selector', () => ({
   default: createMockComponent('workplace-selector'),
 }))
@@ -129,7 +125,7 @@ describe('Header', () => {
   it('should render header with main nav components', () => {
     render(<Header />)
 
-    expect(screen.getByTestId('dify-logo')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
     expect(screen.getByTestId('workplace-selector')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('account-dropdown')).toBeInTheDocument()
@@ -173,7 +169,7 @@ describe('Header', () => {
     mockMedia = 'mobile'
     render(<Header />)
 
-    expect(screen.getByTestId('dify-logo')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
     expect(screen.queryByTestId('env-nav')).not.toBeInTheDocument()
   })
 
@@ -186,6 +182,70 @@ describe('Header', () => {
 
     expect(screen.getByText('Acme Workspace')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /logo/i })).toBeInTheDocument()
-    expect(screen.queryByTestId('dify-logo')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
+  })
+
+  it('should show default Dify logo when branding is enabled but no workspace_logo', () => {
+    mockBrandingEnabled = true
+    mockBrandingTitle = 'Custom Title'
+    mockBrandingLogo = null
+
+    render(<Header />)
+
+    expect(screen.getByText('Custom Title')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /dify logo/i })).toBeInTheDocument()
+  })
+
+  it('should show default Dify text when branding enabled but no application_title', () => {
+    mockBrandingEnabled = true
+    mockBrandingTitle = null
+    mockBrandingLogo = null
+
+    render(<Header />)
+
+    expect(screen.getByText('Dify')).toBeInTheDocument()
+  })
+
+  it('should show dataset nav for editor who is not dataset operator', () => {
+    mockIsWorkspaceEditor = true
+    mockIsDatasetOperator = false
+
+    render(<Header />)
+
+    expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
+    expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
+    expect(screen.getByTestId('app-nav')).toBeInTheDocument()
+  })
+
+  it('should hide dataset nav when neither editor nor dataset operator', () => {
+    mockIsWorkspaceEditor = false
+    mockIsDatasetOperator = false
+
+    render(<Header />)
+
+    expect(screen.queryByTestId('dataset-nav')).not.toBeInTheDocument()
+  })
+
+  it('should render mobile layout with dataset operator nav restrictions', () => {
+    mockMedia = 'mobile'
+    mockIsDatasetOperator = true
+
+    render(<Header />)
+
+    expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('app-nav')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tools-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
+  })
+
+  it('should render mobile layout with billing enabled', () => {
+    mockMedia = 'mobile'
+    mockEnableBilling = true
+    mockPlanType = 'sandbox'
+
+    render(<Header />)
+
+    expect(screen.getByTestId('plan-badge')).toBeInTheDocument()
+    expect(screen.queryByTestId('license-nav')).not.toBeInTheDocument()
   })
 })
