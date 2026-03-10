@@ -2,11 +2,10 @@ import json
 import os
 from typing import Any
 
+import holo_search_sdk as holo
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from psycopg import sql as psql
-
-import holo_search_sdk as holo
 
 # Shared in-memory storage: {table_name: {doc_id: {"id", "text", "meta", "embedding"}}}
 _mock_tables: dict[str, dict[str, dict[str, Any]]] = {}
@@ -63,7 +62,9 @@ class MockTable:
     def search_text(self, column, expression, return_score=False, return_score_name="score", return_all_columns=False):
         return MockSearchQuery(self._table_name, "text")
 
-    def set_vector_index(self, column, distance_method, base_quantization_type, max_degree, ef_construction, use_reorder):
+    def set_vector_index(
+        self, column, distance_method, base_quantization_type, max_degree, ef_construction, use_reorder
+    ):
         pass
 
     def create_text_index(self, index_name, column, tokenizer):
