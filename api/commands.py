@@ -937,6 +937,12 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     is_flag=True,
     help="Preview cleanup results without deleting any workflow run data.",
 )
+@click.option(
+    "--task-label",
+    default="daily",
+    show_default=True,
+    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
+)
 def clean_workflow_runs(
     before_days: int,
     batch_size: int,
@@ -945,10 +951,13 @@ def clean_workflow_runs(
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
+    task_label: str,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     if (start_from is None) ^ (end_before is None):
         raise click.UsageError("--start-from and --end-before must be provided together.")
 
@@ -968,13 +977,17 @@ def clean_workflow_runs(
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
-    WorkflowRunCleanup(
-        days=before_days,
-        batch_size=batch_size,
-        start_from=start_from,
-        end_before=end_before,
-        dry_run=dry_run,
-    ).run()
+    try:
+        WorkflowRunCleanup(
+            days=before_days,
+            batch_size=batch_size,
+            start_from=start_from,
+            end_before=end_before,
+            dry_run=dry_run,
+            task_label=task_label,
+        ).run()
+    finally:
+        flush_telemetry()
 
     end_time = datetime.datetime.now(datetime.UTC)
     elapsed = end_time - start_time
@@ -2630,6 +2643,12 @@ def migrate_oss(
     help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
+@click.option(
+    "--task-label",
+    default="daily",
+    show_default=True,
+    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
+)
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
@@ -2638,10 +2657,13 @@ def clean_expired_messages(
     from_days_ago: int | None,
     before_days: int | None,
     dry_run: bool,
+    task_label: str,
 ):
     """
     Clean expired messages and related data for tenants based on clean policy.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     click.echo(click.style("clean_messages: start clean messages.", fg="green"))
 
     start_at = time.perf_counter()
@@ -2691,6 +2713,7 @@ def clean_expired_messages(
                 end_before=end_before,
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         elif from_days_ago is None:
             assert before_days is not None
@@ -2699,6 +2722,7 @@ def clean_expired_messages(
                 days=before_days,
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         else:
             assert before_days is not None
@@ -2710,6 +2734,7 @@ def clean_expired_messages(
                 end_before=now - datetime.timedelta(days=before_days),
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         stats = service.run()
 
@@ -2735,6 +2760,8 @@ def clean_expired_messages(
             )
         )
         raise
+    finally:
+        flush_telemetry()
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
 
