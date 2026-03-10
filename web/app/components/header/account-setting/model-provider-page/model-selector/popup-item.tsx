@@ -148,13 +148,7 @@ const PopupItem: FC<PopupItemProps> = ({
               </div>
             )}
           />
-          {/*
-           * TODO(overlay-migration): temporary layering hack.
-           * This nested provider-settings dropdown opens from inside ModelSelector
-           * (z-[1002]), so it must stay one level higher until all related modals
-           * are unified on the new overlay stack.
-           */}
-          <PopoverContent placement="bottom-end" className="z-[1003]">
+          <PopoverContent placement="bottom-end">
             <DropdownContent
               provider={currentProvider}
               state={state}

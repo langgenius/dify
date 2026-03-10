@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
-import { cn } from '@/utils/classnames'
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
@@ -85,16 +84,10 @@ const ModelSelector: FC<ModelSelectorProps> = ({
           </button>
         )}
       />
-      {/*
-       * TODO(overlay-migration): temporary layering hack.
-       * Some callers still render ModelSelector inside legacy high-z modals
-       * (e.g. code/automatic generators at z-[1000]). Keep this selector above
-       * them until those call sites are fully migrated to unified base/ui overlays.
-       */}
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        className={cn('z-[1002]', popupClassName)}
+        className={popupClassName}
         popupClassName="overflow-hidden rounded-lg"
         popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
       >
