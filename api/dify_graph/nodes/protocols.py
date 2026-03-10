@@ -1,8 +1,10 @@
+from collections.abc import Generator
 from typing import Any, Protocol
 
 import httpx
 
 from dify_graph.file import File
+from dify_graph.file.models import ToolFile
 
 
 class HttpClientProtocol(Protocol):
@@ -40,3 +42,5 @@ class ToolFileManagerProtocol(Protocol):
         mimetype: str,
         filename: str | None = None,
     ) -> Any: ...
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]: ...
