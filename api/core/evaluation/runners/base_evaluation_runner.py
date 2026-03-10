@@ -42,8 +42,8 @@ class BaseEvaluationRunner(ABC):
     @abstractmethod
     def evaluate_metrics(
         self,
-        node_run_result_mapping: dict[str, NodeRunResult] | None,
-        node_run_result: NodeRunResult | None,
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None,
+        node_run_result_list: list[NodeRunResult] | None,
         default_metric: DefaultMetric | None,
         customized_metrics: CustomizedMetrics | None,
         model_provider: str,
@@ -59,12 +59,12 @@ class BaseEvaluationRunner(ABC):
         tenant_id: str,
         target_id: str,
         target_type: str,
-        node_run_result: NodeRunResult | None = None,
+        node_run_result_list: list[NodeRunResult] | None = None,
         default_metric: DefaultMetric | None = None,
         customized_metrics: CustomizedMetrics | None = None,
         model_provider: str = "",
         model_name: str = "",
-        node_run_result_mapping: dict[str, NodeRunResult] | None = None,
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None = None,
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
@@ -82,11 +82,11 @@ class BaseEvaluationRunner(ABC):
         results: list[EvaluationItemResult] = []
 
         # Phase 1: run evaluation
-        if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+        if default_metric and node_run_result_list:
             try:
                 evaluated_results = self.evaluate_metrics(
-                    node_run_result_mapping=node_run_result_mapping,
-                    node_run_result=node_run_result,
+                    node_run_result_mapping_list=node_run_result_mapping_list,
+                    node_run_result_list=node_run_result_list,
                     default_metric=default_metric,
                     customized_metrics=customized_metrics,
                     model_provider=model_provider,
@@ -98,6 +98,19 @@ class BaseEvaluationRunner(ABC):
                 for i, result in enumerate(results):
                     if result.index in evaluated_by_index:
                         results[i] = evaluated_by_index[result.index]
+            except Exception:
+                logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
+        if customized_metrics and node_run_result_mapping_list:
+            try:
+                evaluated_results = self.evaluate_metrics(
+                    node_run_result_mapping_list=node_run_result_mapping_list,
+                    node_run_result_list=node_run_result_list,
+                    default_metric=default_metric,
+                    customized_metrics=customized_metrics,
+                    model_provider=model_provider,
+                    model_name=model_name,
+                    tenant_id=tenant_id,
+                )
             except Exception:
                 logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
 

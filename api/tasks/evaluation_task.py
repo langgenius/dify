@@ -27,6 +27,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunStatus
 from models.model import UploadFile
+from services.evaluation_service import EvaluationService
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,20 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
 
-    _execute_evaluation_runner(session, run_data, evaluation_instance, node_run_result_mapping)
+    evaluation_service = EvaluationService()
+    node_run_result_mapping_list: list[dict[str, NodeRunResult]] = evaluation_service.execute_targets(
+        tenant_id=run_data.tenant_id,
+        target_type=run_data.target_type,
+        target_id=run_data.target_id,
+        input_list=run_data.input_list,
+    )
+
+    results: list[EvaluationItemResult] = _execute_evaluation_runner(
+        session, 
+        run_data, 
+        evaluation_instance, 
+        node_run_result_mapping_list,
+    )
 
 
     # Compute summary metrics
@@ -106,15 +120,19 @@ def _execute_evaluation_runner(
     session: Any, 
     run_data: EvaluationRunData, 
     evaluation_instance: BaseEvaluationInstance, 
-    node_run_result_mapping: dict[str, NodeRunResult],
+    node_run_result_mapping_list: list[dict[str, NodeRunResult]],
 ) -> list[EvaluationItemResult]:
     """Execute the evaluation runner."""
     default_metrics = run_data.default_metrics
     customized_metrics = run_data.customized_metrics
     for default_metric in default_metrics:
         for node_info in default_metric.node_info_list:
-            node_run_result = node_run_result_mapping.get(node_info.node_id)
-            if node_run_result:
+            node_run_result_list: list[NodeRunResult] = []
+            for node_run_result_mapping in node_run_result_mapping_list:
+                node_run_result = node_run_result_mapping.get(node_info.node_id)
+                if node_run_result is not None:
+                    node_run_result_list.append(node_run_result)
+            if node_run_result_list:
                 runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance, session)
                 runner.run(
                     evaluation_run_id=run_data.evaluation_run_id,
@@ -125,10 +143,8 @@ def _execute_evaluation_runner(
                     customized_metrics=None,
                     model_provider=run_data.evaluation_model_provider,
                     model_name=run_data.evaluation_model,
-                    node_run_result=node_run_result,
+                    node_run_result_list=node_run_result_list,
                 )
-            else:
-                default_metric.score = 0
     if customized_metrics:
         runner = _create_runner(EvaluationCategory.WORKFLOW, evaluation_instance, session)
         runner.run(
@@ -138,8 +154,8 @@ def _execute_evaluation_runner(
             target_type=run_data.target_type,
             default_metric=None,
             customized_metrics=customized_metrics,
-            node_run_result=None,
-            node_run_result_mapping=node_run_result_mapping,
+            node_run_result_list=None,
+            node_run_result_mapping_list=node_run_result_mapping_list,
         )
 
 def _create_runner(
