@@ -114,7 +114,7 @@ const PopupItem: FC<PopupItemProps> = ({
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
             render={(
-              <div className="flex cursor-pointer items-center rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover">
+              <button type="button" className="flex cursor-pointer items-center rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
                   ? (
                       hasCredits
@@ -145,7 +145,7 @@ const PopupItem: FC<PopupItemProps> = ({
                         </>
                       )}
                 <span className="i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary" />
-              </div>
+              </button>
             )}
           />
           <PopoverContent placement="bottom-end">
@@ -163,8 +163,9 @@ const PopupItem: FC<PopupItemProps> = ({
         <Tooltip key={modelItem.model}>
           <TooltipTrigger
             render={(
-              <div
-                className={cn('group relative flex h-8 items-center gap-1 rounded-lg px-3 py-1.5', modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt')}
+              <button
+                type="button"
+                className={cn('group relative flex h-8 w-full items-center gap-1 rounded-lg px-3 py-1.5 text-left', modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt')}
                 onClick={() => handleSelect(model.provider, modelItem)}
               >
                 <div className="flex items-center gap-2">
@@ -193,7 +194,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     </div>
                   )
                 }
-              </div>
+              </button>
             )}
           />
           <TooltipContent
