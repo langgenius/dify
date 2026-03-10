@@ -108,13 +108,14 @@ vi.mock('@/app/components/base/modal', () => ({
 
 // Mock Confirm
 vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ onCancel, onConfirm, title, isShow }: { onCancel: () => void, onConfirm: () => void, title: string, isShow: boolean }) => {
+  default: ({ onCancel, onConfirm, title, content, isShow }: { onCancel: () => void, onConfirm: () => void, title: string, content?: React.ReactNode, isShow: boolean }) => {
     if (!isShow)
       return null
     return (
       <div data-testid="confirm-dialog">
         <div data-testid="confirm-title">{title}</div>
         <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+        <div data-testid="confirm-content">{content}</div>
         <button data-testid="confirm-confirm" onClick={onConfirm}>Confirm</button>
       </div>
     )
@@ -253,7 +254,8 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       // On mobile, the collapse/expand buttons should not be shown
-      expect(screen.queryByTestId('collapse-button')).not.toBeInTheDocument()
+      const header = screen.getByText('Test App').parentElement as HTMLElement
+      expect(within(header).queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('should not show collapse/expand buttons on mobile when collapsed', () => {
@@ -264,7 +266,8 @@ describe('Sidebar Index', () => {
       } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
-      expect(screen.queryByTestId('collapse-button')).not.toBeInTheDocument()
+      const header = screen.getByText('Test App').parentElement as HTMLElement
+      expect(within(header).queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
@@ -766,10 +769,8 @@ describe('Sidebar Index', () => {
       } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
-      // The collapse/expand button should not be rendered on mobile
-      const buttons = screen.getAllByRole('button')
-      // Should only have new chat button, no collapse/expand buttons
-      expect(buttons.length).toBeGreaterThan(0)
+      const header = screen.getByText('Test App').parentElement as HTMLElement
+      expect(within(header).queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('should show controls on desktop', () => {
@@ -901,6 +902,7 @@ describe('Sidebar Index', () => {
         render(<Sidebar />)
         await user.click(screen.getByTestId('delete-1'))
         expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-content')).toBeEmptyDOMElement()
       }
       finally {
         useTranslationSpy.mockRestore()

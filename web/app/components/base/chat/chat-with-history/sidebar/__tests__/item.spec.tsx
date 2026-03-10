@@ -1,5 +1,5 @@
 import type { ConversationItem } from '@/models/share'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Item from '../item'
 
@@ -485,17 +485,18 @@ describe('Item', () => {
   })
 
   describe('Hover State', () => {
-    it('should show Operation when hovering', async () => {
-      render(<Item {...defaultProps} />)
-      const operation = screen.getByTestId('mock-operation')
-      expect(operation).toBeInTheDocument()
-    })
-
-    it('should pass hover state to Operation', () => {
-      render(<Item {...defaultProps} />)
+    it('should pass hover state to Operation when hovering', async () => {
+      const { container } = render(<Item {...defaultProps} />)
+      const row = container.firstChild as HTMLElement
       const hoverIndicator = screen.getByTestId('hover-indicator')
-      // The hover state should be passed to Operation
-      expect(hoverIndicator).toBeInTheDocument()
+
+      expect(hoverIndicator.getAttribute('data-hovering')).toBe('false')
+
+      fireEvent.mouseEnter(row)
+      expect(hoverIndicator.getAttribute('data-hovering')).toBe('true')
+
+      fireEvent.mouseLeave(row)
+      expect(hoverIndicator.getAttribute('data-hovering')).toBe('false')
     })
   })
 
