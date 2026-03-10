@@ -92,7 +92,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
         // send the actual api_key so updated tokens are persisted.
         const apiKeyToSend = formData.settings.api_key === '[__HIDDEN__]'
           ? '[__HIDDEN__]'
-          : (formData.settings.api_key ?? '')
+          : formData.settings.api_key
         await onEdit(
           {
             ...formData,
