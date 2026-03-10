@@ -11,8 +11,8 @@ from unittest.mock import call, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
@@ -32,6 +32,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
 
     @staticmethod
     def create_dataset(
+        db_session_with_containers: Session,
         dataset_id: str | None = None,
         tenant_id: str | None = None,
         name: str = "Test Dataset",
@@ -47,12 +48,13 @@ class DocumentBatchUpdateIntegrationDataFactory:
         if dataset_id:
             dataset.id = dataset_id
 
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
         return dataset
 
     @staticmethod
     def create_document(
+        db_session_with_containers: Session,
         dataset: Dataset,
         document_id: str | None = None,
         name: str = "test_document.pdf",
@@ -89,13 +91,14 @@ class DocumentBatchUpdateIntegrationDataFactory:
         for key, value in kwargs.items():
             setattr(document, key, value)
 
-        db.session.add(document)
+        db_session_with_containers.add(document)
         if commit:
-            db.session.commit()
+            db_session_with_containers.commit()
         return document
 
     @staticmethod
     def create_multiple_documents(
+        db_session_with_containers: Session,
         dataset: Dataset,
         document_ids: list[str],
         enabled: bool = True,
@@ -106,6 +109,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
         documents: list[Document] = []
         for index, doc_id in enumerate(document_ids, start=1):
             document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+                db_session_with_containers,
                 dataset=dataset,
                 document_id=doc_id,
                 name=f"document_{doc_id}.pdf",
@@ -116,7 +120,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
                 commit=False,
             )
             documents.append(document)
-        db.session.commit()
+        db_session_with_containers.commit()
         return documents
 
     @staticmethod
@@ -173,13 +177,14 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         assert document.archived_at is None
         assert document.archived_by is None
 
-    def test_batch_update_enable_documents_success(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_enable_documents_success(self, db_session_with_containers: Session, patched_dependencies):
         """Enable disabled documents and trigger indexing side effects."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document_ids = [str(uuid4()), str(uuid4())]
         disabled_docs = DocumentBatchUpdateIntegrationDataFactory.create_multiple_documents(
+            db_session_with_containers,
             dataset=dataset,
             document_ids=document_ids,
             enabled=False,
@@ -192,7 +197,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Assert
         for document in disabled_docs:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             self._assert_document_enabled(document, FIXED_TIME)
 
         expected_get_calls = [call(f"document_{doc_id}_indexing") for doc_id in document_ids]
@@ -203,13 +208,15 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["add_task"].delay.assert_has_calls(expected_add_calls)
 
     def test_batch_update_enable_already_enabled_document_skipped(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Skip enable operation for already-enabled documents."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=True
+        )
 
         # Act
         DocumentService.batch_update_document_status(
@@ -220,18 +227,19 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.enabled is True
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["add_task"].delay.assert_not_called()
 
-    def test_batch_update_disable_documents_success(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_disable_documents_success(self, db_session_with_containers: Session, patched_dependencies):
         """Disable completed documents and trigger remove-index tasks."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document_ids = [str(uuid4()), str(uuid4())]
         enabled_docs = DocumentBatchUpdateIntegrationDataFactory.create_multiple_documents(
+            db_session_with_containers,
             dataset=dataset,
             document_ids=document_ids,
             enabled=True,
@@ -248,7 +256,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Assert
         for document in enabled_docs:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             self._assert_document_disabled(document, user.id, FIXED_TIME)
 
         expected_get_calls = [call(f"document_{doc_id}_indexing") for doc_id in document_ids]
@@ -259,13 +267,14 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["remove_task"].delay.assert_has_calls(expected_remove_calls)
 
     def test_batch_update_disable_already_disabled_document_skipped(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Skip disable operation for already-disabled documents."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         disabled_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             enabled=False,
             indexing_status="completed",
@@ -281,17 +290,20 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(disabled_doc)
+        db_session_with_containers.refresh(disabled_doc)
         assert disabled_doc.enabled is False
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["remove_task"].delay.assert_not_called()
 
-    def test_batch_update_disable_non_completed_document_error(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_disable_non_completed_document_error(
+        self, db_session_with_containers: Session, patched_dependencies
+    ):
         """Raise error when disabling a non-completed document."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         non_completed_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             enabled=True,
             indexing_status="indexing",
@@ -307,13 +319,13 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
                 user=user,
             )
 
-    def test_batch_update_archive_documents_success(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_archive_documents_success(self, db_session_with_containers: Session, patched_dependencies):
         """Archive enabled documents and trigger remove-index task."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=True, archived=False
+            db_session_with_containers, dataset=dataset, enabled=True, archived=False
         )
 
         # Act
@@ -325,21 +337,21 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         self._assert_document_archived(document, user.id, FIXED_TIME)
         patched_dependencies["redis_client"].get.assert_called_once_with(f"document_{document.id}_indexing")
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
         patched_dependencies["remove_task"].delay.assert_called_once_with(document.id)
 
     def test_batch_update_archive_already_archived_document_skipped(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Skip archive operation for already-archived documents."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=True, archived=True
+            db_session_with_containers, dataset=dataset, enabled=True, archived=True
         )
 
         # Act
@@ -351,20 +363,20 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.archived is True
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["remove_task"].delay.assert_not_called()
 
     def test_batch_update_archive_disabled_document_no_index_removal(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Archive disabled document without index-removal side effects."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=False, archived=False
+            db_session_with_containers, dataset=dataset, enabled=False, archived=False
         )
 
         # Act
@@ -376,18 +388,18 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         self._assert_document_archived(document, user.id, FIXED_TIME)
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["remove_task"].delay.assert_not_called()
 
-    def test_batch_update_unarchive_documents_success(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_unarchive_documents_success(self, db_session_with_containers: Session, patched_dependencies):
         """Unarchive enabled documents and trigger add-index task."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=True, archived=True
+            db_session_with_containers, dataset=dataset, enabled=True, archived=True
         )
 
         # Act
@@ -399,7 +411,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         self._assert_document_unarchived(document)
         assert document.updated_at == FIXED_TIME
         patched_dependencies["redis_client"].get.assert_called_once_with(f"document_{document.id}_indexing")
@@ -407,14 +419,14 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["add_task"].delay.assert_called_once_with(document.id)
 
     def test_batch_update_unarchive_already_unarchived_document_skipped(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Skip unarchive operation for already-unarchived documents."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=True, archived=False
+            db_session_with_containers, dataset=dataset, enabled=True, archived=False
         )
 
         # Act
@@ -426,20 +438,20 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.archived is False
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["add_task"].delay.assert_not_called()
 
     def test_batch_update_unarchive_disabled_document_no_index_addition(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Unarchive disabled document without index-add side effects."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
-            dataset=dataset, enabled=False, archived=True
+            db_session_with_containers, dataset=dataset, enabled=False, archived=True
         )
 
         # Act
@@ -451,20 +463,21 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         self._assert_document_unarchived(document)
         assert document.updated_at == FIXED_TIME
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["add_task"].delay.assert_not_called()
 
     def test_batch_update_document_indexing_error_redis_cache_hit(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Raise DocumentIndexingError when redis indicates active indexing."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             name="test_document.pdf",
             enabled=True,
@@ -483,12 +496,14 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         assert "test_document.pdf" in str(exc_info.value)
         patched_dependencies["redis_client"].get.assert_called_once_with(f"document_{document.id}_indexing")
 
-    def test_batch_update_async_task_error_handling(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_async_task_error_handling(self, db_session_with_containers: Session, patched_dependencies):
         """Persist DB update, then propagate async task error."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        document = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=False)
+        document = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=False
+        )
         patched_dependencies["add_task"].delay.side_effect = Exception("Celery task error")
 
         # Act / Assert
@@ -500,14 +515,14 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
                 user=user,
             )
 
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         self._assert_document_enabled(document, FIXED_TIME)
         patched_dependencies["redis_client"].setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
 
-    def test_batch_update_empty_document_list(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_empty_document_list(self, db_session_with_containers: Session, patched_dependencies):
         """Return early when document_ids is empty."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
 
         # Act
@@ -520,10 +535,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].get.assert_not_called()
         patched_dependencies["redis_client"].setex.assert_not_called()
 
-    def test_batch_update_document_not_found_skipped(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_document_not_found_skipped(self, db_session_with_containers: Session, patched_dependencies):
         """Skip IDs that do not map to existing dataset documents."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         missing_document_id = str(uuid4())
 
@@ -540,18 +555,24 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["redis_client"].setex.assert_not_called()
         patched_dependencies["add_task"].delay.assert_not_called()
 
-    def test_batch_update_mixed_document_states_and_actions(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_mixed_document_states_and_actions(
+        self, db_session_with_containers: Session, patched_dependencies
+    ):
         """Process only the applicable document in a mixed-state enable batch."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        disabled_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=False)
+        disabled_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=False
+        )
         enabled_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             enabled=True,
             position=2,
         )
         archived_doc = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             enabled=True,
             archived=True,
@@ -568,9 +589,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(disabled_doc)
-        db.session.refresh(enabled_doc)
-        db.session.refresh(archived_doc)
+        db_session_with_containers.refresh(disabled_doc)
+        db_session_with_containers.refresh(enabled_doc)
+        db_session_with_containers.refresh(archived_doc)
         self._assert_document_enabled(disabled_doc, FIXED_TIME)
         assert enabled_doc.enabled is True
         assert archived_doc.enabled is True
@@ -582,13 +603,16 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
         patched_dependencies["add_task"].delay.assert_called_once_with(disabled_doc.id)
 
-    def test_batch_update_large_document_list_performance(self, db_session_with_containers, patched_dependencies):
+    def test_batch_update_large_document_list_performance(
+        self, db_session_with_containers: Session, patched_dependencies
+    ):
         """Handle large document lists with consistent updates and side effects."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
         document_ids = [str(uuid4()) for _ in range(100)]
         documents = DocumentBatchUpdateIntegrationDataFactory.create_multiple_documents(
+            db_session_with_containers,
             dataset=dataset,
             document_ids=document_ids,
             enabled=False,
@@ -604,7 +628,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
 
         # Assert
         for document in documents:
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             self._assert_document_enabled(document, FIXED_TIME)
 
         assert patched_dependencies["redis_client"].setex.call_count == len(document_ids)
@@ -616,17 +640,26 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         patched_dependencies["add_task"].delay.assert_has_calls(expected_task_calls)
 
     def test_batch_update_mixed_document_states_complex_scenario(
-        self, db_session_with_containers, patched_dependencies
+        self, db_session_with_containers: Session, patched_dependencies
     ):
         """Process a complex mixed-state batch and update only eligible records."""
         # Arrange
-        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset()
+        dataset = DocumentBatchUpdateIntegrationDataFactory.create_dataset(db_session_with_containers)
         user = DocumentBatchUpdateIntegrationDataFactory.create_user()
-        doc1 = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=False)
-        doc2 = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, position=2)
-        doc3 = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, position=3)
-        doc4 = DocumentBatchUpdateIntegrationDataFactory.create_document(dataset=dataset, enabled=True, position=4)
+        doc1 = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=False
+        )
+        doc2 = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=True, position=2
+        )
+        doc3 = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=True, position=3
+        )
+        doc4 = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers, dataset=dataset, enabled=True, position=4
+        )
         doc5 = DocumentBatchUpdateIntegrationDataFactory.create_document(
+            db_session_with_containers,
             dataset=dataset,
             enabled=True,
             archived=True,
@@ -645,11 +678,11 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         )
 
         # Assert
-        db.session.refresh(doc1)
-        db.session.refresh(doc2)
-        db.session.refresh(doc3)
-        db.session.refresh(doc4)
-        db.session.refresh(doc5)
+        db_session_with_containers.refresh(doc1)
+        db_session_with_containers.refresh(doc2)
+        db_session_with_containers.refresh(doc3)
+        db_session_with_containers.refresh(doc4)
+        db_session_with_containers.refresh(doc5)
         self._assert_document_enabled(doc1, FIXED_TIME)
         assert doc2.enabled is True
         assert doc3.enabled is True

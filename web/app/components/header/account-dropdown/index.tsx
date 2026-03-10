@@ -9,7 +9,7 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -41,12 +41,12 @@ function AccountMenuRouteItem({
   trailing,
 }: AccountMenuRouteItemProps) {
   return (
-    <DropdownMenuItem
+    <DropdownMenuLinkItem
       className="justify-between"
       render={<Link href={href} />}
     >
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
-    </DropdownMenuItem>
+    </DropdownMenuLinkItem>
   )
 }
 
@@ -64,12 +64,14 @@ function AccountMenuExternalItem({
   trailing,
 }: AccountMenuExternalItemProps) {
   return (
-    <DropdownMenuItem
+    <DropdownMenuLinkItem
       className="justify-between"
-      render={<a href={href} rel="noopener noreferrer" target="_blank" />}
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
     >
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
-    </DropdownMenuItem>
+    </DropdownMenuLinkItem>
   )
 }
 
@@ -101,7 +103,7 @@ type AccountMenuSectionProps = {
 }
 
 function AccountMenuSection({ children }: AccountMenuSectionProps) {
-  return <DropdownMenuGroup className="p-1">{children}</DropdownMenuGroup>
+  return <DropdownMenuGroup className="py-1">{children}</DropdownMenuGroup>
 }
 
 export default function AppSelector() {
@@ -144,8 +146,8 @@ export default function AppSelector() {
           sideOffset={6}
           popupClassName="w-60 max-w-80 !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
         >
-          <DropdownMenuGroup className="px-1 py-1">
-            <div className="flex flex-nowrap items-center py-2 pl-3 pr-2">
+          <DropdownMenuGroup className="py-1">
+            <div className="mx-1 flex flex-nowrap items-center py-2 pl-3 pr-2">
               <div className="grow">
                 <div className="break-all text-text-primary system-md-medium">
                   {userProfile.name}
@@ -228,8 +230,8 @@ export default function AppSelector() {
           )}
           <AccountMenuSection>
             <DropdownMenuItem
+              closeOnClick={false}
               className="cursor-default data-[highlighted]:bg-transparent"
-              onSelect={e => e.preventDefault()}
             >
               <MenuItemContent
                 iconClassName="i-ri-t-shirt-2-line"

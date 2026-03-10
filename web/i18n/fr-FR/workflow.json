@@ -687,7 +687,7 @@
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Générer automatiquement des conditions de filtrage des métadonnées en fonction de la requête de l'utilisateur",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automatique",
   "nodes.knowledgeRetrieval.metadata.options.disabled.subTitle": "Ne pas activer le filtrage des métadonnées",
-  "nodes.knowledgeRetrieval.metadata.options.disabled.title": "Handicapé",
+  "nodes.knowledgeRetrieval.metadata.options.disabled.title": "Désactivé",
   "nodes.knowledgeRetrieval.metadata.options.manual.subTitle": "Ajouter manuellement des conditions de filtrage des métadonnées",
   "nodes.knowledgeRetrieval.metadata.options.manual.title": "Manuel",
   "nodes.knowledgeRetrieval.metadata.panel.add": "Ajouter une condition",

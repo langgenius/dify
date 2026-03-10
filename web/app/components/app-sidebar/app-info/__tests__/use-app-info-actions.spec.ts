@@ -42,7 +42,7 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   ToastContext: {},
 }))
 

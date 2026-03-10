@@ -200,7 +200,7 @@ describe('MarkdownForm', () => {
     })
 
     it('should handle invalid data-options string without crashing', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       const node = createRootNode([
         createElementNode('input', {
           'type': 'select',
@@ -315,6 +315,176 @@ describe('MarkdownForm', () => {
       fireEvent.submit(form)
       expect(parentOnSubmit).not.toHaveBeenCalled()
       expect(mockOnSend).not.toHaveBeenCalled()
+    })
+  })
+
+  // DatePicker onChange and onClear callbacks should update form state.
+  describe('DatePicker interaction', () => {
+    it('should update form value when date is picked via onChange', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'date', name: 'startDate', value: '' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      // Click the DatePicker trigger to open the popup
+      const trigger = screen.getByTestId('date-picker-trigger')
+      await user.click(trigger)
+
+      // Click the "Now" button in the footer to select current date (calls onChange)
+      const nowButton = await screen.findByText('time.operation.now')
+      await user.click(nowButton)
+
+      // Submit the form
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        // onChange was called with a Dayjs object that has .format, so formatDateForOutput is called
+        expect(mockFormatDateForOutput).toHaveBeenCalledWith(expect.anything(), false)
+        expect(mockOnSend).toHaveBeenCalled()
+      })
+    })
+
+    it('should clear form value when date is cleared via onClear', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'date', name: 'startDate', value: dayjs('2026-01-10') }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      const clearIcon = screen.getByTestId('date-picker-clear-button')
+      await user.click(clearIcon)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        // onClear sets value to undefined, which JSON.stringify omits
+        expect(mockOnSend).toHaveBeenCalledWith('{}')
+      })
+    })
+  })
+
+  // TimePicker rendering, onChange, and onClear should work correctly.
+  describe('TimePicker interaction', () => {
+    it('should render TimePicker for time input type', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'time', name: 'meetingTime', value: '09:00' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      // The real TimePicker renders a trigger with a readonly input showing the formatted time
+      const timeInput = screen.getByTestId('time-picker-trigger').querySelector('input[readonly]') as HTMLInputElement
+      expect(timeInput).not.toBeNull()
+      expect(timeInput.value).toBe('09:00 AM')
+    })
+
+    it('should update form value when time is picked via onChange', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'time', name: 'meetingTime', value: '' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      // Click the TimePicker trigger to open the popup
+      const trigger = screen.getByTestId('time-picker-trigger')
+      await user.click(trigger)
+
+      // Click the "Now" button in the footer to select current time (calls onChange)
+      const nowButtons = await screen.findAllByText('time.operation.now')
+      await user.click(nowButtons[0])
+
+      // Submit the form
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalled()
+      })
+    })
+
+    it('should clear form value when time is cleared via onClear', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'time', name: 'meetingTime', value: '09:00' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      // The TimePicker's clear icon has role="button" and an aria-label
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      await user.click(clearButton)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        // onClear sets value to undefined, which JSON.stringify omits
+        expect(mockOnSend).toHaveBeenCalledWith('{}')
+      })
+    })
+  })
+
+  // Fallback branches for edge cases in tag rendering.
+  describe('Fallback branches', () => {
+    it('should render label with empty text when children array is empty', () => {
+      const node = createRootNode([
+        createElementNode('label', { for: 'field' }, []),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const label = screen.getByTestId('label-field')
+      expect(label).not.toBeNull()
+      expect(label?.textContent).toBe('')
+    })
+
+    it('should render checkbox without tip text when dataTip is missing', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'checkbox', name: 'agree', value: false }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      expect(screen.getByTestId('checkbox-agree')).toBeInTheDocument()
+    })
+
+    it('should render select with no options when dataOptions is missing', () => {
+      const node = createRootNode([
+        createElementNode('input', { type: 'select', name: 'color', value: '' }),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      // Select renders with empty items list
+      expect(screen.getByTestId('markdown-form')).toBeInTheDocument()
+    })
+
+    it('should render button with empty text when children array is empty', () => {
+      const node = createRootNode([
+        createElementNode('button', {}, []),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button')
+      expect(button.textContent).toBe('')
     })
   })
 })

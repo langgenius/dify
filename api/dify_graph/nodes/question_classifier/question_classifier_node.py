@@ -28,6 +28,7 @@ from dify_graph.nodes.llm import (
 )
 from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -68,6 +69,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -86,9 +88,11 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self._memory = memory
 
         if llm_file_saver is None:
+            dify_ctx = self.require_dify_context()
             llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -160,7 +164,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
-                user_id=self.user_id,
+                user_id=self.require_dify_context().user_id,
                 structured_output_enabled=False,
                 structured_output=None,
                 file_saver=self._llm_file_saver,
