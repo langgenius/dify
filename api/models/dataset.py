@@ -81,7 +81,9 @@ class Dataset(TypeBase):
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.text("false"))
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, nullable=False, server_default=sa.text("false")
+    )
 
     @property
     def total_documents(self):
