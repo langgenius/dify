@@ -3,7 +3,7 @@ import type { Member } from '@/models/common'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -34,8 +34,8 @@ const EmailItem = ({
       {isError && (
         <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
       )}
-      {!isError && <Avatar avatar={data.avatar_url} size={16} name={data.name || data.email} />}
-      <div title={data.email} className="max-w-[500px] truncate text-text-primary system-xs-regular">
+      {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
+      <div title={data.email} className="system-xs-regular max-w-[500px] truncate text-text-primary">
         {email === data.email ? data.name : data.email}
         {email === data.email && <span className="text-text-tertiary system-xs-regular">{t('members.you', { ns: 'common' })}</span>}
       </div>

@@ -96,7 +96,10 @@ const GenericTable: FC<GenericTableProps> = ({
     })
 
     // If the last configured row has content, append a trailing empty row
-    const lastHasContent = !isEmptyRow(data.at(-1))
+    const lastRow = data.at(-1)
+    if (!lastRow)
+      return rows
+    const lastHasContent = !isEmptyRow(lastRow)
     if (lastHasContent)
       rows.push({ row: { ...emptyRowData }, dataIndex: null, isVirtual: true })
 
@@ -217,7 +220,7 @@ const GenericTable: FC<GenericTableProps> = ({
               <div
                 key={column.key}
                 className={cn(
-                  'h-full pl-3',
+                  'flex h-full items-center pl-3',
                   column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
                   // Add right border except for last column
