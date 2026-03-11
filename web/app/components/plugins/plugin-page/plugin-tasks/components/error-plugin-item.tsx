@@ -5,18 +5,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
-
-type PluginSource = 'marketplace' | 'github' | 'unknown'
-
-function getPluginSource(pluginId: string): PluginSource {
-  if (pluginId.includes('/') && !pluginId.startsWith('http'))
-    return 'marketplace'
-  if (pluginId.startsWith('http') || pluginId.includes('github'))
-    return 'github'
-  return 'unknown'
-}
 
 type ErrorPluginItemProps = {
   plugin: PluginStatus
@@ -27,7 +18,7 @@ type ErrorPluginItemProps = {
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
   const { t } = useTranslation()
-  const source = getPluginSource(plugin.plugin_id)
+  const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{ uniqueIdentifier: string, manifest: Plugin } | null>(null)
   const [isFetching, setIsFetching] = useState(false)
@@ -75,16 +66,16 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
     }
   }, [plugin.plugin_id, plugin.labels, plugin.icon])
 
-  const errorMsgKey = {
-    marketplace: 'task.errorMsg.marketplace',
-    github: 'task.errorMsg.github',
-    unknown: 'task.errorMsg.unknown',
-  }[source] as 'task.errorMsg.marketplace'
+  const errorMsgKey: 'task.errorMsg.marketplace' | 'task.errorMsg.github' | 'task.errorMsg.unknown' = source === PluginSource.marketplace
+    ? 'task.errorMsg.marketplace'
+    : source === PluginSource.github
+      ? 'task.errorMsg.github'
+      : 'task.errorMsg.unknown'
 
   const errorMsg = t(errorMsgKey, { ns: 'plugin' })
 
   const renderAction = () => {
-    if (source === 'marketplace') {
+    if (source === PluginSource.marketplace) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small" loading={isFetching} onClick={handleInstallFromMarketplace}>
@@ -93,7 +84,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         </div>
       )
     }
-    if (source === 'github') {
+    if (source === PluginSource.github) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small">
@@ -130,7 +121,10 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
           uniqueIdentifier={installPayload.uniqueIdentifier}
           manifest={installPayload.manifest}
           onClose={() => setShowInstallModal(false)}
-          onSuccess={() => setShowInstallModal(false)}
+          onSuccess={() => {
+            setShowInstallModal(false)
+            onClear()
+          }}
         />
       )}
     </>

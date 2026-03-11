@@ -1,6 +1,6 @@
 import type { PluginInfoFromMarketPlace, PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 
 import ErrorPluginItem from '../error-plugin-item'
@@ -43,6 +43,7 @@ function createMarketplaceResponse(identifier: string, version: string) {
 const createPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: 'org/plugin:1.0.0',
   plugin_id: 'org/plugin',
+  source: PluginSource.marketplace,
   status: TaskStatus.failed,
   message: '',
   icon: 'icon.png',
@@ -102,7 +103,7 @@ describe('ErrorPluginItem', () => {
     it('should show marketplace error message for marketplace plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/my-plugin' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/my-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -115,7 +116,7 @@ describe('ErrorPluginItem', () => {
     it('should show github error message for github plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'https://github.com/user/repo' })}
+          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'https://github.com/user/repo' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -128,7 +129,7 @@ describe('ErrorPluginItem', () => {
     it('should show unknown error message for unknown source plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'local-only-plugin' })}
+          plugin={createPlugin({ source: PluginSource.local, plugin_id: 'local-only-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -156,7 +157,7 @@ describe('ErrorPluginItem', () => {
     it('should show "Install from Marketplace" button for marketplace plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/my-plugin' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/my-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -169,7 +170,7 @@ describe('ErrorPluginItem', () => {
     it('should show "Install from GitHub" button for github plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'https://github.com/user/repo' })}
+          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'https://github.com/user/repo' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -182,7 +183,7 @@ describe('ErrorPluginItem', () => {
     it('should not show action button for unknown source plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'local-only-plugin' })}
+          plugin={createPlugin({ source: PluginSource.local, plugin_id: 'local-only-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -190,6 +191,20 @@ describe('ErrorPluginItem', () => {
       )
 
       expect(screen.queryByText(/plugin\.task\.installFrom/)).not.toBeInTheDocument()
+    })
+
+    it('should use source instead of plugin_id heuristics when deciding button text', () => {
+      render(
+        <ErrorPluginItem
+          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'org/my-plugin' })}
+          getIconUrl={mockGetIconUrl}
+          language="en_US"
+          onClear={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText(/plugin\.task\.installFromGithub/)).toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.installFromMarketplace/)).not.toBeInTheDocument()
     })
   })
 
@@ -218,7 +233,7 @@ describe('ErrorPluginItem', () => {
 
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/my-plugin' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/my-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -240,7 +255,7 @@ describe('ErrorPluginItem', () => {
 
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/my-plugin' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/my-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -263,7 +278,7 @@ describe('ErrorPluginItem', () => {
 
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/my-plugin' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/my-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -282,7 +297,7 @@ describe('ErrorPluginItem', () => {
     it('should not fetch when plugin_id has fewer than 2 parts', async () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'single-part' })}
+          plugin={createPlugin({ source: PluginSource.local, plugin_id: 'single-part' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -296,10 +311,10 @@ describe('ErrorPluginItem', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should detect github source with github in URL', () => {
+    it('should render github action when source is github even if plugin_id looks like a URL', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'http://github.com/user/repo' })}
+          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'http://github.com/user/repo' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -309,15 +324,16 @@ describe('ErrorPluginItem', () => {
       expect(screen.getByText(/plugin\.task\.installFromGithub/)).toBeInTheDocument()
     })
 
-    it('should close install modal when onSuccess is called', async () => {
+    it('should close install modal and clear the error item when onSuccess is called', async () => {
       mockFetch.mockResolvedValueOnce(createMarketplaceResponse('org/p:1.0.0', '1.0.0'))
+      const onClear = vi.fn()
 
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'org/p' })}
+          plugin={createPlugin({ source: PluginSource.marketplace, plugin_id: 'org/p' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
-          onClear={vi.fn()}
+          onClear={onClear}
         />,
       )
 
@@ -330,19 +346,35 @@ describe('ErrorPluginItem', () => {
       fireEvent.click(screen.getByText('Success'))
 
       expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
+      expect(onClear).toHaveBeenCalledTimes(1)
     })
 
-    it('should detect github source when id contains github keyword', () => {
+    it('should show unknown action state for local source even if id contains github keyword', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ plugin_id: 'my-github-plugin' })}
+          plugin={createPlugin({ source: PluginSource.local, plugin_id: 'my-github-plugin' })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
         />,
       )
 
-      expect(screen.getByText(/plugin\.task\.installFromGithub/)).toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.installFromGithub/)).not.toBeInTheDocument()
+      expect(screen.getByText(/plugin\.task\.errorMsg\.unknown/)).toBeInTheDocument()
+    })
+
+    it('should show unknown error message for debugging source plugins', () => {
+      render(
+        <ErrorPluginItem
+          plugin={createPlugin({ source: PluginSource.debugging, plugin_id: 'remote-plugin' })}
+          getIconUrl={mockGetIconUrl}
+          language="en_US"
+          onClear={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText(/plugin\.task\.errorMsg\.unknown/)).toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.installFrom/)).not.toBeInTheDocument()
     })
   })
 })

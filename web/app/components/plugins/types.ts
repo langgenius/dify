@@ -432,6 +432,7 @@ export enum TaskStatus {
 export type PluginStatus = {
   plugin_unique_identifier: string
   plugin_id: string
+  source: PluginSource
   status: TaskStatus
   message: string
   icon: string

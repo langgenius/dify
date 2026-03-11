@@ -1,6 +1,6 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { TaskStatus } from '@/app/components/plugins/types'
+import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import PluginItem from '../plugin-item'
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -14,6 +14,7 @@ const mockGetIconUrl = vi.fn((icon: string) => `https://example.com/icons/${icon
 const createPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: 'org/plugin:1.0.0',
   plugin_id: 'org/plugin',
+  source: PluginSource.marketplace,
   status: TaskStatus.running,
   message: '',
   icon: 'icon.png',
