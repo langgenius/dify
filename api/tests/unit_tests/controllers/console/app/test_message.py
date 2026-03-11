@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, request
 from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.local import LocalProxy
 
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -98,8 +99,7 @@ def setup_test_context(
         mock_db.data_query = data_query_mock
 
         # Let the caller override the stat db query logic
-        proxy_mock = MagicMock()
-        proxy_mock._get_current_object.return_value = mock_account
+        proxy_mock = LocalProxy(lambda: mock_account)
 
         query_string = "&".join([f"{k}={v}" for k, v in (qs or {}).items()])
         full_path = f"{route_path}?{query_string}" if qs else route_path

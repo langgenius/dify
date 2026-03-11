@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
+from werkzeug.local import LocalProxy
 
 from controllers.console.app.statistic import (
     AverageResponseTimeStatistic,
@@ -80,8 +81,7 @@ def setup_test_context(
         mock_query.where.return_value.where.return_value.first.return_value = mock_app_model
         mock_db_wraps.session.query.return_value = mock_query
 
-        proxy_mock = MagicMock()
-        proxy_mock._get_current_object.return_value = mock_account
+        proxy_mock = LocalProxy(lambda: mock_account)
 
         with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
             with test_app.test_request_context(route_path, method="GET"):

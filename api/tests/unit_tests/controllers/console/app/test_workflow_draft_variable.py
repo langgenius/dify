@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
+from werkzeug.local import LocalProxy
 
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
@@ -15,6 +16,7 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from models import App, AppMode
+from models.enums import DraftVariableType
 
 
 @pytest.fixture
@@ -69,8 +71,7 @@ def setup_test_context(test_app, endpoint_class, route_path, method, mock_accoun
         mock_query.where.return_value.where.return_value.first.return_value = mock_app_model
         mock_db_wraps.session.query.return_value = mock_query
 
-        proxy_mock = MagicMock()
-        proxy_mock._get_current_object.return_value = mock_account
+        proxy_mock = LocalProxy(lambda: mock_account)
 
         with patch("libs.login.current_user", proxy_mock), patch("flask_login.current_user", proxy_mock):
             with test_app.test_request_context(route_path, method=method, json=payload):
@@ -92,6 +93,28 @@ def setup_test_context(test_app, endpoint_class, route_path, method, mock_accoun
 
 
 class TestWorkflowDraftVariableEndpoints:
+    @staticmethod
+    def _mock_workflow_variable(variable_type: DraftVariableType = DraftVariableType.NODE) -> MagicMock:
+        class DummyValueType:
+            def exposed_type(self):
+                return DraftVariableType.NODE
+
+        mock_var = MagicMock()
+        mock_var.app_id = "app_123"
+        mock_var.id = "var_123"
+        mock_var.name = "test_var"
+        mock_var.description = ""
+        mock_var.get_variable_type.return_value = variable_type
+        mock_var.get_selector.return_value = []
+        mock_var.value_type = DummyValueType()
+        mock_var.edited = False
+        mock_var.visible = True
+        mock_var.file_id = None
+        mock_var.variable_file = None
+        mock_var.is_truncated.return_value = False
+        mock_var.get_value.return_value.model_copy.return_value.value = "test_value"
+        return mock_var
+
     @patch("controllers.console.app.workflow_draft_variable.WorkflowService")
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_workflow_variable_collection_get_success(
@@ -180,26 +203,7 @@ class TestWorkflowDraftVariableEndpoints:
 
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_variable_api_get_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        class DummyVarType:
-            value = "string"
-
-        class DummyValueType:
-            def exposed_type(self):
-                return DummyVarType()
-
-        mock_var = MagicMock()
-        mock_var.app_id = "app_123"
-        mock_var.id = "var_123"
-        mock_var.name = "test_var"
-        mock_var.description = ""
-        mock_var.get_variable_type.return_value = DummyVarType()
-        mock_var.get_selector.return_value = []
-        mock_var.value_type = DummyValueType()
-        mock_var.edited = False
-        mock_var.visible = True
-        mock_var.is_truncated.return_value = False
-        mock_var.get_value.return_value.model_copy.return_value.value = "test_value"
-        mock_draft_srv.return_value.get_variable.return_value = mock_var
+        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
 
         resp = setup_test_context(
             app, VariableApi, "/apps/app_123/workflows/draft/variables/var_123", "GET", mock_account, mock_app_model
@@ -217,26 +221,7 @@ class TestWorkflowDraftVariableEndpoints:
 
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_variable_api_patch_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        class DummyVarType:
-            value = "string"
-
-        class DummyValueType:
-            def exposed_type(self):
-                return DummyVarType()
-
-        mock_var = MagicMock()
-        mock_var.app_id = "app_123"
-        mock_var.id = "var_123"
-        mock_var.name = "test_var"
-        mock_var.description = ""
-        mock_var.get_variable_type.return_value = DummyVarType()
-        mock_var.get_selector.return_value = []
-        mock_var.value_type = DummyValueType()
-        mock_var.edited = False
-        mock_var.visible = True
-        mock_var.is_truncated.return_value = False
-        mock_var.get_value.return_value.model_copy.return_value.value = "test_value"
-        mock_draft_srv.return_value.get_variable.return_value = mock_var
+        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
 
         resp = setup_test_context(
             app,
@@ -252,26 +237,7 @@ class TestWorkflowDraftVariableEndpoints:
 
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_variable_api_delete_success(self, mock_draft_srv, app, mock_account, mock_app_model):
-        class DummyVarType:
-            value = "string"
-
-        class DummyValueType:
-            def exposed_type(self):
-                return DummyVarType()
-
-        mock_var = MagicMock()
-        mock_var.app_id = "app_123"
-        mock_var.id = "var_123"
-        mock_var.name = "test_var"
-        mock_var.description = ""
-        mock_var.get_variable_type.return_value = DummyVarType()
-        mock_var.get_selector.return_value = []
-        mock_var.value_type = DummyValueType()
-        mock_var.edited = False
-        mock_var.visible = True
-        mock_var.is_truncated.return_value = False
-        mock_var.get_value.return_value.model_copy.return_value.value = "test_value"
-        mock_draft_srv.return_value.get_variable.return_value = mock_var
+        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
 
         resp = setup_test_context(
             app, VariableApi, "/apps/app_123/workflows/draft/variables/var_123", "DELETE", mock_account, mock_app_model
@@ -283,27 +249,7 @@ class TestWorkflowDraftVariableEndpoints:
     @patch("controllers.console.app.workflow_draft_variable.WorkflowDraftVariableService")
     def test_variable_reset_api_put_success(self, mock_draft_srv, mock_wf_srv, app, mock_account, mock_app_model):
         mock_wf_srv.return_value.get_draft_workflow.return_value = MagicMock()
-
-        class DummyVarType:
-            value = "string"
-
-        class DummyValueType:
-            def exposed_type(self):
-                return DummyVarType()
-
-        mock_var = MagicMock()
-        mock_var.app_id = "app_123"
-        mock_var.id = "var_123"
-        mock_var.name = "test_var"
-        mock_var.description = ""
-        mock_var.get_variable_type.return_value = DummyVarType()
-        mock_var.get_selector.return_value = []
-        mock_var.value_type = DummyValueType()
-        mock_var.edited = False
-        mock_var.visible = True
-        mock_var.is_truncated.return_value = False
-        mock_var.get_value.return_value.model_copy.return_value.value = "test_value"
-        mock_draft_srv.return_value.get_variable.return_value = mock_var
+        mock_draft_srv.return_value.get_variable.return_value = self._mock_workflow_variable()
         mock_draft_srv.return_value.reset_variable.return_value = None  # means no content
 
         resp = setup_test_context(
