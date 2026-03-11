@@ -114,15 +114,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     }
   }, [scopedModelList, value?.provider, value?.model])
 
-  const hasDeprecated = useMemo(() => {
-    return !currentProvider || !currentModel
-  }, [currentModel, currentProvider])
-  const modelDisabled = useMemo(() => {
-    return currentModel?.status !== ModelStatusEnum.active
-  }, [currentModel?.status])
-  const disabled = useMemo(() => {
-    return !isAPIKeySet || hasDeprecated || modelDisabled
-  }, [hasDeprecated, isAPIKeySet, modelDisabled])
+  const hasDeprecated = !currentProvider || !currentModel
+  const disabled = !isAPIKeySet || hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
   const handleChangeModel = async ({ provider, model }: DefaultModel) => {
     const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
@@ -203,9 +196,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 renderTrigger
                   ? renderTrigger({
                       open,
-                      disabled,
-                      modelDisabled,
-                      hasDeprecated,
                       currentProvider,
                       currentModel,
                       providerName: value?.provider,
@@ -225,10 +215,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                         )
                       : (
                           <Trigger
-                            disabled={disabled}
                             isInWorkflow={isInWorkflow}
-                            modelDisabled={modelDisabled}
-                            hasDeprecated={hasDeprecated}
                             currentProvider={currentProvider}
                             currentModel={currentModel}
                             providerName={value?.provider}

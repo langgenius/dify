@@ -4601,19 +4601,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4623,11 +4610,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/model-provider-page/model-selector/feature-icon.tsx": {

@@ -1,7 +1,7 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TaskStatus } from '@/app/components/plugins/types'
+import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
 import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
 import PluginTaskList from '../components/plugin-task-list'
@@ -30,6 +30,7 @@ vi.mock('@/context/i18n', () => ({
 const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: `plugin-${Math.random().toString(36).substr(2, 9)}`,
   plugin_id: 'test-plugin',
+  source: PluginSource.marketplace,
   status: TaskStatus.running,
   message: '',
   icon: 'test-icon.png',
