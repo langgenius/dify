@@ -436,6 +436,7 @@ class ToolTransformService:
         :param schema: JSON schema dictionary
         :return: list of ToolParameter instances
         """
+
         def resolve_property_type(prop: dict[str, Any], depth: int = 0) -> str:
             """
             Resolve a JSON schema property type while guarding against cyclic or deeply nested unions.
