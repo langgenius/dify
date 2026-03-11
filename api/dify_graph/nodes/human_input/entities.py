@@ -74,10 +74,7 @@ class EmailDeliveryConfig(BaseModel):
 
     def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
         if not user_id:
-            raise ValueError(
-                "Cannot create debug email recipient: user_id is empty. "
-                "Ensure the user is authenticated before sending debug emails."
-            )
+            raise ValueError("user_id must not be empty for debug email recipient")
         debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
         return self.model_copy(update={"recipients": debug_recipients})
 
