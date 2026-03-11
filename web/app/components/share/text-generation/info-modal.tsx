@@ -31,8 +31,8 @@ const InfoModal = ({
           background={data?.icon_background || appDefaultIconBackground}
           imageUrl={data?.icon_url}
         />
-        <div className="system-xl-semibold text-text-secondary">{data?.title}</div>
-        <div className="system-xs-regular text-text-tertiary">
+        <div className="text-text-secondary system-xl-semibold">{data?.title}</div>
+        <div className="text-text-tertiary system-xs-regular">
           {/* copyright */}
           {data?.copyright && (
             <div>

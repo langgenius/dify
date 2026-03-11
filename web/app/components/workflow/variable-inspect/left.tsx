@@ -52,7 +52,7 @@ const Left = ({
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2">
-        <div className="system-sm-semibold-uppercase truncate text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+        <div className="truncate text-text-primary system-sm-semibold-uppercase">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
         <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
       </div>
       {/* content */}

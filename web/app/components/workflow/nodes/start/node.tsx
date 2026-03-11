@@ -21,14 +21,14 @@ const Node: FC<NodeProps<StartNodeType>> = ({
     <div className="mb-1 px-3 py-1">
       <div className="space-y-0.5">
         {variables.map(variable => (
-          <div key={variable.variable} className="flex h-6 items-center justify-between space-x-1 rounded-md  bg-workflow-block-parma-bg px-1">
+          <div key={variable.variable} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1">
             <div className="flex w-0 grow items-center space-x-1">
               <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
-              <span className="system-xs-regular w-0 grow truncate text-text-secondary">{variable.variable}</span>
+              <span className="w-0 grow truncate text-text-secondary system-xs-regular">{variable.variable}</span>
             </div>
 
             <div className="ml-1 flex items-center space-x-1">
-              {variable.required && <span className="system-2xs-regular-uppercase text-text-tertiary">{t(`${i18nPrefix}.required`, { ns: 'workflow' })}</span>}
+              {variable.required && <span className="text-text-tertiary system-2xs-regular-uppercase">{t(`${i18nPrefix}.required`, { ns: 'workflow' })}</span>}
               <InputVarTypeIcon type={variable.type} className="h-3 w-3 text-text-tertiary" />
             </div>
           </div>

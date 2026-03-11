@@ -31,7 +31,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
               className="inline-flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-state-base-hover"
               onClick={() => onSelect(prompt_name)}
             >
-              <span className="system-sm-medium text-text-secondary">{prompt_name}</span>
+              <span className="text-text-secondary system-sm-medium">{prompt_name}</span>
               {(currentLanguage === prompt_name) && <RiCheckLine className="size-4 text-text-accent" />}
             </div>
           ))}
@@ -40,7 +40,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       btnElement={(
         <div className={cn('inline-flex items-center gap-x-[1px]', disabled && 'cursor-not-allowed')}>
           <span className={cn(
-            'system-xs-semibold px-[3px] text-components-button-tertiary-text',
+            'px-[3px] text-components-button-tertiary-text system-xs-semibold',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
           )}
           >

@@ -25,7 +25,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold mr-0.5">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
+        <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
@@ -52,7 +52,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
   return (
     <FormField label={(
-      <div className="system-sm-semibold mb-1">
+      <div className="mb-1 system-sm-semibold">
         {t('stepTwo.maxLength', { ns: 'datasetCreation' })}
       </div>
     )}

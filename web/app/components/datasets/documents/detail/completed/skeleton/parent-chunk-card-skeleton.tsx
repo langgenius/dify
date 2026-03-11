@@ -32,7 +32,7 @@ const ParentChunkCardSkelton = () => {
         </SkeletonContainer>
       </SkeletonContainer>
       <div className="mt-0.5 flex items-center px-3">
-        <button type="button" className="system-xs-semibold-uppercase pt-0.5 text-components-button-secondary-accent-text-disabled" disabled>
+        <button type="button" className="pt-0.5 text-components-button-secondary-accent-text-disabled system-xs-semibold-uppercase" disabled>
           {t('operation.viewMore', { ns: 'common' })}
         </button>
       </div>

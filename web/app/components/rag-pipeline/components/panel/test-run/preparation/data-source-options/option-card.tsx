@@ -44,7 +44,7 @@ const OptionCard = ({
         />
       </div>
       <div
-        className={cn('system-sm-medium line-clamp-2 grow text-text-secondary', selected && 'text-text-primary')}
+        className={cn('line-clamp-2 grow text-text-secondary system-sm-medium', selected && 'text-text-primary')}
         title={label}
       >
         {label}

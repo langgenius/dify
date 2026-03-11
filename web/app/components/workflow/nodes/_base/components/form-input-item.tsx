@@ -402,7 +402,7 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left', varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}>
+              <span className={cn('block truncate text-left system-sm-regular', varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}>
                 {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -483,7 +483,7 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left', isLoadingOptions
+              <span className={cn('block truncate text-left system-sm-regular', isLoadingOptions
                 ? 'text-components-input-text-placeholder'
                 : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}
               >

@@ -73,17 +73,17 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           >
             <div className={cn('absolute left-0 top-0 z-0 h-full border-r-[1.5px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress', importStatus === ProcessStatus.WAITING ? 'w-3/12' : 'w-2/3')} />
             <RiLoader2Line className="mr-1 h-4 w-4 animate-spin" />
-            <span className="system-sm-medium z-10 pr-0.5">{t('list.batchModal.processing', { ns: 'datasetDocuments' })}</span>
+            <span className="z-10 pr-0.5 system-sm-medium">{t('list.batchModal.processing', { ns: 'datasetDocuments' })}</span>
           </div>
         )}
         {importStatus === ProcessStatus.COMPLETED && (
           <div className="relative mr-2 inline-flex items-center overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]">
             <div className="inline-flex items-center border-r border-r-divider-subtle px-2.5 py-2 text-text-success">
               <CheckCircle className="mr-1 h-4 w-4" />
-              <span className="system-sm-medium pr-0.5">{t('list.batchModal.completed', { ns: 'datasetDocuments' })}</span>
+              <span className="pr-0.5 system-sm-medium">{t('list.batchModal.completed', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
-              <span className="system-xs-medium cursor-pointer rounded-md px-1.5 py-1 text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover" onClick={clearProcessStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
+              <span className="cursor-pointer rounded-md px-1.5 py-1 text-components-button-ghost-text system-xs-medium hover:bg-components-button-ghost-bg-hover" onClick={clearProcessStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="absolute left-0 top-0 -z-10 h-full w-full bg-dataset-chunk-process-success-bg opacity-40" />
           </div>
@@ -92,10 +92,10 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           <div className="relative mr-2 inline-flex items-center overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]">
             <div className="inline-flex items-center border-r border-r-divider-subtle px-2.5 py-2 text-text-destructive">
               <RiErrorWarningFill className="mr-1 h-4 w-4" />
-              <span className="system-sm-medium pr-0.5">{t('list.batchModal.error', { ns: 'datasetDocuments' })}</span>
+              <span className="pr-0.5 system-sm-medium">{t('list.batchModal.error', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
-              <span className="system-xs-medium cursor-pointer rounded-md px-1.5 py-1 text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover" onClick={clearProcessStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
+              <span className="cursor-pointer rounded-md px-1.5 py-1 text-components-button-ghost-text system-xs-medium hover:bg-components-button-ghost-bg-hover" onClick={clearProcessStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="absolute left-0 top-0 -z-10 h-full w-full bg-dataset-chunk-process-error-bg opacity-40" />
           </div>
@@ -131,7 +131,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           <div className="w-full p-1">
             <button
               type="button"
-              className="system-md-regular flex w-full items-center rounded-lg px-2 py-1.5 text-text-secondary"
+              className="flex w-full items-center rounded-lg px-2 py-1.5 text-text-secondary system-md-regular"
               onClick={withNeedUpgradeCheck(showBatchModal)}
             >
               {t('list.action.batchAdd', { ns: 'datasetDocuments' })}

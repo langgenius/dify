@@ -171,12 +171,12 @@ const Listening: FC<ListeningProps> = ({
         ))}
       </div>
       <div className="flex flex-col gap-1">
-        <div className="system-sm-semibold text-text-secondary">{t('debug.variableInspect.listening.title', { ns: 'workflow' })}</div>
-        <div className="system-xs-regular whitespace-pre-line text-text-tertiary">{description}</div>
+        <div className="text-text-secondary system-sm-semibold">{t('debug.variableInspect.listening.title', { ns: 'workflow' })}</div>
+        <div className="whitespace-pre-line text-text-tertiary system-xs-regular">{description}</div>
       </div>
       {webhookDebugUrl && (
         <div className="flex items-center gap-2">
-          <div className="system-xs-regular shrink-0 whitespace-pre-line text-text-tertiary">
+          <div className="shrink-0 whitespace-pre-line text-text-tertiary system-xs-regular">
             {t('nodes.triggerWebhook.debugUrlTitle', { ns: 'workflow' })}
           </div>
           <Tooltip

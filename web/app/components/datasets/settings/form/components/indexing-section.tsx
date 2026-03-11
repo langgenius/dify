@@ -73,10 +73,10 @@ const IndexingSection = ({
           <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
           <div className={rowClass}>
             <div className="flex w-[180px] shrink-0 flex-col">
-              <div className="system-sm-semibold flex h-8 items-center text-text-secondary">
+              <div className="flex h-8 items-center text-text-secondary system-sm-semibold">
                 {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
               </div>
-              <div className="body-xs-regular text-text-tertiary">
+              <div className="text-text-tertiary body-xs-regular">
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
@@ -103,7 +103,7 @@ const IndexingSection = ({
       {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+            <div className="text-text-secondary system-sm-semibold">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="grow">
             <IndexMethod
@@ -120,7 +120,7 @@ const IndexingSection = ({
                 <div className="p-1">
                   <RiAlertFill className="size-4 text-text-warning-secondary" />
                 </div>
-                <span className="system-xs-medium text-text-primary">
+                <span className="text-text-primary system-xs-medium">
                   {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
                 </span>
               </div>
@@ -133,7 +133,7 @@ const IndexingSection = ({
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">
+            <div className="text-text-secondary system-sm-semibold">
               {t('form.embeddingModel', { ns: 'datasetSettings' })}
             </div>
           </div>
@@ -166,10 +166,10 @@ const IndexingSection = ({
           <div className={rowClass}>
             <div className={labelClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
-                <div className="system-sm-semibold flex h-7 items-center pt-1 text-text-secondary">
+                <div className="flex h-7 items-center pt-1 text-text-secondary system-sm-semibold">
                   {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                 </div>
-                <div className="body-xs-regular text-text-tertiary">
+                <div className="text-text-tertiary body-xs-regular">
                   <a
                     target="_blank"
                     rel="noopener noreferrer"

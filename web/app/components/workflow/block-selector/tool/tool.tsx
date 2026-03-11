@@ -91,7 +91,7 @@ const Tool: FC<Props> = ({
   const notShowProviderSelectInfo = useMemo(() => {
     if (isAllSelected) {
       return (
-        <span className="system-xs-regular text-text-tertiary">
+        <span className="text-text-tertiary system-xs-regular">
           {t('addToolModal.added', { ns: 'tools' })}
         </span>
       )
@@ -101,7 +101,7 @@ const Tool: FC<Props> = ({
     if (isHovering && !isAllSelected) {
       return (
         <span
-          className="system-xs-regular text-components-button-secondary-accent-text"
+          className="text-components-button-secondary-accent-text system-xs-regular"
           onClick={() => {
             onSelectMultiple?.(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
               const params: Record<string, string> = {}
@@ -138,7 +138,7 @@ const Tool: FC<Props> = ({
       return <></>
 
     return (
-      <span className="system-xs-regular text-text-tertiary">
+      <span className="text-text-tertiary system-xs-regular">
         {isAllSelected
           ? t('tabs.allAdded', { ns: 'workflow' })
           : `${selectedToolsNum} / ${totalToolsNum}`}
@@ -219,7 +219,7 @@ const Tool: FC<Props> = ({
             <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
               <span className="max-w-[250px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               {isFlatView && groupName && (
-                <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{groupName}</span>
+                <span className="ml-2 shrink-0 text-text-quaternary system-xs-regular">{groupName}</span>
               )}
               {isMCPTool && <Mcp className="ml-2 size-3.5 shrink-0 text-text-quaternary" />}
             </div>

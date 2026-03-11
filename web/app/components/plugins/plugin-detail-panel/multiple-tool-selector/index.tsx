@@ -109,7 +109,7 @@ const MultipleToolSelector = ({
           className={cn('relative flex grow items-center gap-0.5', supportCollapse && 'cursor-pointer')}
           onClick={handleCollapse}
         >
-          <div className="system-sm-semibold-uppercase flex h-6 items-center text-text-secondary">{label}</div>
+          <div className="flex h-6 items-center text-text-secondary system-sm-semibold-uppercase">{label}</div>
           {required && <div className="text-red-500">*</div>}
           {tooltip && (
             <Tooltip
@@ -129,7 +129,7 @@ const MultipleToolSelector = ({
         </div>
         {value.length > 0 && (
           <>
-            <div className="system-xs-medium flex items-center gap-1 text-text-tertiary">
+            <div className="flex items-center gap-1 text-text-tertiary system-xs-medium">
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t('agent.tools.enabled', { ns: 'appDebug' })}</span>
             </div>
@@ -152,7 +152,7 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           {value.length === 0 && (
-            <div className="system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
+            <div className="flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary system-xs-regular">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
           )}
           {value.length > 0 && value.map((item, index) => (
             <div className="mb-1" key={index}>

@@ -28,7 +28,7 @@ const MessageTypeSelector: FC<Props> = ({
         className={cn(showOption && 'bg-indigo-100', 'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pl-1.5 pr-1 text-indigo-800')}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>
-        <ChevronSelectorVertical className="h-3 w-3 " />
+        <ChevronSelectorVertical className="h-3 w-3" />
       </div>
       {showOption && (
         <div className="absolute top-[30px] z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">

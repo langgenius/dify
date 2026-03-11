@@ -26,17 +26,17 @@ export type AppIconProps = {
   onClick?: () => void
 }
 const appIconVariants = cva(
-  'flex items-center justify-center relative grow-0 shrink-0 overflow-hidden leading-none border-[0.5px] border-divider-regular',
+  'relative flex shrink-0 grow-0 items-center justify-center overflow-hidden border-[0.5px] border-divider-regular leading-none',
   {
     variants: {
       size: {
-        xs: 'w-4 h-4 text-xs rounded-[4px]',
-        tiny: 'w-6 h-6 text-base rounded-md',
-        small: 'w-8 h-8 text-xl rounded-lg',
-        medium: 'w-9 h-9 text-[22px] rounded-[10px]',
-        large: 'w-10 h-10 text-[24px] rounded-[10px]',
-        xl: 'w-12 h-12 text-[28px] rounded-xl',
-        xxl: 'w-14 h-14 text-[32px] rounded-2xl',
+        xs: 'h-4 w-4 rounded-[4px] text-xs',
+        tiny: 'h-6 w-6 rounded-md text-base',
+        small: 'h-8 w-8 rounded-lg text-xl',
+        medium: 'h-9 w-9 rounded-[10px] text-[22px]',
+        large: 'h-10 w-10 rounded-[10px] text-[24px]',
+        xl: 'h-12 w-12 rounded-xl text-[28px]',
+        xxl: 'h-14 w-14 rounded-2xl text-[32px]',
       },
       rounded: {
         true: 'rounded-full',
@@ -53,13 +53,13 @@ const EditIconWrapperVariants = cva(
   {
     variants: {
       size: {
-        xs: 'w-4 h-4 rounded-[4px]',
-        tiny: 'w-6 h-6 rounded-md',
-        small: 'w-8 h-8 rounded-lg',
-        medium: 'w-9 h-9 rounded-[10px]',
-        large: 'w-10 h-10 rounded-[10px]',
-        xl: 'w-12 h-12 rounded-xl',
-        xxl: 'w-14 h-14 rounded-2xl',
+        xs: 'h-4 w-4 rounded-[4px]',
+        tiny: 'h-6 w-6 rounded-md',
+        small: 'h-8 w-8 rounded-lg',
+        medium: 'h-9 w-9 rounded-[10px]',
+        large: 'h-10 w-10 rounded-[10px]',
+        xl: 'h-12 w-12 rounded-xl',
+        xxl: 'h-14 w-14 rounded-2xl',
       },
       rounded: {
         true: 'rounded-full',

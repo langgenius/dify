@@ -46,7 +46,7 @@ const ServiceApi = ({
                 apiBaseUrl ? 'green' : 'yellow'
               }
             />
-            <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+            <div className="grow text-text-secondary system-sm-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[10]">

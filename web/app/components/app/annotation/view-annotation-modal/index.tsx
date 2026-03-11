@@ -137,7 +137,7 @@ const ViewAnnotationModal: FC<Props> = ({
     : (
         <div>
           <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-            <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <thead className="text-text-tertiary system-xs-medium-uppercase">
               <tr>
                 <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1">{t('hitHistoryTable.query', { ns: 'appAnnotation' })}</td>
                 <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.match', { ns: 'appAnnotation' })}</td>
@@ -147,7 +147,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 <td className="w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.time', { ns: 'appAnnotation' })}</td>
               </tr>
             </thead>
-            <tbody className="system-sm-regular text-text-secondary">
+            <tbody className="text-text-secondary system-sm-regular">
               {hitHistoryList.map(item => (
                 <tr
                   key={item.id}
@@ -226,7 +226,7 @@ const ViewAnnotationModal: FC<Props> = ({
         )}
         foot={id
           ? (
-              <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
+              <div className="flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary system-sm-medium">
                 <div
                   className="flex cursor-pointer items-center space-x-2 pl-3"
                   onClick={() => setShowModal(true)}

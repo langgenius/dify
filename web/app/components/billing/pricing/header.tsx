@@ -24,7 +24,7 @@ const Header = ({
             {t('plansCommon.title.plans', { ns: 'billing' })}
           </span>
         </div>
-        <p className="system-sm-regular text-text-tertiary">
+        <p className="text-text-tertiary system-sm-regular">
           {t('plansCommon.title.description', { ns: 'billing' })}
         </p>
         <Button

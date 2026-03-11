@@ -25,8 +25,8 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
         className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
         onClick={() => setShowDetail(true)}
       >
-        <div className="system-md-semibold pb-0.5 text-text-secondary">{title}</div>
-        <div className="system-xs-regular line-clamp-2 text-text-tertiary" title={descriptionText}>{descriptionText}</div>
+        <div className="pb-0.5 text-text-secondary system-md-semibold">{title}</div>
+        <div className="line-clamp-2 text-text-tertiary system-xs-regular" title={descriptionText}>{descriptionText}</div>
       </div>
       {showDetail && (
         <EventDetailDrawer
@@ -52,7 +52,7 @@ export const TriggerEventsList = () => {
   return (
     <div className="px-4 pb-4 pt-2">
       <div className="mb-1 py-1">
-        <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+        <div className="mb-1 flex h-6 items-center justify-between text-text-secondary system-sm-semibold-uppercase">
           {t('events.actionNum', { ns: 'pluginTrigger', num: triggerEvents.length, event: t(`events.${triggerEvents.length > 1 ? 'events' : 'event'}`, { ns: 'pluginTrigger' }) })}
         </div>
       </div>

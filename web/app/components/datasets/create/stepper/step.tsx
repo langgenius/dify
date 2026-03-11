@@ -23,7 +23,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
             ? 'w-5 border border-text-quaternary'
             : 'w-5 border border-divider-deep')}
       >
-        <div className={cn('system-2xs-semibold-uppercase text-center', isActive
+        <div className={cn('text-center system-2xs-semibold-uppercase', isActive
           ? 'text-text-primary-on-surface'
           : !isDisabled
               ? 'text-text-tertiary'
@@ -33,7 +33,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
         </div>
       </div>
       <div className={cn('system-xs-medium-uppercase', isActive
-        ? 'system-xs-semibold-uppercase text-text-accent'
+        ? 'text-text-accent system-xs-semibold-uppercase'
         : !isDisabled
             ? 'text-text-tertiary'
             : 'text-text-quaternary')}

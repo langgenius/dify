@@ -40,7 +40,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
           open && 'bg-state-base-hover',
         )}
         >
-          <span className="system-xs-medium text-text-tertiary">{currentValue}</span>
+          <span className="text-text-tertiary system-xs-medium">{currentValue}</span>
           <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
@@ -57,7 +57,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
                   setOpen(false)
                 }}
               >
-                <span className="system-sm-medium px-1 text-text-secondary">{item.text}</span>
+                <span className="px-1 text-text-secondary system-sm-medium">{item.text}</span>
                 {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
               </div>
             )

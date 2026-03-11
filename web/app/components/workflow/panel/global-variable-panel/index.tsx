@@ -66,7 +66,7 @@ const Panel = () => {
         'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
-      <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
         {t('globalVar.title', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
@@ -77,7 +77,7 @@ const Panel = () => {
           </div>
         </div>
       </div>
-      <div className="system-sm-regular shrink-0 px-4 py-1 text-text-tertiary">{t('globalVar.description', { ns: 'workflow' })}</div>
+      <div className="shrink-0 px-4 py-1 text-text-tertiary system-sm-regular">{t('globalVar.description', { ns: 'workflow' })}</div>
 
       <div className="mt-4 grow overflow-y-auto rounded-b-2xl px-4">
         {globalVariableList.map(item => (

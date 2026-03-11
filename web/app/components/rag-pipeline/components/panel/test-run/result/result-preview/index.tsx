@@ -31,12 +31,12 @@ const ResultPreview = ({
       {isRunning && !outputs && (
         <div className="flex grow flex-col items-center justify-center gap-y-2 pb-20">
           <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
-          <div className="system-sm-regular text-text-tertiary">{t('result.resultPreview.loading', { ns: 'pipeline' })}</div>
+          <div className="text-text-tertiary system-sm-regular">{t('result.resultPreview.loading', { ns: 'pipeline' })}</div>
         </div>
       )}
       {!isRunning && error && (
         <div className="flex grow flex-col items-center justify-center gap-y-2 pb-20">
-          <div className="system-sm-regular text-text-tertiary">{t('result.resultPreview.error', { ns: 'pipeline' })}</div>
+          <div className="text-text-tertiary system-sm-regular">{t('result.resultPreview.error', { ns: 'pipeline' })}</div>
           <Button onClick={onSwitchToDetail}>
             {t('result.resultPreview.viewDetails', { ns: 'pipeline' })}
           </Button>
@@ -45,7 +45,7 @@ const ResultPreview = ({
       {outputs && previewChunks && (
         <div className="flex grow flex-col bg-background-body p-1">
           <ChunkCardList chunkType={outputs.chunk_structure} chunkInfo={previewChunks} />
-          <div className="system-xs-regular mt-1 flex items-center gap-x-2 text-text-tertiary">
+          <div className="mt-1 flex items-center gap-x-2 text-text-tertiary system-xs-regular">
             <div className="h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular" />
             <span className="shrink-0truncate" title={t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>
               {t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}

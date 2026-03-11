@@ -102,7 +102,7 @@ const InputFieldPanel = () => {
   return (
     <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
-        <div className="system-xl-semibold grow text-text-primary">
+        <div className="grow text-text-primary system-xl-semibold">
           {t('inputFieldPanel.title', { ns: 'datasetPipeline' })}
         </div>
         <Button
@@ -127,13 +127,13 @@ const InputFieldPanel = () => {
           <RiCloseLine className="size-4 text-text-tertiary" />
         </button>
       </div>
-      <div className="system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary">
+      <div className="shrink-0 px-4 pb-2 pt-1 text-text-tertiary system-sm-regular">
         {t('inputFieldPanel.description', { ns: 'datasetPipeline' })}
       </div>
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <span className="text-text-secondary system-sm-semibold-uppercase">
             {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
           </span>
           <Tooltip

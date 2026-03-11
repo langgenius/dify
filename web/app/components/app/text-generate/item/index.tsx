@@ -244,7 +244,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                   >
                     {taskId && (
-                      <div className={cn('system-2xs-medium-uppercase mb-2 flex items-center text-text-accent-secondary', isError && 'text-text-destructive')}>
+                      <div className={cn('mb-2 flex items-center text-text-accent-secondary system-2xs-medium-uppercase', isError && 'text-text-destructive')}>
                         <RiPlayList2Line className="mr-1 h-3 w-3" />
                         <span>{t('generation.execution', { ns: 'share' })}</span>
                         <span className="px-1">·</span>
@@ -264,7 +264,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       <div className="flex items-center space-x-6 px-1">
                         <div
                           className={cn(
-                            'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+                            'cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
                             currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
                           )}
                           onClick={() => switchTab('RESULT')}
@@ -273,7 +273,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         </div>
                         <div
                           className={cn(
-                            'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+                            'cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
                             currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
                           )}
                           onClick={() => switchTab('DETAIL')}
@@ -306,7 +306,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </>
               )}
               {!workflowProcessData && taskId && (
-                <div className={cn('system-2xs-medium-uppercase sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary', isError && 'text-text-destructive')}>
+                <div className={cn('sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary system-2xs-medium-uppercase', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className="mr-1 h-3 w-3" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
@@ -314,7 +314,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </div>
               )}
               {isError && (
-                <div className="body-lg-regular p-4 pt-0 text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
+                <div className="p-4 pt-0 text-text-quaternary body-lg-regular">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
@@ -324,7 +324,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             </div>
             {/* meta data */}
             <div className={cn(
-              'system-xs-regular relative mt-1 h-4 px-4 text-text-quaternary',
+              'relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular',
               isMobile && ((childMessageId || isQuerying) && depth < 3) && 'pl-10',
             )}
             >

@@ -74,7 +74,7 @@ const TryApp: FC<Props> = ({
               background={appDetail.site.icon_background}
               imageUrl={appDetail.site.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-primary" title={appDetail.name}>{appDetail.name}</div>
+            <div className="grow truncate text-text-primary system-md-semibold" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center gap-1">
             {currentConversationId && (

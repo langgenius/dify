@@ -54,7 +54,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       className="max-w-[480px]"
       footer={false}
     >
-      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+      <label className="mb-1 mt-3 flex items-center text-text-secondary system-sm-semibold">{t('account.feedbackLabel', { ns: 'common' })}</label>
       <Textarea
         rows={6}
         value={userFeedback}

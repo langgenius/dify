@@ -45,7 +45,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
         ref={ref}
         className={cn(
           'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
-          'radius-md system-sm-regular px-3',
+          'px-3 system-sm-regular radius-md',
           showCopyButton && 'pr-8',
           inputProps.disabled && 'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
           inputProps.className,

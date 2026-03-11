@@ -126,7 +126,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
       {hasNoData && (
         <div
-          className="mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]"
+          className="mt-6 flex h-[128px] items-center justify-center space-x-1 rounded-lg border text-[13px]"
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',
@@ -195,7 +195,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
       {!isLoading && (
         <div className="mt-8 flex items-center justify-between">
-          <div className="text-sm  font-medium text-text-secondary">
+          <div className="text-sm font-medium text-text-secondary">
             {selected.length > 0 && `${selected.length} ${t('feature.dataSet.selected', { ns: 'appDebug' })}`}
           </div>
           <div className="flex space-x-2">

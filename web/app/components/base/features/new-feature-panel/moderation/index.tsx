@@ -138,20 +138,20 @@ const Moderation = ({
     >
       <>
         {!moderation?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
         )}
         {!!moderation?.enabled && (
           <>
             {!isHovering && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{providerContent}</div>
+                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
+                  <div className="text-text-secondary system-xs-regular">{providerContent}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{enableContent}</div>
+                  <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
+                  <div className="text-text-secondary system-xs-regular">{enableContent}</div>
                 </div>
               </div>
             )}

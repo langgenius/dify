@@ -14,11 +14,11 @@ const SummaryLabel = ({
 
   return (
     <div className={cn('space-y-1', className)}>
-      <div className="system-xs-medium-uppercase mt-2 flex items-center justify-between text-text-tertiary">
+      <div className="mt-2 flex items-center justify-between text-text-tertiary system-xs-medium-uppercase">
         {t('segment.summary', { ns: 'datasetDocuments' })}
         <div className="ml-2 h-px grow bg-divider-regular"></div>
       </div>
-      <div className="body-xs-regular text-text-tertiary">{summary}</div>
+      <div className="text-text-tertiary body-xs-regular">{summary}</div>
     </div>
   )
 }

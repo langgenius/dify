@@ -174,7 +174,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
               <div className="relative">
-                <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
+                <div className={cn('mb-1 flex h-6 items-center text-text-secondary system-sm-semibold')}>
                   {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
                 </div>
                 <ModelSelector
@@ -196,7 +196,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               {
                 !isLoading && !!parameterRules.length && (
                   <div className="mb-2 flex items-center justify-between">
-                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
+                    <div className={cn('flex h-6 items-center text-text-secondary system-sm-semibold')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -225,7 +225,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             </div>
             {!hideDebugWithMultipleModel && (
               <div
-                className="bg-components-section-burn system-sm-regular flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent"
+                className="bg-components-section-burn flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent system-sm-regular"
                 onClick={() => onDebugWithMultipleModelChange?.()}
               >
                 {

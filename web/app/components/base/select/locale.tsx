@@ -36,7 +36,7 @@ export default function Select({
           leaveTo="transform opacity-0 scale-95"
         >
           <MenuItems className="absolute right-0 z-10 mt-2 w-[200px] origin-top-right divide-y divide-divider-regular rounded-md bg-components-panel-bg shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-            <div className="px-1 py-1 ">
+            <div className="px-1 py-1">
               {items.map((item) => {
                 return (
                   <MenuItem key={item.value}>

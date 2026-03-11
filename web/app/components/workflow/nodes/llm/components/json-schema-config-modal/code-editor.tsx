@@ -117,7 +117,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
     <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
       {!hideTopMenu && (
         <div className="flex items-center justify-between pl-2 pr-1 pt-1">
-          <div className="system-xs-semibold-uppercase py-0.5 text-text-secondary">
+          <div className="py-0.5 text-text-secondary system-xs-semibold-uppercase">
             <span className="px-1 py-0.5">JSON</span>
           </div>
           <div className="flex items-center gap-x-0.5">

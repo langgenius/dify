@@ -96,7 +96,7 @@ const DebugAndPreview = () => {
         )}
         style={{ width: `${panelWidth}px` }}
       >
-        <div className="system-xl-semibold flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary">
+        <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary system-xl-semibold">
           <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
           <div className="flex items-center gap-1">
             <Tooltip

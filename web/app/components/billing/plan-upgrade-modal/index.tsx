@@ -61,7 +61,7 @@ const PlanUpgradeModal: FC<Props> = ({
             <div className={`${styles.highlight} title-3xl-semi-bold`}>
               {title}
             </div>
-            <div className="system-md-regular text-text-tertiary">
+            <div className="text-text-tertiary system-md-regular">
               {description}
             </div>
           </div>

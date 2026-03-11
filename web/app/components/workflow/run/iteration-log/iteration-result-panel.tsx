@@ -58,7 +58,7 @@ const IterationResultPanel: FC<Props> = ({
     return (
       <>
         {hasDurationMap && (
-          <div className="system-xs-regular text-text-tertiary">
+          <div className="text-text-tertiary system-xs-regular">
             {countIterDuration(iteration, iterDurationMap)}
           </div>
         )}
@@ -101,7 +101,7 @@ const IterationResultPanel: FC<Props> = ({
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
                   <Iteration className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                <span className="grow text-text-primary system-sm-semibold-uppercase">
                   {t(`${i18nPrefix}.iteration`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}

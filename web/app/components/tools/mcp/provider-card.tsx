@@ -87,8 +87,8 @@ const MCPCard = ({
           <Icon src={data.icon} />
         </div>
         <div className="grow">
-          <div className="system-md-semibold mb-1 truncate text-text-secondary" title={data.name}>{data.name}</div>
-          <div className="system-xs-regular text-text-tertiary">{data.server_identifier}</div>
+          <div className="mb-1 truncate text-text-secondary system-md-semibold" title={data.name}>{data.name}</div>
+          <div className="text-text-tertiary system-xs-regular">{data.server_identifier}</div>
         </div>
       </div>
       <div className="flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5">
@@ -96,18 +96,18 @@ const MCPCard = ({
           <div className="flex items-center gap-1">
             <RiHammerFill className="h-3 w-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
+              <div className="shrink-0 text-text-tertiary system-xs-regular">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
             )}
             {!data.tools.length && (
-              <div className="system-xs-regular shrink-0 text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
+              <div className="shrink-0 text-text-tertiary system-xs-regular">{t('mcp.noTools', { ns: 'tools' })}</div>
             )}
           </div>
-          <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
-          <div className={cn('system-xs-regular truncate text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && ' sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
+          <div className={cn('text-divider-deep system-xs-regular', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
+          <div className={cn('truncate text-text-tertiary system-xs-regular', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
         </div>
         {data.is_team_authorization && data.tools.length > 0 && <Indicator color="green" className="shrink-0" />}
         {(!data.is_team_authorization || !data.tools.length) && (
-          <div className="system-xs-medium flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 text-util-colors-red-red-500">
+          <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 text-util-colors-red-red-500 system-xs-medium">
             {t('mcp.noConfigured', { ns: 'tools' })}
             <Indicator color="red" />
           </div>

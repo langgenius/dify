@@ -11,7 +11,7 @@ const QAItem = (props: QAItemProps) => {
   return (
     <div className="inline-flex items-start justify-start gap-1 self-stretch">
       <div className="w-4 text-[13px] font-medium leading-5 text-text-tertiary">{type === QAItemType.Question ? 'Q' : 'A'}</div>
-      <div className="body-md-regular flex-1 text-text-secondary">{text}</div>
+      <div className="flex-1 text-text-secondary body-md-regular">{text}</div>
     </div>
   )
 }

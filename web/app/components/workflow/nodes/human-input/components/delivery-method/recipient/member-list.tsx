@@ -67,18 +67,18 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
             >
               <Avatar className={cn(value.some(item => item.user_id === account.id) && 'opacity-50')} avatar={account.avatar_url} size={24} name={account.name} />
               <div className={cn('grow', value.some(item => item.user_id === account.id) && 'opacity-50')}>
-                <div className="system-sm-medium text-text-secondary">
+                <div className="text-text-secondary system-sm-medium">
                   {account.name}
-                  {account.status === 'pending' && <span className="system-xs-medium ml-1 text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
-                  {email === account.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
+                  {account.status === 'pending' && <span className="ml-1 text-text-warning system-xs-medium">{t('members.pending', { ns: 'common' })}</span>}
+                  {email === account.email && <span className="text-text-tertiary system-xs-regular">{t('members.you', { ns: 'common' })}</span>}
                 </div>
-                <div className="system-xs-regular text-text-tertiary">{account.email}</div>
+                <div className="text-text-tertiary system-xs-regular">{account.email}</div>
               </div>
               {!value.some(item => item.user_id === account.id) && (
-                <div className="system-xs-medium hidden text-text-accent group-hover:block">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`, { ns: 'workflow' })}</div>
+                <div className="hidden text-text-accent system-xs-medium group-hover:block">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`, { ns: 'workflow' })}</div>
               )}
               {value.some(item => item.user_id === account.id) && (
-                <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`, { ns: 'workflow' })}</div>
+                <div className="text-text-tertiary system-xs-regular">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`, { ns: 'workflow' })}</div>
               )}
             </div>
           ))}

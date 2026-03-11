@@ -37,7 +37,7 @@ const SearchBox = ({
       className={cn('z-[11] flex items-center', wrapperClassName)}
     >
       <div className={
-        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'radius-md border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
+        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'border border-transparent bg-components-input-bg-normal radius-md focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
       }
       >
         {
@@ -52,7 +52,7 @@ const SearchBox = ({
               <div className="flex grow items-center gap-x-2 p-1">
                 <input
                   className={cn(
-                    'body-md-medium inline-block grow appearance-none bg-transparent text-text-secondary outline-none',
+                    'inline-block grow appearance-none bg-transparent text-text-secondary outline-none body-md-medium',
                   )}
                   value={search}
                   onChange={(e) => {
@@ -82,7 +82,7 @@ const SearchBox = ({
                 <input
                   autoFocus={autoFocus}
                   className={cn(
-                    'system-sm-regular ml-1.5 mr-1 inline-block grow appearance-none bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
+                    'ml-1.5 mr-1 inline-block grow appearance-none bg-transparent text-components-input-text-filled outline-none system-sm-regular placeholder:text-components-input-text-placeholder',
                     search && 'mr-2',
                   )}
                   value={search}

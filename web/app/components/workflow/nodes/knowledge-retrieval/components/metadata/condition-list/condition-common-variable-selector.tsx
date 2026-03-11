@@ -51,7 +51,7 @@ const ConditionCommonVariableSelector = ({
         <div className="flex h-6 grow cursor-pointer items-center">
           {
             selected && (
-              <div className="system-xs-medium inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-[5px] pr-1.5 text-text-secondary shadow-xs">
+              <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-[5px] pr-1.5 text-text-secondary shadow-xs system-xs-medium">
                 <Variable02 className="mr-1 h-3.5 w-3.5 text-text-accent" />
                 {selected.value}
               </div>
@@ -60,11 +60,11 @@ const ConditionCommonVariableSelector = ({
           {
             !selected && (
               <>
-                <div className="system-sm-regular flex grow items-center text-components-input-text-placeholder">
+                <div className="flex grow items-center text-components-input-text-placeholder system-sm-regular">
                   <Variable02 className="mr-1 h-4 w-4" />
                   {t('nodes.knowledgeRetrieval.metadata.panel.select', { ns: 'workflow' })}
                 </div>
-                <div className="system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary">
+                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary system-2xs-medium">
                   {varType}
                 </div>
               </>
@@ -78,7 +78,7 @@ const ConditionCommonVariableSelector = ({
             variables.map(v => (
               <div
                 key={v.value}
-                className="system-xs-medium flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary hover:bg-state-base-hover"
+                className="flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary system-xs-medium hover:bg-state-base-hover"
                 onClick={() => handleChange(v.value)}
               >
                 <Variable02 className="mr-1 h-4 w-4 text-text-accent" />

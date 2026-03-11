@@ -153,7 +153,7 @@ const EmailInput = ({
             <PortalToFollowElemTrigger className="block h-6 min-w-[166px]">
               <input
                 ref={inputRef}
-                className="system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder"
+                className="h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder"
                 placeholder={placeholder}
                 onFocus={() => setIsFocus(true)}
                 onBlur={handleInputBlur}
