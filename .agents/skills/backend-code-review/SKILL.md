@@ -40,45 +40,12 @@ Notes when using this skill:
 
 ## General Review Rules
 
-### 1. Security Review
+When no Checklist rule matches, apply these categories as a fallback:
 
-Check for:
-- SQL injection vulnerabilities
-- Server-Side Request Forgery (SSRF)
-- Command injection
-- Insecure deserialization
-- Hardcoded secrets/credentials
-- Improper authentication/authorization
-- Insecure direct object references
-
-### 2. Performance Review
-
-Check for:
-- N+1 queries
-- Missing database indexes
-- Memory leaks
-- Blocking operations in async code
-- Missing caching opportunities
-
-### 3. Code Quality Review
-
-Check for:
-- Code forward compatibility
-- Code duplication (DRY violations)
-- Functions doing too much (SRP violations)
-- Deep nesting / complex conditionals
-- Magic numbers/strings
-- Poor naming
-- Missing error handling
-- Incomplete type coverage
-
-### 4. Testing Review
-
-Check for:
-- Missing test coverage for new code
-- Tests that don't test behavior
-- Flaky test patterns
-- Missing edge cases
+- **Security**: SQL injection, SSRF, command injection, insecure deserialization, hardcoded secrets, improper auth, insecure direct object references
+- **Performance**: N+1 queries, missing indexes, memory leaks, blocking operations in async code, missing caching
+- **Code quality**: DRY/SRP violations, deep nesting, magic numbers, poor naming, missing error handling, incomplete type coverage
+- **Testing**: Missing coverage for new code, tests that don't test behavior, flaky patterns, missing edge cases
 
 ## Required Output Format
 

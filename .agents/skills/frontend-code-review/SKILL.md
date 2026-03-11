@@ -1,22 +1,24 @@
 ---
 name: frontend-code-review
-description: "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change reviews and focused file reviews while applying the checklist rules."
+description: "Review frontend React/TypeScript code for quality, performance, and correctness in the Dify web codebase. Checks conditional class name usage, React Flow hook patterns, prop memoization, component structure, and business logic constraints. Use when the user requests a code review, PR review, or analysis of frontend files (`.tsx`, `.ts`, `.js`) under `web/`. Supports pending-change reviews and focused file reviews. Do NOT use for backend Python files under `api/`."
 ---
 
 # Frontend Code Review
 
-## Intent
-Use this skill whenever the user asks to review frontend code (especially `.tsx`, `.ts`, or `.js` files). Support two review modes:
+Review frontend code quality, performance, and business logic correctness for files under `web/`. Supports two review modes:
 
 1. **Pending-change review** – inspect staged/working-tree files slated for commit and flag checklist violations before submission.
 2. **File-targeted review** – review the specific file(s) the user names and report the relevant checklist findings.
 
-Stick to the checklist below for every applicable file and mode.
-
 ## Checklist
-See [references/code-quality.md](references/code-quality.md), [references/performance.md](references/performance.md), [references/business-logic.md](references/business-logic.md) for the living checklist split by category—treat it as the canonical set of rules to follow.
 
-Flag each rule violation with urgency metadata so future reviewers can prioritize fixes.
+See [references/code-quality.md](references/code-quality.md), [references/performance.md](references/performance.md), [references/business-logic.md](references/business-logic.md) for the full rule catalog. Key rules include:
+
+- **Code quality**: conditional class names must use the `classNames` utility (not ternaries or template strings), proper component structure, consistent patterns
+- **Performance**: use `useNodes`/`useEdges` for React Flow UI reads and `useStoreApi` in callbacks, verify prop memoization with `useMemo`/`useCallback`
+- **Business logic**: node components must not use `workflowStore` directly, enforce domain-specific constraints
+
+Flag each rule violation with urgency metadata so reviewers can prioritize fixes.
 
 ## Review Process
 1. Open the relevant component/module. Gather lines that relate to class names, React Flow hooks, prop memoization, and styling.

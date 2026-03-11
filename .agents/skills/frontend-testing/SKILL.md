@@ -9,24 +9,6 @@ This skill enables Claude to generate high-quality, comprehensive frontend tests
 
 > **⚠️ Authoritative Source**: This skill is derived from `web/docs/test.md`. Use Vitest mock/timer APIs (`vi.*`).
 
-## When to Apply This Skill
-
-Apply this skill when the user:
-
-- Asks to **write tests** for a component, hook, or utility
-- Asks to **review existing tests** for completeness
-- Mentions **Vitest**, **React Testing Library**, **RTL**, or **spec files**
-- Requests **test coverage** improvement
-- Uses `pnpm analyze-component` output as context
-- Mentions **testing**, **unit tests**, or **integration tests** for frontend code
-- Wants to understand **testing patterns** in the Dify codebase
-
-**Do NOT apply** when:
-
-- User is asking about backend/API tests (Python/pytest)
-- User is asking about E2E tests (Playwright/Cypress)
-- User is only asking conceptual questions without code context
-
 ## Quick Reference
 
 ### Tech Stack
@@ -216,61 +198,10 @@ When a component or hook uses `useQueryState` / `useQueryStates`:
 
 ## Core Principles
 
-### 1. AAA Pattern (Arrange-Act-Assert)
-
-Every test should clearly separate:
-
-- **Arrange**: Setup test data and render component
-- **Act**: Perform user actions
-- **Assert**: Verify expected outcomes
-
-### 2. Black-Box Testing
-
-- Test observable behavior, not implementation details
-- Use semantic queries (getByRole, getByLabelText)
-- Avoid testing internal state directly
-- **Prefer pattern matching over hardcoded strings** in assertions:
-
-```typescript
-// ❌ Avoid: hardcoded text assertions
-expect(screen.getByText('Loading...')).toBeInTheDocument()
-
-// ✅ Better: role-based queries
-expect(screen.getByRole('status')).toBeInTheDocument()
-
-// ✅ Better: pattern matching
-expect(screen.getByText(/loading/i)).toBeInTheDocument()
-```
-
-### 3. Single Behavior Per Test
-
-Each test verifies ONE user-observable behavior:
-
-```typescript
-// ✅ Good: One behavior
-it('should disable button when loading', () => {
-  render(<Button loading />)
-  expect(screen.getByRole('button')).toBeDisabled()
-})
-
-// ❌ Bad: Multiple behaviors
-it('should handle loading state', () => {
-  render(<Button loading />)
-  expect(screen.getByRole('button')).toBeDisabled()
-  expect(screen.getByText('Loading...')).toBeInTheDocument()
-  expect(screen.getByRole('button')).toHaveClass('loading')
-})
-```
-
-### 4. Semantic Naming
-
-Use `should <behavior> when <condition>`:
-
-```typescript
-it('should show error message when validation fails')
-it('should call onSubmit when form is valid')
-it('should disable input when isReadOnly is true')
-```
+- **AAA pattern**: Arrange (setup) → Act (user action) → Assert (verify outcome) in every test
+- **Black-box testing**: use semantic queries (`getByRole`, `getByLabelText`), prefer pattern matching (`/loading/i`) over hardcoded strings, avoid testing internal state
+- **Single behavior per test**: each `it` block verifies ONE user-observable behavior
+- **Semantic naming**: `should <behavior> when <condition>`
 
 ## Required Test Scenarios
 
