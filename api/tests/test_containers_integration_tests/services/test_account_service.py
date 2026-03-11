@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -45,7 +46,7 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
-    def test_create_account_and_login(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_account_and_login(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test account creation and login with correct password.
         """
@@ -70,7 +71,9 @@ class TestAccountService:
         logged_in = AccountService.authenticate(email, password)
         assert logged_in.id == account.id
 
-    def test_create_account_without_password(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_account_without_password(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account creation without password (for OAuth users).
         """
@@ -92,7 +95,7 @@ class TestAccountService:
         assert account.password_salt is None
 
     def test_create_account_password_invalid_new_password(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test account create with invalid new password format.
@@ -113,7 +116,9 @@ class TestAccountService:
                 password="invalid_new_password",
             )
 
-    def test_create_account_registration_disabled(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_account_registration_disabled(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account creation when registration is disabled.
         """
@@ -131,7 +136,9 @@ class TestAccountService:
                 password=fake.password(length=12),
             )
 
-    def test_create_account_email_in_freeze(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_account_email_in_freeze(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account creation when email is in freeze period.
         """
@@ -154,7 +161,9 @@ class TestAccountService:
 
         dify_config.BILLING_ENABLED = False  # Reset config for other tests
 
-    def test_authenticate_account_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_authenticate_account_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test authentication with non-existent account.
         """
@@ -164,7 +173,7 @@ class TestAccountService:
         with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, password)
 
-    def test_authenticate_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_authenticate_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test authentication with banned account.
         """
@@ -186,14 +195,13 @@ class TestAccountService:
 
         # Ban the account
         account.status = AccountStatus.BANNED
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with pytest.raises(AccountLoginError):
             AccountService.authenticate(email, password)
 
-    def test_authenticate_wrong_password(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_authenticate_wrong_password(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test authentication with wrong password.
         """
@@ -217,7 +225,9 @@ class TestAccountService:
         with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, wrong_password)
 
-    def test_authenticate_with_invite_token(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_authenticate_with_invite_token(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test authentication with invite token to set password for account without password.
         """
@@ -249,7 +259,7 @@ class TestAccountService:
         assert authenticated_account.password_salt is not None
 
     def test_authenticate_pending_account_activation(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test authentication activates pending account.
@@ -270,16 +280,17 @@ class TestAccountService:
             password=password,
         )
         account.status = AccountStatus.PENDING
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Authenticate should activate the account
         authenticated_account = AccountService.authenticate(email, password)
         assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
 
-    def test_update_account_password_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_account_password_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful password update.
         """
@@ -308,7 +319,7 @@ class TestAccountService:
         assert authenticated_account.id == account.id
 
     def test_update_account_password_wrong_current_password(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test password update with wrong current password.
@@ -335,7 +346,7 @@ class TestAccountService:
             AccountService.update_account_password(account, wrong_password, new_password)
 
     def test_update_account_password_invalid_new_password(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test password update with invalid new password format.
@@ -360,7 +371,7 @@ class TestAccountService:
         with pytest.raises(ValueError):  # Password validation error
             AccountService.update_account_password(account, old_password, "123")
 
-    def test_create_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test account creation with automatic tenant creation.
         """
@@ -387,14 +398,13 @@ class TestAccountService:
         assert account.email == email
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
     def test_create_account_and_tenant_workspace_creation_disabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test account creation when workspace creation is disabled.
@@ -419,7 +429,7 @@ class TestAccountService:
             )
 
     def test_create_account_and_tenant_workspace_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test account creation when workspace limit is exceeded.
@@ -446,7 +456,9 @@ class TestAccountService:
                 password=password,
             )
 
-    def test_link_account_integrate_new_provider(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_link_account_integrate_new_provider(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test linking account with new OAuth provider.
         """
@@ -469,15 +481,18 @@ class TestAccountService:
         AccountService.link_account_integrate("new-google", "google_open_id_123", account)
 
         # Verify integration was created
-        from extensions.ext_database import db
         from models import AccountIntegrate
 
-        integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="new-google").first()
+        integration = (
+            db_session_with_containers.query(AccountIntegrate)
+            .filter_by(account_id=account.id, provider="new-google")
+            .first()
+        )
         assert integration is not None
         assert integration.open_id == "google_open_id_123"
 
     def test_link_account_integrate_existing_provider(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test linking account with existing provider (should update).
@@ -504,15 +519,16 @@ class TestAccountService:
         AccountService.link_account_integrate("exists-google", "google_open_id_456", account)
 
         # Verify integration was updated
-        from extensions.ext_database import db
         from models import AccountIntegrate
 
         integration = (
-            db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="exists-google").first()
+            db_session_with_containers.query(AccountIntegrate)
+            .filter_by(account_id=account.id, provider="exists-google")
+            .first()
         )
         assert integration.open_id == "google_open_id_456"
 
-    def test_close_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_close_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test closing an account.
         """
@@ -536,12 +552,11 @@ class TestAccountService:
         AccountService.close_account(account)
 
         # Verify account status changed
-        from extensions.ext_database import db
 
-        db.session.refresh(account)
+        db_session_with_containers.refresh(account)
         assert account.status == AccountStatus.CLOSED
 
-    def test_update_account_fields(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_account_fields(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test updating account fields.
         """
@@ -568,7 +583,9 @@ class TestAccountService:
         assert updated_account.name == updated_name
         assert updated_account.interface_theme == "dark"
 
-    def test_update_account_invalid_field(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_account_invalid_field(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test updating account with invalid field.
         """
@@ -591,7 +608,7 @@ class TestAccountService:
         with pytest.raises(AttributeError):
             AccountService.update_account(account, invalid_field="value")
 
-    def test_update_login_info(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_login_info(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test updating login information.
         """
@@ -616,13 +633,12 @@ class TestAccountService:
         AccountService.update_login_info(account, ip_address=ip_address)
 
         # Verify login info was updated
-        from extensions.ext_database import db
 
-        db.session.refresh(account)
+        db_session_with_containers.refresh(account)
         assert account.last_login_ip == ip_address
         assert account.last_login_at is not None
 
-    def test_login_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_login_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful login with token generation.
         """
@@ -659,7 +675,9 @@ class TestAccountService:
         assert call_args["iss"] is not None
         assert call_args["sub"] == "Console API Passport"
 
-    def test_login_pending_account_activation(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_login_pending_account_activation(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test login activates pending account.
         """
@@ -680,17 +698,16 @@ class TestAccountService:
             password=password,
         )
         account.status = AccountStatus.PENDING
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Login should activate the account
         token_pair = AccountService.login(account)
 
-        db.session.refresh(account)
+        db_session_with_containers.refresh(account)
         assert account.status == AccountStatus.ACTIVE
 
-    def test_logout(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_logout(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test logout functionality.
         """
@@ -723,7 +740,7 @@ class TestAccountService:
         refresh_token_key = f"account_refresh_token:{account.id}"
         assert redis_client.get(refresh_token_key) is None
 
-    def test_refresh_token_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_refresh_token_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful token refresh.
         """
@@ -757,7 +774,7 @@ class TestAccountService:
         assert new_token_pair.access_token == "new_mock_access_token"
         assert new_token_pair.refresh_token != initial_token_pair.refresh_token
 
-    def test_refresh_token_invalid_token(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_refresh_token_invalid_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test refresh token with invalid token.
         """
@@ -766,7 +783,9 @@ class TestAccountService:
         with pytest.raises(ValueError, match="Invalid refresh token"):
             AccountService.refresh_token(invalid_token)
 
-    def test_refresh_token_invalid_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_refresh_token_invalid_account(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test refresh token with valid token but invalid account.
         """
@@ -791,16 +810,15 @@ class TestAccountService:
         token_pair = AccountService.login(account)
 
         # Delete account
-        from extensions.ext_database import db
 
-        db.session.delete(account)
-        db.session.commit()
+        db_session_with_containers.delete(account)
+        db_session_with_containers.commit()
 
         # Try to refresh token with deleted account
         with pytest.raises(ValueError, match="Invalid account"):
             AccountService.refresh_token(token_pair.refresh_token)
 
-    def test_load_user_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_load_user_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test loading user by ID successfully.
         """
@@ -830,7 +848,7 @@ class TestAccountService:
         assert loaded_user.id == account.id
         assert loaded_user.email == account.email
 
-    def test_load_user_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_load_user_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test loading non-existent user.
         """
@@ -839,7 +857,7 @@ class TestAccountService:
         loaded_user = AccountService.load_user(non_existent_user_id)
         assert loaded_user is None
 
-    def test_load_user_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_load_user_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test loading banned user raises Unauthorized.
         """
@@ -861,14 +879,13 @@ class TestAccountService:
 
         # Ban the account
         account.status = AccountStatus.BANNED
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
             AccountService.load_user(account.id)
 
-    def test_get_account_jwt_token(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_account_jwt_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test JWT token generation for account.
         """
@@ -902,7 +919,7 @@ class TestAccountService:
         assert call_args["iss"] is not None
         assert call_args["sub"] == "Console API Passport"
 
-    def test_load_logged_in_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_load_logged_in_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test loading logged in account by ID.
         """
@@ -931,7 +948,9 @@ class TestAccountService:
         assert loaded_account is not None
         assert loaded_account.id == account.id
 
-    def test_get_user_through_email_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_user_through_email_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting user through email successfully.
         """
@@ -957,7 +976,9 @@ class TestAccountService:
         assert found_user is not None
         assert found_user.id == account.id
 
-    def test_get_user_through_email_not_found(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_user_through_email_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting user through non-existent email.
         """
@@ -968,7 +989,7 @@ class TestAccountService:
         assert found_user is None
 
     def test_get_user_through_email_banned_account(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting banned user through email raises Unauthorized.
@@ -991,14 +1012,15 @@ class TestAccountService:
 
         # Ban the account
         account.status = AccountStatus.BANNED
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
             AccountService.get_user_through_email(email)
 
-    def test_get_user_through_email_in_freeze(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_user_through_email_in_freeze(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting user through email that is in freeze period.
         """
@@ -1014,7 +1036,7 @@ class TestAccountService:
         # Reset config
         dify_config.BILLING_ENABLED = False
 
-    def test_delete_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_delete_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test account deletion (should add task to queue and sync to enterprise).
         """
@@ -1050,7 +1072,7 @@ class TestAccountService:
             mock_delete_task.delay.assert_called_once_with(account.id)
 
     def test_generate_account_deletion_verification_code(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test generating account deletion verification code.
@@ -1079,7 +1101,9 @@ class TestAccountService:
         assert len(code) == 6
         assert code.isdigit()
 
-    def test_verify_account_deletion_code_valid(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_verify_account_deletion_code_valid(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test verifying valid account deletion code.
         """
@@ -1106,7 +1130,9 @@ class TestAccountService:
         is_valid = AccountService.verify_account_deletion_code(token, code)
         assert is_valid is True
 
-    def test_verify_account_deletion_code_invalid(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_verify_account_deletion_code_invalid(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test verifying invalid account deletion code.
         """
@@ -1135,7 +1161,7 @@ class TestAccountService:
         assert is_valid is False
 
     def test_verify_account_deletion_code_invalid_token(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test verifying account deletion code with invalid token.
@@ -1167,7 +1193,7 @@ class TestTenantService:
                 "billing_service": mock_billing_service,
             }
 
-    def test_create_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_tenant_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful tenant creation with default settings.
         """
@@ -1187,7 +1213,7 @@ class TestTenantService:
         assert tenant.encrypt_public_key is not None
 
     def test_create_tenant_workspace_creation_disabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant creation when workspace creation is disabled.
@@ -1202,7 +1228,9 @@ class TestTenantService:
         with pytest.raises(NotAllowedCreateWorkspace):  # NotAllowedCreateWorkspace exception
             TenantService.create_tenant(name=tenant_name)
 
-    def test_create_tenant_with_custom_name(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_tenant_with_custom_name(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test tenant creation with custom name and setup flag.
         """
@@ -1221,7 +1249,9 @@ class TestTenantService:
         assert tenant.status == "normal"
         assert tenant.encrypt_public_key is not None
 
-    def test_create_tenant_member_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_tenant_member_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful tenant member creation.
         """
@@ -1251,7 +1281,9 @@ class TestTenantService:
         assert tenant_member.account_id == account.id
         assert tenant_member.role == "admin"
 
-    def test_create_tenant_member_duplicate_owner(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_tenant_member_duplicate_owner(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test creating duplicate owner for a tenant (should fail).
         """
@@ -1290,7 +1322,9 @@ class TestTenantService:
         with pytest.raises(Exception, match="Tenant already has an owner"):
             TenantService.create_tenant_member(tenant, account2, role="owner")
 
-    def test_create_tenant_member_existing_member(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_create_tenant_member_existing_member(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test updating role for existing tenant member.
         """
@@ -1323,7 +1357,7 @@ class TestTenantService:
         assert tenant_member2.account_id == tenant_member1.account_id
         assert tenant_member2.role == "editor"
 
-    def test_get_join_tenants_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_join_tenants_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting join tenants for an account.
         """
@@ -1361,7 +1395,7 @@ class TestTenantService:
         assert tenant2_name in tenant_names
 
     def test_get_current_tenant_by_account_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting current tenant by account successfully.
@@ -1388,9 +1422,8 @@ class TestTenantService:
         # Add account to tenant and set as current
         TenantService.create_tenant_member(tenant, account, role="owner")
         account.current_tenant = tenant
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Get current tenant
         current_tenant = TenantService.get_current_tenant_by_account(account)
@@ -1400,7 +1433,7 @@ class TestTenantService:
         assert current_tenant.role == "owner"
 
     def test_get_current_tenant_by_account_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting current tenant when account has no current tenant.
@@ -1426,7 +1459,7 @@ class TestTenantService:
         with pytest.raises((AttributeError, TenantNotFoundError)):
             TenantService.get_current_tenant_by_account(account)
 
-    def test_switch_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_switch_tenant_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful tenant switching.
         """
@@ -1457,18 +1490,17 @@ class TestTenantService:
 
         # Set initial current tenant
         account.current_tenant = tenant1
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Switch to second tenant
         TenantService.switch_tenant(account, tenant2.id)
 
         # Verify tenant was switched
-        db.session.refresh(account)
+        db_session_with_containers.refresh(account)
         assert account.current_tenant_id == tenant2.id
 
-    def test_switch_tenant_no_tenant_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_switch_tenant_no_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test tenant switching without providing tenant ID.
         """
@@ -1493,7 +1525,9 @@ class TestTenantService:
         with pytest.raises(ValueError, match="Tenant ID must be provided"):
             TenantService.switch_tenant(account, None)
 
-    def test_switch_tenant_account_not_member(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_switch_tenant_account_not_member(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test switching to a tenant where account is not a member.
         """
@@ -1520,7 +1554,7 @@ class TestTenantService:
         with pytest.raises(Exception, match="Tenant not found or account is not a member of the tenant"):
             TenantService.switch_tenant(account, tenant.id)
 
-    def test_has_roles_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_has_roles_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test checking if tenant has specific roles.
         """
@@ -1570,7 +1604,7 @@ class TestTenantService:
         has_normal = TenantService.has_roles(tenant, [TenantAccountRole.NORMAL])
         assert has_normal is False
 
-    def test_has_roles_invalid_role_type(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_has_roles_invalid_role_type(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test checking roles with invalid role type.
         """
@@ -1589,7 +1623,7 @@ class TestTenantService:
         with pytest.raises(ValueError, match="all roles must be TenantAccountRole"):
             TenantService.has_roles(tenant, [invalid_role])
 
-    def test_get_user_role_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_user_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting user role in a tenant.
         """
@@ -1620,7 +1654,9 @@ class TestTenantService:
 
         assert user_role == "editor"
 
-    def test_check_member_permission_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_check_member_permission_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test checking member permission successfully.
         """
@@ -1660,7 +1696,7 @@ class TestTenantService:
         TenantService.check_member_permission(tenant, owner_account, member_account, "add")
 
     def test_check_member_permission_invalid_action(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test checking member permission with invalid action.
@@ -1692,7 +1728,9 @@ class TestTenantService:
         with pytest.raises(Exception, match="Invalid action"):
             TenantService.check_member_permission(tenant, account, None, invalid_action)
 
-    def test_check_member_permission_operate_self(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_check_member_permission_operate_self(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test checking member permission when trying to operate self.
         """
@@ -1722,7 +1760,9 @@ class TestTenantService:
         with pytest.raises(Exception, match="Cannot operate self"):
             TenantService.check_member_permission(tenant, account, account, "remove")
 
-    def test_remove_member_from_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_remove_member_from_tenant_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful member removal from tenant (should sync to enterprise).
         """
@@ -1770,16 +1810,17 @@ class TestTenantService:
             )
 
         # Verify member was removed
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
         member_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=member_account.id)
+            .first()
         )
         assert member_join is None
 
     def test_remove_member_from_tenant_operate_self(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test removing member when trying to operate self.
@@ -1810,7 +1851,9 @@ class TestTenantService:
         with pytest.raises(Exception, match="Cannot operate self"):
             TenantService.remove_member_from_tenant(tenant, account, account)
 
-    def test_remove_member_from_tenant_not_member(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_remove_member_from_tenant_not_member(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test removing member who is not in the tenant.
         """
@@ -1849,7 +1892,7 @@ class TestTenantService:
         with pytest.raises(Exception, match="Member not in tenant"):
             TenantService.remove_member_from_tenant(tenant, non_member_account, owner_account)
 
-    def test_update_member_role_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_member_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful member role update.
         """
@@ -1889,15 +1932,16 @@ class TestTenantService:
         TenantService.update_member_role(tenant, member_account, "admin", owner_account)
 
         # Verify role was updated
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
         member_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=member_account.id)
+            .first()
         )
         assert member_join.role == "admin"
 
-    def test_update_member_role_to_owner(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_member_role_to_owner(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test updating member role to owner (should change current owner to admin).
         """
@@ -1937,19 +1981,24 @@ class TestTenantService:
         TenantService.update_member_role(tenant, member_account, "owner", owner_account)
 
         # Verify roles were updated correctly
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
         owner_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=owner_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=owner_account.id)
+            .first()
         )
         member_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=member_account.id)
+            .first()
         )
         assert owner_join.role == "admin"
         assert member_join.role == "owner"
 
-    def test_update_member_role_already_assigned(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_update_member_role_already_assigned(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test updating member role to already assigned role.
         """
@@ -1989,7 +2038,7 @@ class TestTenantService:
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
             TenantService.update_member_role(tenant, member_account, "admin", owner_account)
 
-    def test_get_tenant_count_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_tenant_count_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting tenant count successfully.
         """
@@ -2014,7 +2063,7 @@ class TestTenantService:
         assert tenant_count >= 3
 
     def test_create_owner_tenant_if_not_exist_new_user(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant for new user without existing tenants.
@@ -2044,17 +2093,16 @@ class TestTenantService:
         TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name)
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
         assert account.current_tenant.name == workspace_name
 
     def test_create_owner_tenant_if_not_exist_existing_tenant(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant when user already has a tenant.
@@ -2083,20 +2131,19 @@ class TestTenantService:
         existing_tenant = TenantService.create_tenant(name=existing_tenant_name)
         TenantService.create_tenant_member(existing_tenant, account, role="owner")
         account.current_tenant = existing_tenant
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Try to create owner tenant again (should not create new one)
         TenantService.create_owner_tenant_if_not_exist(account, name=new_workspace_name)
 
         # Verify no new tenant was created
-        tenant_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).all()
+        tenant_joins = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).all()
         assert len(tenant_joins) == 1
         assert account.current_tenant.id == existing_tenant.id
 
     def test_create_owner_tenant_if_not_exist_workspace_disabled(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant when workspace creation is disabled.
@@ -2123,7 +2170,7 @@ class TestTenantService:
         with pytest.raises(WorkSpaceNotAllowedCreateError):  # WorkSpaceNotAllowedCreateError exception
             TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name)
 
-    def test_get_tenant_members_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_tenant_members_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting tenant members successfully.
         """
@@ -2187,7 +2234,9 @@ class TestTenantService:
             elif member.email == normal_email:
                 assert member.role == "normal"
 
-    def test_get_dataset_operator_members_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_dataset_operator_members_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test getting dataset operator members successfully.
         """
@@ -2240,7 +2289,7 @@ class TestTenantService:
         assert dataset_operators[0].email == operator_email
         assert dataset_operators[0].role == "dataset_operator"
 
-    def test_get_custom_config_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_custom_config_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting custom config successfully.
         """
@@ -2259,9 +2308,8 @@ class TestTenantService:
         # Set custom config
         custom_config = {"theme": theme, "language": language, "feature_flags": {"beta": True}}
         tenant.custom_config_dict = custom_config
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Get custom config
         retrieved_config = TenantService.get_custom_config(tenant.id)
@@ -2296,7 +2344,7 @@ class TestRegisterService:
                 "passport_service": mock_passport_service,
             }
 
-    def test_setup_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_setup_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful system setup with account creation and tenant setup.
         """
@@ -2309,11 +2357,10 @@ class TestRegisterService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
-        from extensions.ext_database import db
         from models.model import DifySetup
 
-        db.session.query(DifySetup).delete()
-        db.session.commit()
+        db_session_with_containers.query(DifySetup).delete()
+        db_session_with_containers.commit()
 
         # Execute setup
         RegisterService.setup(
@@ -2327,7 +2374,7 @@ class TestRegisterService:
         # Verify account was created
         from models import Account
 
-        account = db.session.query(Account).filter_by(email=admin_email).first()
+        account = db_session_with_containers.query(Account).filter_by(email=admin_email).first()
         assert account is not None
         assert account.name == admin_name
         assert account.last_login_ip == ip_address
@@ -2335,17 +2382,17 @@ class TestRegisterService:
         assert account.status == "active"
 
         # Verify DifySetup was created
-        dify_setup = db.session.query(DifySetup).first()
+        dify_setup = db_session_with_containers.query(DifySetup).first()
         assert dify_setup is not None
 
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
-    def test_setup_failure_rollback(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_setup_failure_rollback(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test setup failure with proper rollback of all created entities.
         """
@@ -2373,21 +2420,20 @@ class TestRegisterService:
                 )
 
             # Verify no entities were created (rollback worked)
-            from extensions.ext_database import db
             from models import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
-            account = db.session.query(Account).filter_by(email=admin_email).first()
-            tenant_count = db.session.query(Tenant).count()
-            tenant_join_count = db.session.query(TenantAccountJoin).count()
-            dify_setup_count = db.session.query(DifySetup).count()
+            account = db_session_with_containers.query(Account).filter_by(email=admin_email).first()
+            tenant_count = db_session_with_containers.query(Tenant).count()
+            tenant_join_count = db_session_with_containers.query(TenantAccountJoin).count()
+            dify_setup_count = db_session_with_containers.query(DifySetup).count()
 
             assert account is None
             assert tenant_count == 0
             assert tenant_join_count == 0
             assert dify_setup_count == 0
 
-    def test_register_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful account registration with workspace creation.
         """
@@ -2421,16 +2467,15 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
         assert account.current_tenant.name == f"{name}'s Workspace"
 
-    def test_register_with_oauth(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_with_oauth(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test account registration with OAuth integration.
         """
@@ -2467,14 +2512,19 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify OAuth integration was created
-        from extensions.ext_database import db
         from models import AccountIntegrate
 
-        integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
+        integration = (
+            db_session_with_containers.query(AccountIntegrate)
+            .filter_by(account_id=account.id, provider=provider)
+            .first()
+        )
         assert integration is not None
         assert integration.open_id == open_id
 
-    def test_register_with_pending_status(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_with_pending_status(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account registration with pending status.
         """
@@ -2511,14 +2561,15 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
-    def test_register_workspace_creation_disabled(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_workspace_creation_disabled(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account registration when workspace creation is disabled.
         """
@@ -2549,13 +2600,14 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_register_workspace_limit_exceeded(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_workspace_limit_exceeded(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test account registration when workspace limit is exceeded.
         """
@@ -2589,13 +2641,12 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify tenant was created and linked
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_register_without_workspace(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_register_without_workspace(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test account registration without workspace creation.
         """
@@ -2624,13 +2675,14 @@ class TestRegisterService:
         assert account.initialized_at is not None
 
         # Verify no tenant was created
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
-        tenant_join = db.session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_invite_new_member_new_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_invite_new_member_new_account(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test inviting a new member who doesn't have an account yet.
         """
@@ -2682,22 +2734,25 @@ class TestRegisterService:
             mock_send_mail.delay.assert_called_once()
 
         # Verify new account was created with pending status
-        from extensions.ext_database import db
         from models import Account, TenantAccountJoin
 
-        new_account = db.session.query(Account).filter_by(email=new_member_email).first()
+        new_account = db_session_with_containers.query(Account).filter_by(email=new_member_email).first()
         assert new_account is not None
         assert new_account.name == new_member_email.split("@")[0]  # Default name from email
         assert new_account.status == "pending"
 
         # Verify tenant member was created
         tenant_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=new_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=new_account.id)
+            .first()
         )
         assert tenant_join is not None
         assert tenant_join.role == "normal"
 
-    def test_invite_new_member_existing_account(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_invite_new_member_existing_account(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test inviting an existing member who is not in the tenant yet.
         """
@@ -2749,16 +2804,19 @@ class TestRegisterService:
             mock_send_mail.delay.assert_not_called()
 
         # Verify tenant member was created for existing account
-        from extensions.ext_database import db
         from models.account import TenantAccountJoin
 
         tenant_join = (
-            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=existing_account.id).first()
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=existing_account.id)
+            .first()
         )
         assert tenant_join is not None
         assert tenant_join.role == "admin"
 
-    def test_invite_new_member_existing_member(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_invite_new_member_existing_member(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test inviting a member who is already in the tenant with pending status.
         """
@@ -2793,9 +2851,8 @@ class TestRegisterService:
             password=existing_pending_member_password,
         )
         existing_account.status = "pending"
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Add existing account to tenant
         TenantService.create_tenant_member(tenant, existing_account, role="normal")
@@ -2820,7 +2877,9 @@ class TestRegisterService:
             # Verify email task was called
             mock_send_mail.delay.assert_called_once()
 
-    def test_invite_new_member_no_inviter(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_invite_new_member_no_inviter(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test inviting a member without providing an inviter.
         """
@@ -2846,7 +2905,7 @@ class TestRegisterService:
             )
 
     def test_invite_new_member_account_already_in_tenant(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test inviting a member who is already in the tenant with active status.
@@ -2882,9 +2941,8 @@ class TestRegisterService:
             password=already_in_tenant_password,
         )
         existing_account.status = "active"
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Add existing account to tenant
         TenantService.create_tenant_member(tenant, existing_account, role="normal")
@@ -2899,7 +2957,9 @@ class TestRegisterService:
                 inviter=inviter,
             )
 
-    def test_generate_invite_token_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_generate_invite_token_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful generation of invite token.
         """
@@ -2943,7 +3003,7 @@ class TestRegisterService:
         assert invitation_data["email"] == account.email
         assert invitation_data["workspace_id"] == tenant.id
 
-    def test_is_valid_invite_token_valid(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_is_valid_invite_token_valid(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test validation of valid invite token.
         """
@@ -2974,7 +3034,9 @@ class TestRegisterService:
         # Verify token is valid
         assert is_valid is True
 
-    def test_is_valid_invite_token_invalid(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_is_valid_invite_token_invalid(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test validation of invalid invite token.
         """
@@ -2987,7 +3049,7 @@ class TestRegisterService:
         assert is_valid is False
 
     def test_revoke_token_with_workspace_and_email(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test revoking token with workspace ID and email.
@@ -3030,7 +3092,7 @@ class TestRegisterService:
         assert redis_client.get(token_key) is not None
 
     def test_revoke_token_without_workspace_and_email(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test revoking token without workspace ID and email.
@@ -3073,7 +3135,7 @@ class TestRegisterService:
         assert redis_client.get(token_key) is None
 
     def test_get_invitation_if_token_valid_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with valid token.
@@ -3122,7 +3184,7 @@ class TestRegisterService:
         assert result["data"]["workspace_id"] == tenant.id
 
     def test_get_invitation_if_token_valid_invalid_token(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with invalid token.
@@ -3142,7 +3204,7 @@ class TestRegisterService:
         assert result is None
 
     def test_get_invitation_if_token_valid_invalid_tenant(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with invalid tenant.
@@ -3192,7 +3254,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_if_token_valid_account_mismatch(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with account ID mismatch.
@@ -3242,7 +3304,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_if_token_valid_tenant_not_normal(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with tenant not in normal status.
@@ -3269,9 +3331,8 @@ class TestRegisterService:
 
         # Change tenant status to non-normal
         tenant.status = "suspended"
-        from extensions.ext_database import db
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Create a real token
         from extensions.ext_redis import redis_client
@@ -3300,7 +3361,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_by_token_with_workspace_and_email(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation by token with workspace ID and email.
@@ -3339,7 +3400,7 @@ class TestRegisterService:
         redis_client.delete(cache_key)
 
     def test_get_invitation_by_token_without_workspace_and_email(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation by token without workspace ID and email.
@@ -3372,7 +3433,7 @@ class TestRegisterService:
         # Clean up
         redis_client.delete(token_key)
 
-    def test_get_invitation_token_key(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_invitation_token_key(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test getting invitation token key.
         """
