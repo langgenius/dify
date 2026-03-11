@@ -4568,11 +4568,6 @@
       "count": 5
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-name/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
