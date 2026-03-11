@@ -89,9 +89,13 @@ export const ToastProvider = ({
 
   useEffect(() => {
     if (mounted) {
-      setTimeout(() => {
+      const d = params.duration ?? defaultDuring
+      if (d <= 0)
+        return
+      const timer = setTimeout(() => {
         setMounted(false)
-      }, params.duration || defaultDuring)
+      }, d)
+      return () => clearTimeout(timer)
     }
   }, [defaultDuring, mounted, params.duration])
 
