@@ -16,7 +16,7 @@ from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.file import File
-from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, ToolPromptMessage
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
 
@@ -207,8 +207,23 @@ class ChatAppRunner(AppRunner):
         if hosting_moderation_result:
             return
 
+        tool_results = getattr(application_generate_entity, "tool_results", None)
+        if tool_results:
+            for tool_result in tool_results:
+                prompt_messages.append(
+                    ToolPromptMessage(
+                        content=tool_result.output,
+                        tool_call_id=tool_result.tool_call_id,
+                    )
+                )
+
         # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
         self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
+
+        model_parameters = dict(application_generate_entity.model_conf.parameters)
+        tool_choice = getattr(application_generate_entity, "tool_choice", None)
+        if tool_choice is not None:
+            model_parameters["tool_choice"] = tool_choice
 
         # Invoke model
         model_instance = ModelInstance(
@@ -220,7 +235,8 @@ class ChatAppRunner(AppRunner):
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
-            model_parameters=application_generate_entity.model_conf.parameters,
+            model_parameters=model_parameters,
+            tools=getattr(application_generate_entity, "tools", None),
             stop=stop,
             stream=application_generate_entity.stream,
             user=application_generate_entity.user_id,

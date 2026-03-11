@@ -329,6 +329,23 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
+  // external tool callback
+  const handleExternalToolCallbackEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.external_tool_callback_enabled = enabled
+      if (enabled && !draft.max_tool_call_rounds)
+        draft.max_tool_call_rounds = 10
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleMaxToolCallRoundsChange = useCallback((rounds: number) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.max_tool_call_rounds = rounds
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   const {
     availableVars,
     availableNodesWithParent,
@@ -370,6 +387,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    handleExternalToolCallbackEnabledChange,
+    handleMaxToolCallRoundsChange,
   }
 }
 
