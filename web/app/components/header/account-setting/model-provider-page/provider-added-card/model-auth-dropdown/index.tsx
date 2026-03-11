@@ -17,17 +17,17 @@ type ModelAuthDropdownProps = {
   onChangePriority: (key: PreferredProviderTypeEnum) => void
 }
 
-const ACCENT_VARIANTS = new Set<CardVariant>([
-  'api-required-add',
-  'api-required-configure',
-])
-
 function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key: string, opts?: Record<string, string>) => string) {
-  if (ACCENT_VARIANTS.has(variant)) {
+  if (variant === 'api-required-add') {
     return {
-      text: variant === 'api-required-add'
-        ? t('modelProvider.auth.addApiKey', { ns: 'common' })
-        : t('operation.config', { ns: 'common' }),
+      text: t('modelProvider.auth.addApiKey', { ns: 'common' }),
+      variant: 'primary' as const,
+    }
+  }
+
+  if (variant === 'api-required-configure') {
+    return {
+      text: t('operation.config', { ns: 'common' }),
       variant: 'secondary-accent' as const,
     }
   }
