@@ -1,67 +1,41 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
-import type { VariantProps } from 'class-variance-authority'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
-import { cva } from 'class-variance-authority'
 import { cn } from '@/utils/classnames'
 
-export const avatarVariants = cva(
-  'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600',
-  {
-    variants: {
-      size: {
-        'xxs': 'size-4',
-        'xs': 'size-5',
-        'sm': 'size-6',
-        'md': 'size-8',
-        'lg': 'size-9',
-        'xl': 'size-10',
-        '2xl': 'size-12',
-        '3xl': 'size-16',
-      },
-    },
-    defaultVariants: {
-      size: 'md',
-    },
-  },
-)
+const SIZES = {
+  'xxs': { root: 'size-4', text: 'text-[7px]' },
+  'xs': { root: 'size-5', text: 'text-[8px]' },
+  'sm': { root: 'size-6', text: 'text-[10px]' },
+  'md': { root: 'size-8', text: 'text-xs' },
+  'lg': { root: 'size-9', text: 'text-sm' },
+  'xl': { root: 'size-10', text: 'text-base' },
+  '2xl': { root: 'size-12', text: 'text-xl' },
+  '3xl': { root: 'size-16', text: 'text-2xl' },
+} as const
 
-const fallbackTextVariants = cva(
-  'font-medium text-white',
-  {
-    variants: {
-      size: {
-        'xxs': 'text-[7px]',
-        'xs': 'text-[8px]',
-        'sm': 'text-[10px]',
-        'md': 'text-xs',
-        'lg': 'text-sm',
-        'xl': 'text-base',
-        '2xl': 'text-xl',
-        '3xl': 'text-2xl',
-      },
-    },
-    defaultVariants: {
-      size: 'md',
-    },
-  },
-)
+export type AvatarSize = keyof typeof SIZES
 
 export type AvatarProps = {
   name: string
   avatar: string | null
+  size?: AvatarSize
   className?: string
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
-} & VariantProps<typeof avatarVariants>
+}
+
+const BASE_CLASS = 'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600'
 
 export const Avatar = ({
   name,
   avatar,
-  size,
+  size = 'md',
   className,
   onLoadingStatusChange,
 }: AvatarProps) => {
+  const sizeConfig = SIZES[size]
+
   return (
-    <BaseAvatar.Root className={cn(avatarVariants({ size }), className)}>
+    <BaseAvatar.Root className={cn(BASE_CLASS, sizeConfig.root, className)}>
       {avatar && (
         <BaseAvatar.Image
           src={avatar}
@@ -70,7 +44,7 @@ export const Avatar = ({
           onLoadingStatusChange={onLoadingStatusChange}
         />
       )}
-      <BaseAvatar.Fallback className={fallbackTextVariants({ size })}>
+      <BaseAvatar.Fallback className={cn('font-medium text-white', sizeConfig.text)}>
         {name?.[0]?.toLocaleUpperCase()}
       </BaseAvatar.Fallback>
     </BaseAvatar.Root>
