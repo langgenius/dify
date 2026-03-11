@@ -6,7 +6,7 @@ type WithIconListProps = WithIconCardListProps & {
   children?: ReactNode
 }
 
-function WithIconList({ children, className }: WithIconListProps) {
+function WithIconCardList({ children, className }: WithIconListProps) {
   return (
     <div className={cn('space-y-1', className)}>
       {children}
@@ -14,4 +14,4 @@ function WithIconList({ children, className }: WithIconListProps) {
   )
 }
 
-export default WithIconList
+export default WithIconCardList

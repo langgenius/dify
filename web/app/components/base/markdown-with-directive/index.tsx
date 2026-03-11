@@ -1,3 +1,5 @@
+'use client'
+import type { ReactNode } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import DOMPurify from 'dompurify'
 import remarkDirective from 'remark-directive'
@@ -13,7 +15,7 @@ function WithIconCardListAdapter(props: Record<string, unknown>) {
   const { children, className } = props
   return (
     <WithIconCardList
-      children={children as React.ReactNode}
+      children={children as ReactNode}
       className={typeof className === 'string' ? className : undefined}
     />
   )
@@ -27,7 +29,7 @@ function WithIconCardItemAdapter(props: Record<string, unknown>) {
       icon={typeof icon === 'string' ? icon : ''}
       className={typeof className === 'string' ? className : undefined}
     >
-      {children as React.ReactNode}
+      {children as ReactNode}
     </WithIconCardItem>
   )
 }

@@ -350,9 +350,6 @@ importers:
       tldts:
         specifier: 7.0.25
         version: 7.0.25
-      ufo:
-        specifier: 1.6.3
-        version: 1.6.3
       unist-util-visit:
         specifier: 5.1.0
         version: 5.1.0
@@ -8135,7 +8132,7 @@ snapshots:
   '@code-inspector/core@1.4.4':
     dependencies:
       '@vue/compiler-dom': 3.5.30
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
       launch-ide: 1.4.3
       portfinder: 1.0.38
@@ -12986,7 +12983,7 @@ snapshots:
 
   launch-ide@1.4.3:
     dependencies:
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
 
   layout-base@1.0.2: {}

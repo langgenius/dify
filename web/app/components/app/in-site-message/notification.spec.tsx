@@ -22,16 +22,20 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('@/service/client', () => ({
-  consoleClient: {
-    notification: (...args: unknown[]) => mockNotification(...args),
-    notificationDismiss: (...args: unknown[]) => mockNotificationDismiss(...args),
-  },
   consoleQuery: {
     notification: {
-      queryKey: () => ['console', 'notification'],
+      queryOptions: (options?: Record<string, unknown>) => ({
+        queryKey: ['console', 'notification'],
+        queryFn: (...args: unknown[]) => mockNotification(...args),
+        ...options,
+      }),
     },
     notificationDismiss: {
-      mutationKey: () => ['console', 'notificationDismiss'],
+      mutationOptions: (options?: Record<string, unknown>) => ({
+        mutationKey: ['console', 'notificationDismiss'],
+        mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+        ...options,
+      }),
     },
   },
 }))
@@ -131,11 +135,16 @@ describe('InSiteMessageNotification', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss now' }))
       await waitFor(() => {
-        expect(mockNotificationDismiss).toHaveBeenCalledWith({
-          body: {
-            notification_id: 'n-1',
+        expect(mockNotificationDismiss).toHaveBeenCalledWith(
+          {
+            body: {
+              notification_id: 'n-1',
+            },
           },
-        })
+          expect.objectContaining({
+            mutationKey: ['console', 'notificationDismiss'],
+          }),
+        )
       })
     })
 
@@ -164,11 +173,16 @@ describe('InSiteMessageNotification', () => {
       fireEvent.click(closeButton)
 
       await waitFor(() => {
-        expect(mockNotificationDismiss).toHaveBeenCalledWith({
-          body: {
-            notification_id: 'n-2',
+        expect(mockNotificationDismiss).toHaveBeenCalledWith(
+          {
+            body: {
+              notification_id: 'n-2',
+            },
           },
-        })
+          expect.objectContaining({
+            mutationKey: ['console', 'notificationDismiss'],
+          }),
+        )
       })
     })
 
