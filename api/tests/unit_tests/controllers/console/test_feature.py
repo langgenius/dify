@@ -1,3 +1,6 @@
+import base64
+import json
+
 from werkzeug.exceptions import Unauthorized
 
 
@@ -34,7 +37,8 @@ class TestFeatureApi:
 class TestSystemFeatureApi:
     def test_get_system_features_authenticated(self, mocker):
         """
-        current_user.is_authenticated == True
+        current_user.is_authenticated == True.
+        Response is Base64-obfuscated: {"d": "<base64-encoded JSON>"}.
         """
 
         from controllers.console.feature import SystemFeatureApi
@@ -54,11 +58,14 @@ class TestSystemFeatureApi:
         api = SystemFeatureApi()
         result = api.get()
 
-        assert result == {"features": {"sys_feature": True}}
+        assert set(result.keys()) == {"d"}
+        decoded = json.loads(base64.b64decode(result["d"]).decode("utf-8"))
+        assert decoded == {"features": {"sys_feature": True}}
 
     def test_get_system_features_unauthenticated(self, mocker):
         """
-        current_user.is_authenticated raises Unauthorized
+        current_user.is_authenticated raises Unauthorized.
+        Response is still Base64-obfuscated: {"d": "<base64-encoded JSON>"}.
         """
 
         from controllers.console.feature import SystemFeatureApi
@@ -78,4 +85,6 @@ class TestSystemFeatureApi:
         api = SystemFeatureApi()
         result = api.get()
 
-        assert result == {"features": {"sys_feature": False}}
+        assert set(result.keys()) == {"d"}
+        decoded = json.loads(base64.b64decode(result["d"]).decode("utf-8"))
+        assert decoded == {"features": {"sys_feature": False}}
