@@ -2260,11 +2260,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
     "ts/no-explicit-any": {
       "count": 2

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { Dependency, PluginDeclaration } from '../../../types'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -34,34 +33,34 @@ const Uploading: FC<Props> = ({
   const fileName = file.name
   const handleUpload = async () => {
     try {
-      await uploadFile(file, isBundle)
+      // eslint-disable-next-line ts/no-explicit-any
+      const res: any = await uploadFile(file, isBundle)
+      if (isBundle) {
+        onBundleUploaded(res)
+        return
+      }
+      onPackageUploaded({
+        uniqueIdentifier: res.unique_identifier,
+        manifest: res.manifest,
+      })
     }
+    // eslint-disable-next-line ts/no-explicit-any
     catch (e: any) {
       if (e.response?.message) {
         onFailed(e.response?.message)
-      }
-      else { // Why it would into this branch?
-        const res = e.response
-        if (isBundle) {
-          onBundleUploaded(res)
-          return
-        }
-        onPackageUploaded({
-          uniqueIdentifier: res.unique_identifier,
-          manifest: res.manifest,
-        })
       }
     }
   }
 
   React.useEffect(() => {
     handleUpload()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="flex items-center gap-1 self-stretch">
-          <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
+          <span className="i-ri-loader-2-line h-4 w-4 animate-spin-slow text-text-accent" />
           <div className="text-text-secondary system-md-regular">
             {t(`${i18nPrefix}.uploadingPackage`, {
               ns: 'plugin',
@@ -72,6 +71,7 @@ const Uploading: FC<Props> = ({
         <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
             className="w-full"
+            // eslint-disable-next-line ts/no-explicit-any
             payload={{ name: fileName } as any}
             isLoading
             loadingFileName={fileName}
