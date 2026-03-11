@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from libs.attr_map import AttrMap
 
@@ -14,6 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 class Sandbox:
+    """Represents a single sandbox environment.
+
+    Each ``Sandbox`` owns a stable, path-safe ``id`` (a 32-char hex
+    UUID4) that is independent of the underlying provider's environment
+    ID.  Use ``sandbox.id`` for any path or resource namespacing
+    (e.g. ``DifyCli(sandbox.id)``).
+
+    The raw provider identifier is still accessible via
+    ``sandbox.vm.metadata.id`` when needed (logging, API calls back to
+    the provider, etc.).
+    """
+
     def __init__(
         self,
         *,
@@ -24,6 +37,7 @@ class Sandbox:
         app_id: str,
         assets_id: str,
     ) -> None:
+        self._id = uuid4().hex
         self._vm = vm
         self._storage = storage
         self._tenant_id = tenant_id
@@ -34,6 +48,11 @@ class Sandbox:
         self._ready_event = threading.Event()
         self._cancel_event = threading.Event()
         self._init_error: Exception | None = None
+
+    @property
+    def id(self) -> str:
+        """Stable, path-safe identifier for this sandbox (UUID4 hex)."""
+        return self._id
 
     @property
     def attrs(self) -> AttrMap:
@@ -100,7 +119,7 @@ class Sandbox:
 
     def release(self) -> None:
         self.cancel_init()
-        sandbox_id = self._vm.metadata.id
+        sandbox_id = self.id
         try:
             self._storage.unmount(self._vm)
             logger.info("Sandbox storage unmounted: sandbox_id=%s", sandbox_id)

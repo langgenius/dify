@@ -46,9 +46,9 @@ class SandboxManager:
             cls._shards[shard_index] = new_shard
 
         logger.debug(
-            "Registered sandbox: sandbox_id=%s, vm_id=%s, app_id=%s",
+            "Registered sandbox: sandbox_id=%s, id=%s, app_id=%s",
             sandbox_id,
-            sandbox.vm.metadata.id,
+            sandbox.id,
             sandbox.app_id,
         )
 
@@ -71,9 +71,9 @@ class SandboxManager:
             cls._shards[shard_index] = new_shard
 
         logger.debug(
-            "Unregistered sandbox: sandbox_id=%s, vm_id=%s",
+            "Unregistered sandbox: sandbox_id=%s, id=%s",
             sandbox_id,
-            sandbox.vm.metadata.id,
+            sandbox.id,
         )
         return sandbox
 

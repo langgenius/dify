@@ -47,15 +47,16 @@ class SandboxBashSession:
     def __enter__(self) -> SandboxBashSession:
         # Ensure sandbox initialization completes before any bash commands run.
         self._sandbox.wait_ready(timeout=SANDBOX_READY_TIMEOUT)
+        cli = DifyCli(self._sandbox.id)
         self._cli_api_session = CliApiSessionManager().create(
             tenant_id=self._tenant_id,
             user_id=self._user_id,
             context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(self._tools)),
         )
         if self._tools is not None and not self._tools.is_empty():
-            tools_path = self._setup_node_tools_directory(self._node_id, self._tools, self._cli_api_session)
+            tools_path = self._setup_node_tools_directory(cli, self._node_id, self._tools, self._cli_api_session)
         else:
-            tools_path = DifyCli.GLOBAL_TOOLS_PATH
+            tools_path = cli.global_tools_path
 
         self._bash_tool = SandboxBashTool(
             sandbox=self._sandbox.vm,
@@ -66,11 +67,12 @@ class SandboxBashSession:
 
     def _setup_node_tools_directory(
         self,
+        cli: DifyCli,
         node_id: str,
         tools: ToolDependencies,
         cli_api_session: CliApiSession,
     ) -> str:
-        node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
+        node_tools_path = f"{cli.tools_root}/{node_id}"
         config_json = json.dumps(
             DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, tool_deps=tools).model_dump(
                 mode="json"
@@ -83,7 +85,7 @@ class SandboxBashSession:
         # Merge mkdir + config write into a single pipeline to reduce round-trips.
         (
             pipeline(vm)
-            .add(["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
+            .add(["mkdir", "-p", cli.global_tools_path], error_message="Failed to create global tools dir")
             .add(["mkdir", "-p", node_tools_path], error_message="Failed to create node tools dir")
             # Use a quoted heredoc (<<'EOF') so the shell performs no expansion on the
             # content — safe regardless of $, `, \, or quotes inside the JSON.
@@ -95,7 +97,7 @@ class SandboxBashSession:
         )
 
         pipeline(vm, cwd=node_tools_path).add(
-            [DifyCli.PATH, "init"], error_message="Failed to initialize Dify CLI"
+            [cli.bin_path, "init"], error_message="Failed to initialize Dify CLI"
         ).execute(raise_on_error=True)
 
         logger.info(

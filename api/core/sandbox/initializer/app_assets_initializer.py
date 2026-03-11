@@ -18,6 +18,7 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
 
         # Load published app assets and unzip the artifact bundle.
         vm = sandbox.vm
+        assets = AppAssets(sandbox.id)
         asset_storage = AppAssetService.get_storage()
         key = AssetPaths.build_zip(ctx.tenant_id, ctx.app_id, ctx.assets_id)
         download_url = asset_storage.get_download_url(key)
@@ -25,7 +26,7 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         (
             pipeline(vm)
             .add(
-                ["curl", "-fsSL", download_url, "-o", AppAssets.ZIP_PATH],
+                ["curl", "-fsSL", download_url, "-o", assets.zip_path],
                 error_message="Failed to download assets zip",
             )
             # Create the assets directory first to ensure it exists even if zip is empty
@@ -36,7 +37,7 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {AppAssets.ZIP_PATH} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", f"unzip {assets.zip_path} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
             # Ensure directories have execute permission for traversal and files are readable

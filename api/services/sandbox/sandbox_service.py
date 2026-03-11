@@ -60,7 +60,7 @@ class SandboxService:
             .build()
         )
 
-        logger.info("Sandbox created: id=%s, assets=%s", sandbox.vm.metadata.id, sandbox.assets_id)
+        logger.info("Sandbox created: id=%s, assets=%s", sandbox.id, sandbox.assets_id)
         return sandbox
 
     @classmethod
@@ -101,7 +101,7 @@ class SandboxService:
             .build()
         )
 
-        logger.info("Draft sandbox created: id=%s, assets=%s", sandbox.vm.metadata.id, sandbox.assets_id)
+        logger.info("Draft sandbox created: id=%s, assets=%s", sandbox.id, sandbox.assets_id)
         return sandbox
 
     @classmethod
@@ -135,5 +135,5 @@ class SandboxService:
             .build()
         )
 
-        logger.info("Single-step sandbox created: id=%s, assets=%s", sandbox.vm.metadata.id, sandbox.assets_id)
+        logger.info("Single-step sandbox created: id=%s, assets=%s", sandbox.id, sandbox.assets_id)
         return sandbox
