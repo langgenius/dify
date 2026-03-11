@@ -1,7 +1,7 @@
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
@@ -134,6 +134,34 @@ describe('WorkplaceSelector', () => {
           message: 'common.provider.saveFailed',
         })
       })
+    })
+  })
+
+  describe('Edge Cases', () => {
+    // find() returns undefined: no workspace with current: true
+    it('should not crash when no workspace has current: true', () => {
+      // Arrange
+      vi.mocked(useWorkspacesContext).mockReturnValue({
+        workspaces: [
+          { id: '1', name: 'Workspace 1', current: false, plan: 'professional', status: 'normal', created_at: Date.now() },
+        ],
+      })
+
+      // Act & Assert - should not throw
+      expect(() => renderComponent()).not.toThrow()
+    })
+
+    // name[0]?.toLocaleUpperCase() undefined: workspace with empty name
+    it('should not crash when workspace name is empty string', () => {
+      // Arrange
+      vi.mocked(useWorkspacesContext).mockReturnValue({
+        workspaces: [
+          { id: '1', name: '', current: true, plan: 'sandbox', status: 'normal', created_at: Date.now() },
+        ],
+      })
+
+      // Act & Assert - should not throw
+      expect(() => renderComponent()).not.toThrow()
     })
   })
 })

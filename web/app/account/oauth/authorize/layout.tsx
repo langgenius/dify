@@ -2,7 +2,7 @@
 import Loading from '@/app/components/base/loading'
 
 import Header from '@/app/signin/_header'
-import { AppContextProvider } from '@/context/app-context'
+import { AppContextProvider } from '@/context/app-context-provider'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useIsLogin } from '@/service/use-common'
@@ -38,7 +38,7 @@ export default function SignInLayout({ children }: any) {
             </div>
           </div>
           {systemFeatures.branding.enabled === false && (
-            <div className="system-xs-regular px-8 py-6 text-text-tertiary">
+            <div className="px-8 py-6 text-text-tertiary system-xs-regular">
               ©
               {' '}
               {new Date().getFullYear()}

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from core.workflow.nodes.human_input.entities import FormDefinition, UserAction
+from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
 from models.account import Account, Tenant, TenantAccountJoin
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormStatus
