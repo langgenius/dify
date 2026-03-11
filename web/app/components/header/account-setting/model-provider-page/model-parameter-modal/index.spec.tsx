@@ -49,7 +49,7 @@ vi.mock('@/service/use-common', () => ({
     data: {
       data: parameterRules,
     },
-    isPending: isRulesLoading,
+    isLoading: isRulesLoading,
   }),
 }))
 

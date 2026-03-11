@@ -19,10 +19,8 @@ import {
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import { useProviderContext } from '@/context/provider-context'
 import { useModelParameterRules } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
-import { ModelStatusEnum } from '../declarations'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '../hooks'
@@ -66,7 +64,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
 }) => {
   const { t } = useTranslation()
-  const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const {
@@ -76,9 +73,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
-  const hasDeprecated = !currentProvider || !currentModel
-  const modelDisabled = currentModel?.status !== ModelStatusEnum.active
-  const disabled = !isAPIKeySet || hasDeprecated || modelDisabled
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -143,9 +137,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               renderTrigger
                 ? renderTrigger({
                     open,
-                    disabled,
-                    modelDisabled,
-                    hasDeprecated,
                     currentProvider,
                     currentModel,
                     providerName: provider,
@@ -153,10 +144,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   })
                 : (
                     <Trigger
-                      disabled={disabled}
                       isInWorkflow={isInWorkflow}
-                      modelDisabled={modelDisabled}
-                      hasDeprecated={hasDeprecated}
                       currentProvider={currentProvider}
                       currentModel={currentModel}
                       providerName={provider}

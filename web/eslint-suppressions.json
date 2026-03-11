@@ -4625,11 +4625,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/model-provider-page/model-selector/feature-icon.tsx": {
     "no-restricted-imports": {
       "count": 1
