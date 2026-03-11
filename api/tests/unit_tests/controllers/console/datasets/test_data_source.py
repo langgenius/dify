@@ -142,6 +142,29 @@ class TestDataSourceApi:
             with pytest.raises(NotFound):
                 method(api, "b1", "enable")
 
+    def test_patch_binding_scoped_to_current_tenant(self, app, patch_tenant, mock_engine):
+        api = DataSourceApi()
+        method = unwrap(api.patch)
+
+        binding = MagicMock(id="b1", disabled=True)
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.db.session.add"),
+            patch("controllers.console.datasets.data_source.db.session.commit"),
+        ):
+            mock_session = MagicMock()
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session.execute.return_value.scalar_one_or_none.return_value = binding
+
+            method(api, "b1", "enable")
+
+        statement = mock_session.execute.call_args.args[0]
+        compiled = str(statement)
+        assert "tenant_id" in compiled
+        assert "id" in compiled
+
     def test_patch_enable_already_enabled(self, app, patch_tenant, mock_engine):
         api = DataSourceApi()
         method = unwrap(api.patch)
