@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
@@ -65,6 +66,7 @@ const CodeEditor: FC<Props> = ({
   tip,
   footer,
 }) => {
+  const { t } = useTranslation()
   const [isFocus, setIsFocus] = React.useState(false)
   const minHeight = height || 200
   const [editorContentHeight, setEditorContentHeight] = useState(56)
@@ -127,6 +129,7 @@ const CodeEditor: FC<Props> = ({
         onFocus={handleEditorFocus}
         onBlur={handleEditorBlur}
         onReady={handleEditorDidMount}
+        loading={<span className="text-text-primary">{t('loading', { ns: 'common' })}</span>}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{
           quickSuggestions: false,

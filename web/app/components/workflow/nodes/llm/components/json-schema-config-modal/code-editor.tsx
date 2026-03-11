@@ -91,6 +91,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           onReady={handleEditorReady}
           onFocus={onFocus}
           onBlur={onBlur}
+          loading={<span className="text-text-primary">{t('loading', { ns: 'common' })}</span>}
           options={{
             scrollBeyondLastLine: false,
             wrappingIndent: 'same',

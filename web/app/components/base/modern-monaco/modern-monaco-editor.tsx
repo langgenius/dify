@@ -3,7 +3,7 @@
 import type { editor as MonacoEditor } from 'modern-monaco/editor-core'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -18,12 +18,18 @@ type ModernMonacoEditorProps = {
   onFocus?: () => void
   onBlur?: () => void
   onReady?: (editor: MonacoEditor.IStandaloneCodeEditor, monaco: typeof import('modern-monaco/editor-core')) => void
+  loading?: React.ReactNode
   className?: string
   style?: React.CSSProperties
 }
 
 type MonacoModule = typeof import('modern-monaco/editor-core')
 type EditorCallbacks = Pick<ModernMonacoEditorProps, 'onBlur' | 'onChange' | 'onFocus' | 'onReady'>
+type EditorSetup = {
+  editorOptions: MonacoEditor.IEditorOptions
+  language: string
+  resolvedTheme: string
+}
 
 const createEditorModel = (monaco: MonacoModule, value: string, language: string) => {
   return monaco.editor.createModel(value, language)
@@ -99,11 +105,13 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   onFocus,
   onBlur,
   onReady,
+  loading,
   className,
   style,
 }) => {
   const { theme: appTheme } = useTheme()
   const resolvedTheme = appTheme === Theme.light ? LIGHT_THEME_ID : DARK_THEME_ID
+  const [isEditorReady, setIsEditorReady] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<MonacoEditor.ITextModel | null>(null)
@@ -122,6 +130,11 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     tabFocusMode: false,
     ...options,
   }), [readOnly, options])
+  const setupRef = useRef<EditorSetup>({
+    editorOptions,
+    language,
+    resolvedTheme,
+  })
 
   useEffect(() => {
     valueRef.current = value
@@ -132,6 +145,14 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   }, [onChange, onFocus, onBlur, onReady])
 
   useEffect(() => {
+    setupRef.current = {
+      editorOptions,
+      language,
+      resolvedTheme,
+    }
+  }, [editorOptions, language, resolvedTheme])
+
+  useEffect(() => {
     let disposed = false
     let cleanup: (() => void) | undefined
 
@@ -140,16 +161,22 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
       if (!monaco || disposed || !containerRef.current)
         return
 
+      const {
+        editorOptions: currentEditorOptions,
+        language: currentLanguage,
+        resolvedTheme: currentResolvedTheme,
+      } = setupRef.current
+
       monacoRef.current = monaco
 
-      const model = createEditorModel(monaco, valueRef.current, language)
+      const model = createEditorModel(monaco, valueRef.current, currentLanguage)
       modelRef.current = model
 
-      const editor = monaco.editor.create(containerRef.current, editorOptions)
+      const editor = monaco.editor.create(containerRef.current, currentEditorOptions)
       editorRef.current = editor
       editor.setModel(model)
 
-      monaco.editor.setTheme(resolvedTheme)
+      monaco.editor.setTheme(currentResolvedTheme)
 
       const disposeCallbacks = bindEditorCallbacks(editor, monaco, callbacksRef, preventTriggerChangeEventRef)
       const resizeObserver = new ResizeObserver(() => {
@@ -157,12 +184,14 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
       })
       resizeObserver.observe(containerRef.current)
       callbacksRef.current.onReady?.(editor, monaco)
+      setIsEditorReady(true)
 
       cleanup = () => {
         resizeObserver.disconnect()
         disposeCallbacks()
         editor.dispose()
         model.dispose()
+        setIsEditorReady(false)
       }
     }
 
@@ -208,9 +237,18 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
 
   return (
     <div
-      ref={containerRef}
-      className={cn('h-full w-full', className)}
+      className={cn('relative h-full w-full', className)}
       style={style}
-    />
+    >
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+      />
+      {!isEditorReady && loading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {loading}
+        </div>
+      )}
+    </div>
   )
 }
