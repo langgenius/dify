@@ -15,5 +15,5 @@ jobs:
       - uses: peakoss/anti-slop@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-                    close-pr: false
+          close-pr: false
           failure-add-pr-labels: "needs-revision"
