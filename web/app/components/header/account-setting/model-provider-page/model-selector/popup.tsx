@@ -184,7 +184,7 @@ const Popup: FC<PopupProps> = ({
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
-      <div className="p-1">
+      <div className="px-1 pb-1">
         {
           filteredModelList.map(model => (
             <PopupItem
