@@ -1622,7 +1622,7 @@ requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = "~=0.9.37" },
     { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "arize-phoenix-otel", specifier = "~=0.15.0" },
-    { name = "azure-identity", specifier = "==1.16.1" },
+    { name = "azure-identity", specifier = "==1.25.2" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
     { name = "boto3", specifier = "==1.42.65" },
     { name = "bs4", specifier = "~=0.0.1" },
