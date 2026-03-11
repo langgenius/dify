@@ -61,3 +61,8 @@ class BaiduVectorDBConfig(BaseSettings):
         description="Auto build row count increment ratio threshold (default is 0.05)",
         default=0.05,
     )
+
+    BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS: int = Field(
+        description="Timeout in seconds for rebuilding the index in Baidu Vector Database (default is 3600 seconds)",
+        default=300,
+    )

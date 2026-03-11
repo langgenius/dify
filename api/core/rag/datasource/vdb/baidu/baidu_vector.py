@@ -54,6 +54,7 @@ class BaiduConfig(BaseModel):
     inverted_index_parser_mode: str = "COARSE_MODE"
     auto_build_row_count_increment: int = 500
     auto_build_row_count_increment_ratio: float = 0.05
+    rebuild_index_timeout_in_seconds: int = 300
 
     @model_validator(mode="before")
     @classmethod
@@ -337,7 +338,7 @@ class BaiduVector(BaseVector):
             )
 
             # Wait for table created
-            timeout = 300  # 5 minutes timeout
+            timeout = self._client_config.rebuild_index_timeout_in_seconds  # default 5 minutes timeout
             start_time = time.time()
             while True:
                 time.sleep(1)
@@ -387,5 +388,6 @@ class BaiduVectorFactory(AbstractVectorFactory):
                 inverted_index_parser_mode=dify_config.BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE,
                 auto_build_row_count_increment=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT,
                 auto_build_row_count_increment_ratio=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO,
+                rebuild_index_timeout_in_seconds=dify_config.BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS
             ),
         )
