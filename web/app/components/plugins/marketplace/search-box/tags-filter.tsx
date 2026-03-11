@@ -95,7 +95,7 @@ const TagsFilter = ({
                     className="mr-1"
                     checked={tags.includes(option.name)}
                   />
-                  <div className="px-1 text-text-secondary system-sm-medium">
+                  <div className="system-sm-medium px-1 text-text-secondary">
                     {option.label}
                   </div>
                 </div>

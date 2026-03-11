@@ -95,12 +95,12 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">
+              <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">
                 {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
               </div>
             )}

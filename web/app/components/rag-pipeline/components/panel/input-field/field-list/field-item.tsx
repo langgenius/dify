@@ -68,16 +68,16 @@ const FieldItem = ({
         }
         <div
           title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate text-text-secondary system-sm-medium"
+          className="system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary"
         >
           {payload.variable}
         </div>
         {payload.label && (
           <>
-            <div className="shrink-0 text-text-quaternary system-xs-regular">·</div>
+            <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
             <div
               title={payload.label}
-              className="grow truncate text-text-tertiary system-xs-medium"
+              className="system-xs-medium grow truncate text-text-tertiary"
             >
               {payload.label}
             </div>

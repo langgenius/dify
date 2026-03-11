@@ -50,13 +50,13 @@ const ChunkStructureCard = ({
       </div>
       <div className="flex grow flex-col gap-y-0.5 py-px">
         <div className="flex items-center gap-x-1">
-          <span className="text-text-secondary system-sm-medium">
+          <span className="system-sm-medium text-text-secondary">
             {title}
           </span>
         </div>
         {
           description && (
-            <div className="text-text-tertiary system-xs-regular">
+            <div className="system-xs-regular text-text-tertiary">
               {description}
             </div>
           )

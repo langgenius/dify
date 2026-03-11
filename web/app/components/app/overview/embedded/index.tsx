@@ -139,7 +139,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       wrapperClassName={className}
       closable={true}
     >
-      <div className="mb-4 mt-8 text-text-primary system-sm-medium">
+      <div className="system-sm-medium mb-4 mt-8 text-text-primary">
         {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-y-2">
@@ -170,8 +170,8 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
         </div>
       )}
       <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
-        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pl-3 pr-1">
-          <div className="shrink-0 grow text-text-secondary system-sm-medium">
+        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
+          <div className="system-sm-medium shrink-0 grow text-text-secondary">
             {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
           </div>
           <Tooltip

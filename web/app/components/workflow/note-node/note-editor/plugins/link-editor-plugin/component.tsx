@@ -71,7 +71,7 @@ const LinkEditorComponent = ({
               className={cn(
                 'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
                 !linkOperatorShow && 'p-1 shadow-md',
-                linkOperatorShow && 'p-0.5 text-text-tertiary shadow-sm system-xs-medium',
+                linkOperatorShow && 'system-xs-medium p-0.5 text-text-tertiary shadow-sm',
               )}
               style={floatingStyles}
               ref={refs.setFloating}

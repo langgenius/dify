@@ -279,7 +279,7 @@ const BaseField = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular',
+                        'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                         value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
@@ -315,7 +315,7 @@ const BaseField = ({
           }
           {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (
             <div className={cn(
-              'mt-1 px-0 py-[2px] system-xs-regular',
+              'system-xs-regular mt-1 px-0 py-[2px]',
               VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
             )}
             >
@@ -325,14 +325,14 @@ const BaseField = ({
         </div>
       </div>
       {description && (
-        <div className="mt-4 text-text-tertiary system-xs-regular">
+        <div className="system-xs-regular mt-4 text-text-tertiary">
           {translatedDescription}
         </div>
       )}
       {
         url && (
           <a
-            className="mt-4 flex items-center text-text-accent system-xs-regular"
+            className="system-xs-regular mt-4 flex items-center text-text-accent"
             href={url}
             target="_blank"
           >

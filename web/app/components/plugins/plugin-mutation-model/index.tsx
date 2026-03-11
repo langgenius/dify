@@ -40,7 +40,7 @@ const PluginMutationModal: FC<Props> = ({
       closable
       title={modelTitle}
     >
-      <div className="mb-2 mt-3 text-text-secondary system-md-regular">
+      <div className="system-md-regular mb-2 mt-3 text-text-secondary">
         {description}
       </div>
       <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

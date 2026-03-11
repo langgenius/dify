@@ -12,7 +12,7 @@ const NoData: FC<INoDataProps> = () => {
     <div className="flex h-full w-full flex-col items-center justify-center">
       <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
       <div
-        className="mt-2 text-text-quaternary system-sm-regular"
+        className="system-sm-regular mt-2 text-text-quaternary"
       >
         {t('generation.noData', { ns: 'share' })}
       </div>

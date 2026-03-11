@@ -58,7 +58,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         modelName={model.model}
       />
       <ModelName
-        className="grow text-text-secondary system-md-regular"
+        className="system-md-regular grow text-text-secondary"
         modelItem={model}
         showModelType
         showMode

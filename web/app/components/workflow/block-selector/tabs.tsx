@@ -134,7 +134,7 @@ const Tabs: FC<TabsProps> = ({
               tabs.map((tab) => {
                 const commonProps = {
                   'className': cn(
-                    'relative mr-0.5 flex h-8 items-center rounded-t-lg px-3 system-sm-medium',
+                    'system-sm-medium relative mr-0.5 flex h-8 items-center rounded-t-lg px-3',
                     tab.disabled
                       ? 'cursor-not-allowed text-text-disabled opacity-60'
                       : activeTab === tab.key

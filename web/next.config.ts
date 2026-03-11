@@ -25,13 +25,13 @@ const nextConfig: NextConfig = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   // https://nextjs.org/docs/messages/next-image-unconfigured-host
   images: {
-    remotePatterns: [...remoteImageURLs.map(remoteImageURL => ({
+    remotePatterns: remoteImageURLs.map(remoteImageURL => ({
       protocol: remoteImageURL.protocol.replace(':', '') as 'http' | 'https',
       hostname: remoteImageURL.hostname,
       port: remoteImageURL.port,
       pathname: remoteImageURL.pathname,
       search: '',
-    })), new URL('https://assets.dify.ai/images/**')],
+    })),
   },
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors

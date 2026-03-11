@@ -462,8 +462,8 @@ const VarReferencePicker: FC<Props> = ({
                               <TypeSelector
                                 noLeft
                                 trigger={(
-                                  <div className="flex h-8 items-center bg-components-input-bg-normal px-2 radius-md">
-                                    <div className="mr-1 text-components-input-text-filled system-sm-regular">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
+                                  <div className="radius-md flex h-8 items-center bg-components-input-bg-normal px-2">
+                                    <div className="system-sm-regular mr-1 text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
                                     <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
                                   </div>
                                 )}
@@ -563,7 +563,7 @@ const VarReferencePicker: FC<Props> = ({
                                               </div>
                                             </div>
                                             <div
-                                              className="ml-0.5 truncate text-center capitalize text-text-tertiary system-xs-regular"
+                                              className="system-xs-regular ml-0.5 truncate text-center capitalize text-text-tertiary"
                                               title={type}
                                               style={{
                                                 maxWidth: maxTypeWidth,
@@ -575,7 +575,7 @@ const VarReferencePicker: FC<Props> = ({
                                           </>
                                         )
                                       : (
-                                          <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} text-ellipsis system-sm-regular`}>
+                                          <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>
                                             {isLoading
                                               ? (
                                                   <div className="flex items-center">
@@ -604,7 +604,7 @@ const VarReferencePicker: FC<Props> = ({
                       )}
                       {!hasValue && valueTypePlaceHolder && (
                         <Badge
-                          className="absolute right-1 top-[50%] translate-y-[-50%] capitalize"
+                          className=" absolute right-1 top-[50%] translate-y-[-50%] capitalize"
                           text={valueTypePlaceHolder}
                           uppercase={false}
                         />

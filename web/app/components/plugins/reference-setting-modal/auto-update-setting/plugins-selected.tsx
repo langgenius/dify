@@ -23,7 +23,7 @@ const PluginsSelected: FC<Props> = ({
         <Icon key={plugin} size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin}/icon`} />
       ))}
       {!isShowAll && (
-        <div className="text-text-tertiary system-xs-medium">
+        <div className="system-xs-medium text-text-tertiary">
           +
           {plugins.length - MAX_DISPLAY_COUNT}
         </div>

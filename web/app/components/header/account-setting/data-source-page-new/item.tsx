@@ -69,7 +69,7 @@ const Item = ({
       }
       {
         !renaming && (
-          <div className="grow text-text-secondary system-sm-medium">
+          <div className="system-sm-medium grow text-text-secondary">
             {credentialItem.name}
           </div>
         )
@@ -78,7 +78,7 @@ const Item = ({
         <div className="mr-1 flex h-3 w-3 items-center justify-center">
           <Indicator color="green" />
         </div>
-        <div className="text-util-colors-green-green-600 system-xs-semibold-uppercase">
+        <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
           connected
         </div>
       </div>

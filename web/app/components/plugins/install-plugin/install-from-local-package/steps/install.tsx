@@ -117,7 +117,7 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
-        <div className="text-text-secondary system-md-regular">
+        <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           <p>
             <Trans
@@ -127,7 +127,7 @@ const Installed: FC<Props> = ({
             />
           </p>
           {!isDifyVersionCompatible && (
-            <p className="flex items-center gap-1 text-text-warning system-md-regular">
+            <p className="system-md-regular flex items-center gap-1 text-text-warning">
               {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}

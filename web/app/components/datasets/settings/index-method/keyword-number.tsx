@@ -25,7 +25,7 @@ const KeyWordNumber = ({
   return (
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate text-text-secondary system-xs-medium">
+        <div className="system-xs-medium truncate text-text-secondary">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip

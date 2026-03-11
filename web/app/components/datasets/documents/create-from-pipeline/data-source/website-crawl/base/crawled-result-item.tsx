@@ -58,13 +58,13 @@ const CrawledResultItem = ({
       }
       <div className="flex min-w-0 grow flex-col gap-y-0.5">
         <div
-          className="truncate text-text-secondary system-sm-medium"
+          className="system-sm-medium truncate text-text-secondary"
           title={payload.title}
         >
           {payload.title}
         </div>
         <div
-          className="truncate text-text-tertiary system-xs-regular"
+          className="system-xs-regular truncate text-text-tertiary"
           title={payload.source_url}
         >
           {payload.source_url}
@@ -74,7 +74,7 @@ const CrawledResultItem = ({
         <Button
           size="small"
           onClick={onPreview}
-          className="right-2 top-2 hidden px-1.5 system-xs-medium-uppercase group-hover:absolute group-hover:block"
+          className="system-xs-medium-uppercase right-2 top-2 hidden px-1.5 group-hover:absolute group-hover:block"
         >
           {t('stepOne.website.preview', { ns: 'datasetCreation' })}
         </Button>

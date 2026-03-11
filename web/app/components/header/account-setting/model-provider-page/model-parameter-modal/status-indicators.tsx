@@ -18,14 +18,14 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
   const renderTooltipContent = (title: string, description?: string, linkText?: string, linkHref?: string) => {
     return (
       <div className="flex w-[240px] max-w-[240px] flex-col gap-1 px-1 py-1.5" onClick={e => e.stopPropagation()}>
-        <div className="text-text-primary title-xs-semi-bold">{title}</div>
+        <div className="title-xs-semi-bold text-text-primary">{title}</div>
         {description && (
-          <div className="min-w-[200px] text-text-secondary body-xs-regular">
+          <div className="body-xs-regular min-w-[200px] text-text-secondary">
             {description}
           </div>
         )}
         {linkText && linkHref && (
-          <div className="z-[100] cursor-pointer text-text-accent body-xs-regular">
+          <div className="body-xs-regular z-[100] cursor-pointer text-text-accent">
             <Link
               href={linkHref}
               onClick={(e) => {

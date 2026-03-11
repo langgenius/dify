@@ -35,14 +35,14 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
             value={isDynamicRegistration}
             onChange={onDynamicRegistrationChange}
           />
-          <span className="text-text-secondary system-sm-medium">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
         </div>
         {!isDynamicRegistration && (
           <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
-            <div className="text-text-secondary system-xs-regular">
+            <div className="system-xs-regular text-text-secondary">
               <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
-              <code className="block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary system-xs-medium">
+              <code className="system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary">
                 {`${API_PREFIX}/mcp/oauth/callback`}
               </code>
             </div>
@@ -51,7 +51,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="text-text-secondary system-sm-medium">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
         </div>
         <Input
           value={clientID}
@@ -62,7 +62,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="text-text-secondary system-sm-medium">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
         </div>
         <Input
           value={credentials}

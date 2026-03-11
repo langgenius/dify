@@ -19,7 +19,7 @@ const MetadataPanel = ({
   return (
     <div className="w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl">
       <div className="relative px-3 pt-3.5">
-        <div className="text-text-primary system-xl-semibold">
+        <div className="system-xl-semibold text-text-primary">
           {t('nodes.knowledgeRetrieval.metadata.panel.title', { ns: 'workflow' })}
         </div>
         <div

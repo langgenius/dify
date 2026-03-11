@@ -45,7 +45,7 @@ const CustomDialog = ({
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
-                    className={cn('pb-3 pr-8 text-text-primary title-2xl-semi-bold', titleClassName)}
+                    className={cn('title-2xl-semi-bold pb-3 pr-8 text-text-primary', titleClassName)}
                   >
                     {title}
                   </DialogTitle>

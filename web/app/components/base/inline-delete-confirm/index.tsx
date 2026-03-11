@@ -44,7 +44,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
     >
       <div
         id="inline-delete-confirm-title"
-        className="text-text-primary system-xs-semibold"
+        className="system-xs-semibold text-text-primary"
       >
         {titleText}
       </div>

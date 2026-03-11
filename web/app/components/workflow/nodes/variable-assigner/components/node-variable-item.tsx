@@ -80,7 +80,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'ml-0.5 shrink truncate text-text-accent system-xs-medium',
+          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
           isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',

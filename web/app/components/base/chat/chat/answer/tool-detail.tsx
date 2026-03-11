@@ -30,7 +30,7 @@ const ToolDetail = ({
     >
       <div
         className={cn(
-          'flex cursor-pointer items-center px-2.5 py-2 text-text-tertiary system-xs-medium',
+          'system-xs-medium flex cursor-pointer items-center px-2.5 py-2 text-text-tertiary',
           expand && 'pb-1.5',
         )}
         onClick={() => setExpand(!expand)}
@@ -46,18 +46,18 @@ const ToolDetail = ({
         expand && (
           <>
             <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
+              <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
                 {t('thought.requestTitle', { ns: 'tools' })}
               </div>
-              <div className="break-words px-3 pb-2 pt-1 code-xs-regular">
+              <div className="code-xs-regular break-words px-3 pb-2 pt-1">
                 {input}
               </div>
             </div>
             <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
+              <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
                 {t('thought.responseTitle', { ns: 'tools' })}
               </div>
-              <div className="break-words px-3 pb-2 pt-1 code-xs-regular">
+              <div className="code-xs-regular break-words px-3 pb-2 pt-1">
                 {output}
               </div>
             </div>

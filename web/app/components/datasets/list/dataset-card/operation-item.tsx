@@ -22,7 +22,7 @@ const OperationItem = ({
       }}
     >
       <Icon className="size-4 text-text-tertiary" />
-      <span className="px-1 text-text-secondary system-md-regular">
+      <span className="system-md-regular px-1 text-text-secondary">
         {name}
       </span>
     </div>

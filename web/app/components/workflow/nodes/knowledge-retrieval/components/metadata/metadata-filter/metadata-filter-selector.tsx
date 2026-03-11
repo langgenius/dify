@@ -87,10 +87,10 @@ const MetadataFilterSelector = ({
                   }
                 </div>
                 <div className="grow">
-                  <div className="text-text-secondary system-sm-semibold">
+                  <div className="system-sm-semibold text-text-secondary">
                     {option.value}
                   </div>
-                  <div className="text-text-tertiary system-xs-regular">
+                  <div className="system-xs-regular text-text-tertiary">
                     {option.desc}
                   </div>
                 </div>
