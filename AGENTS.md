@@ -43,3 +43,21 @@ The codebase is split into:
 - Backend architecture adheres to DDD and Clean Architecture principles.
 - Async work runs through Celery with Redis as the broker.
 - Frontend user-facing strings must use `web/i18n/en-US/`; avoid hardcoded text.
+
+
+## TypedDict Support
+
+When working with TypeScript type definitions in this project, follow these guidelines:
+
+### Defining TypedDict
+
+Use  for dictionary types that have a fixed set of keys:
+
+
+
+### Best Practices
+
+1. Always define explicit types instead of `any`
+2. Use `readonly` for immutable properties
+3. Prefer `enum` over string literals for fixed options
+4. Document all interface properties
