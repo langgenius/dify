@@ -8,6 +8,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
 from services.account_service import AccountService, TenantService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestGetAvailableDatasetsIntegration:
@@ -22,7 +23,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -83,7 +84,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -136,7 +137,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -189,7 +190,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -252,7 +253,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -286,7 +287,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company())
         tenant1 = account1.current_tenant
@@ -295,7 +296,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company())
         tenant2 = account2.current_tenant
@@ -362,7 +363,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -384,7 +385,7 @@ class TestGetAvailableDatasetsIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -445,7 +446,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -513,7 +514,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -561,7 +562,7 @@ class TestKnowledgeRetrievalIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant

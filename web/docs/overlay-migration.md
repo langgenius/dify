@@ -53,6 +53,47 @@ pnpm -C web lint:fix --prune-suppressions <changed-files>
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
 - Never increase allowlist scope to bypass new code.
 
+## z-index strategy
+
+All new overlay primitives in `base/ui/` share a single z-index value: **`z-[1002]`**.
+
+### Why z-[1002]?
+
+During the migration period, legacy and new overlays coexist. Legacy overlays
+portal to `document.body` with explicit z-index values:
+
+| Layer | z-index | Components |
+|-------|---------|------------|
+| Legacy Drawer | `z-[30]` | `base/drawer` |
+| Legacy Modal | `z-[60]` | `base/modal` (default) |
+| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components |
+| **New UI primitives** | **`z-[1002]`** | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Legacy Modal (highPriority) | `z-[1100]` | `base/modal` (`highPriority={true}`) |
+| Toast | `z-[9999]` | `base/toast` |
+
+`z-[1002]` sits above all common legacy overlays, so new primitives always
+render on top without needing per-call-site z-index hacks. Among themselves,
+new primitives share the same z-index and rely on **DOM order** for stacking
+(later portal = on top).
+
+### Rules
+
+- **Do NOT add z-index overrides** (e.g. `className="z-[1003]"`) on new
+  `base/ui/*` components. If you find yourself needing one, the parent legacy
+  overlay should be migrated instead.
+- When migrating a legacy overlay that has a high z-index, remove the z-index
+  entirely — the new primitive's default `z-[1002]` handles it.
+- `portalToFollowElemContentClassName` with z-index values (e.g. `z-[1000]`)
+  should be deleted when the surrounding legacy container is migrated.
+
+### Post-migration cleanup
+
+Once all legacy overlays are removed:
+
+1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
+1. Reduce Toast from `z-[9999]` to `z-[99]`.
+1. Remove this section from the migration guide.
+
 ## React Refresh policy for base UI primitives
 
 - We keep primitive aliases (for example `DropdownMenu = Menu.Root`) in the same module.
