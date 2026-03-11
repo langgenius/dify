@@ -11,11 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -49,7 +50,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import UserFrom
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -694,7 +694,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config.get("data", {})
+        node_data = node_config["data"]
         if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -704,7 +704,7 @@ class WorkflowService:
                     workflow=draft_workflow,
                 )
                 if node_type is NodeType.START:
-                    start_data = StartNodeData.model_validate(node_data)
+                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                     )
@@ -942,7 +942,7 @@ class WorkflowService:
         if node_type is not NodeType.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
-        node_data = HumanInputNodeData.model_validate(node_config.get("data", {}))
+        node_data = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
         delivery_method = self._resolve_human_input_delivery_method(
             node_data=node_data,
             delivery_method_id=delivery_method_id,
@@ -1016,7 +1016,7 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id)
         params = FormCreateParams(
             app_id=app_model.id,
             workflow_execution_id=None,
@@ -1060,17 +1060,19 @@ class WorkflowService:
         *,
         workflow: Workflow,
         account: Account,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         variable_pool: VariablePool,
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            user_id=account.id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=account.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -1078,10 +1080,11 @@ class WorkflowService:
             start_at=time.perf_counter(),
         )
         node = HumanInputNode(
-            id=node_config.get("id", str(uuid.uuid4())),
+            id=node_config["id"],
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
         )
         return node
 
@@ -1090,7 +1093,7 @@ class WorkflowService:
         *,
         app_model: App,
         workflow: Workflow,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         manual_inputs: Mapping[str, Any],
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():

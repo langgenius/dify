@@ -130,7 +130,7 @@ const ModelLoadBalancingConfigs = ({
 
   const handleRemove = useCallback((credentialId: string) => {
     const index = draftConfig?.configs.findIndex(item => item.credential_id === credentialId && item.name !== '__inherit__')
-    if (index && index > -1)
+    if (typeof index === 'number' && index > -1)
       updateConfigEntry(index, () => undefined)
     onRemove?.(credentialId)
   }, [draftConfig?.configs, updateConfigEntry, onRemove])

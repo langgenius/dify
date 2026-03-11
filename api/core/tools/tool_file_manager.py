@@ -10,28 +10,19 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
-from extensions.ext_database import db as global_db
+from dify_graph.file.models import ToolFile as ToolFilePydanticModel
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy.engine import Engine
-
 
 class ToolFileManager:
-    _engine: Engine
-
-    def __init__(self, engine: Engine | None = None):
-        if engine is None:
-            engine = global_db.engine
-        self._engine = engine
-
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
         """
@@ -89,7 +80,7 @@ class ToolFileManager:
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,
@@ -132,7 +123,7 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,
@@ -157,7 +148,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
                 .where(
@@ -181,7 +172,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             message_file: MessageFile | None = (
                 session.query(MessageFile)
                 .where(
@@ -217,7 +208,9 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]:
+    def get_file_generator_by_tool_file_id(
+        self, tool_file_id: str
+    ) -> tuple[Generator | None, ToolFilePydanticModel | None]:
         """
         get file binary
 
@@ -225,7 +218,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
                 .where(
@@ -239,7 +232,7 @@ class ToolFileManager:
 
         stream = storage.load_stream(tool_file.file_key)
 
-        return stream, tool_file
+        return stream, ToolFilePydanticModel.model_validate(tool_file)
 
 
 # init tool_file_parser

@@ -8,12 +8,20 @@ from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
 from types import MappingProxyType
-from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
+from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
-from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.enums import (
+    ErrorStrategy,
+    NodeExecutionType,
+    NodeState,
+    NodeType,
+    WorkflowNodeExecutionStatus,
+)
 from dify_graph.graph_events import (
     GraphNodeEventBase,
     NodeRunAgentLogEvent,
@@ -55,13 +63,28 @@ from dify_graph.node_events import (
 )
 from dify_graph.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
-
-from .entities import BaseNodeData, RetryConfig
 
 NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
+_MISSING_RUN_CONTEXT_VALUE = object()
 
 logger = logging.getLogger(__name__)
+
+
+class DifyRunContextProtocol(Protocol):
+    tenant_id: str
+    app_id: str
+    user_id: str
+    user_from: Any
+    invoke_from: Any
+
+
+class _MappingDifyRunContext:
+    def __init__(self, mapping: Mapping[str, Any]) -> None:
+        self.tenant_id = str(mapping["tenant_id"])
+        self.app_id = str(mapping["app_id"])
+        self.user_id = str(mapping["user_id"])
+        self.user_from = mapping["user_from"]
+        self.invoke_from = mapping["invoke_from"]
 
 
 class Node(Generic[NodeDataT]):
@@ -130,11 +153,11 @@ class Node(Generic[NodeDataT]):
         Later, in __init__:
         ::
 
-            config["data"] ──► _hydrate_node_data() ──► _node_data_type.model_validate()
-                                                                │
-                                                                ▼
-                                                        CodeNodeData instance
-                                                        (stored in self._node_data)
+            config["data"] ──► _node_data_type.model_validate(..., from_attributes=True)
+                                               │
+                                               ▼
+                                       CodeNodeData instance
+                                       (stored in self._node_data)
 
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
@@ -218,38 +241,33 @@ class Node(Generic[NodeDataT]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
+        self._run_context = MappingProxyType(dict(graph_init_params.run_context))
         self.id = id
-        self.tenant_id = graph_init_params.tenant_id
-        self.app_id = graph_init_params.app_id
         self.workflow_id = graph_init_params.workflow_id
         self.graph_config = graph_init_params.graph_config
-        self.user_id = graph_init_params.user_id
-        self.user_from = UserFrom(graph_init_params.user_from)
-        self.invoke_from = InvokeFrom(graph_init_params.invoke_from)
         self.workflow_call_depth = graph_init_params.call_depth
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
 
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required.")
+        node_id = config["id"]
 
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        raw_node_data = config.get("data") or {}
-        if not isinstance(raw_node_data, Mapping):
-            raise ValueError("Node config data must be a mapping.")
-
-        self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
+        self._node_data = self.validate_node_data(config["data"])
 
         self.post_init()
+
+    @classmethod
+    def validate_node_data(cls, node_data: BaseNodeData) -> NodeDataT:
+        """Validate shared graph node payloads against the subclass-declared NodeData model."""
+        return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
 
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
@@ -258,6 +276,38 @@ class Node(Generic[NodeDataT]):
     @property
     def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
+
+    @property
+    def run_context(self) -> Mapping[str, Any]:
+        return self._run_context
+
+    def get_run_context_value(self, key: str, default: Any = None) -> Any:
+        return self._run_context.get(key, default)
+
+    def require_run_context_value(self, key: str) -> Any:
+        value = self.get_run_context_value(key, _MISSING_RUN_CONTEXT_VALUE)
+        if value is _MISSING_RUN_CONTEXT_VALUE:
+            raise ValueError(f"run_context missing required key: {key}")
+        return value
+
+    def require_dify_context(self) -> DifyRunContextProtocol:
+        raw_ctx = self.require_run_context_value(DIFY_RUN_CONTEXT_KEY)
+        if raw_ctx is None:
+            raise ValueError(f"run_context missing required key: {DIFY_RUN_CONTEXT_KEY}")
+
+        if isinstance(raw_ctx, Mapping):
+            missing_keys = [
+                key for key in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from") if key not in raw_ctx
+            ]
+            if missing_keys:
+                raise ValueError(f"dify context missing required keys: {', '.join(missing_keys)}")
+            return _MappingDifyRunContext(raw_ctx)
+
+        for attr in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from"):
+            if not hasattr(raw_ctx, attr):
+                raise TypeError(f"invalid dify context object, missing attribute: {attr}")
+
+        return cast(DifyRunContextProtocol, raw_ctx)
 
     @property
     def execution_id(self) -> str:
@@ -290,9 +340,6 @@ class Node(Generic[NodeDataT]):
         if not execution_id:
             return None
         return str(execution_id)
-
-    def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
-        return cast(NodeDataT, self._node_data_type.model_validate(data))
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
@@ -337,8 +384,6 @@ class Node(Generic[NodeDataT]):
         if isinstance(self, TriggerEventNode):
             start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from typing import cast
 
         from dify_graph.nodes.agent.agent_node import AgentNode
         from dify_graph.nodes.agent.entities import AgentNodeData
@@ -391,7 +436,7 @@ class Node(Generic[NodeDataT]):
         cls,
         *,
         graph_config: Mapping[str, Any],
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
     ) -> Mapping[str, Sequence[str]]:
         """Extracts references variable selectors from node configuration.
 
@@ -429,13 +474,12 @@ class Node(Generic[NodeDataT]):
         :param config: node config
         :return:
         """
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
-
-        # Pass raw dict data instead of creating NodeData instance
+        node_id = config["id"]
+        node_data = cls.validate_node_data(config["data"])
         data = cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config, node_id=node_id, node_data=config.get("data", {})
+            graph_config=graph_config,
+            node_id=node_id,
+            node_data=node_data,
         )
         return data
 
@@ -445,7 +489,7 @@ class Node(Generic[NodeDataT]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: NodeDataT,
     ) -> Mapping[str, Sequence[str]]:
         return {}
 

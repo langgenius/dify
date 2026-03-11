@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
@@ -34,7 +35,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         datasource_manager: DatasourceManagerProtocol,
@@ -52,6 +53,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         Run the datasource node
         """
 
+        dify_ctx = self.require_dify_context()
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
@@ -75,7 +77,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         datasource_info["icon"] = self.datasource_manager.get_icon_url(
             provider_id=provider_id,
             datasource_name=node_data.datasource_name or "",
-            tenant_id=self.tenant_id,
+            tenant_id=dify_ctx.tenant_id,
             datasource_type=datasource_type.value,
         )
 
@@ -104,11 +106,11 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
                     yield from self.datasource_manager.stream_node_events(
                         node_id=self._node_id,
-                        user_id=self.user_id,
+                        user_id=dify_ctx.user_id,
                         datasource_name=node_data.datasource_name or "",
                         datasource_type=datasource_type.value,
                         provider_id=provider_id,
-                        tenant_id=self.tenant_id,
+                        tenant_id=dify_ctx.tenant_id,
                         provider=node_data.provider_name,
                         plugin_id=node_data.plugin_id,
                         credential_id=credential_id,
@@ -136,7 +138,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         raise DatasourceNodeError("File is not exist")
 
                     file_info = self.datasource_manager.get_upload_file_by_id(
-                        file_id=related_id, tenant_id=self.tenant_id
+                        file_id=related_id, tenant_id=dify_ctx.tenant_id
                     )
                     variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())
@@ -180,7 +182,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DatasourceNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -189,11 +191,10 @@ class DatasourceNode(Node[DatasourceNodeData]):
         :param node_data: node data
         :return:
         """
-        typed_node_data = DatasourceNodeData.model_validate(node_data)
         result = {}
-        if typed_node_data.datasource_parameters:
-            for parameter_name in typed_node_data.datasource_parameters:
-                input = typed_node_data.datasource_parameters[parameter_name]
+        if node_data.datasource_parameters:
+            for parameter_name in node_data.datasource_parameters:
+                input = node_data.datasource_parameters[parameter_name]
                 match input.type:
                     case "mixed":
                         assert isinstance(input.value, str)

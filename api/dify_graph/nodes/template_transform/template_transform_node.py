@@ -1,12 +1,12 @@
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
 from dify_graph.nodes.template_transform.template_renderer import (
-    CodeExecutorJinja2TemplateRenderer,
     Jinja2TemplateRenderer,
     TemplateRenderError,
 )
@@ -26,11 +26,11 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        template_renderer: Jinja2TemplateRenderer | None = None,
+        template_renderer: Jinja2TemplateRenderer,
         max_output_length: int | None = None,
     ) -> None:
         super().__init__(
@@ -39,7 +39,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
+        self._template_renderer = template_renderer
 
         if max_output_length is not None and max_output_length <= 0:
             raise ValueError("max_output_length must be a positive integer")
@@ -87,12 +87,9 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: TemplateTransformNodeData
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = TemplateTransformNodeData.model_validate(node_data)
-
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in typed_node_data.variables
+            for variable_selector in node_data.variables
         }

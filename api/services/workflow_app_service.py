@@ -135,7 +135,10 @@ class WorkflowAppService:
             account = session.scalar(
                 select(Account)
                 .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                .where(Account.email == created_by_account, TenantAccountJoin.tenant_id == app_model.tenant_id)
+                .where(
+                    Account.email == created_by_account,
+                    TenantAccountJoin.tenant_id == app_model.tenant_id,
+                )
             )
             if not account:
                 raise ValueError(f"Account not found: {created_by_account}")

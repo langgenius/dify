@@ -1,4 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { appDeleteContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -11,6 +12,7 @@ import {
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
 } from './console/explore'
+import { notificationContract, notificationDismissContract } from './console/notification'
 import { systemFeaturesContract } from './console/system'
 import {
   triggerOAuthConfigContract,
@@ -42,6 +44,9 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
+  apps: {
+    deleteApp: appDeleteContract,
+  },
   explore: {
     apps: exploreAppsContract,
     appDetail: exploreAppDetailContract,
@@ -63,6 +68,8 @@ export const consoleRouterContract = {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,
