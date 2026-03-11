@@ -105,9 +105,11 @@ const Trigger: FC<TriggerProps> = ({
             </TooltipContent>
           </Tooltip>
         )}
-        <div className="flex shrink-0 items-center pr-1">
-          <span className="i-ri-arrow-down-s-line h-4 w-4 text-text-tertiary" />
-        </div>
+        {!badgeKey && (
+          <div className="flex shrink-0 items-center pr-1">
+            <span className="i-ri-arrow-down-s-line h-4 w-4 text-text-tertiary" />
+          </div>
+        )}
       </div>
       <div className={cn('flex shrink-0 items-center justify-center rounded-r-lg p-2', isInWorkflow ? 'border border-workflow-block-parma-bg bg-workflow-block-parma-bg' : 'bg-components-button-tertiary-bg')}>
         <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
