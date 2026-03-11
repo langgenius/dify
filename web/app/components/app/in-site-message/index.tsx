@@ -88,7 +88,7 @@ function InSiteMessage({
       return
     }
 
-    window.open(linkData.href, target, linkData.rel ?? 'noopener,noreferrer')
+    window.open(linkData.href, target, linkData.rel || 'noopener,noreferrer')
   }
 
   if (!visible)
