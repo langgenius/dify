@@ -328,10 +328,18 @@ class DatasetProcessRule(TypeBase):  # bug
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-
-    MODES = ["automatic", "custom", "hierarchical"]
-    PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
-    AUTOMATIC_RULES: dict[str, Any] = {
+    @property
+    @classmethod
+    def MODES():
+        return ["automatic", "custom", "hierarchical"]
+    @property
+    @classmethod
+    def PRE_PROCESSING_RULES():
+        return ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
+    @property
+    @classmethod
+    def AUTOMATIC_RULES():
+        return {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
             {"id": "remove_urls_emails", "enabled": False},
