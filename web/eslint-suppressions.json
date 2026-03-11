@@ -7490,9 +7490,6 @@
     }
   },
   "app/components/workflow/nodes/http/components/key-value/key-value-edit/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -8522,9 +8519,6 @@
   "app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/trigger-webhook/default.ts": {
