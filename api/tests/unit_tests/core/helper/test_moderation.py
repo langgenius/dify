@@ -150,7 +150,7 @@ def test_check_moderation_raises_bad_request_when_provider_call_fails(mocker: Mo
     factory = SimpleNamespace(get_model_type_instance=lambda **_factory_kwargs: failing_model)
     mocker.patch("core.helper.moderation.ModelProviderFactory", return_value=factory)
 
-    with pytest.raises(InvokeBadRequestError):
+    with pytest.raises(InvokeBadRequestError, match="Rate limit exceeded, please try again later."):
         check_moderation(
             "tenant-1",
             cast(ModelConfigWithCredentialsEntity, _build_model_config()),

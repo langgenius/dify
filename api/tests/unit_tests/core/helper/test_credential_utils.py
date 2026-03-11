@@ -33,7 +33,7 @@ def test_check_credential_policy_compliance_raises_when_credential_missing(
     )
     mocker.patch("core.helper.credential_utils.is_credential_exists", return_value=False)
 
-    with pytest.raises(ValueError, match="Credential with id cred-1"):
+    with pytest.raises(ValueError, match="Credential with id cred-1 for provider openai not found."):
         check_credential_policy_compliance("cred-1", "openai", PluginCredentialType.TOOL)
 
 
