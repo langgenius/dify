@@ -62,6 +62,7 @@ class TestToolTransformService:
                 provider="test_provider",
                 user_id="test_user_id",
                 credential_type="api_key",
+                encrypted_credentials='{"api_key": "test_key"}',
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
