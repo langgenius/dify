@@ -26,7 +26,21 @@ vi.mock('../model-icon', () => ({
 }))
 
 vi.mock('../model-name', () => ({
-  default: ({ modelItem }: { modelItem: { model: string } }) => <div>{modelItem.model}</div>,
+  default: ({
+    modelItem,
+    showMode,
+    showFeatures,
+  }: {
+    modelItem: { model: string }
+    showMode?: boolean
+    showFeatures?: boolean
+  }) => (
+    <div>
+      <span>{modelItem.model}</span>
+      {showMode && <span data-testid="model-name-mode">mode</span>}
+      {showFeatures && <span data-testid="model-name-features">features</span>}
+    </div>
+  ),
 }))
 
 describe('Trigger', () => {
@@ -67,6 +81,8 @@ describe('Trigger', () => {
 
       expect(screen.getByText('gpt-4')).toBeInTheDocument()
       expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('model-name-mode')).toBeInTheDocument()
+      expect(screen.getByTestId('model-name-features')).toBeInTheDocument()
     })
 
     it('should render fallback model id when current model is missing', () => {
@@ -128,6 +144,8 @@ describe('Trigger', () => {
 
       expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
       expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+      expect(screen.queryByTestId('model-name-mode')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('model-name-features')).not.toBeInTheDocument()
     })
 
     it('should resolve provider from context when currentProvider is missing in split layout', () => {
@@ -178,6 +196,56 @@ describe('Trigger', () => {
       expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
     })
 
+    it('should render credits exhausted badge in workflow mode', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'credits-exhausted',
+        supportsCredits: true,
+        isCreditsExhausted: true,
+        priority: 'credits',
+        showPrioritySwitcher: true,
+        hasCredentials: false,
+        credentialName: undefined,
+        credits: 0,
+      })
+
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+          isInWorkflow
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+    })
+
+    it('should render api unavailable badge in workflow mode', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'api-unavailable',
+        supportsCredits: true,
+        isCreditsExhausted: false,
+        priority: 'apiKey',
+        showPrioritySwitcher: true,
+        hasCredentials: true,
+        credentialName: 'Primary Key',
+        credits: 0,
+      })
+
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+          isInWorkflow
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+    })
+
     it('should render incompatible badge when deprecated model is disabled', () => {
       render(
         <Trigger
@@ -191,9 +259,11 @@ describe('Trigger', () => {
       )
 
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(screen.queryByTestId('model-name-mode')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('model-name-features')).not.toBeInTheDocument()
     })
 
-    it('should render warning icon when model status is disabled but not deprecated', () => {
+    it('should render incompatible badge when model status is disabled but not deprecated', () => {
       render(
         <Trigger
           currentProvider={currentProvider}
@@ -205,7 +275,7 @@ describe('Trigger', () => {
         />,
       )
 
-      expect(document.querySelector('.text-\\[\\#F79009\\]')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })
   })
 

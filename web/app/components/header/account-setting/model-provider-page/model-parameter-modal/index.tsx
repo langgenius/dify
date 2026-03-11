@@ -76,7 +76,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
-
   const hasDeprecated = !currentProvider || !currentModel
   const modelDisabled = currentModel?.status !== ModelStatusEnum.active
   const disabled = !isAPIKeySet || hasDeprecated || modelDisabled

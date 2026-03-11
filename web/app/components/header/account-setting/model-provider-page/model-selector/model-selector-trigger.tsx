@@ -12,14 +12,7 @@ import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-
-const STATUS_I18N_KEY: Partial<Record<ModelStatusEnum, string>> = {
-  [ModelStatusEnum.quotaExceeded]: 'modelProvider.selector.creditsExhausted',
-  [ModelStatusEnum.noConfigure]: 'modelProvider.selector.configureRequired',
-  [ModelStatusEnum.noPermission]: 'modelProvider.selector.incompatible',
-  [ModelStatusEnum.disabled]: 'modelProvider.selector.disabled',
-  [ModelStatusEnum.credentialRemoved]: 'modelProvider.selector.apiKeyUnavailable',
-}
+import { MODEL_STATUS_I18N_KEY } from '../status-mapping'
 
 type ModelSelectorTriggerProps = {
   currentProvider?: Model
@@ -56,14 +49,18 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
     && selectedProviderState.priority === 'credits'
     && selectedProviderState.supportsCredits
     && selectedProviderState.isCreditsExhausted
+  const shouldShowApiKeyUnavailable = isSelected && selectedProviderState.variant === 'api-unavailable'
   const effectiveStatus = shouldShowCreditsExhausted
     ? ModelStatusEnum.quotaExceeded
-    : currentModel?.status
+    : shouldShowApiKeyUnavailable
+      ? ModelStatusEnum.credentialRemoved
+      : currentModel?.status
 
   const isActive = isSelected && effectiveStatus === ModelStatusEnum.active
   const isDisabled = isDeprecated || (isSelected && !isActive)
-  const statusI18nKey = isSelected && effectiveStatus ? STATUS_I18N_KEY[effectiveStatus] : undefined
+  const statusI18nKey = isSelected && effectiveStatus ? MODEL_STATUS_I18N_KEY[effectiveStatus] : undefined
   const isCreditsExhausted = isSelected && effectiveStatus === ModelStatusEnum.quotaExceeded
+  const shouldShowModelMeta = effectiveStatus === ModelStatusEnum.active
 
   const deprecatedProvider = isDeprecated
     ? modelProviders.find(p => p.provider === defaultModel.provider)
@@ -102,8 +99,8 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
           <ModelName
             className="grow"
             modelItem={currentModel}
-            showMode
-            showFeatures
+            showMode={shouldShowModelMeta}
+            showFeatures={shouldShowModelMeta}
           />
         )}
         {isDeprecated && (
@@ -143,12 +140,18 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
 
         {isDeprecated && showDeprecatedWarnIcon && (
           <Tooltip>
-            <TooltipTrigger render={(
-              <span className="i-ri-alert-line h-4 w-4 shrink-0 text-text-warning-secondary" />
-            )}
+            <TooltipTrigger
+              render={(
+                <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
+                  <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                  <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                    {t('modelProvider.selector.incompatible', { ns: 'common' })}
+                  </span>
+                </div>
+              )}
             />
             <TooltipContent placement="top">
-              {t('modelProvider.deprecated', { ns: 'common' })}
+              {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
             </TooltipContent>
           </Tooltip>
         )}

@@ -6,16 +6,15 @@ import type {
 } from '../declarations'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
-import { MODEL_STATUS_TEXT } from '../declarations'
-import { useLanguage } from '../hooks'
+import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
+import { MODEL_STATUS_I18N_KEY } from '../status-mapping'
 
 export type TriggerProps = {
   open?: boolean
@@ -35,18 +34,24 @@ const Trigger: FC<TriggerProps> = ({
   providerName,
   modelId,
   hasDeprecated,
-  modelDisabled,
+  modelDisabled: _modelDisabled,
   isInWorkflow,
 }) => {
   const { t } = useTranslation()
-  const language = useLanguage()
   const { modelProviders } = useProviderContext()
   const isEmpty = !modelId || !providerName
   const currentModelProvider = modelProviders.find(p => p.provider === providerName)
   const state = useCredentialPanelState(currentModelProvider)
-  const hasCredits = !state.isCreditsExhausted
-  const showCreditsExhausted = !isEmpty && !hasCredits && state.supportsCredits
+  const showCreditsExhausted = !isEmpty && state.priority === 'credits' && state.supportsCredits && state.isCreditsExhausted
   const showApiKeyUnavailable = !isEmpty && state.variant === 'api-unavailable'
+  const effectiveStatus = showCreditsExhausted
+    ? ModelStatusEnum.quotaExceeded
+    : showApiKeyUnavailable
+      ? ModelStatusEnum.credentialRemoved
+      : currentModel?.status
+  const statusI18nKey = effectiveStatus ? MODEL_STATUS_I18N_KEY[effectiveStatus] : undefined
+  const isCreditsExhausted = effectiveStatus === ModelStatusEnum.quotaExceeded
+  const shouldShowModelMeta = effectiveStatus === ModelStatusEnum.active && !(disabled && hasDeprecated)
 
   // Non-workflow status error: split layout with badge + settings button
   if ((showCreditsExhausted || showApiKeyUnavailable) && !isInWorkflow) {
@@ -60,7 +65,14 @@ const Trigger: FC<TriggerProps> = ({
           />
           <div className="flex flex-1 items-center truncate px-1 py-[3px]">
             {currentModel
-              ? <ModelName className="grow" modelItem={currentModel} showMode showFeatures />
+              ? (
+                  <ModelName
+                    className="grow"
+                    modelItem={currentModel}
+                    showMode={shouldShowModelMeta}
+                    showFeatures={shouldShowModelMeta}
+                  />
+                )
               : <div className="truncate text-[13px] font-normal text-components-input-text-filled">{modelId}</div>}
           </div>
           <div className="flex shrink-0 items-center pr-0.5">
@@ -121,8 +133,8 @@ const Trigger: FC<TriggerProps> = ({
           <ModelName
             className="mr-1.5 text-text-primary"
             modelItem={currentModel}
-            showMode
-            showFeatures
+            showMode={shouldShowModelMeta}
+            showFeatures={shouldShowModelMeta}
           />
         )
       }
@@ -144,32 +156,49 @@ const Trigger: FC<TriggerProps> = ({
         !isEmpty && (
           disabled
             ? (
-                hasDeprecated
-                  ? (
-                      <Tooltip popupContent={t('modelProvider.selector.incompatibleTip', { ns: 'common' })}>
-                        <div className="ml-auto flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <div className="ml-auto flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
+                        <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                        <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                          {t('modelProvider.selector.incompatible', { ns: 'common' })}
+                        </span>
+                      </div>
+                    )}
+                  />
+                  <TooltipContent placement="top">
+                    {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            : statusI18nKey
+              ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      disabled={effectiveStatus !== ModelStatusEnum.noPermission}
+                      render={(
+                        <div
+                          className={cn(
+                            'ml-auto flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning px-[5px] py-0.5',
+                            isCreditsExhausted && 'bg-components-badge-bg-dimm',
+                          )}
+                        >
                           <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                           <span className="whitespace-nowrap text-text-warning system-xs-medium">
-                            {t('modelProvider.selector.incompatible', { ns: 'common' })}
+                            {t(statusI18nKey as 'modelProvider.selector.creditsExhausted', { ns: 'common' })}
                           </span>
                         </div>
-                      </Tooltip>
-                    )
-                  : (
-                      <Tooltip
-                        popupContent={
-                          (modelDisabled && currentModel)
-                            ? MODEL_STATUS_TEXT[currentModel.status as string][language]
-                            : ''
-                        }
-                      >
-                        <AlertTriangle className="h-4 w-4 text-[#F79009]" />
-                      </Tooltip>
-                    )
-              )
-            : (
-                <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
-              )
+                      )}
+                    />
+                    <TooltipContent placement="top">
+                      {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              : (
+                  <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
+                )
         )
       }
       {

@@ -166,6 +166,30 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.getByText('common.modelProvider.selector.creditsExhausted').parentElement).toHaveClass('bg-components-badge-bg-dimm')
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+    })
+
+    it('should hide model meta when api key is unavailable', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'api-unavailable',
+        priority: 'apiKey',
+        supportsCredits: true,
+        showPrioritySwitcher: true,
+        hasCredentials: true,
+        isCreditsExhausted: false,
+        credentialName: 'Primary Key',
+        credits: 0,
+      })
+
+      render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem()}
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
     it('should not show status badge when selected model is readonly', () => {
@@ -189,6 +213,7 @@ describe('ModelSelectorTrigger', () => {
         />,
       )
 
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
       expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
@@ -196,20 +221,18 @@ describe('ModelSelectorTrigger', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should show deprecated tooltip when hovering warn icon', async () => {
+    it('should show incompatible badge for deprecated selection', async () => {
       const user = userEvent.setup()
-      const { container } = render(
+      render(
         <ModelSelectorTrigger
           defaultModel={{ provider: 'openai', model: 'legacy-model' }}
         />,
       )
 
-      const warnIcon = container.querySelector('.i-ri-alert-line')
-      expect(warnIcon).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
-      await user.hover(warnIcon as HTMLElement)
-
-      expect(await screen.findByText('common.modelProvider.deprecated')).toBeInTheDocument()
+      expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
     })
 
     it('should render fallback icon when deprecated provider is not found', () => {
