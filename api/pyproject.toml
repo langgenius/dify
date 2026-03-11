@@ -6,9 +6,9 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "aliyun-log-python-sdk~=0.9.37",
     "arize-phoenix-otel~=0.9.2",
-    "azure-identity==1.16.1",
+    "azure-identity==1.25.2",
     "beautifulsoup4==4.12.2",
-    "boto3==1.35.99",
+    "boto3==1.42.65",
     "bs4~=0.0.1",
     "cachetools~=5.3.0",
     "celery~=5.5.2",
@@ -180,13 +180,13 @@ dev = [
 # Required for storage clients
 ############################################################
 storage = [
-    "azure-storage-blob==12.26.0",
+    "azure-storage-blob==12.28.0",
     "bce-python-sdk~=0.9.23",
-    "cos-python-sdk-v5==1.9.38",
-    "esdk-obs-python==3.25.8",
+    "cos-python-sdk-v5==1.9.41",
+    "esdk-obs-python==3.26.2",
     "google-cloud-storage>=3.0.0",
     "opendal~=0.46.0",
-    "oss2==2.18.5",
+    "oss2==2.19.1",
     "supabase~=2.18.1",
     "tos~=2.9.0",
 ]
