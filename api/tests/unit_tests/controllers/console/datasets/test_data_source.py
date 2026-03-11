@@ -161,9 +161,11 @@ class TestDataSourceApi:
             method(api, "b1", "enable")
 
         statement = mock_session.execute.call_args.args[0]
-        compiled = str(statement)
-        assert "tenant_id" in compiled
-        assert "id" in compiled
+        where_clause = getattr(statement, "whereclause", None)
+        assert where_clause is not None
+        compiled_where = str(where_clause)
+        assert "tenant_id" in compiled_where
+        assert "id" in compiled_where
 
     def test_patch_enable_already_enabled(self, app, patch_tenant, mock_engine):
         api = DataSourceApi()
