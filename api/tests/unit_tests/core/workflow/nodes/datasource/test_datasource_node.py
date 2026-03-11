@@ -1,6 +1,7 @@
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.datasource.datasource_node import DatasourceNode
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.datasource.datasource_node import DatasourceNode
 
 
 class _VarSeg:
@@ -28,13 +29,17 @@ class _GraphState:
 
 
 class _GraphParams:
-    tenant_id = "t1"
-    app_id = "app-1"
     workflow_id = "wf-1"
     graph_config = {}
-    user_id = "u1"
-    user_from = "account"
-    invoke_from = "debugger"
+    run_context = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "t1",
+            "app_id": "app-1",
+            "user_id": "u1",
+            "user_from": "account",
+            "invoke_from": "debugger",
+        }
+    }
     call_depth = 0
 
 

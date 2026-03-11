@@ -5,7 +5,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.workflow.nodes.human_input.entities import FormInput, UserAction
+from dify_graph.nodes.human_input.entities import FormInput, UserAction
 from models.execution_extra_content import ExecutionContentType
 
 

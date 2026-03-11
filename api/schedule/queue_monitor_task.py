@@ -21,6 +21,10 @@ celery_redis = Redis(
     ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
     ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
     ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
+    # Add conservative socket timeouts and health checks to avoid long-lived half-open sockets
+    socket_timeout=5,
+    socket_connect_timeout=5,
+    health_check_interval=30,
 )
 
 logger = logging.getLogger(__name__)
