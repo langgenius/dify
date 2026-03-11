@@ -58,18 +58,24 @@ class WorkflowEventsApi(Resource):
             run_id=task_id,
         )
 
-        if (
-            workflow_run is None
-            or workflow_run.app_id != app_model.id
-            or workflow_run.created_by_role != CreatorUserRole.END_USER
-            or workflow_run.created_by != end_user.id
-        ):
+        if workflow_run is None:
             raise NotFound("Workflow run not found")
 
-        if workflow_run.finished_at is not None:
+        if workflow_run.app_id != app_model.id:
+            raise NotFound("Workflow run not found")
+
+        if workflow_run.created_by_role != CreatorUserRole.END_USER:
+            raise NotFound("Workflow run not found")
+
+        if workflow_run.created_by != end_user.id:
+            raise NotFound("Workflow run not found")
+
+        workflow_run_entity = workflow_run
+
+        if workflow_run_entity.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
-                task_id=workflow_run.id,
-                workflow_run=workflow_run,
+                task_id=workflow_run_entity.id,
+                workflow_run=workflow_run_entity,
                 creator_user=end_user,
             )
 
@@ -97,14 +103,14 @@ class WorkflowEventsApi(Resource):
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
-                            workflow_run=workflow_run,
+                            workflow_run=workflow_run_entity,
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
                         )
                     )
                 return generator.convert_to_event_stream(
-                    msg_generator.retrieve_events(app_mode, workflow_run.id),
+                    msg_generator.retrieve_events(app_mode, workflow_run_entity.id),
                 )
 
             event_generator = _generate_stream_events
