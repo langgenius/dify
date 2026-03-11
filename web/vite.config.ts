@@ -1,17 +1,24 @@
-import type { Plugin } from 'vite'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import { defineConfig } from 'vite'
+import Inspect from 'vite-plugin-inspect'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
+import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
+const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
 
 export default defineConfig(({ mode }) => {
+  const isTest = mode === 'test'
+  const isStorybook = process.env.STORYBOOK === 'true'
+    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
+
   return {
-    plugins: mode === 'test'
+    plugins: isTest
       ? [
           tsconfigPaths(),
           react(),
@@ -23,25 +30,47 @@ export default defineConfig(({ mode }) => {
               if (id.endsWith('.mdx'))
                 return { code: 'export default () => null', map: null }
             },
-          } as Plugin,
+          },
         ]
-      : [
-          vinext(),
-        ],
+      : isStorybook
+        ? [
+            tsconfigPaths(),
+            react(),
+          ]
+        : [
+            Inspect(),
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
+              injectTarget: browserInitializerInjectTarget,
+              projectRoot,
+            }),
+            vinext(),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
+          ],
     resolve: {
       alias: {
-        '~@': __dirname,
+        '~@': projectRoot,
       },
     },
 
     // vinext related config
-    ...(mode !== 'test'
+    ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
             exclude: ['nuqs'],
           },
           server: {
             port: 3000,
+          },
+          ssr: {
+            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
+            noExternal: ['emoji-mart'],
           },
         }
       : {}),

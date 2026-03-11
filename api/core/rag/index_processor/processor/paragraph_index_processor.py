@@ -8,18 +8,10 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -34,8 +26,16 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from core.workflow.file import File, FileTransferMethod, FileType, file_manager
-from core.workflow.nodes.llm import llm_utils
+from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -474,7 +474,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Deduct quota for summary generation (same as workflow nodes)
         try:
-            llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
+            deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
         except Exception as e:
             # Log but don't fail summary generation if quota deduction fails
             logger.warning("Failed to deduct quota for summary generation: %s", str(e))

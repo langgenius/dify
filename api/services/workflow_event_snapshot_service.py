@@ -22,10 +22,10 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.entities import WorkflowStartReason
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowStartReason
+from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
