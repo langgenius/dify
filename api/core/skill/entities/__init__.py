@@ -7,7 +7,7 @@ from .skill_metadata import (
     ToolFieldConfig,
     ToolReference,
 )
-from .tool_access_policy import ToolAccessPolicy, ToolDescription, ToolInvocationRequest
+from .tool_access_policy import ToolAccessDescription, ToolAccessPolicy, ToolDescription, ToolInvocationRequest
 from .tool_dependencies import ToolDependencies, ToolDependency
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "SkillDependance",
     "SkillDocument",
     "SkillMetadata",
+    "ToolAccessDescription",
     "ToolAccessPolicy",
     "ToolConfiguration",
     "ToolDependencies",

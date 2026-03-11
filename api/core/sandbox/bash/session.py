@@ -4,7 +4,7 @@ import json
 import logging
 import mimetypes
 import os
-from io import BytesIO
+import shlex
 from types import TracebackType
 
 from core.file import File, FileTransferMethod, FileType
@@ -52,8 +52,10 @@ class SandboxBashSession:
             user_id=self._user_id,
             context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(self._tools)),
         )
-        # FIXME(Mairuis): enable all tool using
-        tools_path = DifyCli.GLOBAL_TOOLS_PATH
+        if self._tools is not None and not self._tools.is_empty():
+            tools_path = self._setup_node_tools_directory(self._node_id, self._tools, self._cli_api_session)
+        else:
+            tools_path = DifyCli.GLOBAL_TOOLS_PATH
 
         self._bash_tool = SandboxBashTool(
             sandbox=self._sandbox.vm,
@@ -69,22 +71,28 @@ class SandboxBashSession:
         cli_api_session: CliApiSession,
     ) -> str:
         node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
-
-        vm = self._sandbox.vm
-        (
-            pipeline(vm)
-            .add(["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
-            .add(["mkdir", "-p", node_tools_path], error_message="Failed to create node tools dir")
-            .execute(raise_on_error=True)
-        )
-
         config_json = json.dumps(
             DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, tool_deps=tools).model_dump(
                 mode="json"
             ),
             ensure_ascii=False,
         )
-        vm.upload_file(f"{node_tools_path}/{DifyCli.CONFIG_FILENAME}", BytesIO(config_json.encode("utf-8")))
+        config_path = shlex.quote(f"{node_tools_path}/{DifyCli.CONFIG_FILENAME}")
+
+        vm = self._sandbox.vm
+        # Merge mkdir + config write into a single pipeline to reduce round-trips.
+        (
+            pipeline(vm)
+            .add(["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
+            .add(["mkdir", "-p", node_tools_path], error_message="Failed to create node tools dir")
+            # Use a quoted heredoc (<<'EOF') so the shell performs no expansion on the
+            # content — safe regardless of $, `, \, or quotes inside the JSON.
+            .add(
+                ["sh", "-c", f"cat > {config_path} << '__DIFY_CFG__'\n{config_json}\n__DIFY_CFG__"],
+                error_message="Failed to write CLI config",
+            )
+            .execute(raise_on_error=True)
+        )
 
         pipeline(vm, cwd=node_tools_path).add(
             [DifyCli.PATH, "init"], error_message="Failed to initialize Dify CLI"
