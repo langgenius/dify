@@ -69,7 +69,7 @@ def test_prepare_opik_uuid():
 def test_init(opik_config, monkeypatch):
     mock_opik = MagicMock()
     monkeypatch.setattr("core.ops.opik_trace.opik_trace.Opik", mock_opik)
-    os.environ["FILES_URL"] = "http://test.url"
+    monkeypatch.setenv("FILES_URL", "http://test.url")
 
     instance = OpikDataTrace(opik_config)
 

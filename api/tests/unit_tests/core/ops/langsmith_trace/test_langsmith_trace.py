@@ -48,7 +48,7 @@ def trace_instance(langsmith_config, monkeypatch):
 def test_init(langsmith_config, monkeypatch):
     mock_client_class = MagicMock()
     monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.Client", mock_client_class)
-    os.environ["FILES_URL"] = "http://test.url"
+    monkeypatch.setenv("FILES_URL", "http://test.url")
 
     instance = LangSmithDataTrace(langsmith_config)
 

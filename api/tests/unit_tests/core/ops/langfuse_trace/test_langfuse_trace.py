@@ -53,7 +53,7 @@ def trace_instance(langfuse_config, monkeypatch):
 def test_init(langfuse_config, monkeypatch):
     mock_langfuse = MagicMock()
     monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.Langfuse", mock_langfuse)
-    os.environ["FILES_URL"] = "http://test.url"
+    monkeypatch.setenv("FILES_URL", "http://test.url")
 
     instance = LangFuseDataTrace(langfuse_config)
 
