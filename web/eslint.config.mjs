@@ -227,5 +227,4 @@ export default antfu(
 )
   .disableRulesFix([
     'e18e/prefer-array-at',
-    'tailwindcss/enforce-consistent-class-order',
   ])
