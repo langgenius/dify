@@ -203,7 +203,8 @@ function MemberItem({ member }: MemberItemProps) {
       <div className="flex grow items-center">
         <div className="mr-2 h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
-            <Avatar size="xxs" avatar={null} name={member.name} />
+            {/* size-3.5 = 14px, matching the original design */}
+            <Avatar size="xxs" className="size-3.5" avatar={null} name={member.name} />
           </div>
         </div>
         <p className="system-sm-medium mr-1 text-text-secondary">{member.name}</p>

@@ -106,7 +106,7 @@ function MemberItem({ member }: MemberItemProps) {
   }, [member, setSpecificMembers, specificMembers])
   return (
     <BaseItem
-      icon={<Avatar size="xxs" avatar={null} name={member.name} />}
+      icon={<Avatar size="xxs" className="size-3.5" avatar={null} name={member.name} />}
       onRemove={handleRemoveMember}
     >
       <p className="system-xs-regular text-text-primary">{member.name}</p>
