@@ -871,6 +871,7 @@ def test_handle_integrity_error_should_raise_readable_value_errors(
     expected_error: str,
     service: MCPToolManageService,
 ) -> None:
+    """Test that known integrity errors raise readable value errors."""
     # Arrange
     error = IntegrityError("stmt", {}, Exception(orig_message))
 
@@ -880,12 +881,15 @@ def test_handle_integrity_error_should_raise_readable_value_errors(
 
 
 def test_handle_integrity_error_should_reraise_unknown_error(service: MCPToolManageService) -> None:
+    """Test that unknown integrity errors are re-raised."""
     # Arrange
     error = IntegrityError("stmt", {}, Exception("unknown-constraint"))
 
     # Act + Assert
-    with pytest.raises(RuntimeError, match="No active exception"):
+    with pytest.raises(IntegrityError) as exc_info:
         service._handle_integrity_error(error, "name", "url", "identifier")
+
+    assert exc_info.value is error
 
 
 @pytest.mark.parametrize(
