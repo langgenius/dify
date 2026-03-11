@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import NodeType
 from dify_graph.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction
 from dify_graph.nodes.human_input.enums import FormInputType
@@ -187,7 +188,10 @@ class TestWorkflowService:
         service._build_human_input_node = MagicMock(return_value=node)  # type: ignore[method-assign]
 
         workflow = MagicMock()
-        workflow.get_node_config_by_id.return_value = {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+        node_config = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+        )
+        workflow.get_node_config_by_id.return_value = node_config
         workflow.get_enclosing_node_type_and_id.return_value = None
         service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
 
@@ -232,7 +236,7 @@ class TestWorkflowService:
         service._build_human_input_variable_pool.assert_called_once_with(
             app_model=app_model,
             workflow=workflow,
-            node_config={"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}},
+            node_config=node_config,
             manual_inputs={"#node-0.result#": "LLM output"},
         )
 
@@ -267,7 +271,9 @@ class TestWorkflowService:
         service._build_human_input_node = MagicMock(return_value=node)  # type: ignore[method-assign]
 
         workflow = MagicMock()
-        workflow.get_node_config_by_id.return_value = {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+        workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+        )
         service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
 
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")

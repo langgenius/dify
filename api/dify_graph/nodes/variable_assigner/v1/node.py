@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -22,7 +23,7 @@ class VariableAssignerNode(Node[VariableAssignerData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ):
@@ -52,21 +53,18 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: VariableAssignerData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = VariableAssignerData.model_validate(node_data)
-
         mapping = {}
-        assigned_variable_node_id = typed_node_data.assigned_variable_selector[0]
+        assigned_variable_node_id = node_data.assigned_variable_selector[0]
         if assigned_variable_node_id == CONVERSATION_VARIABLE_NODE_ID:
-            selector_key = ".".join(typed_node_data.assigned_variable_selector)
+            selector_key = ".".join(node_data.assigned_variable_selector)
             key = f"{node_id}.#{selector_key}#"
-            mapping[key] = typed_node_data.assigned_variable_selector
+            mapping[key] = node_data.assigned_variable_selector
 
-        selector_key = ".".join(typed_node_data.input_variable_selector)
+        selector_key = ".".join(node_data.input_variable_selector)
         key = f"{node_id}.#{selector_key}#"
-        mapping[key] = typed_node_data.input_variable_selector
+        mapping[key] = node_data.input_variable_selector
         return mapping
 
     def _run(self) -> NodeRunResult:
