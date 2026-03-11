@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react'
 import type { WithIconCardItemProps } from './markdown-with-directive-schema'
 import Image from 'next/image'
+import { cn } from '@/utils/classnames'
 
 type WithIconItemProps = WithIconCardItemProps & {
   children?: ReactNode
   iconAlt?: string
 }
 
-function WithIconCardItem({ icon, children, iconAlt }: WithIconItemProps) {
+function WithIconCardItem({ icon, children, className, iconAlt }: WithIconItemProps) {
   return (
-    <div className="flex h-11 items-center space-x-3 rounded-lg bg-background-section px-2">
+    <div className={cn('flex h-11 items-center space-x-3 rounded-lg bg-background-section px-2', className)}>
       {/*
         * unoptimized to "url parameter is not allowed" for external domains despite correct remotePatterns configuration.
         * https://github.com/vercel/next.js/issues/88873
