@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Union, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,21 +44,20 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    TextPromptMessageContent,
-)
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.tools.signature import sign_tool_file
-from core.workflow.file import helpers as file_helpers
-from core.workflow.file.enums import FileTransferMethod
+from dify_graph.file.enums import FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    TextPromptMessageContent,
+)
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -157,7 +156,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             id=self._message_id,
                             mode=self._conversation_mode,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -170,7 +169,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             mode=self._conversation_mode,
                             conversation_id=self._conversation_id,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=self._task_state.llm_result.message.get_text_content(),
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -219,14 +218,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
         publisher = None
-        text_to_speech_dict = self._app_config.app_model_config_dict.get("text_to_speech")
+        text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
         if (
             text_to_speech_dict
             and text_to_speech_dict.get("autoPlay") == "enabled"
             and text_to_speech_dict.get("enabled")
         ):
             publisher = AppGeneratorTTSPublisher(
-                tenant_id, text_to_speech_dict.get("voice", None), text_to_speech_dict.get("language", None)
+                tenant_id, text_to_speech_dict.get("voice", ""), text_to_speech_dict.get("language", None)
             )
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
             while True:
@@ -283,7 +282,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                 # handle output moderation
                 output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                    cast(str, self._task_state.llm_result.message.content)
+                    self._task_state.llm_result.message.get_text_content()
                 )
                 if output_moderation_answer:
                     self._task_state.llm_result.message.content = output_moderation_answer
@@ -397,7 +396,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.message_unit_price = usage.prompt_unit_price
         message.message_price_unit = usage.prompt_price_unit
         message.answer = (
-            PromptTemplateParser.remove_template_variables(cast(str, llm_result.message.content).strip())
+            PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
@@ -460,90 +459,39 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
         metadata_dict = self._task_state.metadata.model_dump()
+
+        # Fetch files associated with this message
+        files = None
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
+
+            if message_files:
+                # Fetch all required UploadFile objects in a single query to avoid N+1 problem
+                upload_file_ids = list(
+                    dict.fromkeys(
+                        mf.upload_file_id
+                        for mf in message_files
+                        if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
+                    )
+                )
+                upload_files_map = {}
+                if upload_file_ids:
+                    upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+                    upload_files_map = {uf.id: uf for uf in upload_files}
+
+                files_list = []
+                for message_file in message_files:
+                    file_dict = prepare_file_dict(message_file, upload_files_map)
+                    files_list.append(file_dict)
+
+                files = files_list or None
+
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             metadata=metadata_dict,
+            files=files,
         )
-
-    def _record_files(self):
-        with Session(db.engine, expire_on_commit=False) as session:
-            message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
-            if not message_files:
-                return None
-
-            files_list = []
-            upload_file_ids = [
-                mf.upload_file_id
-                for mf in message_files
-                if mf.transfer_method == FileTransferMethod.LOCAL_FILE and mf.upload_file_id
-            ]
-            upload_files_map = {}
-            if upload_file_ids:
-                upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
-                upload_files_map = {uf.id: uf for uf in upload_files}
-
-            for message_file in message_files:
-                upload_file = None
-                if message_file.transfer_method == FileTransferMethod.LOCAL_FILE and message_file.upload_file_id:
-                    upload_file = upload_files_map.get(message_file.upload_file_id)
-
-                url = None
-                filename = "file"
-                mime_type = "application/octet-stream"
-                size = 0
-                extension = ""
-
-                if message_file.transfer_method == FileTransferMethod.REMOTE_URL:
-                    url = message_file.url
-                    if message_file.url:
-                        filename = message_file.url.split("/")[-1].split("?")[0]  # Remove query params
-                elif message_file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                    if upload_file:
-                        url = file_helpers.get_signed_file_url(upload_file_id=str(upload_file.id))
-                        filename = upload_file.name
-                        mime_type = upload_file.mime_type or "application/octet-stream"
-                        size = upload_file.size or 0
-                        extension = f".{upload_file.extension}" if upload_file.extension else ""
-                    elif message_file.upload_file_id:
-                        # Fallback: generate URL even if upload_file not found
-                        url = file_helpers.get_signed_file_url(upload_file_id=str(message_file.upload_file_id))
-                elif message_file.transfer_method == FileTransferMethod.TOOL_FILE and message_file.url:
-                    # For tool files, use URL directly if it's HTTP, otherwise sign it
-                    if message_file.url.startswith("http"):
-                        url = message_file.url
-                        filename = message_file.url.split("/")[-1].split("?")[0]
-                    else:
-                        # Extract tool file id and extension from URL
-                        url_parts = message_file.url.split("/")
-                        if url_parts:
-                            file_part = url_parts[-1].split("?")[0]  # Remove query params first
-                            # Use rsplit to correctly handle filenames with multiple dots
-                            if "." in file_part:
-                                tool_file_id, ext = file_part.rsplit(".", 1)
-                                extension = f".{ext}"
-                            else:
-                                tool_file_id = file_part
-                                extension = ".bin"
-                            url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-                            filename = file_part
-
-                transfer_method_value = message_file.transfer_method
-                remote_url = message_file.url if message_file.transfer_method == FileTransferMethod.REMOTE_URL else ""
-                file_dict = {
-                    "related_id": message_file.id,
-                    "extension": extension,
-                    "filename": filename,
-                    "size": size,
-                    "mime_type": mime_type,
-                    "transfer_method": transfer_method_value,
-                    "type": message_file.type,
-                    "url": url or "",
-                    "upload_file_id": message_file.upload_file_id or message_file.id,
-                    "remote_url": remote_url,
-                }
-                files_list.append(file_dict)
-            return files_list or None
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
         """

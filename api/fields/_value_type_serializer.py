@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from core.workflow.variables.segments import Segment
-from core.workflow.variables.types import SegmentType
+from dify_graph.variables.segments import Segment
+from dify_graph.variables.types import SegmentType
 
 
 class _VarTypedDict(TypedDict, total=False):
