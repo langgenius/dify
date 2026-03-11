@@ -105,10 +105,10 @@ const ChangePasswordForm = () => {
     >
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
-          <h2 className="text-text-primary title-4xl-semi-bold">
+          <h2 className="title-4xl-semi-bold text-text-primary">
             {t('changePassword', { ns: 'login' })}
           </h2>
-          <p className="mt-2 text-text-secondary body-md-regular">
+          <p className="body-md-regular mt-2 text-text-secondary">
             {t('changePasswordTip', { ns: 'login' })}
           </p>
         </div>
@@ -117,7 +117,7 @@ const ChangePasswordForm = () => {
           <div>
             {/* Password */}
             <div className="mb-5">
-              <label htmlFor="password" className="my-2 text-text-secondary system-md-semibold">
+              <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
                 {t('account.newPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">
@@ -130,11 +130,11 @@ const ChangePasswordForm = () => {
                 />
 
               </div>
-              <div className="mt-1 text-text-secondary body-xs-regular">{t('error.passwordInvalid', { ns: 'login' })}</div>
+              <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
             </div>
             {/* Confirm Password */}
             <div className="mb-5">
-              <label htmlFor="confirmPassword" className="my-2 text-text-secondary system-md-semibold">
+              <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
                 {t('account.confirmPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">

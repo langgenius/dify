@@ -78,7 +78,7 @@ const CreateFromDSLModal = ({
           )}
           {currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
-              <div className="leading6 mb-1 text-text-secondary system-md-semibold">
+              <div className="system-md-semibold leading6 mb-1 text-text-secondary">
                 DSL URL
               </div>
               <Input

@@ -32,7 +32,7 @@ const MarketplaceTrigger = ({
       <div className="p-0.5">
         <RiFilter3Line className={cn('size-4', !!selectedTagsLength && 'text-text-secondary')} />
       </div>
-      <div className="flex items-center gap-x-1 p-1 system-sm-medium">
+      <div className="system-sm-medium flex items-center gap-x-1 p-1">
         {
           !selectedTagsLength && <span>{t('allTags', { ns: 'pluginTags' })}</span>
         }
@@ -45,7 +45,7 @@ const MarketplaceTrigger = ({
         }
         {
           selectedTagsLength > 2 && (
-            <div className="text-text-tertiary system-xs-medium">
+            <div className="system-xs-medium text-text-tertiary">
               +
               {selectedTagsLength - 2}
             </div>

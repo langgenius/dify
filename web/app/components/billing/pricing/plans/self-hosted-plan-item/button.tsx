@@ -35,7 +35,7 @@ const Button = ({
     <button
       type="button"
       className={cn(
-        'flex items-center gap-x-2 py-3 pl-5 pr-4 system-xl-semibold',
+        'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
         BUTTON_CLASSNAME[plan],
         isPremiumPlan && 'py-2',
       )}

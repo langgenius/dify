@@ -70,7 +70,7 @@ const FileFromLinkOrLocal = ({
                 )}
                 >
                   <input
-                    className="mr-0.5 block grow appearance-none bg-transparent px-1 outline-none system-sm-regular"
+                    className="system-sm-regular mr-0.5 block grow appearance-none bg-transparent px-1 outline-none"
                     placeholder={t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' }) || ''}
                     value={url}
                     onChange={(e) => {
@@ -91,7 +91,7 @@ const FileFromLinkOrLocal = ({
                 </div>
                 {
                   showError && (
-                    <div className="mt-0.5 text-text-destructive body-xs-regular">
+                    <div className="body-xs-regular mt-0.5 text-text-destructive">
                       {t('fileUploader.pasteFileLinkInvalid', { ns: 'common' })}
                     </div>
                   )
@@ -101,7 +101,7 @@ const FileFromLinkOrLocal = ({
           }
           {
             showFromLink && showFromLocal && (
-              <div className="flex h-7 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
+              <div className="system-2xs-medium-uppercase flex h-7 items-center p-2 text-text-quaternary">
                 <div className="mr-2 h-px w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]" />
                 OR
                 <div className="ml-2 h-px w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]" />

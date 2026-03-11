@@ -22,14 +22,14 @@ const RestoringTitle = () => {
   return (
     <div className="flex flex-col gap-y-0.5">
       <div className="flex items-center gap-x-1">
-        <span className="text-text-primary system-sm-semibold">
+        <span className="system-sm-semibold text-text-primary">
           {versionName}
         </span>
-        <span className="rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary system-2xs-medium-uppercase">
+        <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary">
           {t('common.viewOnly', { ns: 'workflow' })}
         </span>
       </div>
-      <div className="flex h-4 items-center gap-x-1 text-text-tertiary system-xs-regular">
+      <div className="system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary">
         {
           currentVersion && (
             <>

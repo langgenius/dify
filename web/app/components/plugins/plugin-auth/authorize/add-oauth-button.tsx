@@ -94,12 +94,12 @@ const AddOAuthButton = ({
             <RiInformation2Fill className="h-5 w-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
-            <div className="mb-1.5 system-sm-regular">
+            <div className="system-sm-regular mb-1.5">
               {t('auth.clientInfo', { ns: 'plugin' })}
             </div>
             {
               redirect_uri && (
-                <div className="flex w-full py-0.5 system-sm-medium">
+                <div className="system-sm-medium flex w-full py-0.5">
                   <div className="w-0 grow break-words break-all">{redirect_uri}</div>
                   <ActionButton
                     className="shrink-0"
@@ -114,7 +114,7 @@ const AddOAuthButton = ({
             }
           </div>
         </div>
-        <div className="flex h-6 items-center text-text-secondary system-sm-medium">
+        <div className="system-sm-medium flex h-6 items-center text-text-secondary">
           {renderI18nObject(item.label as Record<string, string>)}
           {
             item.required && (

@@ -48,7 +48,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
                   >
                     <Markdown content={answer} />
                   </div>
-                  <div className="mt-1 h-4 px-4 text-text-quaternary system-xs-regular">
+                  <div className="system-xs-regular mt-1 h-4 px-4 text-text-quaternary">
                     <span>
                       {answer.length}
                       {' '}

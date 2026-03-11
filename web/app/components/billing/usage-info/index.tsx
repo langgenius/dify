@@ -71,14 +71,14 @@ const UsageInfo: FC<Props> = ({
   const renderRightInfo = () => {
     if (resetText) {
       return (
-        <div className="ml-auto flex-1 text-right text-text-tertiary system-xs-regular">
+        <div className="system-xs-regular ml-auto flex-1 text-right text-text-tertiary">
           {resetText}
         </div>
       )
     }
     if (showUnit) {
       return (
-        <div className="ml-auto text-text-tertiary system-xs-medium">
+        <div className="system-xs-medium ml-auto text-text-tertiary">
           {unit}
         </div>
       )
@@ -97,7 +97,7 @@ const UsageInfo: FC<Props> = ({
             <span>
               {storageThreshold}
             </span>
-            <span className="text-text-quaternary system-md-regular">/</span>
+            <span className="system-md-regular text-text-quaternary">/</span>
             <span>
               {storageThreshold}
               {' '}
@@ -117,7 +117,7 @@ const UsageInfo: FC<Props> = ({
             </span>
             {!isSandboxPlan && (
               <>
-                <span className="text-text-quaternary system-md-regular">/</span>
+                <span className="system-md-regular text-text-quaternary">/</span>
                 <span>{totalDisplay}</span>
               </>
             )}
@@ -129,7 +129,7 @@ const UsageInfo: FC<Props> = ({
       return (
         <div className="flex items-center gap-1">
           <span>{usage}</span>
-          <span className="text-text-quaternary system-md-regular">/</span>
+          <span className="system-md-regular text-text-quaternary">/</span>
           <span>{totalDisplay}</span>
         </div>
       )
@@ -139,7 +139,7 @@ const UsageInfo: FC<Props> = ({
     return (
       <div className="flex items-center gap-1">
         <span>{usage}</span>
-        <span className="text-text-quaternary system-md-regular">/</span>
+        <span className="system-md-regular text-text-quaternary">/</span>
         <span>{totalDisplay}</span>
       </div>
     )
@@ -182,7 +182,7 @@ const UsageInfo: FC<Props> = ({
         <Icon className="h-4 w-4 text-text-tertiary" />
       )}
       <div className="flex items-center gap-1">
-        <div className="text-text-tertiary system-xs-medium">{name}</div>
+        <div className="system-xs-medium text-text-tertiary">{name}</div>
         {tooltip && (
           <Tooltip
             popupContent={(
@@ -193,7 +193,7 @@ const UsageInfo: FC<Props> = ({
           />
         )}
       </div>
-      <div className="flex items-center gap-1 text-text-primary system-md-semibold">
+      <div className="system-md-semibold flex items-center gap-1 text-text-primary">
         {renderUsageWithTooltip()}
         {renderRightInfo()}
       </div>

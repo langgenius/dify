@@ -131,7 +131,7 @@ const Item = ({
               color={credential.not_allowed_to_use ? 'gray' : 'green'}
             />
             <div
-              className="truncate text-text-secondary system-md-regular"
+              className="system-md-regular truncate text-text-secondary"
               title={credential.name}
             >
               {credential.name}

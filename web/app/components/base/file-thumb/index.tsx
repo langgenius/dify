@@ -9,7 +9,7 @@ import Tooltip from '../tooltip'
 import ImageRender from './image-render'
 
 const FileThumbVariants = cva(
-  'flex cursor-pointer items-center justify-center',
+  'flex items-center justify-center cursor-pointer',
   {
     variants: {
       size: {

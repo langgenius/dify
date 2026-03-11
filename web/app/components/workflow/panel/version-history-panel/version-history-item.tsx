@@ -83,7 +83,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       }}
     >
       {!isLast && <div className="absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
-      <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
+      <div className=" flex h-5 w-[18px] shrink-0 items-center justify-center">
         <div className={cn(
           'h-2 w-2 rounded-lg border-[2px]',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
@@ -93,15 +93,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div className={cn(
-            'truncate py-[1px] system-sm-semibold',
+            'system-sm-semibold truncate py-[1px]',
             isSelected ? 'text-text-accent' : 'text-text-secondary',
           )}
           >
             {isDraft ? t('versionHistory.currentDraft', { ns: 'workflow' }) : item.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}
           </div>
           {isLatest && (
-            <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm
-            px-[5px] text-text-accent-secondary system-2xs-medium-uppercase"
+            <div className="system-2xs-medium-uppercase flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary
+            bg-components-badge-bg-dimm px-[5px] text-text-accent-secondary"
             >
               {t('versionHistory.latest', { ns: 'workflow' })}
             </div>
@@ -109,14 +109,14 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         </div>
         {
           !isDraft && (
-            <div className="break-words text-text-secondary system-xs-regular">
+            <div className="system-xs-regular break-words text-text-secondary">
               {item.marked_comment || ''}
             </div>
           )
         }
         {
           !isDraft && (
-            <div className="truncate text-text-tertiary system-xs-regular">
+            <div className="system-xs-regular truncate text-text-tertiary">
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
             </div>
           )

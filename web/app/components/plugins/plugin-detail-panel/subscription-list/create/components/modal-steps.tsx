@@ -21,7 +21,7 @@ type StatusStepProps = {
 
 export const StatusStep = ({ isActive, text }: StatusStepProps) => {
   return (
-    <div className={`flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
+    <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
       ? 'text-state-accent-solid'
       : 'text-text-tertiary'}`}
     >
@@ -222,7 +222,7 @@ export const ManualPropertiesSection = ({
       )}
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-2">
-          <div className="text-text-tertiary system-xs-medium-uppercase">
+          <div className="system-xs-medium-uppercase text-text-tertiary">
             {t('modal.manual.logs.title', { ns: 'pluginTrigger' })}
           </div>
           <div className="h-px flex-1 bg-gradient-to-r from-divider-regular to-transparent" />
@@ -232,7 +232,7 @@ export const ManualPropertiesSection = ({
           <div className="h-3.5 w-3.5">
             <RiLoader2Line className="h-full w-full animate-spin" />
           </div>
-          <div className="text-text-tertiary system-xs-regular">
+          <div className="system-xs-regular text-text-tertiary">
             {t('modal.manual.logs.loading', { ns: 'pluginTrigger', pluginName })}
           </div>
         </div>

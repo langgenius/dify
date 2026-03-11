@@ -65,7 +65,7 @@ const Card = ({
               disabled={!isCurrentWorkspaceManager}
             />
           </div>
-          <div className="text-text-tertiary system-xs-regular">
+          <div className="system-xs-regular text-text-tertiary">
             {t('appMenus.apiAccessTip', { ns: 'common' })}
           </div>
         </div>
@@ -79,7 +79,7 @@ const Card = ({
           className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
           <RiBookOpenLine className="size-3.5 shrink-0" />
-          <div className="grow truncate system-sm-regular">
+          <div className="system-sm-regular grow truncate">
             {t('overview.apiInfo.doc', { ns: 'appOverview' })}
           </div>
           <RiArrowRightUpLine className="size-3.5 shrink-0" />

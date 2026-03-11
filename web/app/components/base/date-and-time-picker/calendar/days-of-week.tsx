@@ -9,7 +9,7 @@ export const DaysOfWeek = () => {
       {daysOfWeek.map(day => (
         <div
           key={day}
-          className="flex items-center justify-center text-text-tertiary system-2xs-medium"
+          className="system-2xs-medium flex items-center justify-center text-text-tertiary"
         >
           {day}
         </div>
