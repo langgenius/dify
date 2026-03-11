@@ -9622,9 +9622,6 @@
     }
   },
   "app/components/workflow/index.tsx": {
-    "e18e/prefer-timer-args": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
