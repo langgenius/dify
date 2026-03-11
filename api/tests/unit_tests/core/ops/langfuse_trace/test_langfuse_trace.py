@@ -1,6 +1,5 @@
 import collections
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
