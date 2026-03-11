@@ -3118,11 +3118,6 @@
       "count": 2
     }
   },
-  "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/prompt-editor/plugins/query-block/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -11010,14 +11005,6 @@
   },
   "scripts/gen-icons.mjs": {
     "e18e/prefer-static-regex": {
-      "count": 2
-    }
-  },
-  "scripts/optimize-standalone.js": {
-    "e18e/prefer-static-regex": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
       "count": 2
     }
   },
