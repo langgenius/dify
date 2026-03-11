@@ -1,6 +1,5 @@
 'use client'
 
-import type { InitOptions } from 'modern-monaco'
 import type { editor as MonacoEditor } from 'modern-monaco/editor-core'
 import type { FC } from 'react'
 import * as React from 'react'
@@ -8,13 +7,13 @@ import { useEffect, useMemo, useRef } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { DARK_THEME_ID, initMonaco, LIGHT_THEME_ID } from './init'
 
 type ModernMonacoEditorProps = {
   value: string
   language: string
   readOnly?: boolean
   options?: MonacoEditor.IEditorOptions
-  initOptions?: InitOptions
   onChange?: (value: string) => void
   onFocus?: () => void
   onBlur?: () => void
@@ -25,26 +24,6 @@ type ModernMonacoEditorProps = {
 
 type MonacoModule = typeof import('modern-monaco/editor-core')
 type EditorCallbacks = Pick<ModernMonacoEditorProps, 'onBlur' | 'onChange' | 'onFocus' | 'onReady'>
-type EditorSetup = {
-  editorOptions: MonacoEditor.IEditorOptions
-  initOptions?: InitOptions
-  language: string
-  resolvedTheme: string
-}
-
-let monacoInitPromise: Promise<typeof import('modern-monaco/editor-core') | null> | null = null
-let monacoInitOptions: InitOptions | null = null
-
-const LIGHT_THEME_ID = 'github-light-default'
-const DARK_THEME_ID = 'github-dark-default'
-
-const DEFAULT_INIT_OPTIONS: InitOptions = {
-  defaultTheme: DARK_THEME_ID,
-  themes: [
-    LIGHT_THEME_ID,
-    DARK_THEME_ID,
-  ],
-}
 
 const createEditorModel = (monaco: MonacoModule, value: string, language: string) => {
   return monaco.editor.createModel(value, language)
@@ -111,21 +90,6 @@ const bindEditorCallbacks = (
   }
 }
 
-const initMonaco = async (initOptions?: InitOptions) => {
-  const resolvedInitOptions = initOptions ?? DEFAULT_INIT_OPTIONS
-  if (!monacoInitPromise) {
-    monacoInitOptions = resolvedInitOptions
-    monacoInitPromise = (async () => {
-      const { init } = await import('modern-monaco')
-      return init(resolvedInitOptions)
-    })()
-  }
-  else if (initOptions && monacoInitOptions !== initOptions) {
-    // Ignore subsequent init options once Monaco is initialized.
-  }
-  return monacoInitPromise
-}
-
 export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   value,
   language,
@@ -135,7 +99,6 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   onFocus,
   onBlur,
   onReady,
-  initOptions,
   className,
   style,
 }) => {
@@ -159,12 +122,6 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     tabFocusMode: false,
     ...options,
   }), [readOnly, options])
-  const setupRef = useRef<EditorSetup>({
-    editorOptions,
-    initOptions,
-    language,
-    resolvedTheme,
-  })
 
   useEffect(() => {
     valueRef.current = value
@@ -175,39 +132,24 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   }, [onChange, onFocus, onBlur, onReady])
 
   useEffect(() => {
-    setupRef.current = {
-      editorOptions,
-      initOptions,
-      language,
-      resolvedTheme,
-    }
-  }, [editorOptions, initOptions, language, resolvedTheme])
-
-  useEffect(() => {
     let disposed = false
     let cleanup: (() => void) | undefined
 
     const setup = async () => {
-      const monaco = await initMonaco(setupRef.current.initOptions)
+      const monaco = await initMonaco()
       if (!monaco || disposed || !containerRef.current)
         return
 
-      const {
-        editorOptions: currentEditorOptions,
-        language: currentLanguage,
-        resolvedTheme: currentResolvedTheme,
-      } = setupRef.current
-
       monacoRef.current = monaco
 
-      const model = createEditorModel(monaco, valueRef.current, currentLanguage)
+      const model = createEditorModel(monaco, valueRef.current, language)
       modelRef.current = model
 
-      const editor = monaco.editor.create(containerRef.current, currentEditorOptions)
+      const editor = monaco.editor.create(containerRef.current, editorOptions)
       editorRef.current = editor
       editor.setModel(model)
 
-      monaco.editor.setTheme(currentResolvedTheme)
+      monaco.editor.setTheme(resolvedTheme)
 
       const disposeCallbacks = bindEditorCallbacks(editor, monaco, callbacksRef, preventTriggerChangeEventRef)
       const resizeObserver = new ResizeObserver(() => {
