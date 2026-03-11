@@ -362,9 +362,7 @@ class TestWorkflowService:
         mock_repo.save.assert_called_once_with(mock_node_exec)
         mock_saver.save.assert_called_once_with(process_data={}, outputs={"output_var": "result_value"})
 
-    def test_run_draft_workflow_node_failure_behavior(
-        self, workflow_service, mock_app, monkeypatch, dummy_session_cls
-    ):
+    def test_run_draft_workflow_node_failure_behavior(self, workflow_service, mock_app, monkeypatch, dummy_session_cls):
         """Behavior: If retrieving the saved execution fails, an appropriate error bubble matches expectations."""
         service = workflow_service
         account = SimpleNamespace(id="account-1")
