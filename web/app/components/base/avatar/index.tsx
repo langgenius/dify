@@ -1,3 +1,4 @@
+import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import type { VariantProps } from 'class-variance-authority'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cva } from 'class-variance-authority'
@@ -44,8 +45,6 @@ const fallbackTextVariants = cva(
     },
   },
 )
-
-export type ImageLoadingStatus = 'idle' | 'loading' | 'loaded' | 'error'
 
 export type AvatarProps = {
   name: string
