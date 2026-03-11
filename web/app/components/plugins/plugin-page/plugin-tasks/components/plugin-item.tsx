@@ -46,6 +46,7 @@ const PluginItem: FC<PluginItemProps> = ({
       </div>
       {onClear && (
         <button
+          type="button"
           className="hidden h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-state-base-hover-alt group-hover/item:flex"
           onClick={onClear}
         >

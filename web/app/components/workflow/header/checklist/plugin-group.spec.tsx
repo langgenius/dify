@@ -1,6 +1,7 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { Popover, PopoverContent } from '@/app/components/base/ui/popover'
 import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
 import { BlockEnum } from '../../types'
 import { ChecklistPluginGroup } from './plugin-group'
@@ -17,6 +18,20 @@ const createChecklistItem = (overrides: Partial<ChecklistItem> = {}): ChecklistI
 })
 
 describe('ChecklistPluginGroup', () => {
+  const getInstallButton = () => {
+    return screen.getByText('workflow.nodes.agent.pluginInstaller.install').closest('button') as HTMLButtonElement
+  }
+
+  const renderInPopover = (items: ChecklistItem[]) => {
+    return render(
+      <Popover open>
+        <PopoverContent>
+          <ChecklistPluginGroup items={items} />
+        </PopoverContent>
+      </Popover>,
+    )
+  }
+
   beforeEach(() => {
     usePluginDependencyStore.setState({ dependencies: [] })
   })
@@ -28,9 +43,9 @@ describe('ChecklistPluginGroup', () => {
       createChecklistItem({ id: 'node-3', pluginUniqueIdentifier: 'langgenius/another-plugin:2.0.0@sha256' }),
     ]
 
-    render(<ChecklistPluginGroup items={items} />)
+    renderInPopover(items)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(getInstallButton())
 
     expect(usePluginDependencyStore.getState().dependencies).toEqual([
       {
@@ -53,9 +68,9 @@ describe('ChecklistPluginGroup', () => {
   })
 
   it('should keep install button disabled when no identifier is available', () => {
-    render(<ChecklistPluginGroup items={[createChecklistItem({ pluginUniqueIdentifier: undefined })]} />)
+    renderInPopover([createChecklistItem({ pluginUniqueIdentifier: undefined })])
 
-    const installButton = screen.getByRole('button')
+    const installButton = getInstallButton()
     expect(installButton).toBeDisabled()
 
     fireEvent.click(installButton)

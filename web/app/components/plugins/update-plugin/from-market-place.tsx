@@ -99,6 +99,12 @@ const UpdatePluginModal: FC<Props> = ({
         }) as Awaited<ReturnType<typeof updateFromMarketPlace>> & FailedUpgradeResponse
 
         if (response.task?.status === TaskStatus.failed) {
+          const failedPlugin = response.task.plugins?.find(plugin => plugin.plugin_unique_identifier === targetPackageInfo.id)
+            ?? response.task.plugins?.[0]
+          Toast.notify({
+            type: 'error',
+            message: failedPlugin?.message || t('error', { ns: 'common' }),
+          })
           setUploadStep(UploadStep.notStarted)
           return
         }
@@ -132,7 +138,7 @@ const UpdatePluginModal: FC<Props> = ({
     }
     if (uploadStep === UploadStep.installed)
       onSave()
-  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
+  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, t, targetPackageInfo.id])
 
   const { mutateAsync } = useRemoveAutoUpgrade()
   const invalidateReferenceSettings = useInvalidateReferenceSettings()

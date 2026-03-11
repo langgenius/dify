@@ -30,6 +30,21 @@ vi.mock('@/context/app-context', () => ({
   },
 }))
 
+vi.mock('@/service/use-common', async () => {
+  const actual = await vi.importActual<typeof import('@/service/use-common')>('@/service/use-common')
+  return {
+    ...actual,
+    useCurrentWorkspace: () => ({
+      data: {
+        trial_credits: 1000,
+        trial_credits_used: 100,
+        next_credit_reset_date: undefined,
+      },
+      isPending: false,
+    }),
+  }
+})
+
 // Mock model-provider-page hooks
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({ data: [], mutate: vi.fn(), isLoading: false }),

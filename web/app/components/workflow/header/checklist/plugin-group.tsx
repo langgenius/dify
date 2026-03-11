@@ -1,10 +1,10 @@
-import type { MouseEventHandler } from 'react'
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
 import type { Dependency } from '@/app/components/plugins/types'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { PopoverClose } from '@/app/components/base/ui/popover'
 import BlockIcon from '../../block-icon'
 import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
 import { ItemIndicator } from './item-indicator'
@@ -46,8 +46,7 @@ export const ChecklistPluginGroup = memo(({
     })
   }, [identifiers])
 
-  const handleInstallAll: MouseEventHandler = (e) => {
-    e.stopPropagation()
+  const handleInstallAll = () => {
     if (dependencies.length === 0)
       return
     const { setDependencies } = usePluginDependencyStore.getState()
@@ -63,14 +62,18 @@ export const ChecklistPluginGroup = memo(({
         <span className="min-w-0 grow truncate text-sm font-medium leading-5 text-text-primary">
           {t('nodes.common.pluginsNotInstalled', { ns: 'workflow', count: items.length })}
         </span>
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={handleInstallAll}
-          disabled={dependencies.length === 0}
+        <PopoverClose
+          render={(
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={handleInstallAll}
+              disabled={dependencies.length === 0}
+            />
+          )}
         >
           {t('nodes.agent.pluginInstaller.install', { ns: 'workflow' })}
-        </Button>
+        </PopoverClose>
       </div>
       <div className="p-1">
         {items.map(item => (

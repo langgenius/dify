@@ -191,7 +191,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <div className="relative">
         <PopoverTrigger
           render={(
-            <div className="block">
+            <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
               {
                 renderTrigger
                   ? renderTrigger({
@@ -224,7 +224,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                         )
                     )
               }
-            </div>
+            </button>
           )}
         />
         <PopoverContent
