@@ -1,7 +1,7 @@
 import type { InitOptions } from 'modern-monaco'
 
-export const LIGHT_THEME_ID = 'github-light-default'
-export const DARK_THEME_ID = 'github-dark-default'
+export const LIGHT_THEME_ID = 'light-plus'
+export const DARK_THEME_ID = 'dark-plus'
 
 const DEFAULT_INIT_OPTIONS: InitOptions = {
   defaultTheme: DARK_THEME_ID,

@@ -240,7 +240,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
         ref={containerRef}
         className="h-full w-full"
       />
-      {!isEditorReady && loading && (
+      {!isEditorReady && !!loading && (
         <div className="absolute inset-0 flex items-center justify-center">
           {loading}
         </div>
