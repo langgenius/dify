@@ -461,6 +461,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             type="object"
             description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
           />
+          <VarItem
+            name="files"
+            type="array[file]"
+            description={t(`${i18nPrefix}.outputVars.files`, { ns: 'workflow' })}
+          />
           {inputs.structured_output_enabled && (
             <>
               <Split className="mt-3" />

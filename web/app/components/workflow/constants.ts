@@ -182,6 +182,10 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     variable: 'usage',
     type: VarType.object,
   },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
 ]
 
 export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [

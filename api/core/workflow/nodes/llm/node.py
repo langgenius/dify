@@ -573,7 +573,11 @@ class LLMNode(Node[LLMNodeData]):
                 "tool_calls": [self._serialize_tool_call(item) for item in generation_data.tool_calls],
                 "sequence": generation_data.sequence,
             }
-            files_to_output = generation_data.files
+            files_to_output = list(generation_data.files)
+            # Merge auto-collected/structured-output files from self._file_outputs
+            if self._file_outputs:
+                existing_ids = {f.id for f in files_to_output}
+                files_to_output.extend(f for f in self._file_outputs if f.id not in existing_ids)
         else:
             # Classical runtime: use pre-computed generation-specific text pair,
             # falling back to native model reasoning if no <think> tags were found.
@@ -2125,6 +2129,12 @@ class LLMNode(Node[LLMNodeData]):
             )
 
             result = yield from self._process_tool_outputs(outputs)
+
+            # Auto-collect sandbox output/ files, deduplicate by id
+            collected_files = session.collect_output_files()
+            if collected_files:
+                existing_ids = {f.id for f in self._file_outputs}
+                self._file_outputs.extend(f for f in collected_files if f.id not in existing_ids)
 
         if result is None:
             raise LLMNodeError("SandboxSession exited unexpectedly")
