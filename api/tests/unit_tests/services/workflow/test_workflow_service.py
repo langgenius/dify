@@ -40,6 +40,23 @@ class TestWorkflowService:
             workflows.append(workflow)
         return workflows
 
+    @pytest.fixture
+    def dummy_session_cls(self):
+        class DummySession:
+            def __init__(self, *args, **kwargs):
+                self.commit = MagicMock()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def begin(self):
+                return nullcontext()
+
+        return DummySession
+
     def test_get_all_published_workflow_no_workflow_id(self, workflow_service, mock_app):
         mock_app.workflow_id = None
         mock_session = MagicMock()
@@ -169,7 +186,10 @@ class TestWorkflowService:
         mock_session.scalars.assert_called_once()
 
     def test_submit_human_input_form_preview_uses_rendered_content(
-        self, workflow_service: WorkflowService, monkeypatch: pytest.MonkeyPatch
+        self,
+        workflow_service: WorkflowService,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_session_cls,
     ) -> None:
         service = workflow_service
         node_data = HumanInputNodeData(
@@ -193,19 +213,6 @@ class TestWorkflowService:
 
         saved_outputs: dict[str, object] = {}
 
-        class DummySession:
-            def __init__(self, *args, **kwargs):
-                self.commit = MagicMock()
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def begin(self):
-                return nullcontext()
-
         class DummySaver:
             def __init__(self, *args, **kwargs):
                 pass
@@ -213,7 +220,7 @@ class TestWorkflowService:
             def save(self, outputs, process_data):
                 saved_outputs.update(outputs)
 
-        monkeypatch.setattr(workflow_service_module, "Session", DummySession)
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
         monkeypatch.setattr(workflow_service_module, "DraftVariableSaver", DummySaver)
         monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
 
@@ -284,7 +291,9 @@ class TestWorkflowService:
 
         assert "Missing required inputs" in str(exc_info.value)
 
-    def test_run_draft_workflow_node_successful_behavior(self, workflow_service, mock_app, monkeypatch):
+    def test_run_draft_workflow_node_successful_behavior(
+        self, workflow_service, mock_app, monkeypatch, dummy_session_cls
+    ):
         """Behavior: When a basic workflow node runs, it correctly sets up context,
         executes the node, and saves outputs."""
         service = workflow_service
@@ -325,7 +334,6 @@ class TestWorkflowService:
         service._node_execution_service_repo = mock_repo
 
         # Set up node execution service repo mock to return our exec node
-        mock_repo.get_execution_by_id.return_value = mock_node_exec
         mock_node_exec.load_full_outputs.return_value = {"output_var": "result_value"}
         mock_node_exec.node_id = "node-1"
         mock_node_exec.node_type = "llm"
@@ -337,20 +345,7 @@ class TestWorkflowService:
         # Mock DB
         monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
 
-        class DummySession:
-            def __init__(self, *args, **kwargs):
-                self.commit = MagicMock()
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
-            def begin(self):
-                return nullcontext()
-
-        monkeypatch.setattr(workflow_service_module, "Session", DummySession)
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
 
         # Act
         result = service.run_draft_workflow_node(
@@ -367,7 +362,9 @@ class TestWorkflowService:
         mock_repo.save.assert_called_once_with(mock_node_exec)
         mock_saver.save.assert_called_once_with(process_data={}, outputs={"output_var": "result_value"})
 
-    def test_run_draft_workflow_node_failure_behavior(self, workflow_service, mock_app, monkeypatch):
+    def test_run_draft_workflow_node_failure_behavior(
+        self, workflow_service, mock_app, monkeypatch, dummy_session_cls
+    ):
         """Behavior: If retrieving the saved execution fails, an appropriate error bubble matches expectations."""
         service = workflow_service
         account = SimpleNamespace(id="account-1")
@@ -400,20 +397,7 @@ class TestWorkflowService:
 
         monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
 
-        class DummySession:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                pass
-
-            def begin(self):
-                return nullcontext()
-
-        monkeypatch.setattr(workflow_service_module, "Session", DummySession)
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
 
         # Act & Assert
         with pytest.raises(ValueError, match="WorkflowNodeExecution with id exec-invalid not found after saving"):
