@@ -115,7 +115,7 @@ export function SelectContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         alignItemWithTrigger={false}
-        className={cn('z-50 outline-none', className)}
+        className={cn('z-[1002] outline-none', className)}
         {...positionerProps}
       >
         <BaseSelect.Popup
