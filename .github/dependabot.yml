@@ -19,3 +19,21 @@ updates:
       uv-dependencies:
         patterns:
           - "*"
+  - package-ecosystem: "npm"
+    directory: "/web"
+    open-pull-requests-limit: 5
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    open-pull-requests-limit: 5
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
