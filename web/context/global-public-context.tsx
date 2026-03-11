@@ -31,7 +31,7 @@ async function fetchSystemFeatures() {
     const jsonText = typeof resp?.d === 'string'
       ? new TextDecoder().decode(Uint8Array.from(atob(resp.d), c => c.charCodeAt(0)))
       : JSON.stringify(resp) // legacy: backend returns plain SystemFeatures JSON
-    features = { ...defaultSystemFeatures, ...JSON.parse(jsonText) }
+    features = { ...defaultSystemFeatures, ...(JSON.parse(jsonText) as Partial<SystemFeatures>) }
   }
   catch (error) {
     // Base64 decode or JSON.parse failed; fall back to safe defaults
