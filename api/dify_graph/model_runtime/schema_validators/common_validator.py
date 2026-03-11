@@ -31,7 +31,7 @@ class CommonValidator:
         for credential_form_schema in need_validate_credential_form_schema_map.values():
             # add the value of the credential_form_schema corresponding to it to validated_credentials
             result = self._validate_credential_form_schema(credential_form_schema, credentials)
-            if result is not None:
+            if result:
                 validated_credentials[credential_form_schema.variable] = result
 
         return validated_credentials
@@ -48,15 +48,7 @@ class CommonValidator:
         """
         #  If the variable does not exist in credentials
         value: Union[str, bool, None] = None
-        if (
-            credential_form_schema.variable not in credentials
-            or credentials[credential_form_schema.variable] is None
-            or (
-                credential_form_schema.type != FormType.SWITCH
-                and not credentials[credential_form_schema.variable]
-                and credential_form_schema.required
-            )
-        ):
+        if credential_form_schema.variable not in credentials or not credentials[credential_form_schema.variable]:
             # If required is True, an exception is thrown
             if credential_form_schema.required:
                 raise ValueError(f"Variable {credential_form_schema.variable} is required")

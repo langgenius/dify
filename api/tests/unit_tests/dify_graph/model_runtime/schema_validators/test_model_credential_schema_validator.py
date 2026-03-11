@@ -184,7 +184,7 @@ def test_common_validator_logic_switch():
     assert result["enabled"] is True
 
     result = validator.validate_and_filter({"enabled": "false"})
-    assert result["enabled"] is False
+    assert "enabled" not in result
 
     with pytest.raises(ValueError, match="Variable enabled should be true or false"):
         validator.validate_and_filter({"enabled": "not_a_bool"})
