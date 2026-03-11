@@ -41,3 +41,9 @@ class NoFileUploadedError(BaseHTTPException):
     error_code = "no_file_uploaded"
     description = "Please upload your file."
     code = 400
+
+
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider does not support text-to-speech functionality."
+    code = 400

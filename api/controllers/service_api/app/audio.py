@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.errors import ProviderNotSupportTextToSpeechError
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -16,7 +17,6 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
-    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )

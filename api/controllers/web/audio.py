@@ -6,6 +6,8 @@ from pydantic import BaseModel, field_validator
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.errors import ProviderNotSupportTextToSpeechError
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -15,7 +17,6 @@ from controllers.web.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
-    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
@@ -32,8 +33,6 @@ from services.errors.audio import (
     ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from ..common.schema import register_schema_models
 
 
 class TextToAudioPayload(BaseModel):
