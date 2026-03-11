@@ -266,7 +266,7 @@ class EnterpriseService:
                 value = raw.decode("utf-8") if isinstance(raw, bytes) else raw
                 return LicenseStatus(value)
         except Exception:
-            logger.warning("Failed to read license status from cache", exc_info=True)
+            logger.debug("Failed to read license status from cache", exc_info=True)
         return None
 
     @classmethod
@@ -289,8 +289,8 @@ class EnterpriseService:
             try:
                 redis_client.setex(LICENSE_STATUS_CACHE_KEY, ttl, status)
             except Exception:
-                logger.warning("Failed to cache license status", exc_info=True)
+                logger.debug("Failed to cache license status", exc_info=True)
             return status
         except Exception:
-            logger.exception("Failed to get enterprise license status")
+            logger.debug("Failed to fetch enterprise license status", exc_info=True)
         return None
