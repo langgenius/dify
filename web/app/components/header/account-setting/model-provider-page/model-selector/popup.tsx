@@ -49,6 +49,7 @@ const Popup: FC<PopupProps> = ({
   const { modelProviders } = useProviderContext()
   const {
     plugins: allPlugins,
+    isLoading: isMarketplacePluginsLoading,
   } = useMarketplaceAllPlugins(modelProviders, '')
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { refreshPluginList } = useRefreshPluginList()
@@ -66,7 +67,7 @@ const Popup: FC<PopupProps> = ({
   }, [modelProviders])
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
-    if (!allPlugins || installingProvider)
+    if (!allPlugins || isMarketplacePluginsLoading || installingProvider)
       return
     const pluginId = providerKeyToPluginId[key]
     const plugin = allPlugins.find(p => p.plugin_id === pluginId)
@@ -87,10 +88,30 @@ const Popup: FC<PopupProps> = ({
     finally {
       setInstallingProvider(null)
     }
-  }, [allPlugins, installingProvider, installPackageFromMarketPlace, refreshPluginList])
+  }, [allPlugins, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
+
+  const installedModelList = useMemo(() => {
+    const modelMap = new Map(modelList.map(model => [model.provider, model]))
+    const installedMarketplaceModels = MODEL_PROVIDER_QUOTA_GET_PAID.flatMap((providerKey) => {
+      const installedProvider = modelProviders.find(provider => provider.provider === providerKey)
+
+      if (!installedProvider)
+        return []
+
+      const matchedModel = modelMap.get(providerKey)
+      return matchedModel ? [matchedModel] : []
+    })
+    const otherModels = modelList.filter(model => !MODEL_PROVIDER_QUOTA_GET_PAID.includes(model.provider as ModelProviderQuotaGetPaid))
+
+    return [...installedMarketplaceModels, ...otherModels]
+  }, [modelList, modelProviders])
 
   const filteredModelList = useMemo(() => {
-    const filtered = modelList.map((model) => {
+    const filtered = installedModelList.map((model) => {
+      const matchesProviderSearch = !searchText
+        || model.provider.toLowerCase().includes(searchText.toLowerCase())
+        || Object.values(model.label).some(label => label.toLowerCase().includes(searchText.toLowerCase()))
+
       const filteredModels = model.models
         .filter((modelItem) => {
           if (modelItem.label[language] !== undefined)
@@ -108,8 +129,11 @@ const Popup: FC<PopupProps> = ({
             return modelItem.features?.includes(feature) ?? false
           })
         })
+      if (!matchesProviderSearch || filteredModels.length === 0)
+        return null
+
       return { ...model, models: filteredModels }
-    }).filter(model => model.models.length > 0)
+    }).filter((model): model is Model => model !== null)
 
     if (defaultModel?.provider) {
       filtered.sort((a, b) => {
@@ -120,12 +144,12 @@ const Popup: FC<PopupProps> = ({
     }
 
     return filtered
-  }, [defaultModel?.provider, language, modelList, scopeFeatures, searchText])
+  }, [defaultModel?.provider, installedModelList, language, scopeFeatures, searchText])
 
   const marketplaceProviders = useMemo(() => {
-    const installedProviders = new Set(modelList.map(m => m.provider))
+    const installedProviders = new Set(modelProviders.map(provider => provider.provider))
     return MODEL_PROVIDER_QUOTA_GET_PAID.filter(key => !installedProviders.has(key))
-  }, [modelList])
+  }, [modelProviders])
 
   return (
     <div className="max-h-[480px] overflow-y-auto no-scrollbar">
@@ -172,7 +196,7 @@ const Popup: FC<PopupProps> = ({
             />
           ))
         }
-        {!filteredModelList.length && !modelList.length && (
+        {!filteredModelList.length && !installedModelList.length && (
           <div className="flex flex-col gap-2 rounded-[10px] bg-gradient-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
               <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
@@ -198,7 +222,7 @@ const Popup: FC<PopupProps> = ({
             </Button>
           </div>
         )}
-        {!filteredModelList.length && modelList.length > 0 && (
+        {!filteredModelList.length && installedModelList.length > 0 && (
           <div className="break-all px-3 py-1.5 text-center text-xs leading-[18px] text-text-tertiary">
             {`No model found for \u201C${searchText}\u201D`}
           </div>
@@ -237,7 +261,7 @@ const Popup: FC<PopupProps> = ({
                             'shrink-0 backdrop-blur-[5px]',
                             !isInstalling && 'hidden group-hover:flex',
                           )}
-                          disabled={isInstalling}
+                          disabled={isInstalling || isMarketplacePluginsLoading}
                           onClick={() => handleInstallPlugin(key)}
                         >
                           {isInstalling && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />}
