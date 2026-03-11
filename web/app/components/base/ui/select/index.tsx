@@ -23,14 +23,14 @@ export const selectTriggerVariants = cva(
         regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
         large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
       },
-      intent: {
+      variant: {
         default: '',
         destructive: 'border border-components-input-border-destructive bg-components-input-bg-destructive shadow-xs hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive',
       },
     },
     defaultVariants: {
       size: 'regular',
-      intent: 'default',
+      variant: 'default',
     },
   },
 )
@@ -51,14 +51,14 @@ export function SelectTrigger({
   className,
   children,
   size = 'regular',
-  intent = 'default',
+  variant = 'default',
   clearable = false,
   onClear,
   loading = false,
   ...props
 }: SelectTriggerProps) {
   const paddingClass = contentPadding[size ?? 'regular']
-  const isDestructive = intent === 'destructive'
+  const isDestructive = variant === 'destructive'
 
   let trailingIcon: React.ReactNode = null
   if (loading) {
@@ -106,7 +106,7 @@ export function SelectTrigger({
         'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-none',
         'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
         'data-[placeholder]:text-components-input-text-placeholder',
-        selectTriggerVariants({ size, intent }),
+        selectTriggerVariants({ size, variant }),
         'data-[readonly]:cursor-default data-[readonly]:bg-transparent data-[readonly]:hover:bg-transparent',
         'data-[disabled]:cursor-not-allowed data-[disabled]:bg-components-input-bg-disabled data-[disabled]:text-components-input-text-filled-disabled data-[disabled]:hover:bg-components-input-bg-disabled',
         'data-[disabled]:data-[placeholder]:text-components-input-text-disabled',

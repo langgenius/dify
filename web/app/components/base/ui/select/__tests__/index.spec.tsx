@@ -158,9 +158,9 @@ describe('Select wrappers', () => {
       expect(trigger.className).toContain('data-[disabled]:data-[placeholder]:text-components-input-text-disabled')
     })
 
-    it('should show error icon and apply destructive styling when intent is destructive', () => {
+    it('should show error icon and apply destructive styling when variant is destructive', () => {
       renderOpenSelect({
-        triggerProps: { intent: 'destructive' },
+        triggerProps: { variant: 'destructive' },
       })
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
@@ -170,9 +170,9 @@ describe('Select wrappers', () => {
       expect(errorIcon).toBeInTheDocument()
     })
 
-    it('should hide clear button when intent is destructive even if clearable', () => {
+    it('should hide clear button when variant is destructive even if clearable', () => {
       renderOpenSelect({
-        triggerProps: { clearable: true, intent: 'destructive' },
+        triggerProps: { clearable: true, variant: 'destructive' },
       })
 
       expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
