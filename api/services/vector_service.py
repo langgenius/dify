@@ -236,6 +236,7 @@ class VectorService:
             documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert delete_child_chunk.index_node_id is not None
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == "high_quality":
             # update vector index
