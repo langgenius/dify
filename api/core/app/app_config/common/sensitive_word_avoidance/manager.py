@@ -1,10 +1,13 @@
+from collections.abc import Mapping
+from typing import Any
+
 from core.app.app_config.entities import SensitiveWordAvoidanceEntity
 from core.moderation.factory import ModerationFactory
 
 
 class SensitiveWordAvoidanceConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> SensitiveWordAvoidanceEntity | None:
+    def convert(cls, config: Mapping[str, Any]) -> SensitiveWordAvoidanceEntity | None:
         sensitive_word_avoidance_dict = config.get("sensitive_word_avoidance")
         if not sensitive_word_avoidance_dict:
             return None
@@ -12,7 +15,7 @@ class SensitiveWordAvoidanceConfigManager:
         if sensitive_word_avoidance_dict.get("enabled"):
             return SensitiveWordAvoidanceEntity(
                 type=sensitive_word_avoidance_dict.get("type"),
-                config=sensitive_word_avoidance_dict.get("config"),
+                config=sensitive_word_avoidance_dict.get("config", {}),
             )
         else:
             return None

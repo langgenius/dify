@@ -8,19 +8,10 @@ from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
+from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
-from core.file import File, FileTransferMethod, FileType, file_manager
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentUnionTypes,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -35,7 +26,16 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from core.workflow.nodes.llm import llm_utils
+from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs import helper
@@ -115,7 +115,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
@@ -130,7 +130,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -196,7 +196,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         documents: list[Any] = []
         all_multimodal_documents: list[Any] = []
         if isinstance(chunks, list):
@@ -275,7 +275,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("Chunks is not a list")
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
@@ -298,11 +302,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
-                    summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                    summary, _ = self.generate_summary(
+                        tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                    )
                     preview.summary = summary
             else:
                 # Fallback: try without app context (may fail)
-                summary, _ = self.generate_summary(tenant_id, preview.content, summary_index_setting)
+                summary, _ = self.generate_summary(
+                    tenant_id, preview.content, summary_index_setting, document_language=doc_language
+                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor
@@ -356,6 +364,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         text: str,
         summary_index_setting: dict | None = None,
         segment_id: str | None = None,
+        document_language: str | None = None,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
@@ -366,6 +375,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             text: Text content to summarize
             summary_index_setting: Summary index configuration
             segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
+            document_language: Optional document language (e.g., "Chinese", "English")
+                to ensure summary is generated in the correct language
 
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
@@ -381,8 +392,22 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("model_name and model_provider_name are required in summary_index_setting")
 
         # Import default summary prompt
+        is_default_prompt = False
         if not summary_prompt:
             summary_prompt = DEFAULT_GENERATOR_SUMMARY_PROMPT
+            is_default_prompt = True
+
+        # Format prompt with document language only for default prompt
+        # Custom prompts are used as-is to avoid interfering with user-defined templates
+        # If document_language is provided, use it; otherwise, use "the same language as the input content"
+        # This is especially important for image-only chunks where text is empty or minimal
+        if is_default_prompt:
+            language_for_prompt = document_language or "the same language as the input content"
+            try:
+                summary_prompt = summary_prompt.format(language=language_for_prompt)
+            except KeyError:
+                # If default prompt doesn't have {language} placeholder, use it as-is
+                pass
 
         provider_manager = ProviderManager()
         provider_model_bundle = provider_manager.get_provider_model_bundle(
@@ -444,12 +469,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not isinstance(result, LLMResult):
             raise ValueError("Expected LLMResult when stream=False")
 
-        summary_content = getattr(result.message, "content", "")
+        summary_content = result.message.get_text_content()
         usage = result.usage
 
         # Deduct quota for summary generation (same as workflow nodes)
         try:
-            llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
+            deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
         except Exception as e:
             # Log but don't fail summary generation if quota deduction fails
             logger.warning("Failed to deduct quota for summary generation: %s", str(e))

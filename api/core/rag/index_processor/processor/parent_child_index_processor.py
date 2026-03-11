@@ -126,7 +126,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
-    ):
+    ) -> None:
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -139,7 +139,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -272,7 +272,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:
@@ -358,7 +358,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         }
 
     def generate_summary_preview(
-        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: dict,
+        doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
@@ -389,6 +393,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
+                        document_language=doc_language,
                     )
                     preview.summary = summary
             else:
@@ -397,6 +402,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     tenant_id=tenant_id,
                     text=preview.content,
                     summary_index_setting=summary_index_setting,
+                    document_language=doc_language,
                 )
                 preview.summary = summary
 

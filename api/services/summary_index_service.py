@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
@@ -49,11 +49,18 @@ class SummaryIndexService:
         # Use lazy import to avoid circular import
         from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 
+        # Get document language to ensure summary is generated in the correct language
+        # This is especially important for image-only chunks where text is empty or minimal
+        document_language = None
+        if segment.document and segment.document.doc_language:
+            document_language = segment.document.doc_language
+
         summary_content, usage = ParagraphIndexProcessor.generate_summary(
             tenant_id=dataset.tenant_id,
             text=segment.content,
             summary_index_setting=summary_index_setting,
             segment_id=segment.id,
+            document_language=document_language,
         )
 
         if not summary_content:
@@ -558,6 +565,9 @@ class SummaryIndexService:
                     )
                     session.add(summary_record)
 
+            # Commit the batch created records
+            session.commit()
+
     @staticmethod
     def update_summary_record_error(
         segment: DocumentSegment,
@@ -762,7 +772,6 @@ class SummaryIndexService:
                 dataset=dataset,
                 status="not_started",
             )
-            session.commit()  # Commit initial records
 
             summary_records = []
 

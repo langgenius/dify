@@ -35,6 +35,7 @@ export const baseProviderContextValue: ProviderContextState = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 export const createMockProviderContextValue = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => {

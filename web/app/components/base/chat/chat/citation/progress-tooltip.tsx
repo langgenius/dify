@@ -27,15 +27,20 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
       >
-        <div className="flex grow items-center">
+        <div data-testid="progress-trigger-content" className="flex grow items-center">
           <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
-            <div className="h-full bg-components-progress-gray-progress" style={{ width: `${data * 100}%` }}></div>
+            <div
+              data-testid="progress-bar-fill"
+              className="h-full bg-components-progress-gray-progress"
+              style={{ width: `${data * 100}%` }}
+            >
+            </div>
           </div>
           {data}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className="system-xs-medium rounded-lg bg-components-tooltip-bg p-3 text-text-quaternary shadow-lg">
+        <div data-testid="progress-tooltip-popup" className="rounded-lg bg-components-tooltip-bg p-3 text-text-quaternary shadow-lg system-xs-medium">
           {t('chat.citation.hitScore', { ns: 'common' })}
           {' '}
           {data}

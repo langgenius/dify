@@ -402,7 +402,7 @@ class TestBillingDisabledPolicyFilterMessageIds:
 class TestCreateMessageCleanPolicy:
     """Unit tests for create_message_clean_policy factory function."""
 
-    @patch("services.retention.conversation.messages_clean_policy.dify_config")
+    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
     def test_billing_disabled_returns_billing_disabled_policy(self, mock_config):
         """Test that BILLING_ENABLED=False returns BillingDisabledPolicy."""
         # Arrange
@@ -414,8 +414,8 @@ class TestCreateMessageCleanPolicy:
         # Assert
         assert isinstance(policy, BillingDisabledPolicy)
 
-    @patch("services.retention.conversation.messages_clean_policy.BillingService")
-    @patch("services.retention.conversation.messages_clean_policy.dify_config")
+    @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
+    @patch("services.retention.conversation.messages_clean_policy.dify_config", autospec=True)
     def test_billing_enabled_policy_has_correct_internals(self, mock_config, mock_billing_service):
         """Test that BillingSandboxPolicy is created with correct internal values."""
         # Arrange
@@ -554,11 +554,9 @@ class TestMessagesCleanServiceFromDays:
             MessagesCleanService.from_days(policy=policy, days=-1)
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 14, 0, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(policy=policy, days=0)
 
         # Assert
@@ -586,11 +584,9 @@ class TestMessagesCleanServiceFromDays:
         dry_run = True
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 10, 30, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(
                 policy=policy,
                 days=days,
@@ -613,11 +609,9 @@ class TestMessagesCleanServiceFromDays:
         policy = BillingDisabledPolicy()
 
         # Act
-        with patch("services.retention.conversation.messages_clean_service.datetime") as mock_datetime:
+        with patch("services.retention.conversation.messages_clean_service.naive_utc_now") as mock_now:
             fixed_now = datetime.datetime(2024, 6, 15, 10, 30, 0)
-            mock_datetime.datetime.now.return_value = fixed_now
-            mock_datetime.timedelta = datetime.timedelta
-
+            mock_now.return_value = fixed_now
             service = MessagesCleanService.from_days(policy=policy)
 
         # Assert
