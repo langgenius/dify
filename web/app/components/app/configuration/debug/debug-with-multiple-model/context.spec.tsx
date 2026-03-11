@@ -1,10 +1,8 @@
 import type { ModelAndParameter } from '../types'
 import type { DebugWithMultipleModelContextType } from './context'
 import { render, screen } from '@testing-library/react'
-import {
-  DebugWithMultipleModelContextProvider,
-  useDebugWithMultipleModelContext,
-} from './context'
+import { useDebugWithMultipleModelContext } from './context'
+import { DebugWithMultipleModelContextProvider } from './context-provider'
 
 const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
   id: 'model-1',

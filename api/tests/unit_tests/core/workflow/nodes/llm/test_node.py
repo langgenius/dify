@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
@@ -39,8 +39,8 @@ from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-from models.enums import UserFrom
 from models.provider import ProviderType
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class MockTokenBufferMemory:
@@ -76,11 +76,11 @@ def llm_node_data() -> LLMNodeData:
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    return build_test_graph_init_params(
         workflow_id="1",
         graph_config={},
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
@@ -111,6 +111,7 @@ def llm_node(
         "id": "1",
         "data": llm_node_data.model_dump(),
     }
+    http_client = mock.MagicMock()
     node = LLMNode(
         id="1",
         config=node_config,
@@ -120,6 +121,7 @@ def llm_node(
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        http_client=http_client,
     )
     return node
 
@@ -632,6 +634,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         "id": "1",
         "data": llm_node_data.model_dump(),
     }
+    http_client = mock.MagicMock()
     node = LLMNode(
         id="1",
         config=node_config,
@@ -641,6 +644,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
+        http_client=http_client,
     )
     return node, mock_file_saver
 

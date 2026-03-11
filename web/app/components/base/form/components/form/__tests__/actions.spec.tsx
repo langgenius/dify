@@ -1,55 +1,72 @@
 import type { FormType } from '../../..'
 import type { CustomActionsProps } from '../actions'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formContext } from '../../..'
 import Actions from '../actions'
 
-const renderWithForm = ({
-  canSubmit,
-  isSubmitting,
-  CustomActions,
-}: {
-  canSubmit: boolean
-  isSubmitting: boolean
+const mockFormState = vi.hoisted(() => ({
+  canSubmit: true,
+  isSubmitting: false,
+}))
+
+vi.mock('@tanstack/react-form', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-form')>('@tanstack/react-form')
+  return {
+    ...actual,
+    useStore: (_store: unknown, selector: (state: typeof mockFormState) => unknown) => selector(mockFormState),
+  }
+})
+
+type RenderWithFormOptions = {
+  canSubmit?: boolean
+  isSubmitting?: boolean
   CustomActions?: (props: CustomActionsProps) => React.ReactNode
-}) => {
-  const submitSpy = vi.fn()
-  const state = {
-    canSubmit,
-    isSubmitting,
-  }
+  onSubmit?: () => void
+}
+
+const renderWithForm = ({
+  canSubmit = true,
+  isSubmitting = false,
+  CustomActions,
+  onSubmit = vi.fn(),
+}: RenderWithFormOptions = {}) => {
+  mockFormState.canSubmit = canSubmit
+  mockFormState.isSubmitting = isSubmitting
+
   const form = {
-    store: {
-      state,
-      subscribe: () => () => {},
-    },
-    handleSubmit: submitSpy,
+    store: {},
+    handleSubmit: onSubmit,
   }
 
-  const TestComponent = () => {
-    return (
-      <formContext.Provider value={form as unknown as FormType}>
-        <Actions
-          CustomActions={CustomActions}
-        />
-      </formContext.Provider>
-    )
-  }
+  render(
+    <formContext.Provider value={form as unknown as FormType}>
+      <Actions CustomActions={CustomActions} />
+    </formContext.Provider>,
+  )
 
-  render(<TestComponent />)
-  return { submitSpy }
+  return { onSubmit }
 }
 
 describe('Actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('should disable submit button when form cannot submit', () => {
-    renderWithForm({ canSubmit: false, isSubmitting: false })
+    renderWithForm({ canSubmit: false })
     expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
   })
 
-  it('should call form submit when users click submit button', () => {
-    const { submitSpy } = renderWithForm({ canSubmit: true, isSubmitting: false })
+  it('should call form submit when users click submit button', async () => {
+    const submitSpy = vi.fn()
+    renderWithForm({ onSubmit: submitSpy })
+
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.submit' }))
-    expect(submitSpy).toHaveBeenCalledTimes(1)
+
+    await waitFor(() => {
+      expect(submitSpy).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should render custom actions when provided', () => {
@@ -60,15 +77,14 @@ describe('Actions', () => {
     ))
 
     renderWithForm({
-      canSubmit: true,
-      isSubmitting: true,
       CustomActions: customActionsSpy,
     })
 
     expect(screen.queryByRole('button', { name: 'common.operation.submit' })).not.toBeInTheDocument()
-    expect(screen.getByText('custom-true-true')).toBeInTheDocument()
+    expect(screen.getByText('custom-false-true')).toBeInTheDocument()
     expect(customActionsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      isSubmitting: true,
+      form: expect.any(Object),
+      isSubmitting: false,
       canSubmit: true,
     }))
   })

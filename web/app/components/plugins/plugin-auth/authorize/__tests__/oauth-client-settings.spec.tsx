@@ -9,7 +9,7 @@ const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockInvalidPluginOAuthClientSchema = vi.fn()
 const mockFormValues = { isCheckValidated: true, values: { __oauth_client__: 'custom', client_id: 'test-id' } }
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({
     notify: mockNotify,
   }),
