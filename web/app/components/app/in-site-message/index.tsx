@@ -25,8 +25,10 @@ type InSiteMessageProps = {
   title: string
 }
 
+const LINE_BREAK_REGEX = /\\n/g
+
 function normalizeLineBreaks(text: string): string {
-  return text.replace(/\\n/g, '\n')
+  return text.replace(LINE_BREAK_REGEX, '\n')
 }
 
 function normalizeLinkData(data: unknown): { href: string, rel?: string, target?: string } | null {
