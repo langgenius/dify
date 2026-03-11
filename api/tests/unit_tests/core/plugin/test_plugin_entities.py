@@ -237,7 +237,10 @@ class TestPluginParameterEntities:
             def __str__(self):
                 raise RuntimeError("boom")
 
-        with pytest.raises(RuntimeError, match="boom"):
+        with pytest.raises(
+            ValueError,
+            match=r"The tool parameter value <.*_BadString object at .* is not in correct type of string\.",
+        ):
             cast_parameter_value(PluginParameterType.STRING, _BadString())
 
     def test_init_frontend_parameter(self):
