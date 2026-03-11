@@ -71,19 +71,12 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<MonacoEditor.ITextModel | null>(null)
   const monacoRef = useRef<typeof import('modern-monaco/editor-core') | null>(null)
-  const skipNextChangeRef = useRef(false)
+  const preventTriggerChangeEventRef = useRef(false)
   const valueRef = useRef(value)
   const callbacksRef = useRef({ onChange, onFocus, onBlur, onReady })
 
-  useEffect(() => {
-    valueRef.current = value
-  }, [value])
-
-  useEffect(() => {
-    callbacksRef.current = { onChange, onFocus, onBlur, onReady }
-  }, [onChange, onFocus, onBlur, onReady])
-
   const editorOptions = useMemo<MonacoEditor.IEditorOptions>(() => ({
+    automaticLayout: true,
     readOnly,
     domReadOnly: true,
     minimap: { enabled: false },
@@ -92,33 +85,50 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     tabFocusMode: false,
     ...options,
   }), [readOnly, options])
+  const setupRef = useRef({
+    editorOptions,
+    initOptions,
+    language,
+    resolvedTheme,
+  })
+  valueRef.current = value
+  callbacksRef.current = { onChange, onFocus, onBlur, onReady }
+  setupRef.current = {
+    editorOptions,
+    initOptions,
+    language,
+    resolvedTheme,
+  }
 
   useEffect(() => {
     let disposed = false
     let cleanup: (() => void) | undefined
 
     const setup = async () => {
-      const monaco = await initMonaco(initOptions)
+      const monaco = await initMonaco(setupRef.current.initOptions)
       if (!monaco || disposed || !containerRef.current)
         return
 
+      const {
+        editorOptions: currentEditorOptions,
+        language: currentLanguage,
+        resolvedTheme: currentResolvedTheme,
+      } = setupRef.current
+
       monacoRef.current = monaco
 
-      const model = monaco.editor.createModel(valueRef.current, language)
+      const model = monaco.editor.createModel(valueRef.current, currentLanguage)
       modelRef.current = model
 
-      const editor = monaco.editor.create(containerRef.current, editorOptions)
+      const editor = monaco.editor.create(containerRef.current, currentEditorOptions)
       editorRef.current = editor
       editor.setModel(model)
 
-      callbacksRef.current.onReady?.(editor, monaco)
-      monaco.editor.setTheme(resolvedTheme)
+      monaco.editor.setTheme(currentResolvedTheme)
 
       const changeDisposable = editor.onDidChangeModelContent(() => {
-        if (skipNextChangeRef.current) {
-          skipNextChangeRef.current = false
+        if (preventTriggerChangeEventRef.current)
           return
-        }
         callbacksRef.current.onChange?.(editor.getValue())
       })
       const keydownDisposable = editor.onKeyDown((event) => {
@@ -138,6 +148,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
         editor.layout()
       })
       resizeObserver.observe(containerRef.current)
+      callbacksRef.current.onReady?.(editor, monaco)
 
       cleanup = () => {
         resizeObserver.disconnect()
@@ -181,13 +192,32 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   }, [resolvedTheme])
 
   useEffect(() => {
+    const editor = editorRef.current
+    const monaco = monacoRef.current
     const model = modelRef.current
-    if (!model)
+    if (!editor || !monaco || !model)
       return
+
     const current = model.getValue()
-    if (current !== value) {
-      skipNextChangeRef.current = true
-      model.setValue(value)
+    if (current === value)
+      return
+
+    if (editor.getOption(monaco.editor.EditorOption.readOnly)) {
+      editor.setValue(value)
+      return
+    }
+
+    preventTriggerChangeEventRef.current = true
+    try {
+      editor.executeEdits('', [{
+        range: model.getFullModelRange(),
+        text: value,
+        forceMoveMarkers: true,
+      }])
+      editor.pushUndoStop()
+    }
+    finally {
+      preventTriggerChangeEventRef.current = false
     }
   }, [value])
 
