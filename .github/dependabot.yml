@@ -7,6 +7,29 @@ updates:
     schedule:
       interval: "weekly"
     groups:
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"
+      flask:
+        patterns:
+          - "flask*"
+          - "werkzeug"
+          - "gunicorn"
+      google-cloud:
+        patterns:
+          - "google-*"
+          - "googleapis-*"
+      pydantic:
+        patterns:
+          - "pydantic*"
+      aws:
+        patterns:
+          - "boto3"
+          - "botocore"
+      postgres:
+        patterns:
+          - "psyco*"
+          - "sqlalchemy"
       python-dependencies:
         patterns:
           - "*"
@@ -16,18 +39,33 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      uv-dependencies:
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"
+      flask:
+        patterns:
+          - "flask*"
+          - "werkzeug"
+          - "gunicorn"
+      google-cloud:
+        patterns:
+          - "google-*"
+          - "googleapis-*"
+      pydantic:
+        patterns:
+          - "pydantic*"
+      aws:
+        patterns:
+          - "boto3"
+          - "botocore"
+      postgres:
+        patterns:
+          - "psyco*"
+          - "sqlalchemy"
+      python-dependencies:
         patterns:
           - "*"
-  - package-ecosystem: "npm"
-    directory: "/web"
-    open-pull-requests-limit: 5
-    schedule:
-      interval: "weekly"
-    groups:
-      npm-dependencies:
-        patterns:
-          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     open-pull-requests-limit: 5
