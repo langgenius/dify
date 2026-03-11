@@ -1,5 +1,5 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
@@ -11,6 +11,8 @@ import dify from './plugins/eslint/index.js'
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
 process.env.TAILWIND_MODE ??= 'ESLINT'
+
+const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
 export default antfu(
   {
@@ -46,6 +48,7 @@ export default antfu(
         'antfu/top-level-function': 'off',
       },
     },
+    e18e: false,
   },
   {
     rules: {
@@ -148,7 +151,7 @@ export default antfu(
   },
   {
     name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx'],
+    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
@@ -218,3 +221,10 @@ export default antfu(
     },
   },
 )
+  .disableRulesFix(disableRuleAutoFix
+    ? [
+        'tailwindcss/enforce-consistent-class-order',
+        'tailwindcss/no-duplicate-classes',
+        'tailwindcss/no-unnecessary-whitespace',
+      ]
+    : [])
