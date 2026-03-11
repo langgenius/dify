@@ -63,11 +63,11 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-        prompts = [UserPromptMessage(content=prompt)]
+        prompts: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
             response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
+                prompt_messages=prompts, model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
         answer = cast(str, response.message.content)
         cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
@@ -117,11 +117,11 @@ class LLMGenerator:
         except InvokeAuthorizationError:
             return []
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         try:
             response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
+                prompt_messages=prompt_messages,
                 model_parameters={"max_tokens": 256, "temperature": 0},
                 stream=False,
             )
@@ -154,7 +154,7 @@ class LLMGenerator:
                 remove_template_variables=False,
             )
 
-            prompt_messages = [UserPromptMessage(content=prompt_generate)]
+            prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate)]
 
             model_manager = ModelManager()
 
@@ -167,7 +167,7 @@ class LLMGenerator:
 
             try:
                 response: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                    prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
                 )
 
                 rule_config["prompt"] = cast(str, response.message.content)
@@ -199,7 +199,7 @@ class LLMGenerator:
             },
             remove_template_variables=False,
         )
-        prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt_generate_prompt)]
 
         # get model instance
         model_manager = ModelManager()
@@ -214,7 +214,7 @@ class LLMGenerator:
             try:
                 # the first step to generate the task prompt
                 prompt_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                    prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
                 )
             except InvokeError as e:
                 error = str(e)
@@ -233,7 +233,7 @@ class LLMGenerator:
                 },
                 remove_template_variables=False,
             )
-            parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
+            parameter_messages: list[PromptMessage] = [UserPromptMessage(content=parameter_generate_prompt)]
 
             # the second step to generate the task_parameter and task_statement
             statement_generate_prompt = statement_template.format(
@@ -243,11 +243,11 @@ class LLMGenerator:
                 },
                 remove_template_variables=False,
             )
-            statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
+            statement_messages: list[PromptMessage] = [UserPromptMessage(content=statement_generate_prompt)]
 
             try:
                 parameter_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
+                    prompt_messages=parameter_messages, model_parameters=model_parameters, stream=False
                 )
                 rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
             except InvokeError as e:
@@ -256,7 +256,7 @@ class LLMGenerator:
 
             try:
                 statement_content: LLMResult = model_instance.invoke_llm(
-                    prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
+                    prompt_messages=statement_messages, model_parameters=model_parameters, stream=False
                 )
                 rule_config["opening_statement"] = cast(str, statement_content.message.content)
             except InvokeError as e:
@@ -294,11 +294,11 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
+        prompt_messages: list[PromptMessage] = [UserPromptMessage(content=prompt)]
         model_parameters = model_config.get("completion_params", {})
         try:
             response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
             )
 
             generated_code = cast(str, response.message.content)
@@ -350,7 +350,7 @@ class LLMGenerator:
             model=model_config.get("name", ""),
         )
 
-        prompt_messages = [
+        prompt_messages: list[PromptMessage] = [
             SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
             UserPromptMessage(content=instruction),
         ]
@@ -358,7 +358,7 @@ class LLMGenerator:
 
         try:
             response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
             )
 
             raw_content = response.message.content
@@ -527,7 +527,7 @@ class LLMGenerator:
                 system_prompt = LLM_MODIFY_CODE_SYSTEM
             case _:
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
-        prompt_messages = [
+        prompt_messages: list[PromptMessage] = [
             SystemPromptMessage(content=system_prompt),
             UserPromptMessage(
                 content=json.dumps(
@@ -544,7 +544,7 @@ class LLMGenerator:
 
         try:
             response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
             )
 
             generated_raw = cast(str, response.message.content)
