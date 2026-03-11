@@ -1,88 +1,38 @@
+from flask import request
 from flask_restx import Resource
 
 from controllers.console import console_ns
-from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, current_account_with_tenant, setup_required
-from core.skill.entities.api_entities import NodeSkillInfo
 from libs.login import login_required
 from models import App
-from models._workflow_exc import NodeNotFoundError
 from models.model import AppMode
 from services.skill_service import SkillService
-from services.workflow_service import WorkflowService
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/skills")
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/llm/skills")
 class NodeSkillsApi(Resource):
-    """API for retrieving skill references for a specific workflow node."""
+    """Extract tool dependencies from an LLM node's skill prompts.
 
-    @console_ns.doc("get_node_skills")
-    @console_ns.doc(description="Get skill references for a specific node in the draft workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node skills retrieved successfully")
-    @console_ns.response(404, "Workflow or node not found")
+    The client sends the full node ``data`` object in the request body.
+    The server real-time builds a ``SkillBundle`` from the current draft
+    ``.md`` assets and resolves transitive tool dependencies — no cached
+    bundle is used.
+    """
+
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, node_id: str):
-        """
-        Get skill information for a specific node in the draft workflow.
-
-        Returns information about skill references in the node, including:
-        - skill_references: List of prompt messages marked as skills
-        - tool_references: Aggregated tool references from all skill prompts
-        - file_references: Aggregated file references from all skill prompts
-        """
+    def post(self, app_model: App):
         current_user, _ = current_account_with_tenant()
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model)
+        node_data = request.get_json(force=True)
+        if not isinstance(node_data, dict):
+            return {"tool_dependencies": []}
 
-        if not workflow:
-            raise DraftWorkflowNotExist()
-
-        try:
-            skill_info = SkillService.get_node_skill_info(
-                app=app_model,
-                workflow=workflow,
-                node_id=node_id,
-                user_id=current_user.id,
-            )
-        except NodeNotFoundError:
-            return NodeSkillInfo.empty(node_id=node_id).model_dump()
-        return skill_info.model_dump()
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/skills")
-class WorkflowSkillsApi(Resource):
-    """API for retrieving all skill references in a workflow."""
-
-    @console_ns.doc("get_workflow_skills")
-    @console_ns.doc(description="Get all skill references in the draft workflow")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Workflow skills retrieved successfully")
-    @console_ns.response(404, "Workflow not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        """
-        Get skill information for all nodes in the draft workflow that have skill references.
-
-        Returns a list of nodes with their skill information.
-        """
-        current_user, _ = current_account_with_tenant()
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model)
-
-        if not workflow:
-            raise DraftWorkflowNotExist()
-
-        skills_info = SkillService.get_workflow_skills(
+        tool_deps = SkillService.extract_tool_dependencies(
             app=app_model,
-            workflow=workflow,
+            node_data=node_data,
             user_id=current_user.id,
         )
-        return {"nodes": [info.model_dump() for info in skills_info]}
+        return {"tool_dependencies": [d.model_dump() for d in tool_deps]}

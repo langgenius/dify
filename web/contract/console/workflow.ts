@@ -83,17 +83,16 @@ export const workflowDraftUpdateFeaturesContract = base
 
 export const workflowDraftNodeSkillsContract = base
   .route({
-    path: '/apps/{appId}/workflows/draft/nodes/{nodeId}/skills',
-    method: 'GET',
+    path: '/apps/{appId}/workflows/draft/nodes/llm/skills',
+    method: 'POST',
   })
   .input(type<{
     params: {
       appId: string
-      nodeId: string
     }
+    body: Record<string, unknown>
   }>())
   .output(type<{
-    node_id: string
     tool_dependencies: {
       type: string
       provider: string

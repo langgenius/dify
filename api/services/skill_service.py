@@ -21,7 +21,6 @@ from typing import Any, cast
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.sandbox.entities.config import AppAssets
 from core.skill.assembler import SkillBundleAssembler, SkillDocumentAssembler
-from core.skill.entities.api_entities import NodeSkillInfo
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.skill_metadata import SkillMetadata
@@ -29,7 +28,6 @@ from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependen
 from core.skill.skill_manager import SkillManager
 from core.workflow.enums import NodeType
 from models.model import App
-from models.workflow import Workflow
 from services.app_asset_service import AppAssetService
 
 logger = logging.getLogger(__name__)
@@ -68,28 +66,6 @@ class SkillService:
             return []
 
         return SkillService._resolve_prompt_dependencies(node_data, bundle)
-
-    # ------------------------------------------------------------------
-    # Whole-workflow: reads persisted draft + cached bundle
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_workflow_skills(app: App, workflow: Workflow, user_id: str) -> list[NodeSkillInfo]:
-        """Get skill information for all LLM nodes in a persisted workflow.
-
-        Uses the cached ``SkillBundle`` (Redis / S3).  This method is
-        kept for the whole-workflow GET endpoint.
-        """
-        result: list[NodeSkillInfo] = []
-
-        for node_id, node_data in workflow.walk_nodes(specific_node_type=NodeType.LLM):
-            if not SkillService._has_skill(dict(node_data)):
-                continue
-
-            tool_dependencies = SkillService._extract_tool_dependencies_cached(app, dict(node_data), user_id)
-            result.append(NodeSkillInfo(node_id=node_id, tool_dependencies=tool_dependencies))
-
-        return result
 
     # ------------------------------------------------------------------
     # Internal helpers
