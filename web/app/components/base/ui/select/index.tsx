@@ -23,9 +23,14 @@ export const selectTriggerVariants = cva(
         regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
         large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
       },
+      intent: {
+        default: '',
+        destructive: 'border border-components-input-border-destructive bg-components-input-bg-destructive shadow-xs hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive',
+      },
     },
     defaultVariants: {
       size: 'regular',
+      intent: 'default',
     },
   },
 )
@@ -40,20 +45,20 @@ type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigg
   clearable?: boolean
   onClear?: () => void
   loading?: boolean
-  destructive?: boolean
 } & VariantProps<typeof selectTriggerVariants>
 
 export function SelectTrigger({
   className,
   children,
   size = 'regular',
+  intent = 'default',
   clearable = false,
   onClear,
   loading = false,
-  destructive = false,
   ...props
 }: SelectTriggerProps) {
   const paddingClass = contentPadding[size ?? 'regular']
+  const isDestructive = intent === 'destructive'
 
   let trailingIcon: React.ReactNode = null
   if (loading) {
@@ -63,7 +68,7 @@ export function SelectTrigger({
       </span>
     )
   }
-  else if (destructive) {
+  else if (isDestructive) {
     trailingIcon = (
       <span className="shrink-0 text-text-destructive-secondary" aria-hidden="true">
         <span className="i-ri-error-warning-line h-4 w-4" />
@@ -101,11 +106,10 @@ export function SelectTrigger({
         'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-none',
         'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
         'data-[placeholder]:text-components-input-text-placeholder',
-        selectTriggerVariants({ size }),
+        selectTriggerVariants({ size, intent }),
         'data-[readonly]:cursor-default data-[readonly]:bg-transparent data-[readonly]:hover:bg-transparent',
         'data-[disabled]:cursor-not-allowed data-[disabled]:bg-components-input-bg-disabled data-[disabled]:text-components-input-text-filled-disabled data-[disabled]:hover:bg-components-input-bg-disabled',
         'data-[disabled]:data-[placeholder]:text-components-input-text-disabled',
-        destructive && 'border border-components-input-border-destructive bg-components-input-bg-destructive shadow-xs hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive',
         className,
       )}
       {...props}
