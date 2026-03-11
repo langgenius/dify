@@ -34,7 +34,13 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             i18nKey={descriptionKey}
             ns="common"
             components={{
-              upgradeLink: <span className="cursor-pointer text-text-accent system-xs-medium" onClick={setShowPricingModal} />,
+              upgradeLink: (
+                <button
+                  type="button"
+                  className="cursor-pointer border-0 bg-transparent p-0 text-left text-text-accent system-xs-medium"
+                  onClick={() => setShowPricingModal()}
+                />
+              ),
             }}
           />
         </div>
