@@ -19,14 +19,6 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin_daemon import (
     CredentialType,
     PluginDaemonInnerError,
@@ -44,6 +36,14 @@ from core.plugin.impl.exc import (
 )
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.impl.tool import PluginToolManager
+from dify_graph.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
 class TestPluginRuntimeExecution:

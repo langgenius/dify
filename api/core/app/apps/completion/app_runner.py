@@ -11,10 +11,10 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.file import File
+from dify_graph.file import File
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
 from models.model import App, Message
 
@@ -132,8 +132,10 @@ class CompletionAppRunner(AppRunner):
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,
-                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get(
-                    "enabled", False
+                vision_enabled=bool(
+                    application_generate_entity.app_config.app_model_config_dict.get("file_upload", {})
+                    .get("image", {})
+                    .get("enabled", False)
                 ),
             )
             context_files = retrieved_files or []
