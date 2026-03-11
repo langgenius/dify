@@ -15,7 +15,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.workflow.file import helpers as file_helpers
+from dify_graph.file import helpers as file_helpers
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider

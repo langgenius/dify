@@ -36,7 +36,7 @@ const ImageGallery: FC<Props> = ({
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
-    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
+    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
       {srcs.map((src, index) => (
         !src
           ? null
@@ -47,6 +47,7 @@ const ImageGallery: FC<Props> = ({
                 style={imgStyle}
                 src={src}
                 alt=""
+                data-testid="gallery-image" // Added for testing
                 onClick={() => setImagePreviewUrl(src)}
                 onError={e => e.currentTarget.remove()}
               />

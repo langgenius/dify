@@ -2,9 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
@@ -18,7 +18,9 @@ class TestAddDocumentToIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("tasks.add_document_to_index_task.IndexProcessorFactory") as mock_index_processor_factory,
+            patch(
+                "tasks.add_document_to_index_task.IndexProcessorFactory", autospec=True
+            ) as mock_index_processor_factory,
         ):
             # Setup mock index processor
             mock_processor = MagicMock()
@@ -29,7 +31,9 @@ class TestAddDocumentToIndexTask:
                 "index_processor": mock_processor,
             }
 
-    def _create_test_dataset_and_document(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_dataset_and_document(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Helper method to create a test dataset and document for testing.
 
@@ -49,15 +53,15 @@ class TestAddDocumentToIndexTask:
             interface_language="en-US",
             status="active",
         )
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -66,8 +70,8 @@ class TestAddDocumentToIndexTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -79,8 +83,8 @@ class TestAddDocumentToIndexTask:
             indexing_technique="high_quality",
             created_by=account.id,
         )
-        db.session.add(dataset)
-        db.session.commit()
+        db_session_with_containers.add(dataset)
+        db_session_with_containers.commit()
 
         # Create document
         document = Document(
@@ -97,15 +101,15 @@ class TestAddDocumentToIndexTask:
             enabled=True,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
-        db.session.add(document)
-        db.session.commit()
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property works correctly
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         return dataset, document
 
-    def _create_test_segments(self, db_session_with_containers, document, dataset):
+    def _create_test_segments(self, db_session_with_containers: Session, document, dataset):
         """
         Helper method to create test document segments.
 
@@ -136,13 +140,15 @@ class TestAddDocumentToIndexTask:
                 status="completed",
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
         return segments
 
-    def test_add_document_to_index_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_add_document_to_index_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful document indexing with paragraph index type.
 
@@ -178,9 +184,9 @@ class TestAddDocumentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify database state changes
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is True
             assert segment.disabled_at is None
             assert segment.disabled_by is None
@@ -189,7 +195,7 @@ class TestAddDocumentToIndexTask:
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_with_different_index_type(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test document indexing with different index types.
@@ -207,10 +213,10 @@ class TestAddDocumentToIndexTask:
 
         # Update document to use different index type
         document.doc_form = IndexStructureType.QA_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -235,9 +241,9 @@ class TestAddDocumentToIndexTask:
         assert len(documents) == 3
 
         # Verify database state changes
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is True
             assert segment.disabled_at is None
             assert segment.disabled_by is None
@@ -246,7 +252,7 @@ class TestAddDocumentToIndexTask:
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_document_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling of non-existent document.
@@ -273,7 +279,7 @@ class TestAddDocumentToIndexTask:
         # because indexing_cache_key is not defined in that case
 
     def test_add_document_to_index_invalid_indexing_status(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling of document with invalid indexing status.
@@ -292,7 +298,7 @@ class TestAddDocumentToIndexTask:
 
         # Set invalid indexing status
         document.indexing_status = "processing"
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         add_document_to_index_task(document.id)
@@ -302,7 +308,7 @@ class TestAddDocumentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_add_document_to_index_dataset_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test handling when document's dataset doesn't exist.
@@ -324,14 +330,14 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Delete the dataset to simulate dataset not found scenario
-        db.session.delete(dataset)
-        db.session.commit()
+        db_session_with_containers.delete(dataset)
+        db_session_with_containers.commit()
 
         # Act: Execute the task
         add_document_to_index_task(document.id)
 
         # Assert: Verify error handling
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.enabled is False
         assert document.indexing_status == "error"
         assert document.error is not None
@@ -346,7 +352,7 @@ class TestAddDocumentToIndexTask:
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_with_parent_child_structure(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test document indexing with parent-child structure.
@@ -365,10 +371,10 @@ class TestAddDocumentToIndexTask:
 
         # Update document to use parent-child index type
         document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Refresh dataset to ensure doc_form property reflects the updated document
-        db.session.refresh(dataset)
+        db_session_with_containers.refresh(dataset)
 
         # Create segments with mock child chunks
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
@@ -378,7 +384,7 @@ class TestAddDocumentToIndexTask:
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
         # Mock the get_child_chunks method for each segment
-        with patch.object(DocumentSegment, "get_child_chunks") as mock_get_child_chunks:
+        with patch.object(DocumentSegment, "get_child_chunks", autospec=True) as mock_get_child_chunks:
             # Setup mock to return child chunks for each segment
             mock_child_chunks = []
             for i in range(2):  # Each segment has 2 child chunks
@@ -411,9 +417,9 @@ class TestAddDocumentToIndexTask:
                 assert len(doc.children) == 2  # Each document has 2 children
 
             # Verify database state changes
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             for segment in segments:
-                db.session.refresh(segment)
+                db_session_with_containers.refresh(segment)
                 assert segment.enabled is True
                 assert segment.disabled_at is None
                 assert segment.disabled_by is None
@@ -422,7 +428,7 @@ class TestAddDocumentToIndexTask:
             assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_with_already_enabled_segments(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test document indexing when segments are already enabled.
@@ -457,10 +463,10 @@ class TestAddDocumentToIndexTask:
                 status="completed",
                 created_by=document.created_by,
             )
-            db.session.add(segment)
+            db_session_with_containers.add(segment)
             segments.append(segment)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Set up Redis cache key
         indexing_cache_key = f"document_{document.id}_indexing"
@@ -486,7 +492,7 @@ class TestAddDocumentToIndexTask:
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_auto_disable_log_deletion(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that auto disable logs are properly deleted during indexing.
@@ -513,10 +519,10 @@ class TestAddDocumentToIndexTask:
                 document_id=document.id,
             )
             log_entry.id = str(fake.uuid4())
-            db.session.add(log_entry)
+            db_session_with_containers.add(log_entry)
             auto_disable_logs.append(log_entry)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Set up Redis cache key
         indexing_cache_key = f"document_{document.id}_indexing"
@@ -524,7 +530,9 @@ class TestAddDocumentToIndexTask:
 
         # Verify logs exist before processing
         existing_logs = (
-            db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id).all()
+            db_session_with_containers.query(DatasetAutoDisableLog)
+            .where(DatasetAutoDisableLog.document_id == document.id)
+            .all()
         )
         assert len(existing_logs) == 2
 
@@ -533,7 +541,9 @@ class TestAddDocumentToIndexTask:
 
         # Assert: Verify auto disable logs were deleted
         remaining_logs = (
-            db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == document.id).all()
+            db_session_with_containers.query(DatasetAutoDisableLog)
+            .where(DatasetAutoDisableLog.document_id == document.id)
+            .all()
         )
         assert len(remaining_logs) == 0
 
@@ -545,14 +555,14 @@ class TestAddDocumentToIndexTask:
 
         # Verify segments were enabled
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is True
 
         # Verify redis cache was cleared
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_general_exception_handling(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test general exception handling during indexing process.
@@ -582,7 +592,7 @@ class TestAddDocumentToIndexTask:
         add_document_to_index_task(document.id)
 
         # Assert: Verify error handling
-        db.session.refresh(document)
+        db_session_with_containers.refresh(document)
         assert document.enabled is False
         assert document.indexing_status == "error"
         assert document.error is not None
@@ -591,14 +601,14 @@ class TestAddDocumentToIndexTask:
 
         # Verify segments were not enabled due to error
         for segment in segments:
-            db.session.refresh(segment)
+            db_session_with_containers.refresh(segment)
             assert segment.enabled is False  # Should remain disabled due to error
 
         # Verify redis cache was still cleared despite error
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_segment_filtering_edge_cases(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test segment filtering with various edge cases.
@@ -636,7 +646,7 @@ class TestAddDocumentToIndexTask:
             status="completed",
             created_by=document.created_by,
         )
-        db.session.add(segment1)
+        db_session_with_containers.add(segment1)
         segments.append(segment1)
 
         # Segment 2: Should be processed (enabled=True, status="completed")
@@ -656,7 +666,7 @@ class TestAddDocumentToIndexTask:
             status="completed",
             created_by=document.created_by,
         )
-        db.session.add(segment2)
+        db_session_with_containers.add(segment2)
         segments.append(segment2)
 
         # Segment 3: Should NOT be processed (enabled=False, status="processing")
@@ -675,7 +685,7 @@ class TestAddDocumentToIndexTask:
             status="processing",  # Not completed
             created_by=document.created_by,
         )
-        db.session.add(segment3)
+        db_session_with_containers.add(segment3)
         segments.append(segment3)
 
         # Segment 4: Should be processed (enabled=False, status="completed")
@@ -694,10 +704,10 @@ class TestAddDocumentToIndexTask:
             status="completed",
             created_by=document.created_by,
         )
-        db.session.add(segment4)
+        db_session_with_containers.add(segment4)
         segments.append(segment4)
 
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Set up Redis cache key
         indexing_cache_key = f"document_{document.id}_indexing"
@@ -726,11 +736,11 @@ class TestAddDocumentToIndexTask:
         assert documents[2].metadata["doc_id"] == "node_3"  # segment4, position 3
 
         # Verify database state changes
-        db.session.refresh(document)
-        db.session.refresh(segment1)
-        db.session.refresh(segment2)
-        db.session.refresh(segment3)
-        db.session.refresh(segment4)
+        db_session_with_containers.refresh(document)
+        db_session_with_containers.refresh(segment1)
+        db_session_with_containers.refresh(segment2)
+        db_session_with_containers.refresh(segment3)
+        db_session_with_containers.refresh(segment4)
 
         # All segments should be enabled because the task updates ALL segments for the document
         assert segment1.enabled is True
@@ -742,7 +752,7 @@ class TestAddDocumentToIndexTask:
         assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_comprehensive_error_scenarios(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test comprehensive error scenarios and recovery.
@@ -777,7 +787,7 @@ class TestAddDocumentToIndexTask:
             document.indexing_status = "completed"
             document.error = None
             document.disabled_at = None
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Set up Redis cache key
             indexing_cache_key = f"document_{document.id}_indexing"
@@ -787,7 +797,7 @@ class TestAddDocumentToIndexTask:
             add_document_to_index_task(document.id)
 
             # Assert: Verify consistent error handling
-            db.session.refresh(document)
+            db_session_with_containers.refresh(document)
             assert document.enabled is False, f"Document should be disabled for {error_name}"
             assert document.indexing_status == "error", f"Document status should be error for {error_name}"
             assert document.error is not None, f"Error should be recorded for {error_name}"
@@ -796,7 +806,7 @@ class TestAddDocumentToIndexTask:
 
             # Verify segments remain disabled due to error
             for segment in segments:
-                db.session.refresh(segment)
+                db_session_with_containers.refresh(segment)
                 assert segment.enabled is False, f"Segments should remain disabled for {error_name}"
 
             # Verify redis cache was still cleared despite error

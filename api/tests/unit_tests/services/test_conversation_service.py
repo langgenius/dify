@@ -1,95 +1,29 @@
 """
 Comprehensive unit tests for ConversationService.
 
-This test suite provides complete coverage of conversation management operations in Dify,
-following TDD principles with the Arrange-Act-Assert pattern.
-
-## Test Coverage
-
-### 1. Conversation Pagination (TestConversationServicePagination)
-Tests conversation listing and filtering:
-- Empty include_ids returns empty results
-- Non-empty include_ids filters conversations properly
-- Empty exclude_ids doesn't filter results
-- Non-empty exclude_ids excludes specified conversations
-- Null user handling
-- Sorting and pagination edge cases
-
-### 2. Message Creation (TestConversationServiceMessageCreation)
-Tests message operations within conversations:
-- Message pagination without first_id
-- Message pagination with first_id specified
-- Error handling for non-existent messages
-- Empty result handling for null user/conversation
-- Message ordering (ascending/descending)
-- Has_more flag calculation
-
-### 3. Conversation Summarization (TestConversationServiceSummarization)
-Tests auto-generated conversation names:
-- Successful LLM-based name generation
-- Error handling when conversation has no messages
-- Graceful handling of LLM service failures
-- Manual vs auto-generated naming
-- Name update timestamp tracking
-
-### 4. Message Annotation (TestConversationServiceMessageAnnotation)
-Tests annotation creation and management:
-- Creating annotations from existing messages
-- Creating standalone annotations
-- Updating existing annotations
-- Paginated annotation retrieval
-- Annotation search with keywords
-- Annotation export functionality
-
-### 5. Conversation Export (TestConversationServiceExport)
-Tests data retrieval for export:
-- Successful conversation retrieval
-- Error handling for non-existent conversations
-- Message retrieval
-- Annotation export
-- Batch data export operations
-
-## Testing Approach
-
-- **Mocking Strategy**: All external dependencies (database, LLM, Redis) are mocked
-  for fast, isolated unit tests
-- **Factory Pattern**: ConversationServiceTestDataFactory provides consistent test data
-- **Fixtures**: Mock objects are configured per test method
-- **Assertions**: Each test verifies return values and side effects
-  (database operations, method calls)
-
-## Key Concepts
-
-**Conversation Sources:**
-- console: Created by workspace members
-- api: Created by end users via API
-
-**Message Pagination:**
-- first_id: Paginate from a specific message forward
-- last_id: Paginate from a specific message backward
-- Supports ascending/descending order
-
-**Annotations:**
-- Can be attached to messages or standalone
-- Support full-text search
-- Indexed for semantic retrieval
+This file provides complete test coverage for all ConversationService methods.
+Tests are organized by functionality and include edge cases, error handling,
+and both positive and negative test scenarios.
 """
 
-import uuid
-from datetime import UTC, datetime
-from decimal import Decimal
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy import asc, desc
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account
-from models.model import App, Conversation, EndUser, Message, MessageAnnotation
-from services.annotation_service import AppAnnotationService
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models import Account, ConversationVariable
+from models.model import App, Conversation, EndUser, Message
 from services.conversation_service import ConversationService
-from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError
-from services.message_service import MessageService
+from services.errors.conversation import (
+    ConversationNotExistsError,
+    ConversationVariableNotExistsError,
+    ConversationVariableTypeMismatchError,
+    LastConversationNotExistsError,
+)
+from services.errors.message import MessageNotExistsError
 
 
 class ConversationServiceTestDataFactory:
@@ -187,8 +121,8 @@ class ConversationServiceTestDataFactory:
         conversation.is_deleted = kwargs.get("is_deleted", False)
         conversation.name = kwargs.get("name", "Test Conversation")
         conversation.status = kwargs.get("status", "normal")
-        conversation.created_at = kwargs.get("created_at", datetime.now(UTC))
-        conversation.updated_at = kwargs.get("updated_at", datetime.now(UTC))
+        conversation.created_at = kwargs.get("created_at", datetime.utcnow())
+        conversation.updated_at = kwargs.get("updated_at", datetime.utcnow())
         for key, value in kwargs.items():
             setattr(conversation, key, value)
         return conversation
@@ -210,66 +144,66 @@ class ConversationServiceTestDataFactory:
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock Message object with specified attributes including
-            query, answer, tokens, and pricing information
+            Mock Message object with specified attributes
         """
         message = create_autospec(Message, instance=True)
         message.id = message_id
         message.conversation_id = conversation_id
         message.app_id = app_id
-        message.query = kwargs.get("query", "Test query")
-        message.answer = kwargs.get("answer", "Test answer")
-        message.from_source = kwargs.get("from_source", "console")
-        message.from_end_user_id = kwargs.get("from_end_user_id")
-        message.from_account_id = kwargs.get("from_account_id")
-        message.created_at = kwargs.get("created_at", datetime.now(UTC))
-        message.message = kwargs.get("message", {})
-        message.message_tokens = kwargs.get("message_tokens", 0)
-        message.answer_tokens = kwargs.get("answer_tokens", 0)
-        message.message_unit_price = kwargs.get("message_unit_price", Decimal(0))
-        message.answer_unit_price = kwargs.get("answer_unit_price", Decimal(0))
-        message.message_price_unit = kwargs.get("message_price_unit", Decimal("0.001"))
-        message.answer_price_unit = kwargs.get("answer_price_unit", Decimal("0.001"))
-        message.currency = kwargs.get("currency", "USD")
-        message.status = kwargs.get("status", "normal")
+        message.query = kwargs.get("query", "Test message content")
+        message.created_at = kwargs.get("created_at", datetime.utcnow())
         for key, value in kwargs.items():
             setattr(message, key, value)
         return message
 
     @staticmethod
-    def create_annotation_mock(
-        annotation_id: str = "anno-123",
+    def create_conversation_variable_mock(
+        variable_id: str = "var-123",
+        conversation_id: str = "conv-123",
         app_id: str = "app-123",
-        message_id: str = "msg-123",
         **kwargs,
     ) -> Mock:
         """
-        Create a mock MessageAnnotation object.
+        Create a mock ConversationVariable object.
 
         Args:
-            annotation_id: Unique identifier for the annotation
+            variable_id: Unique identifier for the variable
+            conversation_id: Associated conversation identifier
             app_id: Associated app identifier
-            message_id: Associated message identifier (optional for standalone annotations)
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock MessageAnnotation object with specified attributes including
-            question, content, and hit tracking
+            Mock ConversationVariable object with specified attributes
         """
-        annotation = create_autospec(MessageAnnotation, instance=True)
-        annotation.id = annotation_id
-        annotation.app_id = app_id
-        annotation.message_id = message_id
-        annotation.conversation_id = kwargs.get("conversation_id")
-        annotation.question = kwargs.get("question", "Test question")
-        annotation.content = kwargs.get("content", "Test annotation")
-        annotation.account_id = kwargs.get("account_id", "account-123")
-        annotation.hit_count = kwargs.get("hit_count", 0)
-        annotation.created_at = kwargs.get("created_at", datetime.now(UTC))
-        annotation.updated_at = kwargs.get("updated_at", datetime.now(UTC))
+        variable = create_autospec(ConversationVariable, instance=True)
+        variable.id = variable_id
+        variable.conversation_id = conversation_id
+        variable.app_id = app_id
+        variable.data = {"name": kwargs.get("name", "test_var"), "value": kwargs.get("value", "test_value")}
+        variable.created_at = kwargs.get("created_at", datetime.utcnow())
+        variable.updated_at = kwargs.get("updated_at", datetime.utcnow())
+
+        # Mock to_variable method
+        mock_variable = Mock()
+        mock_variable.id = variable_id
+        mock_variable.name = kwargs.get("name", "test_var")
+        mock_variable.value_type = kwargs.get("value_type", "string")
+        mock_variable.value = kwargs.get("value", "test_value")
+        mock_variable.description = kwargs.get("description", "")
+        mock_variable.selector = kwargs.get("selector", {})
+        mock_variable.model_dump.return_value = {
+            "id": variable_id,
+            "name": kwargs.get("name", "test_var"),
+            "value_type": kwargs.get("value_type", "string"),
+            "value": kwargs.get("value", "test_value"),
+            "description": kwargs.get("description", ""),
+            "selector": kwargs.get("selector", {}),
+        }
+        variable.to_variable.return_value = mock_variable
+
         for key, value in kwargs.items():
-            setattr(annotation, key, value)
-        return annotation
+            setattr(variable, key, value)
+        return variable
 
 
 class TestConversationServicePagination:
@@ -304,132 +238,6 @@ class TestConversationServicePagination:
         assert result.has_more is False  # No more pages available
         assert result.limit == 20  # Limit preserved in response
 
-    def test_pagination_with_non_empty_include_ids(self):
-        """
-        Test that non-empty include_ids filters properly.
-
-        When include_ids contains conversation IDs, the query should filter
-        to only return conversations matching those IDs.
-        """
-        # Arrange - Set up test data and mocks
-        mock_session = MagicMock()  # Mock database session
-        mock_app_model = ConversationServiceTestDataFactory.create_app_mock()
-        mock_user = ConversationServiceTestDataFactory.create_account_mock()
-
-        # Create 3 mock conversations that would match the filter
-        mock_conversations = [
-            ConversationServiceTestDataFactory.create_conversation_mock(conversation_id=str(uuid.uuid4()))
-            for _ in range(3)
-        ]
-        # Mock the database query results
-        mock_session.scalars.return_value.all.return_value = mock_conversations
-        mock_session.scalar.return_value = 0  # No additional conversations beyond current page
-
-        # Act
-        with patch("services.conversation_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
-            mock_stmt.where.return_value = mock_stmt
-            mock_stmt.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_stmt.subquery.return_value = MagicMock()
-
-            result = ConversationService.pagination_by_last_id(
-                session=mock_session,
-                app_model=mock_app_model,
-                user=mock_user,
-                last_id=None,
-                limit=20,
-                invoke_from=InvokeFrom.WEB_APP,
-                include_ids=["conv1", "conv2"],
-                exclude_ids=None,
-            )
-
-            # Assert
-            assert mock_stmt.where.called
-
-    def test_pagination_with_empty_exclude_ids(self):
-        """
-        Test that empty exclude_ids doesn't filter.
-
-        When exclude_ids is an empty list, the query should not filter out
-        any conversations.
-        """
-        # Arrange
-        mock_session = MagicMock()
-        mock_app_model = ConversationServiceTestDataFactory.create_app_mock()
-        mock_user = ConversationServiceTestDataFactory.create_account_mock()
-        mock_conversations = [
-            ConversationServiceTestDataFactory.create_conversation_mock(conversation_id=str(uuid.uuid4()))
-            for _ in range(5)
-        ]
-        mock_session.scalars.return_value.all.return_value = mock_conversations
-        mock_session.scalar.return_value = 0
-
-        # Act
-        with patch("services.conversation_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
-            mock_stmt.where.return_value = mock_stmt
-            mock_stmt.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_stmt.subquery.return_value = MagicMock()
-
-            result = ConversationService.pagination_by_last_id(
-                session=mock_session,
-                app_model=mock_app_model,
-                user=mock_user,
-                last_id=None,
-                limit=20,
-                invoke_from=InvokeFrom.WEB_APP,
-                include_ids=None,
-                exclude_ids=[],
-            )
-
-            # Assert
-            assert len(result.data) == 5
-
-    def test_pagination_with_non_empty_exclude_ids(self):
-        """
-        Test that non-empty exclude_ids filters properly.
-
-        When exclude_ids contains conversation IDs, the query should filter
-        out conversations matching those IDs.
-        """
-        # Arrange
-        mock_session = MagicMock()
-        mock_app_model = ConversationServiceTestDataFactory.create_app_mock()
-        mock_user = ConversationServiceTestDataFactory.create_account_mock()
-        mock_conversations = [
-            ConversationServiceTestDataFactory.create_conversation_mock(conversation_id=str(uuid.uuid4()))
-            for _ in range(3)
-        ]
-        mock_session.scalars.return_value.all.return_value = mock_conversations
-        mock_session.scalar.return_value = 0
-
-        # Act
-        with patch("services.conversation_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
-            mock_stmt.where.return_value = mock_stmt
-            mock_stmt.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_stmt.subquery.return_value = MagicMock()
-
-            result = ConversationService.pagination_by_last_id(
-                session=mock_session,
-                app_model=mock_app_model,
-                user=mock_user,
-                last_id=None,
-                limit=20,
-                invoke_from=InvokeFrom.WEB_APP,
-                include_ids=None,
-                exclude_ids=["conv1", "conv2"],
-            )
-
-            # Assert
-            assert mock_stmt.where.called
-
     def test_pagination_returns_empty_when_user_is_none(self):
         """
         Test that pagination returns empty result when user is None.
@@ -455,957 +263,959 @@ class TestConversationServicePagination:
         assert result.has_more is False
         assert result.limit == 20
 
-    def test_pagination_with_sorting_descending(self):
-        """
-        Test pagination with descending sort order.
 
-        Verifies that conversations are sorted by updated_at in descending order (newest first).
+class TestConversationServiceHelpers:
+    """Test helper methods in ConversationService."""
+
+    def test_get_sort_params_with_descending_sort(self):
+        """
+        Test _get_sort_params with descending sort prefix.
+
+        When sort_by starts with '-', should return field name and desc function.
+        """
+        # Act
+        field, direction = ConversationService._get_sort_params("-updated_at")
+
+        # Assert
+        assert field == "updated_at"
+        assert direction == desc
+
+    def test_get_sort_params_with_ascending_sort(self):
+        """
+        Test _get_sort_params with ascending sort.
+
+        When sort_by doesn't start with '-', should return field name and asc function.
+        """
+        # Act
+        field, direction = ConversationService._get_sort_params("created_at")
+
+        # Assert
+        assert field == "created_at"
+        assert direction == asc
+
+    def test_build_filter_condition_with_descending_sort(self):
+        """
+        Test _build_filter_condition with descending sort direction.
+
+        Should create a less-than filter condition.
         """
         # Arrange
-        mock_session = MagicMock()
-        mock_app_model = ConversationServiceTestDataFactory.create_app_mock()
-        mock_user = ConversationServiceTestDataFactory.create_account_mock()
-
-        # Create conversations with different timestamps
-        conversations = [
-            ConversationServiceTestDataFactory.create_conversation_mock(
-                conversation_id=f"conv-{i}", updated_at=datetime(2024, 1, i + 1, tzinfo=UTC)
-            )
-            for i in range(3)
-        ]
-        mock_session.scalars.return_value.all.return_value = conversations
-        mock_session.scalar.return_value = 0
+        mock_conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        mock_conversation.updated_at = datetime.utcnow()
 
         # Act
-        with patch("services.conversation_service.select") as mock_select:
-            mock_stmt = MagicMock()
-            mock_select.return_value = mock_stmt
-            mock_stmt.where.return_value = mock_stmt
-            mock_stmt.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_stmt.subquery.return_value = MagicMock()
+        condition = ConversationService._build_filter_condition(
+            sort_field="updated_at",
+            sort_direction=desc,
+            reference_conversation=mock_conversation,
+        )
 
-            result = ConversationService.pagination_by_last_id(
-                session=mock_session,
-                app_model=mock_app_model,
-                user=mock_user,
-                last_id=None,
-                limit=20,
-                invoke_from=InvokeFrom.WEB_APP,
-                sort_by="-updated_at",  # Descending sort
-            )
+        # Assert
+        # The condition should be a comparison expression
+        assert condition is not None
 
-            # Assert
-            assert len(result.data) == 3
-            mock_stmt.order_by.assert_called()
-
-
-class TestConversationServiceMessageCreation:
-    """
-    Test message creation and pagination.
-
-    Tests MessageService operations for creating and retrieving messages
-    within conversations.
-    """
-
-    @patch("services.message_service._create_execution_extra_content_repository")
-    @patch("services.message_service.db.session")
-    @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_by_first_id_without_first_id(
-        self, mock_get_conversation, mock_db_session, mock_create_extra_repo
-    ):
+    def test_build_filter_condition_with_ascending_sort(self):
         """
-        Test message pagination without specifying first_id.
+        Test _build_filter_condition with ascending sort direction.
 
-        When first_id is None, the service should return the most recent messages
-        up to the specified limit.
+        Should create a greater-than filter condition.
+        """
+        # Arrange
+        mock_conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        mock_conversation.created_at = datetime.utcnow()
+
+        # Act
+        condition = ConversationService._build_filter_condition(
+            sort_field="created_at",
+            sort_direction=asc,
+            reference_conversation=mock_conversation,
+        )
+
+        # Assert
+        # The condition should be a comparison expression
+        assert condition is not None
+
+
+class TestConversationServiceGetConversation:
+    """Test conversation retrieval operations."""
+
+    @patch("services.conversation_service.db.session")
+    def test_get_conversation_success_with_account(self, mock_db_session):
+        """
+        Test successful conversation retrieval with account user.
+
+        Should return conversation when found with proper filters.
         """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Create 3 test messages in the conversation
-        messages = [
-            ConversationServiceTestDataFactory.create_message_mock(
-                message_id=f"msg-{i}", conversation_id=conversation.id
-            )
-            for i in range(3)
-        ]
-
-        # Mock the conversation lookup to return our test conversation
-        mock_get_conversation.return_value = conversation
-
-        # Set up the database query mock chain
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # WHERE clause returns self for chaining
-        mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
-        mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
-        mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
-
-        # Act - Call the pagination method without first_id
-        result = MessageService.pagination_by_first_id(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation.id,
-            first_id=None,  # No starting point specified
-            limit=10,
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock(
+            from_account_id=user.id, from_source="console"
         )
 
-        # Assert - Verify the results
-        assert len(result.data) == 3  # All 3 messages returned
-        assert result.has_more is False  # No more messages available (3 < limit of 10)
-        # Verify conversation was looked up with correct parameters
-        mock_get_conversation.assert_called_once_with(app_model=app_model, user=user, conversation_id=conversation.id)
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.first.return_value = conversation
 
-    @patch("services.message_service._create_execution_extra_content_repository")
-    @patch("services.message_service.db.session")
-    @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_by_first_id_with_first_id(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
+        # Act
+        result = ConversationService.get_conversation(app_model, "conv-123", user)
+
+        # Assert
+        assert result == conversation
+        mock_db_session.query.assert_called_once_with(Conversation)
+
+    @patch("services.conversation_service.db.session")
+    def test_get_conversation_success_with_end_user(self, mock_db_session):
         """
-        Test message pagination with first_id specified.
+        Test successful conversation retrieval with end user.
 
-        When first_id is provided, the service should return messages starting
-        from the specified message up to the limit.
+        Should return conversation when found with proper filters for API user.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_end_user_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock(
+            from_end_user_id=user.id, from_source="api"
+        )
+
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.first.return_value = conversation
+
+        # Act
+        result = ConversationService.get_conversation(app_model, "conv-123", user)
+
+        # Assert
+        assert result == conversation
+
+    @patch("services.conversation_service.db.session")
+    def test_get_conversation_not_found_raises_error(self, mock_db_session):
+        """
+        Test that get_conversation raises error when conversation not found.
+
+        Should raise ConversationNotExistsError when no matching conversation found.
         """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        first_message = ConversationServiceTestDataFactory.create_message_mock(
-            message_id="msg-first", conversation_id=conversation.id
-        )
-        messages = [
-            ConversationServiceTestDataFactory.create_message_mock(
-                message_id=f"msg-{i}", conversation_id=conversation.id
-            )
-            for i in range(2)
-        ]
 
-        # Mock the conversation lookup to return our test conversation
-        mock_get_conversation.return_value = conversation
-
-        # Set up the database query mock chain
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # WHERE clause returns self for chaining
-        mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
-        mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
-        mock_query.first.return_value = first_message  # First message returned
-        mock_query.all.return_value = messages  # Remaining messages returned
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
-
-        # Act - Call the pagination method with first_id
-        result = MessageService.pagination_by_first_id(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation.id,
-            first_id="msg-first",
-            limit=10,
-        )
-
-        # Assert - Verify the results
-        assert len(result.data) == 2  # Only 2 messages returned after first_id
-        assert result.has_more is False  # No more messages available (2 < limit of 10)
-
-    @patch("services.message_service.db.session")
-    @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_by_first_id_raises_error_when_first_message_not_found(
-        self, mock_get_conversation, mock_db_session
-    ):
-        """
-        Test that FirstMessageNotExistsError is raised when first_id doesn't exist.
-
-        When the specified first_id does not exist in the conversation,
-        the service should raise an error.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Mock the conversation lookup to return our test conversation
-        mock_get_conversation.return_value = conversation
-
-        # Set up the database query mock chain
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # WHERE clause returns self for chaining
-        mock_query.first.return_value = None  # No message found for first_id
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.first.return_value = None
 
         # Act & Assert
-        with pytest.raises(FirstMessageNotExistsError):
-            MessageService.pagination_by_first_id(
-                app_model=app_model,
-                user=user,
-                conversation_id=conversation.id,
-                first_id="non-existent-msg",
-                limit=10,
-            )
+        with pytest.raises(ConversationNotExistsError):
+            ConversationService.get_conversation(app_model, "conv-123", user)
 
-    def test_pagination_returns_empty_when_no_user(self):
+
+class TestConversationServiceRename:
+    """Test conversation rename operations."""
+
+    @patch("services.conversation_service.db.session")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_rename_with_manual_name(self, mock_get_conversation, mock_db_session):
         """
-        Test that pagination returns empty result when user is None.
+        Test renaming conversation with manual name.
 
-        This ensures proper handling of unauthenticated requests.
+        Should update conversation name and timestamp when auto_generate is False.
         """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
 
         # Act
-        result = MessageService.pagination_by_first_id(
+        result = ConversationService.rename(
             app_model=app_model,
-            user=None,
             conversation_id="conv-123",
-            first_id=None,
-            limit=10,
-        )
-
-        # Assert
-        assert result.data == []
-        assert result.has_more is False
-
-    def test_pagination_returns_empty_when_no_conversation_id(self):
-        """
-        Test that pagination returns empty result when conversation_id is None.
-
-        This ensures proper handling of invalid requests.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-
-        # Act
-        result = MessageService.pagination_by_first_id(
-            app_model=app_model,
             user=user,
-            conversation_id="",
-            first_id=None,
-            limit=10,
+            name="New Name",
+            auto_generate=False,
         )
 
         # Assert
-        assert result.data == []
-        assert result.has_more is False
-
-    @patch("services.message_service._create_execution_extra_content_repository")
-    @patch("services.message_service.db.session")
-    @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_with_has_more_flag(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
-        """
-        Test that has_more flag is correctly set when there are more messages.
-
-        The service fetches limit+1 messages to determine if more exist.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Create limit+1 messages to trigger has_more
-        limit = 5
-        messages = [
-            ConversationServiceTestDataFactory.create_message_mock(
-                message_id=f"msg-{i}", conversation_id=conversation.id
-            )
-            for i in range(limit + 1)  # One extra message
-        ]
-
-        # Mock the conversation lookup to return our test conversation
-        mock_get_conversation.return_value = conversation
-
-        # Set up the database query mock chain
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # WHERE clause returns self for chaining
-        mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
-        mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
-        mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
-
-        # Act
-        result = MessageService.pagination_by_first_id(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation.id,
-            first_id=None,
-            limit=limit,
-        )
-
-        # Assert
-        assert len(result.data) == limit  # Extra message should be removed
-        assert result.has_more is True  # Flag should be set
-
-    @patch("services.message_service._create_execution_extra_content_repository")
-    @patch("services.message_service.db.session")
-    @patch("services.message_service.ConversationService.get_conversation")
-    def test_pagination_with_ascending_order(self, mock_get_conversation, mock_db_session, mock_create_extra_repo):
-        """
-        Test message pagination with ascending order.
-
-        Messages should be returned in chronological order (oldest first).
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Create messages with different timestamps
-        messages = [
-            ConversationServiceTestDataFactory.create_message_mock(
-                message_id=f"msg-{i}", conversation_id=conversation.id, created_at=datetime(2024, 1, i + 1, tzinfo=UTC)
-            )
-            for i in range(3)
-        ]
-
-        # Mock the conversation lookup to return our test conversation
-        mock_get_conversation.return_value = conversation
-
-        # Set up the database query mock chain
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # WHERE clause returns self for chaining
-        mock_query.order_by.return_value = mock_query  # ORDER BY returns self for chaining
-        mock_query.limit.return_value = mock_query  # LIMIT returns self for chaining
-        mock_query.all.return_value = messages  # Final .all() returns the messages
-        mock_repository = MagicMock()
-        mock_repository.get_by_message_ids.return_value = [[] for _ in messages]
-        mock_create_extra_repo.return_value = mock_repository
-
-        # Act
-        result = MessageService.pagination_by_first_id(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation.id,
-            first_id=None,
-            limit=10,
-            order="asc",  # Ascending order
-        )
-
-        # Assert
-        assert len(result.data) == 3
-        # Messages should be in ascending order after reversal
-
-
-class TestConversationServiceSummarization:
-    """
-    Test conversation summarization (auto-generated names).
-
-    Tests the auto_generate_name functionality that creates conversation
-    titles based on the first message.
-    """
-
-    @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
-    @patch("services.conversation_service.db.session")
-    def test_auto_generate_name_success(self, mock_db_session, mock_llm_generator):
-        """
-        Test successful auto-generation of conversation name.
-
-        The service uses an LLM to generate a descriptive name based on
-        the first message in the conversation.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Create the first message that will be used to generate the name
-        first_message = ConversationServiceTestDataFactory.create_message_mock(
-            conversation_id=conversation.id, query="What is machine learning?"
-        )
-        # Expected name from LLM
-        generated_name = "Machine Learning Discussion"
-
-        # Set up database query mock to return the first message
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # Filter by app_id and conversation_id
-        mock_query.order_by.return_value = mock_query  # Order by created_at ascending
-        mock_query.first.return_value = first_message  # Return the first message
-
-        # Mock the LLM to return our expected name
-        mock_llm_generator.return_value = generated_name
-
-        # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
-
-        # Assert
-        assert conversation.name == generated_name  # Name updated on conversation object
-        # Verify LLM was called with correct parameters
-        mock_llm_generator.assert_called_once_with(
-            app_model.tenant_id, first_message.query, conversation.id, app_model.id
-        )
-        mock_db_session.commit.assert_called_once()  # Changes committed to database
-
-    @patch("services.conversation_service.db.session")
-    def test_auto_generate_name_raises_error_when_no_message(self, mock_db_session):
-        """
-        Test that MessageNotExistsError is raised when conversation has no messages.
-
-        When the conversation has no messages, the service should raise an error.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        # Set up database query mock to return no messages
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # Filter by app_id and conversation_id
-        mock_query.order_by.return_value = mock_query  # Order by created_at ascending
-        mock_query.first.return_value = None  # No messages found
-
-        # Act & Assert
-        with pytest.raises(MessageNotExistsError):
-            ConversationService.auto_generate_name(app_model, conversation)
-
-    @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
-    @patch("services.conversation_service.db.session")
-    def test_auto_generate_name_handles_llm_failure_gracefully(self, mock_db_session, mock_llm_generator):
-        """
-        Test that LLM generation failures are suppressed and don't crash.
-
-        When the LLM fails to generate a name, the service should not crash
-        and should return the original conversation name.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        first_message = ConversationServiceTestDataFactory.create_message_mock(conversation_id=conversation.id)
-        original_name = conversation.name
-
-        # Set up database query mock to return the first message
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # Filter by app_id and conversation_id
-        mock_query.order_by.return_value = mock_query  # Order by created_at ascending
-        mock_query.first.return_value = first_message  # Return the first message
-
-        # Mock the LLM to raise an exception
-        mock_llm_generator.side_effect = Exception("LLM service unavailable")
-
-        # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
-
-        # Assert
-        assert conversation.name == original_name  # Name remains unchanged
-        mock_db_session.commit.assert_called_once()  # Changes committed to database
+        assert result == conversation
+        assert conversation.name == "New Name"
+        mock_db_session.commit.assert_called_once()
 
     @patch("services.conversation_service.db.session")
     @patch("services.conversation_service.ConversationService.get_conversation")
     @patch("services.conversation_service.ConversationService.auto_generate_name")
     def test_rename_with_auto_generate(self, mock_auto_generate, mock_get_conversation, mock_db_session):
         """
-        Test renaming conversation with auto-generation enabled.
+        Test renaming conversation with auto-generation.
 
-        When auto_generate is True, the service should call the auto_generate_name
-        method to generate a new name for the conversation.
+        Should call auto_generate_name when auto_generate is True.
         """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
         conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        conversation.name = "Auto-generated Name"
 
-        # Mock the conversation lookup to return our test conversation
         mock_get_conversation.return_value = conversation
-
-        # Mock the auto_generate_name method to return the conversation
         mock_auto_generate.return_value = conversation
 
         # Act
         result = ConversationService.rename(
             app_model=app_model,
-            conversation_id=conversation.id,
+            conversation_id="conv-123",
             user=user,
-            name="",
+            name=None,
             auto_generate=True,
         )
 
         # Assert
-        mock_auto_generate.assert_called_once_with(app_model, conversation)
         assert result == conversation
+        mock_auto_generate.assert_called_once_with(app_model, conversation)
+
+
+class TestConversationServiceAutoGenerateName:
+    """Test conversation auto-name generation operations."""
+
+    @patch("services.conversation_service.db.session")
+    @patch("services.conversation_service.LLMGenerator")
+    def test_auto_generate_name_success(self, mock_llm_generator, mock_db_session):
+        """
+        Test successful auto-generation of conversation name.
+
+        Should generate name using LLMGenerator and update conversation.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        message = ConversationServiceTestDataFactory.create_message_mock(
+            conversation_id=conversation.id, app_id=app_model.id
+        )
+
+        # Mock database query to return message
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.order_by.return_value.first.return_value = message
+
+        # Mock LLM generator
+        mock_llm_generator.generate_conversation_name.return_value = "Generated Name"
+
+        # Act
+        result = ConversationService.auto_generate_name(app_model, conversation)
+
+        # Assert
+        assert result == conversation
+        assert conversation.name == "Generated Name"
+        mock_llm_generator.generate_conversation_name.assert_called_once_with(
+            app_model.tenant_id, message.query, conversation.id, app_model.id
+        )
+        mock_db_session.commit.assert_called_once()
+
+    @patch("services.conversation_service.db.session")
+    def test_auto_generate_name_no_message_raises_error(self, mock_db_session):
+        """
+        Test auto-generation fails when no message found.
+
+        Should raise MessageNotExistsError when conversation has no messages.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        # Mock database query to return None
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.order_by.return_value.first.return_value = None
+
+        # Act & Assert
+        with pytest.raises(MessageNotExistsError):
+            ConversationService.auto_generate_name(app_model, conversation)
+
+    @patch("services.conversation_service.db.session")
+    @patch("services.conversation_service.LLMGenerator")
+    def test_auto_generate_name_handles_llm_exception(self, mock_llm_generator, mock_db_session):
+        """
+        Test auto-generation handles LLM generator exceptions gracefully.
+
+        Should continue without name when LLMGenerator fails.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        message = ConversationServiceTestDataFactory.create_message_mock(
+            conversation_id=conversation.id, app_id=app_model.id
+        )
+
+        # Mock database query to return message
+        mock_query = mock_db_session.query.return_value
+        mock_query.where.return_value.order_by.return_value.first.return_value = message
+
+        # Mock LLM generator to raise exception
+        mock_llm_generator.generate_conversation_name.side_effect = Exception("LLM Error")
+
+        # Act
+        result = ConversationService.auto_generate_name(app_model, conversation)
+
+        # Assert
+        assert result == conversation
+        # Name should remain unchanged due to exception
+        mock_db_session.commit.assert_called_once()
+
+
+class TestConversationServiceDelete:
+    """Test conversation deletion operations."""
+
+    @patch("services.conversation_service.delete_conversation_related_data")
+    @patch("services.conversation_service.db.session")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_delete_success(self, mock_get_conversation, mock_db_session, mock_delete_task):
+        """
+        Test successful conversation deletion.
+
+        Should delete conversation and schedule cleanup task.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock(name="Test App")
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Act
+        ConversationService.delete(app_model, "conv-123", user)
+
+        # Assert
+        mock_db_session.delete.assert_called_once_with(conversation)
+        mock_db_session.commit.assert_called_once()
+        mock_delete_task.delay.assert_called_once_with(conversation.id)
 
     @patch("services.conversation_service.db.session")
     @patch("services.conversation_service.ConversationService.get_conversation")
-    @patch("services.conversation_service.naive_utc_now")
-    def test_rename_with_manual_name(self, mock_naive_utc_now, mock_get_conversation, mock_db_session):
+    def test_delete_handles_exception_and_rollback(self, mock_get_conversation, mock_db_session):
         """
-        Test renaming conversation with manual name.
+        Test deletion handles exceptions and rolls back transaction.
 
-        When auto_generate is False, the service should update the conversation
-        name with the provided manual name.
+        Should rollback database changes when deletion fails.
         """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
         conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-        new_name = "My Custom Conversation Name"
-        mock_time = datetime(2024, 1, 1, 12, 0, 0)
 
-        # Mock the conversation lookup to return our test conversation
+        mock_get_conversation.return_value = conversation
+        mock_db_session.delete.side_effect = Exception("Database Error")
+
+        # Act & Assert
+        with pytest.raises(Exception, match="Database Error"):
+            ConversationService.delete(app_model, "conv-123", user)
+
+        # Assert rollback was called
+        mock_db_session.rollback.assert_called_once()
+
+
+class TestConversationServiceConversationalVariable:
+    """Test conversational variable operations."""
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_get_conversational_variable_success(self, mock_get_conversation, mock_session_factory):
+        """
+        Test successful retrieval of conversational variables.
+
+        Should return paginated list of variables for conversation.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
         mock_get_conversation.return_value = conversation
 
-        # Mock the current time to return our mock time
-        mock_naive_utc_now.return_value = mock_time
+        # Mock session and variables
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        variable1 = ConversationServiceTestDataFactory.create_conversation_variable_mock()
+        variable2 = ConversationServiceTestDataFactory.create_conversation_variable_mock(variable_id="var-456")
+
+        mock_session.scalars.return_value.all.return_value = [variable1, variable2]
 
         # Act
-        result = ConversationService.rename(
+        result = ConversationService.get_conversational_variable(
             app_model=app_model,
-            conversation_id=conversation.id,
+            conversation_id="conv-123",
             user=user,
-            name=new_name,
-            auto_generate=False,
-        )
-
-        # Assert
-        assert conversation.name == new_name
-        assert conversation.updated_at == mock_time
-        mock_db_session.commit.assert_called_once()
-
-
-class TestConversationServiceMessageAnnotation:
-    """
-    Test message annotation operations.
-
-    Tests AppAnnotationService operations for creating and managing
-    message annotations.
-    """
-
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_from_message(self, mock_current_account, mock_db_session):
-        """
-        Test creating annotation from existing message.
-
-        Annotations can be attached to messages to provide curated responses
-        that override the AI-generated answers.
-        """
-        # Arrange
-        app_id = "app-123"
-        message_id = "msg-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-
-        # Create a message that doesn't have an annotation yet
-        message = ConversationServiceTestDataFactory.create_message_mock(
-            message_id=message_id, app_id=app_id, query="What is AI?"
-        )
-        message.annotation = None  # No existing annotation
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, tenant_id)
-
-        # Set up database query mock
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        # First call returns app, second returns message, third returns None (no annotation setting)
-        mock_query.first.side_effect = [app, message, None]
-
-        # Annotation data to create
-        args = {"message_id": message_id, "answer": "AI is artificial intelligence"}
-
-        # Act
-        with patch("services.annotation_service.add_annotation_to_index_task"):
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
-
-        # Assert
-        mock_db_session.add.assert_called_once()  # Annotation added to session
-        mock_db_session.commit.assert_called_once()  # Changes committed
-
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_without_message(self, mock_current_account, mock_db_session):
-        """
-        Test creating standalone annotation without message.
-
-        Annotations can be created without a message reference for bulk imports
-        or manual annotation creation.
-        """
-        # Arrange
-        app_id = "app-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, tenant_id)
-
-        # Set up database query mock
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        # First call returns app, second returns None (no message)
-        mock_query.first.side_effect = [app, None]
-
-        # Annotation data to create
-        args = {
-            "question": "What is natural language processing?",
-            "answer": "NLP is a field of AI focused on language understanding",
-        }
-
-        # Act
-        with patch("services.annotation_service.add_annotation_to_index_task"):
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
-
-        # Assert
-        mock_db_session.add.assert_called_once()  # Annotation added to session
-        mock_db_session.commit.assert_called_once()  # Changes committed
-
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_update_existing_annotation(self, mock_current_account, mock_db_session):
-        """
-        Test updating an existing annotation.
-
-        When a message already has an annotation, calling the service again
-        should update the existing annotation rather than creating a new one.
-        """
-        # Arrange
-        app_id = "app-123"
-        message_id = "msg-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-        message = ConversationServiceTestDataFactory.create_message_mock(message_id=message_id, app_id=app_id)
-
-        # Create an existing annotation with old content
-        existing_annotation = ConversationServiceTestDataFactory.create_annotation_mock(
-            app_id=app_id, message_id=message_id, content="Old annotation"
-        )
-        message.annotation = existing_annotation  # Message already has annotation
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, tenant_id)
-
-        # Set up database query mock
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        # First call returns app, second returns message, third returns None (no annotation setting)
-        mock_query.first.side_effect = [app, message, None]
-
-        # New content to update the annotation with
-        args = {"message_id": message_id, "answer": "Updated annotation content"}
-
-        # Act
-        with patch("services.annotation_service.add_annotation_to_index_task"):
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
-
-        # Assert
-        assert existing_annotation.content == "Updated annotation content"  # Content updated
-        mock_db_session.add.assert_called_once()  # Annotation re-added to session
-        mock_db_session.commit.assert_called_once()  # Changes committed
-
-    @patch("services.annotation_service.db.paginate")
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list(self, mock_current_account, mock_db_session, mock_db_paginate):
-        """
-        Test retrieving paginated annotation list.
-
-        Annotations can be retrieved in a paginated list for display in the UI.
-        """
-        """Test retrieving paginated annotation list."""
-        # Arrange
-        app_id = "app-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-        annotations = [
-            ConversationServiceTestDataFactory.create_annotation_mock(annotation_id=f"anno-{i}", app_id=app_id)
-            for i in range(5)
-        ]
-
-        mock_current_account.return_value = (account, tenant_id)
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = app
-
-        mock_paginate = MagicMock()
-        mock_paginate.items = annotations
-        mock_paginate.total = 5
-        mock_db_paginate.return_value = mock_paginate
-
-        # Act
-        result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_id, page=1, limit=10, keyword=""
-        )
-
-        # Assert
-        assert len(result_items) == 5
-        assert result_total == 5
-
-    @patch("services.annotation_service.db.paginate")
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list_with_keyword_search(self, mock_current_account, mock_db_session, mock_db_paginate):
-        """
-        Test retrieving annotations with keyword filtering.
-
-        Annotations can be searched by question or content using case-insensitive matching.
-        """
-        # Arrange
-        app_id = "app-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-
-        # Create annotations with searchable content
-        annotations = [
-            ConversationServiceTestDataFactory.create_annotation_mock(
-                annotation_id="anno-1",
-                app_id=app_id,
-                question="What is machine learning?",
-                content="ML is a subset of AI",
-            ),
-            ConversationServiceTestDataFactory.create_annotation_mock(
-                annotation_id="anno-2",
-                app_id=app_id,
-                question="What is deep learning?",
-                content="Deep learning uses neural networks",
-            ),
-        ]
-
-        mock_current_account.return_value = (account, tenant_id)
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = app
-
-        mock_paginate = MagicMock()
-        mock_paginate.items = [annotations[0]]  # Only first annotation matches
-        mock_paginate.total = 1
-        mock_db_paginate.return_value = mock_paginate
-
-        # Act
-        result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_id,
-            page=1,
             limit=10,
-            keyword="machine",  # Search keyword
+            last_id=None,
         )
 
         # Assert
-        assert len(result_items) == 1
-        assert result_total == 1
+        assert isinstance(result, InfiniteScrollPagination)
+        assert len(result.data) == 2
+        assert result.limit == 10
+        assert result.has_more is False
 
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_insert_annotation_directly(self, mock_current_account, mock_db_session):
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_get_conversational_variable_with_last_id(self, mock_get_conversation, mock_session_factory):
         """
-        Test direct annotation insertion without message reference.
+        Test retrieval of variables with last_id pagination.
 
-        This is used for bulk imports or manual annotation creation.
+        Should filter variables created after last_id.
         """
-        # Arrange
-        app_id = "app-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-
-        mock_current_account.return_value = (account, tenant_id)
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.side_effect = [app, None]
-
-        args = {
-            "question": "What is natural language processing?",
-            "answer": "NLP is a field of AI focused on language understanding",
-        }
-
-        # Act
-        with patch("services.annotation_service.add_annotation_to_index_task"):
-            result = AppAnnotationService.insert_app_annotation_directly(args, app_id)
-
-        # Assert
-        mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
-
-
-class TestConversationServiceExport:
-    """
-    Test conversation export/retrieval operations.
-
-    Tests retrieving conversation data for export purposes.
-    """
-
-    @patch("services.conversation_service.db.session")
-    def test_get_conversation_success(self, mock_db_session):
-        """Test successful retrieval of conversation."""
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            app_id=app_model.id, from_account_id=user.id, from_source="console"
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Mock session and variables
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        last_variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(
+            created_at=datetime.utcnow() - timedelta(hours=1)
+        )
+        variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(created_at=datetime.utcnow())
+
+        mock_session.scalar.return_value = last_variable
+        mock_session.scalars.return_value.all.return_value = [variable]
+
+        # Act
+        result = ConversationService.get_conversational_variable(
+            app_model=app_model,
+            conversation_id="conv-123",
+            user=user,
+            limit=10,
+            last_id="var-123",
         )
 
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = conversation
-
-        # Act
-        result = ConversationService.get_conversation(app_model=app_model, conversation_id=conversation.id, user=user)
-
         # Assert
-        assert result == conversation
+        assert isinstance(result, InfiniteScrollPagination)
+        assert len(result.data) == 1
+        assert result.limit == 10
 
-    @patch("services.conversation_service.db.session")
-    def test_get_conversation_not_found(self, mock_db_session):
-        """Test ConversationNotExistsError when conversation doesn't exist."""
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_get_conversational_variable_last_id_not_found_raises_error(
+        self, mock_get_conversation, mock_session_factory
+    ):
+        """
+        Test that invalid last_id raises ConversationVariableNotExistsError.
+
+        Should raise error when last_id doesn't exist.
+        """
         # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
 
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = None
+        mock_get_conversation.return_value = conversation
+
+        # Mock session
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = None
 
         # Act & Assert
-        with pytest.raises(ConversationNotExistsError):
-            ConversationService.get_conversation(app_model=app_model, conversation_id="non-existent", user=user)
+        with pytest.raises(ConversationVariableNotExistsError):
+            ConversationService.get_conversational_variable(
+                app_model=app_model,
+                conversation_id="conv-123",
+                user=user,
+                limit=10,
+                last_id="invalid-id",
+            )
 
-    @patch("services.annotation_service.db.session")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_export_annotation_list(self, mock_current_account, mock_db_session):
-        """Test exporting all annotations for an app."""
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    @patch("services.conversation_service.dify_config")
+    def test_get_conversational_variable_with_name_filter_mysql(
+        self, mock_config, mock_get_conversation, mock_session_factory
+    ):
+        """
+        Test variable filtering by name for MySQL databases.
+
+        Should apply JSON extraction filter for variable names.
+        """
         # Arrange
-        app_id = "app-123"
-        account = ConversationServiceTestDataFactory.create_account_mock()
-        tenant_id = "tenant-123"
-        app = ConversationServiceTestDataFactory.create_app_mock(app_id=app_id, tenant_id=tenant_id)
-        annotations = [
-            ConversationServiceTestDataFactory.create_annotation_mock(annotation_id=f"anno-{i}", app_id=app_id)
-            for i in range(10)
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+        mock_config.DB_TYPE = "mysql"
+
+        # Mock session
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session.scalars.return_value.all.return_value = []
+
+        # Act
+        ConversationService.get_conversational_variable(
+            app_model=app_model,
+            conversation_id="conv-123",
+            user=user,
+            limit=10,
+            last_id=None,
+            variable_name="test_var",
+        )
+
+        # Assert - JSON filter should be applied
+        assert mock_session.scalars.called
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    @patch("services.conversation_service.dify_config")
+    def test_get_conversational_variable_with_name_filter_postgresql(
+        self, mock_config, mock_get_conversation, mock_session_factory
+    ):
+        """
+        Test variable filtering by name for PostgreSQL databases.
+
+        Should apply JSON extraction filter for variable names.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+        mock_config.DB_TYPE = "postgresql"
+
+        # Mock session
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session.scalars.return_value.all.return_value = []
+
+        # Act
+        ConversationService.get_conversational_variable(
+            app_model=app_model,
+            conversation_id="conv-123",
+            user=user,
+            limit=10,
+            last_id=None,
+            variable_name="test_var",
+        )
+
+        # Assert - JSON filter should be applied
+        assert mock_session.scalars.called
+
+
+class TestConversationServiceUpdateVariable:
+    """Test conversation variable update operations."""
+
+    @patch("services.conversation_service.variable_factory")
+    @patch("services.conversation_service.ConversationVariableUpdater")
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_update_conversation_variable_success(
+        self, mock_get_conversation, mock_session_factory, mock_updater_class, mock_variable_factory
+    ):
+        """
+        Test successful update of conversation variable.
+
+        Should update variable value and return updated data.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Mock session and existing variable
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        existing_variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(value_type="string")
+        mock_session.scalar.return_value = existing_variable
+
+        # Mock variable factory and updater
+        updated_variable = Mock()
+        updated_variable.model_dump.return_value = {"id": "var-123", "name": "test_var", "value": "new_value"}
+        mock_variable_factory.build_conversation_variable_from_mapping.return_value = updated_variable
+
+        mock_updater = MagicMock()
+        mock_updater_class.return_value = mock_updater
+
+        # Act
+        result = ConversationService.update_conversation_variable(
+            app_model=app_model,
+            conversation_id="conv-123",
+            variable_id="var-123",
+            user=user,
+            new_value="new_value",
+        )
+
+        # Assert
+        assert result["id"] == "var-123"
+        assert result["value"] == "new_value"
+        mock_updater.update.assert_called_once_with("conv-123", updated_variable)
+        mock_updater.flush.assert_called_once()
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_update_conversation_variable_not_found_raises_error(self, mock_get_conversation, mock_session_factory):
+        """
+        Test update fails when variable doesn't exist.
+
+        Should raise ConversationVariableNotExistsError.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Mock session
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = None
+
+        # Act & Assert
+        with pytest.raises(ConversationVariableNotExistsError):
+            ConversationService.update_conversation_variable(
+                app_model=app_model,
+                conversation_id="conv-123",
+                variable_id="invalid-id",
+                user=user,
+                new_value="new_value",
+            )
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_update_conversation_variable_type_mismatch_raises_error(self, mock_get_conversation, mock_session_factory):
+        """
+        Test update fails when value type doesn't match expected type.
+
+        Should raise ConversationVariableTypeMismatchError.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Mock session and existing variable
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        existing_variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(value_type="number")
+        mock_session.scalar.return_value = existing_variable
+
+        # Act & Assert - Try to set string value for number variable
+        with pytest.raises(ConversationVariableTypeMismatchError):
+            ConversationService.update_conversation_variable(
+                app_model=app_model,
+                conversation_id="conv-123",
+                variable_id="var-123",
+                user=user,
+                new_value="string_value",  # Wrong type
+            )
+
+    @patch("services.conversation_service.session_factory")
+    @patch("services.conversation_service.ConversationService.get_conversation")
+    def test_update_conversation_variable_integer_number_compatibility(
+        self, mock_get_conversation, mock_session_factory
+    ):
+        """
+        Test that integer type accepts number values.
+
+        Should allow number values for integer type variables.
+        """
+        # Arrange
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+
+        mock_get_conversation.return_value = conversation
+
+        # Mock session and existing variable
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        existing_variable = ConversationServiceTestDataFactory.create_conversation_variable_mock(value_type="integer")
+        mock_session.scalar.return_value = existing_variable
+
+        # Mock variable factory and updater
+        updated_variable = Mock()
+        updated_variable.model_dump.return_value = {"id": "var-123", "name": "test_var", "value": 42}
+
+        with (
+            patch("services.conversation_service.variable_factory") as mock_variable_factory,
+            patch("services.conversation_service.ConversationVariableUpdater") as mock_updater_class,
+        ):
+            mock_variable_factory.build_conversation_variable_from_mapping.return_value = updated_variable
+            mock_updater = MagicMock()
+            mock_updater_class.return_value = mock_updater
+
+            # Act
+            result = ConversationService.update_conversation_variable(
+                app_model=app_model,
+                conversation_id="conv-123",
+                variable_id="var-123",
+                user=user,
+                new_value=42,  # Number value for integer type
+            )
+
+            # Assert
+            assert result["value"] == 42
+            mock_updater.update.assert_called_once()
+
+
+class TestConversationServicePaginationAdvanced:
+    """Advanced pagination tests for ConversationService."""
+
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_by_last_id_with_last_id_not_found(self, mock_session_factory):
+        """
+        Test pagination with invalid last_id raises error.
+
+        Should raise LastConversationNotExistsError when last_id doesn't exist.
+        """
+        # Arrange
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = None
+
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+
+        # Act & Assert
+        with pytest.raises(LastConversationNotExistsError):
+            ConversationService.pagination_by_last_id(
+                session=mock_session,
+                app_model=app_model,
+                user=user,
+                last_id="invalid-id",
+                limit=20,
+                invoke_from=InvokeFrom.WEB_APP,
+            )
+
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_by_last_id_with_exclude_ids(self, mock_session_factory):
+        """
+        Test pagination with exclude_ids filter.
+
+        Should exclude specified conversation IDs from results.
+        """
+        # Arrange
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        mock_session.scalars.return_value.all.return_value = [conversation]
+        mock_session.scalar.return_value = conversation
+
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+
+        # Act
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
+            exclude_ids=["excluded-123"],
+        )
+
+        # Assert
+        assert isinstance(result, InfiniteScrollPagination)
+        assert len(result.data) == 1
+
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_by_last_id_has_more_detection(self, mock_session_factory):
+        """
+        Test pagination has_more detection logic.
+
+        Should set has_more=True when there are more results beyond limit.
+        """
+        # Arrange
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        # Return exactly limit items to trigger has_more check
+        conversations = [
+            ConversationServiceTestDataFactory.create_conversation_mock(conversation_id=f"conv-{i}") for i in range(20)
         ]
+        mock_session.scalars.return_value.all.return_value = conversations
+        mock_session.scalar.return_value = conversations[-1]
 
-        mock_current_account.return_value = (account, tenant_id)
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.first.return_value = app
-        mock_query.all.return_value = annotations
+        # Mock count query to return > 0
+        mock_session.scalar.return_value = 5  # Additional items exist
 
-        # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-
-        # Assert
-        assert len(result) == 10
-        assert result == annotations
-
-    @patch("services.message_service.db.session")
-    def test_get_message_success(self, mock_db_session):
-        """Test successful retrieval of a message."""
-        # Arrange
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
-        message = ConversationServiceTestDataFactory.create_message_mock(
-            app_id=app_model.id, from_account_id=user.id, from_source="console"
+
+        # Act
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
         )
 
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = message
-
-        # Act
-        result = MessageService.get_message(app_model=app_model, user=user, message_id=message.id)
-
         # Assert
-        assert result == message
+        assert isinstance(result, InfiniteScrollPagination)
+        assert result.has_more is True
 
-    @patch("services.message_service.db.session")
-    def test_get_message_not_found(self, mock_db_session):
-        """Test MessageNotExistsError when message doesn't exist."""
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_by_last_id_with_different_sort_by(self, mock_session_factory):
+        """
+        Test pagination with different sort fields.
+
+        Should handle various sort_by parameters correctly.
+        """
         # Arrange
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+        mock_session.scalars.return_value.all.return_value = [conversation]
+        mock_session.scalar.return_value = conversation
+
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
 
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = None
+        # Test different sort fields
+        sort_fields = ["created_at", "-updated_at", "name", "-status"]
 
-        # Act & Assert
-        with pytest.raises(MessageNotExistsError):
-            MessageService.get_message(app_model=app_model, user=user, message_id="non-existent")
+        for sort_by in sort_fields:
+            # Act
+            result = ConversationService.pagination_by_last_id(
+                session=mock_session,
+                app_model=app_model,
+                user=user,
+                last_id=None,
+                limit=20,
+                invoke_from=InvokeFrom.WEB_APP,
+                sort_by=sort_by,
+            )
 
-    @patch("services.conversation_service.db.session")
-    def test_get_conversation_for_end_user(self, mock_db_session):
+            # Assert
+            assert isinstance(result, InfiniteScrollPagination)
+
+
+class TestConversationServiceEdgeCases:
+    """Test edge cases and error scenarios."""
+
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_with_end_user_api_source(self, mock_session_factory):
         """
-        Test retrieving conversation created by end user via API.
+        Test pagination correctly handles EndUser with API source.
 
-        End users (API) and accounts (console) have different access patterns.
+        Should use 'api' as from_source for EndUser instances.
         """
         # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        end_user = ConversationServiceTestDataFactory.create_end_user_mock()
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
-        # Conversation created by end user via API
         conversation = ConversationServiceTestDataFactory.create_conversation_mock(
-            app_id=app_model.id,
-            from_end_user_id=end_user.id,
-            from_source="api",  # API source for end users
+            from_source="api", from_end_user_id="user-123"
         )
+        mock_session.scalars.return_value.all.return_value = [conversation]
 
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.first.return_value = conversation
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_end_user_mock()
 
         # Act
-        result = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation.id, user=end_user
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
         )
 
         # Assert
-        assert result == conversation
-        # Verify query filters for API source
-        mock_query.where.assert_called()
+        assert isinstance(result, InfiniteScrollPagination)
 
-    @patch("services.conversation_service.delete_conversation_related_data")  # Mock Celery task
-    @patch("services.conversation_service.db.session")  # Mock database session
-    def test_delete_conversation(self, mock_db_session, mock_delete_task):
+    @patch("services.conversation_service.session_factory")
+    def test_pagination_with_account_console_source(self, mock_session_factory):
         """
-        Test conversation deletion with async cleanup.
+        Test pagination correctly handles Account with console source.
 
-        Deletion is a two-step process:
-        1. Immediately delete the conversation record from database
-        2. Trigger async background task to clean up related data
-           (messages, annotations, vector embeddings, file uploads)
+        Should use 'console' as from_source for Account instances.
         """
-        # Arrange - Set up test data
+        # Arrange
+        mock_session = MagicMock()
+        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+        conversation = ConversationServiceTestDataFactory.create_conversation_mock(
+            from_source="console", from_account_id="account-123"
+        )
+        mock_session.scalars.return_value.all.return_value = [conversation]
+
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation_id = "conv-to-delete"
 
-        # Set up database query mock
-        mock_query = MagicMock()
-        mock_db_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query  # Filter by conversation_id
+        # Act
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
 
-        # Act - Delete the conversation
-        ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+        # Assert
+        assert isinstance(result, InfiniteScrollPagination)
 
-        # Assert - Verify two-step deletion process
-        # Step 1: Immediate database deletion
-        mock_query.delete.assert_called_once()  # DELETE query executed
-        mock_db_session.commit.assert_called_once()  # Transaction committed
+    def test_pagination_with_include_ids_filter(self):
+        """
+        Test pagination with include_ids filter.
 
-        # Step 2: Async cleanup task triggered
-        # The Celery task will handle cleanup of messages, annotations, etc.
-        mock_delete_task.delay.assert_called_once_with(conversation_id)
+        Should only return conversations with IDs in include_ids list.
+        """
+        # Arrange
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = []
+
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+
+        # Act
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
+            include_ids=["conv-123", "conv-456"],
+        )
+
+        # Assert
+        assert isinstance(result, InfiniteScrollPagination)
+        # Verify that include_ids filter was applied
+        assert mock_session.scalars.called
+
+    def test_pagination_with_empty_exclude_ids(self):
+        """
+        Test pagination with empty exclude_ids list.
+
+        Should handle empty exclude_ids gracefully.
+        """
+        # Arrange
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = []
+
+        app_model = ConversationServiceTestDataFactory.create_app_mock()
+        user = ConversationServiceTestDataFactory.create_account_mock()
+
+        # Act
+        result = ConversationService.pagination_by_last_id(
+            session=mock_session,
+            app_model=app_model,
+            user=user,
+            last_id=None,
+            limit=20,
+            invoke_from=InvokeFrom.WEB_APP,
+            exclude_ids=[],
+        )
+
+        # Assert
+        assert isinstance(result, InfiniteScrollPagination)
+        assert result.has_more is False

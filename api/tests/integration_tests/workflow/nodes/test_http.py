@@ -4,16 +4,29 @@ from urllib.parse import urlencode
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.nodes.http_request.node import HttpRequestNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from configs import dify_config
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.helper.ssrf_proxy import ssrf_proxy
+from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.file.file_manager import file_manager
+from dify_graph.graph import Graph
+from dify_graph.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
+from tests.workflow_test_utils import build_test_graph_init_params
+
+HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
+    max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+    max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+    max_write_timeout=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
+    max_binary_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE,
+    max_text_size=dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+    ssl_verify=dify_config.HTTP_REQUEST_NODE_SSL_VERIFY,
+    ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
+)
 
 
 def init_http_node(config: dict):
@@ -28,11 +41,11 @@ def init_http_node(config: dict):
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -64,6 +77,10 @@ def init_http_node(config: dict):
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
     )
 
     return node
@@ -172,15 +189,15 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
-    from core.workflow.nodes.http_request.entities import (
+    from dify_graph.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
         HttpRequestNodeTimeout,
     )
-    from core.workflow.nodes.http_request.exc import AuthorizationConfigError
-    from core.workflow.nodes.http_request.executor import Executor
-    from core.workflow.runtime import VariablePool
-    from core.workflow.system_variable import SystemVariable
+    from dify_graph.nodes.http_request.exc import AuthorizationConfigError
+    from dify_graph.nodes.http_request.executor import Executor
+    from dify_graph.runtime import VariablePool
+    from dify_graph.system_variable import SystemVariable
 
     # Create variable pool
     variable_pool = VariablePool(
@@ -215,7 +232,10 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
         Executor(
             node_data=node_data,
             timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
+            http_request_config=HTTP_REQUEST_CONFIG,
             variable_pool=variable_pool,
+            http_client=ssrf_proxy,
+            file_manager=file_manager,
         )
 
 
@@ -665,11 +685,11 @@ def test_nested_object_variable_selector(setup_http_mock):
         ],
     }
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -702,6 +722,10 @@ def test_nested_object_variable_selector(setup_http_mock):
         config=graph_config["nodes"][1],
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        http_request_config=HTTP_REQUEST_CONFIG,
+        http_client=ssrf_proxy,
+        tool_file_manager_factory=ToolFileManager,
+        file_manager=file_manager,
     )
 
     result = node._run()
