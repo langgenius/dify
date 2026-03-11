@@ -101,3 +101,20 @@ class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
     knowledge_base_setting: dict[str, Any] | None = None
+
+
+class SnippetImportPayload(BaseModel):
+    """Payload for importing snippet from DSL."""
+
+    mode: str = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(default=None, description="YAML content (required for yaml-content mode)")
+    yaml_url: str | None = Field(default=None, description="YAML URL (required for yaml-url mode)")
+    name: str | None = Field(default=None, description="Override snippet name")
+    description: str | None = Field(default=None, description="Override snippet description")
+    snippet_id: str | None = Field(default=None, description="Snippet ID to update (optional)")
+
+
+class IncludeSecretQuery(BaseModel):
+    """Query parameter for including secret variables in export."""
+
+    include_secret: str = Field(default="false", description="Whether to include secret variables")
