@@ -399,7 +399,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             }}
             language={match?.[1]}
             showLineNumbers
-            PreTag="div"
           >
             {content}
           </SyntaxHighlighter>

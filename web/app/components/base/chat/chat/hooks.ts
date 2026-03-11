@@ -321,8 +321,8 @@ export const useChat = (
             responseItem.agent_thoughts.push(thought)
           }
           else {
-            const lastThought = responseItem.agent_thoughts.at(-1)!
-            if (lastThought.id === thought.id) {
+            const lastThought = responseItem.agent_thoughts.at(-1)
+            if (lastThought?.id === thought.id) {
               thought.thought = lastThought.thought
               thought.message_files = lastThought.message_files
               responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] = thought
