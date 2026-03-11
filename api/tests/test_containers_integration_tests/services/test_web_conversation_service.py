@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account, App
+from models import Account
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService

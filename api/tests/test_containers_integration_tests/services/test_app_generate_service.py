@@ -6,7 +6,6 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import App
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService

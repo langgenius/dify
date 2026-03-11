@@ -4,7 +4,6 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import App
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService

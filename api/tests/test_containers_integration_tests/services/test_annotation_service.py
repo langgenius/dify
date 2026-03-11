@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from models import Account, App, Conversation
+from models import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
