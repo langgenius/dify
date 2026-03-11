@@ -27,6 +27,7 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
 } from '@/app/components/workflow/constants'
 import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
+import { useWorkflowTheme } from '@/app/components/workflow/hooks/use-workflow-theme'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
@@ -72,6 +73,7 @@ const WorkflowPreview = ({
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
+  const workflowTheme = useWorkflowTheme()
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodesData(nds => applyNodeChanges(changes, nds)),
@@ -85,6 +87,7 @@ const WorkflowPreview = ({
   return (
     <div
       id="workflow-container"
+      data-workflow-theme={workflowTheme}
       className={cn(
         'relative h-full w-full',
         className,
