@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
@@ -138,7 +138,7 @@ export default function OAuthAuthorize() {
       {isLoggedIn && userProfile && (
         <div className="flex items-center justify-between rounded-xl bg-background-section-burn-inverted p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
               <div className="text-text-tertiary system-xs-regular">{userProfile.email}</div>

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useAppContext } from '@/context/app-context'
@@ -50,7 +50,7 @@ export default function AppSelector() {
                     ${open && 'bg-components-panel-bg-blur'}
                   `}
               >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
               </MenuButton>
             </div>
             <Transition
@@ -84,7 +84,7 @@ export default function AppSelector() {
                         </div>
                         <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
                       </div>
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
+                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
                     </div>
                   </div>
                 </MenuItem>

@@ -1,64 +1,79 @@
-'use client'
-import { useEffect, useState } from 'react'
+import type { VariantProps } from 'class-variance-authority'
+import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
+import { cva } from 'class-variance-authority'
 import { cn } from '@/utils/classnames'
+
+export const avatarVariants = cva(
+  'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600',
+  {
+    variants: {
+      size: {
+        'xxs': 'size-4',
+        'xs': 'size-5',
+        'sm': 'size-6',
+        'md': 'size-8',
+        'lg': 'size-9',
+        'xl': 'size-10',
+        '2xl': 'size-12',
+        '3xl': 'size-16',
+      },
+    },
+    defaultVariants: {
+      size: 'md',
+    },
+  },
+)
+
+const fallbackTextVariants = cva(
+  'font-medium text-white',
+  {
+    variants: {
+      size: {
+        'xxs': 'text-[7px]',
+        'xs': 'text-[8px]',
+        'sm': 'text-[10px]',
+        'md': 'text-xs',
+        'lg': 'text-sm',
+        'xl': 'text-base',
+        '2xl': 'text-xl',
+        '3xl': 'text-2xl',
+      },
+    },
+    defaultVariants: {
+      size: 'md',
+    },
+  },
+)
+
+export type ImageLoadingStatus = 'idle' | 'loading' | 'loaded' | 'error'
 
 export type AvatarProps = {
   name: string
   avatar: string | null
-  size?: number
   className?: string
-  textClassName?: string
-  onError?: (x: boolean) => void
-}
-const Avatar = ({
+  onLoadingStatusChange?: (status: ImageLoadingStatus) => void
+} & VariantProps<typeof avatarVariants>
+
+export const Avatar = ({
   name,
   avatar,
-  size = 30,
+  size,
   className,
-  textClassName,
-  onError,
+  onLoadingStatusChange,
 }: AvatarProps) => {
-  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
-  const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
-  const [imgError, setImgError] = useState(false)
-
-  const handleError = () => {
-    setImgError(true)
-    onError?.(true)
-  }
-
-  // after uploaded, api would first return error imgs url: '.../files//file-preview/...'. Then return the right url, Which caused not show the avatar
-  useEffect(() => {
-    if (avatar && imgError)
-      setImgError(false)
-  }, [avatar])
-
-  if (avatar && !imgError) {
-    return (
-      <img
-        className={cn(avatarClassName, className)}
-        style={style}
-        alt={name}
-        src={avatar}
-        onError={handleError}
-        onLoad={() => onError?.(false)}
-      />
-    )
-  }
-
   return (
-    <div
-      className={cn(avatarClassName, className)}
-      style={style}
-    >
-      <div
-        className={cn(textClassName, 'scale-[0.4] text-center text-white')}
-        style={style}
-      >
-        {name && name[0].toLocaleUpperCase()}
-      </div>
-    </div>
+    <BaseAvatar.Root className={cn(avatarVariants({ size }), className)}>
+      {avatar && (
+        <BaseAvatar.Image
+          src={avatar}
+          alt={name}
+          className="absolute inset-0 size-full object-cover"
+          onLoadingStatusChange={onLoadingStatusChange}
+        />
+      )}
+      <BaseAvatar.Fallback className={fallbackTextVariants({ size })}>
+        {name?.[0]?.toLocaleUpperCase()}
+      </BaseAvatar.Fallback>
+    </BaseAvatar.Root>
   )
 }
-
-export default Avatar
