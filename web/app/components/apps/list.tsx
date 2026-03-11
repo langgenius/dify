@@ -18,10 +18,12 @@ import {
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import Tooltip from '@/app/components/base/tooltip'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -271,6 +273,14 @@ const List: FC<Props> = ({
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
             />
+            <Tooltip
+              popupContent={t('skills.comingSoon', { ns: 'app' })}
+            >
+              <Button className="cursor-not-allowed">
+                <span className="i-ri-folder-6-line mr-1 h-[14px] w-[14px]" />
+                Skills
+              </Button>
+            </Tooltip>
           </div>
         </div>
         <div className={cn(

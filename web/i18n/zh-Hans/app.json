@@ -219,6 +219,7 @@
   "removeOriginal": "删除原应用",
   "roadmap": "产品路线图",
   "showMyCreatedAppsOnly": "我创建的",
+  "skills.comingSoon": "工作区 skills 即将推出。敬请期待。",
   "structOutput.LLMResponse": "LLM 的响应",
   "structOutput.configure": "配置",
   "structOutput.disabledByComputerUse": "启用 Agent 模式时，将禁用结构化输出。",

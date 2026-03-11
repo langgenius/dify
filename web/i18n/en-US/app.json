@@ -219,6 +219,7 @@
   "removeOriginal": "Delete the original app",
   "roadmap": "See our roadmap",
   "showMyCreatedAppsOnly": "Created by me",
+  "skills.comingSoon": "Workspace skills coming soon. Stay tuned.",
   "structOutput.LLMResponse": "LLM Response",
   "structOutput.configure": "Configure",
   "structOutput.disabledByComputerUse": "Structured Output is disabled when Agent Mode is enabled.",
