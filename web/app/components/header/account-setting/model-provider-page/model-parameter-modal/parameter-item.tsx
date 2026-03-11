@@ -1,12 +1,11 @@
-import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import { useEffect, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
-import { SimpleSelect } from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
-import Tooltip from '@/app/components/base/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -20,13 +19,13 @@ type ParameterItemProps = {
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
 }
-const ParameterItem: FC<ParameterItemProps> = ({
+function ParameterItem({
   parameterRule,
   value,
   onChange,
   onSwitch,
   isInWorkflow,
-}) => {
+}: ParameterItemProps) {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
@@ -97,10 +96,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
   const handleStringInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     handleInputChange(e.target.value)
-  }
-
-  const handleSelect = (option: { value: string | number, name: string }) => {
-    handleInputChange(option.value)
   }
 
   const handleTagChange = (newSequences: string[]) => {
@@ -222,13 +217,19 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     if (parameterRule.type === 'string' && !!parameterRule?.options?.length) {
       return (
-        <SimpleSelect
-          className="!py-0"
-          wrapperClassName={cn('!h-8 w-full')}
-          defaultValue={renderValue as string}
-          onSelect={handleSelect}
-          items={parameterRule.options.map(option => ({ value: option, name: option }))}
-        />
+        <Select
+          value={renderValue as string}
+          onValueChange={v => handleInputChange(v)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {parameterRule.options!.map(option => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
 
@@ -272,13 +273,18 @@ const ParameterItem: FC<ParameterItemProps> = ({
           </div>
           {
             parameterRule.help && (
-              <Tooltip
-                popupContent={(
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
+                      <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+                    </span>
+                  )}
+                />
+                <TooltipContent popupClassName="mr-1">
                   <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
-                )}
-                popupClassName="mr-1"
-                triggerClassName="mr-1 w-4 h-4 shrink-0"
-              />
+                </TooltipContent>
+              </Tooltip>
             )
           }
         </div>
