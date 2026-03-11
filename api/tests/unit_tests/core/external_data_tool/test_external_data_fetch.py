@@ -29,16 +29,16 @@ class TestExternalDataFetch:
                 # Create distinct mock instances for each tool to ensure deterministic results
                 # This approach is robust regardless of thread scheduling order
                 from unittest.mock import MagicMock
-                
+
                 def factory_side_effect(*args, **kwargs):
-                    variable = kwargs.get('variable')
+                    variable = kwargs.get("variable")
                     mock_instance = MagicMock()
-                    if variable == 'var1':
+                    if variable == "var1":
                         mock_instance.query.return_value = "result1"
-                    elif variable == 'var2':
+                    elif variable == "var2":
                         mock_instance.query.return_value = "result2"
                     return mock_instance
-                
+
                 MockFactory.side_effect = factory_side_effect
 
                 result_inputs = fetcher.fetch(
