@@ -227,11 +227,14 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(mocker) -> None
 
 def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
     service = RagPipelineTransformService()
-    dataset = SimpleNamespace(
-        embedding_model="text-embedding-ada-002",
-        embedding_model_provider="openai",
-        retrieval_model=None,
-        summary_index_setting=None,
+    dataset = cast(
+        Dataset,
+        SimpleNamespace(
+            embedding_model="text-embedding-ada-002",
+            embedding_model_provider="openai",
+            retrieval_model=None,
+            summary_index_setting=None,
+        ),
     )
     node = {
         "data": {
@@ -255,15 +258,11 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker) -> None:
         }
     }
 
-    retrieval_model = SimpleNamespace(
-        search_method="semantic_search",
-        model_dump=lambda: {"search_method": "semantic_search"},
-    )
-
     # Create KnowledgeConfiguration from node data
     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+    retrieval_model = knowledge_configuration.retrieval_model
 
-    result = service._deal_knowledge_index(  # type: ignore[arg-type]
+    result = service._deal_knowledge_index(
         knowledge_configuration,
         dataset,
         "high_quality",

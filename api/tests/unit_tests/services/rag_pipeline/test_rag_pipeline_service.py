@@ -654,7 +654,7 @@ def test_run_datasource_node_preview_online_document(mocker, rag_pipeline_servic
 
 
 def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import WorkflowNodeExecutionStatus
+    from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
     from dify_graph.graph_events import NodeRunSucceededEvent
     from dify_graph.node_events.base import NodeRunResult
 
@@ -668,7 +668,7 @@ def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         inputs={"q": "hi"},
         outputs={"ans": "hello"},
-        metadata={"total_tokens": 10},
+        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10},
     )
 
     def mock_getter():
@@ -691,7 +691,7 @@ def test_handle_node_run_result_success(mocker, rag_pipeline_service) -> None:
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.inputs == {"q": "hi"}
     assert result.outputs == {"ans": "hello"}
-    assert result.metadata == {"total_tokens": 10}
+    assert result.metadata == {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10}
 
 
 # --- get_first_step_parameters / get_second_step_parameters ---
@@ -1452,11 +1452,14 @@ def test_run_datasource_workflow_node_online_document_exception(mocker, rag_pipe
 
     runtime = mocker.Mock()
 
-    def _raise_document_generator(*args, **kwargs):
-        raise RuntimeError("doc failed")
-        yield  # pragma: no cover
+    class _FailingIterator:
+        def __iter__(self):
+            return self
 
-    runtime.get_online_document_pages.side_effect = _raise_document_generator
+        def __next__(self):
+            raise RuntimeError("doc failed")
+
+    runtime.get_online_document_pages.return_value = _FailingIterator()
     runtime.datasource_provider_type.return_value = "online_document"
 
     mocker.patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime)

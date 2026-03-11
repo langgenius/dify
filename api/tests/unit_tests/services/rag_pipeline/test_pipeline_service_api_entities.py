@@ -23,10 +23,12 @@ def test_datasource_node_run_api_entity_valid_payload() -> None:
 
 def test_pipeline_run_api_entity_requires_start_node_id() -> None:
     with pytest.raises(ValidationError):
-        PipelineRunApiEntity(
-            inputs={"q": "hello"},
-            datasource_type="local_file",
-            datasource_info_list=[{"id": "ds-1"}],
-            is_published=True,
-            response_mode="streaming",
+        PipelineRunApiEntity.model_validate(
+            {
+                "inputs": {"q": "hello"},
+                "datasource_type": "local_file",
+                "datasource_info_list": [{"id": "ds-1"}],
+                "is_published": True,
+                "response_mode": "streaming",
+            }
         )
