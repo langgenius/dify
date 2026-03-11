@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
@@ -140,7 +140,7 @@ export default function AppSelector() {
           aria-label={t('account.account', { ns: 'common' })}
           className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
         >
-          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           sideOffset={6}
@@ -160,7 +160,7 @@ export default function AppSelector() {
                 </div>
                 <div className="break-all text-text-tertiary system-xs-regular">{userProfile.email}</div>
               </div>
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             </div>
             <AccountMenuRouteItem
               href="/account"
