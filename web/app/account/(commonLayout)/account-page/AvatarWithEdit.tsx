@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
@@ -103,7 +103,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     <>
       <div>
         <div className="group relative">
-          <Avatar {...props} onError={(x: boolean) => setOnAvatarError(x)} />
+          <Avatar {...props} onLoadingStatusChange={status => setOnAvatarError(status === 'error')} />
           <div
             className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={() => {
