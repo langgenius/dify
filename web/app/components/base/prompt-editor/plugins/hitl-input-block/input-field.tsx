@@ -124,28 +124,28 @@ const InputField: React.FC<InputFieldProps> = ({
         <Button data-testid="hitl-input-cancel-btn" onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
           ? (
-            <Button
-              data-testid="hitl-input-save-btn"
-              variant="primary"
-              onClick={handleSave}
-              disabled={!nameValid}
-            >
-              {t('operation.save', { ns: 'common' })}
-            </Button>
-          )
+              <Button
+                data-testid="hitl-input-save-btn"
+                variant="primary"
+                onClick={handleSave}
+                disabled={!nameValid}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            )
           : (
-            <Button
-              data-testid="hitl-input-insert-btn"
-              className="flex"
-              variant="primary"
-              disabled={!nameValid}
-              onClick={handleSave}
-            >
-              <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-              <span className="mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
-              <span className="flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
-            </Button>
-          )}
+              <Button
+                data-testid="hitl-input-insert-btn"
+                className="flex"
+                variant="primary"
+                disabled={!nameValid}
+                onClick={handleSave}
+              >
+                <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
+                <span className="mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1 system-kbd">{getKeyboardKeyNameBySystem('ctrl')}</span>
+                <span className="flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1 system-kbd">↩︎</span>
+              </Button>
+            )}
 
       </div>
     </div>
