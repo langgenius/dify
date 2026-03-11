@@ -223,8 +223,14 @@ class BaiduVector(BaseVector):
             return self._client.database(self._client_config.database)
 
     def _table_existed(self) -> bool:
-        tables = self._db.list_table()
-        return any(table.table_name == self._collection_name for table in tables)
+        try:
+            table = self._db.table(self._collection_name)
+        except ServerError as e:
+            if e.code == ServerErrCode.TABLE_NOT_EXIST:
+                return False
+            else:
+                raise
+        return True
 
     def _create_table(self, dimension: int):
         # Try to grab distributed lock and create table
