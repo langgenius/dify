@@ -827,7 +827,7 @@ class RecommendedApp(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    description: Mapped[str] = mapped_column(sa.JSON(), nullable=False, default="")
     copyright: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     category: Mapped[str] = mapped_column(String(255), nullable=False, default="")
