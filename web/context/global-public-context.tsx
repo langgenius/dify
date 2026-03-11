@@ -22,10 +22,24 @@ const systemFeaturesQueryKey = ['systemFeatures'] as const
 const setupStatusQueryKey = ['setupStatus'] as const
 
 async function fetchSystemFeatures() {
-  const data = await consoleClient.systemFeatures()
+  const resp = await consoleClient.systemFeatures() as Record<string, unknown>
+  let features = { ...defaultSystemFeatures }
+  try {
+    // Support both the new Base64 envelope ({ d: string }) and the legacy plain
+    // JSON shape so the frontend degrades gracefully during a rolling deploy or
+    // backend rollback.
+    const jsonText = typeof resp?.d === 'string'
+      ? new TextDecoder().decode(Uint8Array.from(atob(resp.d), c => c.charCodeAt(0)))
+      : JSON.stringify(resp) // legacy: backend returns plain SystemFeatures JSON
+    features = { ...defaultSystemFeatures, ...JSON.parse(jsonText) }
+  }
+  catch (error) {
+    // Base64 decode or JSON.parse failed; fall back to safe defaults
+    console.error('[system-features] Failed to decode response envelope; using defaults', error)
+  }
   const { setSystemFeatures } = useGlobalPublicStore.getState()
-  setSystemFeatures({ ...defaultSystemFeatures, ...data })
-  return data
+  setSystemFeatures(features)
+  return features
 }
 
 export function useSystemFeaturesQuery() {
