@@ -672,4 +672,7 @@ def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch
         trace_instance.workflow_trace(trace_info)
 
     assert "Failed to extract usage" in caplog.text
-    trace_instance.add_span.assert_called_once()
+    assert trace_instance.add_span.call_count >= 1
+    # Verify that at least one of the spans is for the LLM Node
+    span_names = [call.args[0]["name"] for call in trace_instance.add_span.call_args_list]
+    assert "LLM Node" in span_names
