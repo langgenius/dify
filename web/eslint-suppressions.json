@@ -4423,16 +4423,6 @@
       "count": 2
     }
   },
-  "app/components/header/account-setting/members-page/edit-workspace-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/members-page/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1

@@ -1,6 +1,6 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { ICurrentWorkspace } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ToastContext } from '@/app/components/base/toast/context'
@@ -38,6 +38,12 @@ describe('EditWorkspaceModal', () => {
     renderModal()
 
     expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
+  })
+
+  it('should render on the base/ui overlay layer', async () => {
+    renderModal()
+
+    expect(await screen.findByRole('dialog')).toHaveClass('z-[1002]')
   })
 
   it('should let user edit workspace name', async () => {
@@ -132,5 +138,15 @@ describe('EditWorkspaceModal', () => {
 
     await user.click(screen.getByTestId('edit-workspace-cancel'))
     expect(mockOnCancel).toHaveBeenCalled()
+  })
+
+  it('should call onCancel when Escape key is pressed', async () => {
+    renderModal()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
   })
 })

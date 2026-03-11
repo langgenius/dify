@@ -1,16 +1,13 @@
 'use client'
-import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast/context'
+import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
-import { cn } from '@/utils/classnames'
-import s from './index.module.css'
 
 type IEditWorkspaceModalProps = {
   onCancel: () => void
@@ -40,8 +37,17 @@ const EditWorkspaceModal = ({
   }
 
   return (
-    <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
+      }}
+    >
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="overflow-visible"
+      >
         <div className="mb-2 flex justify-between">
           <div className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
           <div className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary" data-testid="edit-workspace-close" onClick={onCancel} />
@@ -84,8 +90,8 @@ const EditWorkspaceModal = ({
           </div>
 
         </div>
-      </Modal>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default EditWorkspaceModal
