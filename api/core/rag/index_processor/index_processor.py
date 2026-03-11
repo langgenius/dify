@@ -7,11 +7,12 @@ from typing import Any
 
 from flask import current_app
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import attributes
 
 from core.db.session_factory import session_factory
 from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from dify_graph.repositories.index_processor_protocol import Preview, PreviewItem, QaPreview
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, DatasetMetadataBinding, Document, DocumentSegment
 
 from .index_processor_factory import IndexProcessorFactory
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -52,6 +53,9 @@ class IndexProcessor:
         chunks: Mapping[str, Any],
         batch: Any,
         summary_index_setting: dict | None = None,
+        doc_metadata: Mapping[str, Any] | None = None,
+        metadata_binding_ids: list[str] | None = None,
+        user_id: str | None = None,
     ):
         with session_factory.create_session() as session:
             document = session.query(Document).filter_by(id=document_id).first()
@@ -107,6 +111,18 @@ class IndexProcessor:
                 document.need_summary = True
             else:
                 document.need_summary = False
+
+            # Save doc_metadata and bindings if provided
+            if doc_metadata or metadata_binding_ids:
+                self._save_doc_metadata_and_bindings(
+                    session=session,
+                    dataset_id=dataset_id,
+                    document=document,
+                    doc_metadata=doc_metadata or {},
+                    metadata_binding_ids=metadata_binding_ids or [],
+                    user_id=user_id,
+                )
+
             session.add(document)
             # update document segment status
             session.query(DocumentSegment).where(
@@ -129,6 +145,84 @@ class IndexProcessor:
             "created_at": created_at_value.timestamp(),
             "display_status": "completed",
         }
+
+    def _save_doc_metadata_and_bindings(
+        self,
+        *,
+        session: Any,
+        dataset_id: str,
+        document: Document,
+        doc_metadata: Mapping[str, Any],
+        metadata_binding_ids: list[str],
+        user_id: str | None,
+    ) -> None:
+        """
+        Persist resolved metadata values and ensure metadata bindings exist for the document.
+
+        Args:
+            doc_metadata: dict of {metadata_id: resolved_value}
+            metadata_binding_ids: list of metadata IDs to bind
+        """
+        from models.dataset import Dataset, DatasetMetadata
+
+        dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+        if not dataset:
+            return
+
+        # Look up metadata names by ID
+        metadata_name_map: dict[str, str] = {}
+        if doc_metadata:
+            all_metadata_ids = list(doc_metadata.keys())
+            dataset_metadatas = session.scalars(
+                select(DatasetMetadata).where(
+                    DatasetMetadata.dataset_id == dataset_id,
+                    DatasetMetadata.id.in_(all_metadata_ids),
+                )
+            ).all()
+            for metadata in dataset_metadatas:
+                metadata_name_map[metadata.id] = metadata.name
+
+        # Build name -> value dict for document.doc_metadata
+        named_metadata: dict[str, Any] = {}
+        for metadata_id, value in doc_metadata.items():
+            metadata_name = metadata_name_map.get(metadata_id)
+            if not metadata_name:
+                logger.warning("[IndexProcessor] metadata_id %s not found, skipping", metadata_id)
+                continue
+            named_metadata[metadata_name] = value
+
+        unique_metadata_ids = list(dict.fromkeys(metadata_binding_ids))
+        existing_binding_ids: set[str] = set()
+        if unique_metadata_ids:
+            existing_bindings = session.scalars(
+                select(DatasetMetadataBinding.metadata_id).where(
+                    DatasetMetadataBinding.dataset_id == dataset_id,
+                    DatasetMetadataBinding.document_id == document.id,
+                    DatasetMetadataBinding.metadata_id.in_(unique_metadata_ids),
+                )
+            ).all()
+            existing_binding_ids = set(existing_bindings)
+
+        if named_metadata:
+            document_doc_metadata = document.doc_metadata or {}
+            document_doc_metadata.update(named_metadata)
+            document.doc_metadata = document_doc_metadata
+            attributes.flag_modified(document, "doc_metadata")
+
+        for metadata_id in unique_metadata_ids:
+            if metadata_id in existing_binding_ids:
+                continue
+            if user_id is None:
+                continue
+
+            binding = DatasetMetadataBinding(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset_id,
+                metadata_id=metadata_id,
+                document_id=document.id,
+                created_by=user_id,
+            )
+            session.add(binding)
 
     def get_preview_output(
         self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None

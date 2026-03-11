@@ -452,6 +452,8 @@
   "nodes.common.retry.times": "次",
   "nodes.common.typeSwitch.input": "输入值",
   "nodes.common.typeSwitch.variable": "使用变量",
+  "nodes.common.valueType.constant": "常量",
+  "nodes.common.valueType.variable": "变量",
   "nodes.dataSource.add": "添加数据源",
   "nodes.dataSource.supportedFileFormats": "支持的文件格式",
   "nodes.dataSource.supportedFileFormatsPlaceholder": "文件格式，例如：doc",

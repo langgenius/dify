@@ -4890,11 +4890,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/components/__tests__/documents-header.spec.tsx": {
-    "e18e/prefer-static-regex": {
-      "count": 15
-    }
-  },
   "app/components/datasets/documents/components/__tests__/empty-element.spec.tsx": {
     "e18e/prefer-static-regex": {
       "count": 7

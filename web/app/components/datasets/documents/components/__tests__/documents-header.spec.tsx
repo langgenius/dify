@@ -4,6 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
 import DocumentsHeader from '../documents-header'
 
+const LIST_TITLE_RE = /list\.title/i
+const LIST_DESC_RE = /list\.desc/i
+const LIST_LEARN_MORE_RE = /list\.learnMore/i
+const METADATA_RE = /metadata\.metadata/i
+const ADD_FILE_RE = /list\.addFile/i
+const ADD_PAGES_RE = /list\.addPages/i
+const ADD_URL_RE = /list\.addUrl/i
+const CURRENT_DRAFT_UNPUBLISHED_RE = /workflow\.common\.currentDraftUnpublished/i
+
 // Mock the context hooks
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -32,6 +41,7 @@ describe('DocumentsHeader', () => {
     datasetId: 'dataset-123',
     dataSourceType: DataSourceType.FILE,
     embeddingAvailable: true,
+    canAddDocument: true,
     isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
@@ -60,23 +70,23 @@ describe('DocumentsHeader', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(LIST_TITLE_RE)).toBeInTheDocument()
     })
 
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(LIST_TITLE_RE)
     })
 
     it('should render description text', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.desc/i)).toBeInTheDocument()
+      expect(screen.getByText(LIST_DESC_RE)).toBeInTheDocument()
     })
 
     it('should render learn more link', () => {
       render(<DocumentsHeader {...defaultProps} />)
       const link = screen.getByRole('link')
-      expect(link).toHaveTextContent(/list\.learnMore/i)
+      expect(link).toHaveTextContent(LIST_LEARN_MORE_RE)
       expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/knowledge'))
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -110,35 +120,45 @@ describe('DocumentsHeader', () => {
   describe('Embedding Availability', () => {
     it('should show metadata button when embedding is available', () => {
       render(<DocumentsHeader {...defaultProps} embeddingAvailable={true} />)
-      expect(screen.getByText(/metadata\.metadata/i)).toBeInTheDocument()
+      expect(screen.getByText(METADATA_RE)).toBeInTheDocument()
     })
 
     it('should show add document button when embedding is available', () => {
       render(<DocumentsHeader {...defaultProps} embeddingAvailable={true} />)
-      expect(screen.getByText(/list\.addFile/i)).toBeInTheDocument()
+      expect(screen.getByText(ADD_FILE_RE)).toBeInTheDocument()
     })
 
     it('should show warning when embedding is not available', () => {
       render(<DocumentsHeader {...defaultProps} embeddingAvailable={false} />)
-      expect(screen.queryByText(/metadata\.metadata/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/list\.addFile/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(METADATA_RE)).not.toBeInTheDocument()
+      expect(screen.queryByText(ADD_FILE_RE)).not.toBeInTheDocument()
+    })
+
+    it('should disable add document button when document upload is unavailable', () => {
+      render(<DocumentsHeader {...defaultProps} canAddDocument={false} />)
+      expect(screen.getByRole('button', { name: ADD_FILE_RE })).toBeDisabled()
+    })
+
+    it('should show unpublished warning when document upload is unavailable', () => {
+      render(<DocumentsHeader {...defaultProps} canAddDocument={false} />)
+      expect(screen.getByText(CURRENT_DRAFT_UNPUBLISHED_RE)).toBeInTheDocument()
     })
   })
 
   describe('Add Button Text', () => {
     it('should show "Add File" for FILE data source', () => {
       render(<DocumentsHeader {...defaultProps} dataSourceType={DataSourceType.FILE} />)
-      expect(screen.getByText(/list\.addFile/i)).toBeInTheDocument()
+      expect(screen.getByText(ADD_FILE_RE)).toBeInTheDocument()
     })
 
     it('should show "Add Pages" for NOTION data source', () => {
       render(<DocumentsHeader {...defaultProps} dataSourceType={DataSourceType.NOTION} />)
-      expect(screen.getByText(/list\.addPages/i)).toBeInTheDocument()
+      expect(screen.getByText(ADD_PAGES_RE)).toBeInTheDocument()
     })
 
     it('should show "Add Url" for WEB data source', () => {
       render(<DocumentsHeader {...defaultProps} dataSourceType={DataSourceType.WEB} />)
-      expect(screen.getByText(/list\.addUrl/i)).toBeInTheDocument()
+      expect(screen.getByText(ADD_URL_RE)).toBeInTheDocument()
     })
   })
 
@@ -159,7 +179,7 @@ describe('DocumentsHeader', () => {
       const showEditMetadataModal = vi.fn()
       render(<DocumentsHeader {...defaultProps} showEditMetadataModal={showEditMetadataModal} />)
 
-      const metadataButton = screen.getByText(/metadata\.metadata/i)
+      const metadataButton = screen.getByText(METADATA_RE)
       fireEvent.click(metadataButton)
 
       expect(showEditMetadataModal).toHaveBeenCalledTimes(1)
@@ -169,7 +189,7 @@ describe('DocumentsHeader', () => {
       const onAddDocument = vi.fn()
       render(<DocumentsHeader {...defaultProps} onAddDocument={onAddDocument} />)
 
-      const addButton = screen.getByText(/list\.addFile/i)
+      const addButton = screen.getByText(ADD_FILE_RE)
       fireEvent.click(addButton)
 
       expect(onAddDocument).toHaveBeenCalledTimes(1)
@@ -190,7 +210,7 @@ describe('DocumentsHeader', () => {
     it('should handle undefined dataSourceType', () => {
       render(<DocumentsHeader {...defaultProps} dataSourceType={undefined} />)
       // Should default to "Add File" text
-      expect(screen.getByText(/list\.addFile/i)).toBeInTheDocument()
+      expect(screen.getByText(ADD_FILE_RE)).toBeInTheDocument()
     })
 
     it('should handle empty metadata arrays', () => {
@@ -208,7 +228,7 @@ describe('DocumentsHeader', () => {
     it('should render with descending sort order', () => {
       render(<DocumentsHeader {...defaultProps} sortValue="-created_at" />)
       // Component should still render correctly
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(LIST_TITLE_RE)).toBeInTheDocument()
     })
   })
 })
