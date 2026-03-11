@@ -74,6 +74,7 @@ const PluginVersionPicker: FC<Props> = ({
       }}
     >
       <PopoverTrigger
+        disabled={disabled}
         className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
       >
         {trigger}
