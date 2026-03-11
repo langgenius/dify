@@ -26,8 +26,8 @@ type CapturedProps = {
 
 const getLastWrapperProps = (): CapturedProps => {
   const calls = mockReactMarkdownWrapper.mock.calls
-  const lastCall = calls[calls.length - 1]
-  return lastCall[0] as CapturedProps
+  const lastCall = calls.at(-1)
+  return lastCall?.[0] as CapturedProps
 }
 
 describe('Markdown', () => {

@@ -25,9 +25,10 @@ type InSiteMessageProps = {
   title: string
 }
 
-const breakLineRegex = /\\n/g
+const LINE_BREAK_REGEX = /\\n/g
+
 function normalizeLineBreaks(text: string): string {
-  return text.replace(breakLineRegex, '\n')
+  return text.replace(LINE_BREAK_REGEX, '\n')
 }
 
 function normalizeLinkData(data: unknown): { href: string, rel?: string, target?: string } | null {
@@ -109,7 +110,7 @@ function InSiteMessage({
         </div>
       </div>
 
-      <div className="px-4 pb-2 pt-4 text-text-secondary body-md-regular [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5">
+      <div className="px-4 pb-2 pt-4 text-text-secondary body-md-regular">
         <MarkdownWithDirective markdown={main} />
       </div>
 

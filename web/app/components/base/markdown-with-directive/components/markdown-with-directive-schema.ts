@@ -5,11 +5,12 @@ const commonSchema = {
 }
 export const withIconCardListPropsSchema = z.object(commonSchema).strict()
 
-const startWithHttpOrHttps = /^https?:\/\//i
+const HTTP_URL_REGEX = /^https?:\/\//i
+
 export const withIconCardItemPropsSchema = z.object({
   ...commonSchema,
   icon: z.string().trim().url().refine(
-    value => startWithHttpOrHttps.test(value),
+    value => HTTP_URL_REGEX.test(value),
     'icon must be a http/https URL',
   ),
 }).strict()

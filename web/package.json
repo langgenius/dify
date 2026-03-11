@@ -151,8 +151,6 @@
     "reactflow": "11.11.4",
     "remark-breaks": "4.0.0",
     "remark-directive": "4.0.0",
-    "remark-gfm": "4.0.1",
-    "remark-math": "6.0.0",
     "scheduler": "0.27.0",
     "semver": "7.7.4",
     "sharp": "0.34.5",

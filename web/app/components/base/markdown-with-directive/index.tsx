@@ -1,11 +1,36 @@
-import type { Components } from 'react-markdown'
+import type { Components, StreamdownProps } from 'streamdown'
 import DOMPurify from 'dompurify'
-import ReactMarkdown from 'react-markdown'
 import remarkDirective from 'remark-directive'
+import { defaultRehypePlugins, Streamdown } from 'streamdown'
 import { visit } from 'unist-util-visit'
 import { validateDirectiveProps } from './components/markdown-with-directive-schema'
 import WithIconCardItem from './components/with-icon-card-item'
 import WithIconCardList from './components/with-icon-card-list'
+
+// Adapter to map generic props to WithIconListProps
+function WithIconCardListAdapter(props: Record<string, unknown>) {
+  // Extract expected props, fallback to undefined if not present
+  const { children, className } = props
+  return (
+    <WithIconCardList
+      children={children as React.ReactNode}
+      className={typeof className === 'string' ? className : undefined}
+    />
+  )
+}
+
+// Adapter to map generic props to WithIconCardItemProps
+function WithIconCardItemAdapter(props: Record<string, unknown>) {
+  const { icon, className, children } = props
+  return (
+    <WithIconCardItem
+      icon={typeof icon === 'string' ? icon : ''}
+      className={typeof className === 'string' ? className : undefined}
+    >
+      {children as React.ReactNode}
+    </WithIconCardItem>
+  )
+}
 
 type DirectiveNode = {
   type?: string
@@ -34,20 +59,68 @@ function isMdastRoot(node: Parameters<typeof visit>[0]): node is MdastRoot {
   return candidate.type === 'root' && Array.isArray(candidate.children)
 }
 
-const lineReg = /^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i
-const attrReg = /\{([^}\n]*)\}/g
+// Move the regex to module scope to avoid recompilation
+const DIRECTIVE_ATTRIBUTE_BLOCK_REGEX = /^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i
+const ATTRIBUTE_BLOCK_REGEX = /\{([^}\n]*)\}/g
+type PluggableList = NonNullable<StreamdownProps['rehypePlugins']>
+type Pluggable = PluggableList[number]
+type AttributeDefinition = string | [string, ...(string | boolean | RegExp)[]]
+type SanitizeSchema = {
+  tagNames?: string[]
+  attributes?: Record<string, AttributeDefinition[]>
+  required?: Record<string, Record<string, unknown>>
+  clobber?: string[]
+  clobberPrefix?: string
+  [key: string]: unknown
+}
+
+const DIRECTIVE_ALLOWED_TAGS: Record<string, AttributeDefinition[]> = {
+  withiconcardlist: ['className'],
+  withiconcarditem: ['icon', 'className'],
+}
+
+function buildDirectiveRehypePlugins(): PluggableList {
+  const [sanitizePlugin, defaultSanitizeSchema]
+    = defaultRehypePlugins.sanitize as [Pluggable, SanitizeSchema]
+
+  const tagNames = new Set([
+    ...(defaultSanitizeSchema.tagNames ?? []),
+    ...Object.keys(DIRECTIVE_ALLOWED_TAGS),
+  ])
+
+  const attributes: Record<string, AttributeDefinition[]> = {
+    ...(defaultSanitizeSchema.attributes ?? {}),
+  }
+
+  for (const [tagName, allowedAttributes] of Object.entries(DIRECTIVE_ALLOWED_TAGS))
+    attributes[tagName] = [...(attributes[tagName] ?? []), ...allowedAttributes]
+
+  const sanitizeSchema: SanitizeSchema = {
+    ...defaultSanitizeSchema,
+    tagNames: [...tagNames],
+    attributes,
+  }
+
+  return [
+    defaultRehypePlugins.raw,
+    [sanitizePlugin, sanitizeSchema] as Pluggable,
+    defaultRehypePlugins.harden,
+  ]
+}
+
+const directiveRehypePlugins = buildDirectiveRehypePlugins()
 
 function normalizeDirectiveAttributeBlocks(markdown: string): string {
   const lines = markdown.split('\n')
 
   return lines.map((line) => {
-    const match = line.match(lineReg)
+    const match = line.match(DIRECTIVE_ATTRIBUTE_BLOCK_REGEX)
     if (!match)
       return line
 
     const directivePrefix = match[1]
     const attributeBlocks = match[2]
-    const attrMatches = [...attributeBlocks.matchAll(attrReg)]
+    const attrMatches = [...attributeBlocks.matchAll(ATTRIBUTE_BLOCK_REGEX)]
     if (attrMatches.length === 0)
       return line
 
@@ -102,7 +175,8 @@ function isValidDirectiveAst(tree: Parameters<typeof visit>[0]): boolean {
   return isValid
 }
 
-const invalidTextReg = /^\s*:{2,}[a-z][\w-]*/im
+const UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX = /^\s*:{2,}[a-z][\w-]*/im
+
 function hasUnparsedDirectiveLikeText(tree: Parameters<typeof visit>[0]): boolean {
   let hasInvalidText = false
 
@@ -112,7 +186,7 @@ function hasUnparsedDirectiveLikeText(tree: Parameters<typeof visit>[0]): boolea
 
     const textNode = node as { value?: string }
     const value = textNode.value || ''
-    if (invalidTextReg.test(value))
+    if (UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX.test(value))
       hasInvalidText = true
   })
 
@@ -166,9 +240,9 @@ function directivePlugin() {
 }
 
 const directiveComponents = {
-  withiconcardlist: WithIconCardList,
-  withiconcarditem: WithIconCardItem,
-} as unknown as Components
+  withiconcardlist: WithIconCardListAdapter,
+  withiconcarditem: WithIconCardItemAdapter,
+} satisfies Components
 
 type MarkdownWithDirectiveProps = {
   markdown: string
@@ -192,13 +266,20 @@ export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) 
   const sanitizedMarkdown = sanitizeMarkdownInput(markdown)
   const normalizedMarkdown = normalizeDirectiveAttributeBlocks(sanitizedMarkdown)
 
+  if (!normalizedMarkdown)
+    return null
+
   return (
-    <ReactMarkdown
-      skipHtml
-      remarkPlugins={[remarkDirective, directivePlugin]}
-      components={directiveComponents}
-    >
-      {normalizedMarkdown}
-    </ReactMarkdown>
+    <div className="markdown-body">
+      <Streamdown
+        mode="static"
+        remarkPlugins={[remarkDirective, directivePlugin]}
+        rehypePlugins={directiveRehypePlugins}
+        components={directiveComponents}
+      >
+        {normalizedMarkdown}
+      </Streamdown>
+    </div>
+
   )
 }
