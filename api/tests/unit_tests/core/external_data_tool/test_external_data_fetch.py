@@ -26,11 +26,20 @@ class TestExternalDataFetch:
             query = "test query"
 
             with patch("core.external_data_tool.external_data_fetch.ExternalDataToolFactory") as MockFactory:
-                # Mock query results
-                # We need to return different results for different instances if possible,
-                # or just use side_effect on the mock instance's query method.
-                mock_factory_instance = MockFactory.return_value
-                mock_factory_instance.query.side_effect = ["result1", "result2"]
+                # Create distinct mock instances for each tool to ensure deterministic results
+                # This approach is robust regardless of thread scheduling order
+                from unittest.mock import MagicMock
+                
+                def factory_side_effect(*args, **kwargs):
+                    variable = kwargs.get('variable')
+                    mock_instance = MagicMock()
+                    if variable == 'var1':
+                        mock_instance.query.return_value = "result1"
+                    elif variable == 'var2':
+                        mock_instance.query.return_value = "result2"
+                    return mock_instance
+                
+                MockFactory.side_effect = factory_side_effect
 
                 result_inputs = fetcher.fetch(
                     tenant_id="tenant1",
@@ -40,8 +49,7 @@ class TestExternalDataFetch:
                     query=query,
                 )
 
-                # The order in result_inputs depends on which thread finishes first,
-                # but both should be there.
+                # Each tool gets its deterministic result regardless of thread completion order
                 assert result_inputs["var1"] == "result1"
                 assert result_inputs["var2"] == "result2"
                 assert result_inputs["input_key"] == "input_value"
