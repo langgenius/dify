@@ -16,6 +16,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.errors import ProviderNotSupportTextToSpeechError
 from controllers.service_api.app.audio import AudioApi, TextApi, TextToAudioPayload
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -28,7 +29,6 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.common.errors import ProviderNotSupportTextToSpeechError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from dify_graph.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
@@ -302,9 +302,7 @@ class TestTextApi:
         ],
     )
     def test_error_mapping(self, app, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(exc)
-        )
+        monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(exc))
 
         api = TextApi()
         handler = _unwrap(api.post)
