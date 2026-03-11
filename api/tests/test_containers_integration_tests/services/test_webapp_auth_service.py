@@ -12,6 +12,7 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWebAppAuthService:
@@ -109,7 +110,7 @@ class TestWebAppAuthService:
             tuple: (account, tenant, password) - Created account, tenant and password
         """
         fake = Faker()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
 
         # Create account with password
         import uuid
@@ -272,7 +273,7 @@ class TestWebAppAuthService:
         """
         # Arrange: Create banned account
         fake = Faker()
-        password = fake.password(length=12)
+        password = generate_valid_password(fake)
         unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         account = Account(
