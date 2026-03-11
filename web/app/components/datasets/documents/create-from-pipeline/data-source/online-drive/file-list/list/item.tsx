@@ -36,10 +36,10 @@ const Item = ({
   const Wrapper = disabled ? Tooltip : React.Fragment
   const wrapperProps = disabled
     ? {
-      popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
-      position: 'top-end' as Placement,
-      offset: { mainAxis: 4, crossAxis: -104 },
-    }
+        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
+        position: 'top-end' as Placement,
+        offset: { mainAxis: 4, crossAxis: -104 },
+      }
     : {}
 
   const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
