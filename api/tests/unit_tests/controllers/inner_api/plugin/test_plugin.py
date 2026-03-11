@@ -216,7 +216,7 @@ class TestPluginInvokeEncryptApi:
         # Assert
         mock_encrypter.invoke_encrypt.assert_called_once_with(mock_tenant, mock_payload)
         assert result["data"] == {"encrypted": "data"}
-        assert result.get("error") is None or result.get("error") == ""
+        assert result.get("error") == ""
 
     @patch("controllers.inner_api.plugin.plugin.PluginEncrypter")
     def test_post_returns_error_on_exception(self, mock_encrypter, api_instance, app: Flask):
