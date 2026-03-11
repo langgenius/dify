@@ -2,7 +2,6 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     from dify_graph.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+_INVOKE_FROM_DEBUGGER = "debugger"
 
 
 class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
@@ -59,7 +59,8 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         if not variable:
             raise KnowledgeIndexNodeError("Index chunk variable is required.")
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
-        is_preview = invoke_from.value == InvokeFrom.DEBUGGER if invoke_from else False
+        invoke_from_value = str(invoke_from.value) if invoke_from else None
+        is_preview = invoke_from_value == _INVOKE_FROM_DEBUGGER
 
         chunks = variable.value
         variables = {"chunks": chunks}

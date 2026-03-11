@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import type { ToastHandle } from '../index'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import Toast, { ToastProvider, useToastContext } from '..'
+import Toast, { ToastProvider } from '..'
+import { useToastContext } from '../context'
 
 const TestComponent = () => {
   const { notify, close } = useToastContext()
@@ -18,6 +20,13 @@ const TestComponent = () => {
 }
 
 describe('Toast', () => {
+  const getToastElementByMessage = (message: string): HTMLElement => {
+    const messageElement = screen.getByText(message)
+    const toastElement = messageElement.closest('.fixed')
+    expect(toastElement).toBeInTheDocument()
+    return toastElement as HTMLElement
+  }
+
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
@@ -45,7 +54,9 @@ describe('Toast', () => {
         </ToastProvider>,
       )
 
-      expect(document.querySelector('.text-text-success')).toBeInTheDocument()
+      const successToast = getToastElementByMessage('Success message')
+      const successIcon = within(successToast).getByTestId('toast-icon-success')
+      expect(successIcon).toHaveClass('text-text-success')
 
       rerender(
         <ToastProvider>
@@ -53,7 +64,9 @@ describe('Toast', () => {
         </ToastProvider>,
       )
 
-      expect(document.querySelector('.text-text-destructive')).toBeInTheDocument()
+      const errorToast = getToastElementByMessage('Error message')
+      const errorIcon = within(errorToast).getByTestId('toast-icon-error')
+      expect(errorIcon).toHaveClass('text-text-destructive')
     })
 
     it('renders with custom component', () => {
@@ -99,8 +112,58 @@ describe('Toast', () => {
       )
 
       expect(screen.getByText('No close button')).toBeInTheDocument()
-      // Ensure the close button is not rendered
-      expect(document.querySelector('.h-4.w-4.shrink-0.text-text-tertiary')).not.toBeInTheDocument()
+      const toastElement = getToastElementByMessage('No close button')
+      expect(within(toastElement).queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('returns null when message is not a string', () => {
+      const { container } = render(
+        <ToastProvider>
+          {/* @ts-expect-error - testing invalid input */}
+          <Toast message={<div>Invalid</div>} />
+        </ToastProvider>,
+      )
+      // Toast returns null, and provider adds no DOM elements
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('renders with size sm', () => {
+      const { rerender } = render(
+        <ToastProvider>
+          <Toast type="info" message="Small size" size="sm" />
+        </ToastProvider>,
+      )
+      const infoToast = getToastElementByMessage('Small size')
+      const infoIcon = within(infoToast).getByTestId('toast-icon-info')
+      expect(infoIcon).toHaveClass('text-text-accent', 'h-4', 'w-4')
+      expect(infoIcon.parentElement).toHaveClass('p-1')
+
+      rerender(
+        <ToastProvider>
+          <Toast type="success" message="Small size" size="sm" />
+        </ToastProvider>,
+      )
+      const successToast = getToastElementByMessage('Small size')
+      const successIcon = within(successToast).getByTestId('toast-icon-success')
+      expect(successIcon).toHaveClass('text-text-success', 'h-4', 'w-4')
+
+      rerender(
+        <ToastProvider>
+          <Toast type="warning" message="Small size" size="sm" />
+        </ToastProvider>,
+      )
+      const warningToast = getToastElementByMessage('Small size')
+      const warningIcon = within(warningToast).getByTestId('toast-icon-warning')
+      expect(warningIcon).toHaveClass('text-text-warning-secondary', 'h-4', 'w-4')
+
+      rerender(
+        <ToastProvider>
+          <Toast type="error" message="Small size" size="sm" />
+        </ToastProvider>,
+      )
+      const errorToast = getToastElementByMessage('Small size')
+      const errorIcon = within(errorToast).getByTestId('toast-icon-error')
+      expect(errorIcon).toHaveClass('text-text-destructive', 'h-4', 'w-4')
     })
   })
 
@@ -151,6 +214,37 @@ describe('Toast', () => {
         expect(screen.queryByText('Notification message')).not.toBeInTheDocument()
       })
     })
+
+    it('automatically hides toast after duration for error type in provider', async () => {
+      const TestComponentError = () => {
+        const { notify } = useToastContext()
+        return (
+          <button type="button" onClick={() => notify({ message: 'Error notify', type: 'error' })}>
+            Show Error
+          </button>
+        )
+      }
+
+      render(
+        <ToastProvider>
+          <TestComponentError />
+        </ToastProvider>,
+      )
+
+      act(() => {
+        screen.getByText('Show Error').click()
+      })
+      expect(screen.getByText('Error notify')).toBeInTheDocument()
+
+      // Error type uses 6000ms default
+      act(() => {
+        vi.advanceTimersByTime(6000)
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByText('Error notify')).not.toBeInTheDocument()
+      })
+    })
   })
 
   describe('Toast.notify static method', () => {
@@ -193,6 +287,62 @@ describe('Toast', () => {
       await waitFor(() => {
         expect(onCloseMock).toHaveBeenCalled()
       })
+    })
+
+    it('closes when close button is clicked in static toast', async () => {
+      const onCloseMock = vi.fn()
+      act(() => {
+        Toast.notify({ message: 'Static close test', type: 'info', onClose: onCloseMock })
+      })
+
+      expect(screen.getByText('Static close test')).toBeInTheDocument()
+
+      const toastElement = getToastElementByMessage('Static close test')
+      const closeButton = within(toastElement).getByRole('button')
+
+      act(() => {
+        closeButton.click()
+      })
+
+      expect(screen.queryByText('Static close test')).not.toBeInTheDocument()
+      expect(onCloseMock).toHaveBeenCalled()
+    })
+
+    it('does not auto close when duration is 0', async () => {
+      act(() => {
+        Toast.notify({ message: 'No auto close', type: 'info', duration: 0 })
+      })
+
+      expect(screen.getByText('No auto close')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(10000)
+      })
+
+      expect(screen.getByText('No auto close')).toBeInTheDocument()
+
+      // manual clear to clean up
+      act(() => {
+        const toastElement = getToastElementByMessage('No auto close')
+        within(toastElement).getByRole('button').click()
+      })
+    })
+
+    it('returns a toast handler that can clear the toast', async () => {
+      let handler: ToastHandle = {}
+      const onCloseMock = vi.fn()
+      act(() => {
+        handler = Toast.notify({ message: 'Clearable toast', type: 'warning', onClose: onCloseMock })
+      })
+
+      expect(screen.getByText('Clearable toast')).toBeInTheDocument()
+
+      act(() => {
+        handler.clear?.()
+      })
+
+      expect(screen.queryByText('Clearable toast')).not.toBeInTheDocument()
+      expect(onCloseMock).toHaveBeenCalled()
     })
   })
 })
