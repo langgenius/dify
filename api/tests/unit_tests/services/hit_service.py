@@ -6,7 +6,6 @@ which handles retrieval testing operations for datasets, including internal
 dataset retrieval and external knowledge base retrieval.
 """
 
-from typing import TypedDict, cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -129,15 +128,6 @@ class HitTestingTestDataFactory:
             **kwargs,
         }
         return record
-
-
-class QueryContent(TypedDict):
-    content: str
-
-
-class ExternalRetrieveResponse(TypedDict):
-    query: QueryContent
-    records: list[dict]
 
 
 class TestHitTestingServiceRetrieve:
@@ -432,11 +422,8 @@ class TestHitTestingServiceExternalRetrieve:
             mock_external_retrieve.return_value = external_documents
 
             # Act
-            result = cast(
-                ExternalRetrieveResponse,
-                HitTestingService.external_retrieve(
-                    dataset, query, account, external_retrieval_model, metadata_filtering_conditions
-                ),
+            result = HitTestingService.external_retrieve(
+                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
@@ -466,11 +453,8 @@ class TestHitTestingServiceExternalRetrieve:
         metadata_filtering_conditions = {}
 
         # Act
-        result = cast(
-            ExternalRetrieveResponse,
-            HitTestingService.external_retrieve(
-                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
-            ),
+        result = HitTestingService.external_retrieve(
+            dataset, query, account, external_retrieval_model, metadata_filtering_conditions
         )
 
         # Assert
@@ -504,11 +488,8 @@ class TestHitTestingServiceExternalRetrieve:
             mock_external_retrieve.return_value = external_documents
 
             # Act
-            result = cast(
-                ExternalRetrieveResponse,
-                HitTestingService.external_retrieve(
-                    dataset, query, account, external_retrieval_model, metadata_filtering_conditions
-                ),
+            result = HitTestingService.external_retrieve(
+                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
@@ -541,11 +522,8 @@ class TestHitTestingServiceExternalRetrieve:
             mock_external_retrieve.return_value = []
 
             # Act
-            result = cast(
-                ExternalRetrieveResponse,
-                HitTestingService.external_retrieve(
-                    dataset, query, account, external_retrieval_model, metadata_filtering_conditions
-                ),
+            result = HitTestingService.external_retrieve(
+                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
