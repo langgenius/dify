@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 const commonSchema = {
   className: z.string().min(1).optional(),
