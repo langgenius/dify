@@ -24,6 +24,7 @@ class EvaluationMetric(BaseModel):
 class EvaluationItemInput(BaseModel):
     index: int
     inputs: dict[str, Any]
+    output: str
     expected_output: str | None = None
     context: list[str] | None = None
 
@@ -89,4 +90,4 @@ class EvaluationRunData(BaseModel):
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
     customized_metrics: CustomizedMetrics | None = None
     judgment_config: JudgmentConfig | None = None
-    input_list: list[dict]
+    input_list: list[EvaluationItemInput]

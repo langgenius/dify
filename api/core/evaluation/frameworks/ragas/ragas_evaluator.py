@@ -42,7 +42,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
+        default_metrics: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -52,7 +52,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
+        default_metrics: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -64,7 +64,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
+        default_metrics: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -74,7 +74,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
+        default_metrics: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -86,7 +86,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     def _evaluate(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: list[dict[str, Any]],
+        default_metrics: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -98,9 +98,9 @@ class RagasEvaluator(BaseEvaluationInstance):
         string similarity if RAGAS import fails.
         """
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        # Extract metric names from default_metrics list; each item has a "metric" key.
+        # Extract metric names from default_metrics string.
         requested_metrics = (
-            [m["metric"] for m in default_metrics if "metric" in m]
+            [default_metrics]
             if default_metrics
             else self.get_supported_metrics(category)
         )

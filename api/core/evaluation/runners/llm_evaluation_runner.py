@@ -26,8 +26,8 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
 
     def evaluate_metrics(
         self,
-        node_run_result_mapping: dict[str, NodeRunResult] | None,
-        node_run_result: NodeRunResult | None,
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None,
+        node_run_result_list: list[NodeRunResult] | None,
         default_metric: DefaultMetric | None,
         customized_metrics: CustomizedMetrics | None,
         model_provider: str,
@@ -36,7 +36,9 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
     ) -> list[EvaluationItemResult]:
         """Use the evaluation instance to compute LLM metrics."""
         # Merge actual_output into items for evaluation
-        merged_items = self._merge_results_into_items(items, results)
+        if not node_run_result_list:
+            return []
+        merged_items = self._merge_results_into_items(node_run_result_list)
         return self.evaluation_instance.evaluate_llm(
             merged_items, default_metrics, model_provider, model_name, tenant_id
         )
@@ -70,23 +72,19 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
 
     @staticmethod
     def _merge_results_into_items(
-        items: list[EvaluationItemInput],
-        results: list[EvaluationItemResult],
+        items: list[NodeRunResult],
     ) -> list[EvaluationItemInput]:
         """Create new items with actual_output set as expected_output context for metrics."""
-        result_by_index = {r.index: r for r in results}
         merged = []
         for item in items:
-            result = result_by_index.get(item.index)
-            if result and result.actual_output:
-                merged.append(
-                    EvaluationItemInput(
-                        index=item.index,
-                        inputs=item.inputs,
-                        expected_output=item.expected_output,
-                        context=[result.actual_output] + (item.context or []),
-                    )
+            merged.append(
+                EvaluationItemInput(
+                    index=item.index,
+                    inputs={
+                        "prompt": item.prompt,
+                    },
+                    output=item.output,
+                    expected_output=item.expected_output,
                 )
-            else:
-                merged.append(item)
+            )
         return merged
