@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, Ref } from 'react'
 import type {
   Model,
   ModelItem,
@@ -24,6 +24,7 @@ export type TriggerProps = {
   providerName?: string
   modelId?: string
   isInWorkflow?: boolean
+  settingsRef?: Ref<HTMLDivElement>
 }
 
 const Trigger: FC<TriggerProps> = ({
@@ -32,6 +33,7 @@ const Trigger: FC<TriggerProps> = ({
   providerName,
   modelId,
   isInWorkflow,
+  settingsRef,
 }) => {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -111,7 +113,7 @@ const Trigger: FC<TriggerProps> = ({
           </div>
         )}
       </div>
-      <div className={cn('flex shrink-0 items-center justify-center rounded-r-lg p-2', isInWorkflow ? 'border border-workflow-block-parma-bg bg-workflow-block-parma-bg' : 'bg-components-button-tertiary-bg')}>
+      <div ref={settingsRef} className={cn('flex shrink-0 items-center justify-center rounded-r-lg p-2', isInWorkflow ? 'border border-workflow-block-parma-bg bg-workflow-block-parma-bg' : 'bg-components-button-tertiary-bg')}>
         <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
       </div>
     </div>

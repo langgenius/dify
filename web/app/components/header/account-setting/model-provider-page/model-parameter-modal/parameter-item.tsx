@@ -219,7 +219,7 @@ function ParameterItem({
       return (
         <Select
           value={renderValue as string}
-          onValueChange={v => handleInputChange(v)}
+          onValueChange={v => handleInputChange(v ?? undefined)}
         >
           <SelectTrigger className="w-full">
             <SelectValue />

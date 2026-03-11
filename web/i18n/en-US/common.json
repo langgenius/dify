@@ -406,6 +406,7 @@
   "modelProvider.model": "Model",
   "modelProvider.modelAndParameters": "Model and Parameters",
   "modelProvider.modelHasBeenDeprecated": "This model has been deprecated",
+  "modelProvider.modelSettings": "Model Settings",
   "modelProvider.models": "Models",
   "modelProvider.modelsNum": "{{num}} Models",
   "modelProvider.noModelFound": "No model found for {{model}}",

@@ -406,6 +406,7 @@
   "modelProvider.model": "模型",
   "modelProvider.modelAndParameters": "模型及参数",
   "modelProvider.modelHasBeenDeprecated": "该模型已废弃",
+  "modelProvider.modelSettings": "模型设置",
   "modelProvider.models": "模型列表",
   "modelProvider.modelsNum": "{{num}} 个模型",
   "modelProvider.noModelFound": "找不到模型 {{model}}",

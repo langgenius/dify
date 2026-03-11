@@ -9,12 +9,13 @@ import type {
 } from '../declarations'
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './trigger'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import {
   Popover,
+  PopoverClose,
   PopoverContent,
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
@@ -65,6 +66,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const settingsIconRef = useRef<HTMLDivElement>(null)
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const {
     currentProvider,
@@ -132,7 +134,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <PopoverTrigger
         render={(
-          <div className="block">
+          <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
             {
               renderTrigger
                 ? renderTrigger({
@@ -149,23 +151,30 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       currentModel={currentModel}
                       providerName={provider}
                       modelId={modelId}
+                      settingsRef={settingsIconRef}
                     />
                   )
             }
-          </div>
+          </button>
         )}
       />
       <PopoverContent
-        placement={isInWorkflow ? 'left' : 'bottom-end'}
+        placement={isInWorkflow ? 'left' : (renderTrigger ? 'bottom-end' : 'left-start')}
         sideOffset={4}
         className={portalToFollowElemContentClassName}
-        popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
+        popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
+        positionerProps={!renderTrigger ? { anchor: settingsIconRef } : undefined}
       >
-        <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
-          <div className="relative">
-            <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">
-              {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
-            </div>
+        <div className="relative px-3 pb-1 pt-3.5">
+          <div className="pl-1 pr-8 text-text-primary system-xl-semibold">
+            {t('modelProvider.modelSettings', { ns: 'common' })}
+          </div>
+          <PopoverClose className="absolute right-2.5 top-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          </PopoverClose>
+        </div>
+        <div className="max-h-[420px] overflow-y-auto">
+          <div className="px-4 pb-4 pt-2">
             <ModelSelector
               defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
               modelList={activeTextGenerationModelList}
@@ -175,41 +184,40 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           </div>
           {
             !!parameterRules.length && (
-              <div className="my-3 h-px bg-divider-subtle" />
-            )
-          }
-          {
-            isLoading && (
-              <div className="mt-5"><Loading /></div>
-            )
-          }
-          {
-            !isLoading && !!parameterRules.length && (
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex h-6 items-center text-text-secondary system-sm-semibold">{t('modelProvider.parameters', { ns: 'common' })}</div>
+              <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pb-4 pt-3">
+                <div className="flex items-center gap-1">
+                  <div className="flex flex-1 items-center text-text-secondary system-sm-semibold-uppercase">{t('modelProvider.parameters', { ns: 'common' })}</div>
+                  {
+                    PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+                      <PresetsParameter onSelect={handleSelectPresetParameter} />
+                    )
+                  }
+                </div>
                 {
-                  PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                    <PresetsParameter onSelect={handleSelectPresetParameter} />
-                  )
+                  isLoading
+                    ? <div className="py-5"><Loading /></div>
+                    : (
+                        [
+                          ...parameterRules,
+                          ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
+                        ].map(parameter => (
+                          <ParameterItem
+                            key={`${modelId}-${parameter.name}`}
+                            parameterRule={parameter}
+                            value={completionParams?.[parameter.name]}
+                            onChange={v => handleParamChange(parameter.name, v)}
+                            onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
+                            isInWorkflow={isInWorkflow}
+                          />
+                        ))
+                      )
                 }
               </div>
             )
           }
           {
-            !isLoading && !!parameterRules.length && (
-              [
-                ...parameterRules,
-                ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-              ].map(parameter => (
-                <ParameterItem
-                  key={`${modelId}-${parameter.name}`}
-                  parameterRule={parameter}
-                  value={completionParams?.[parameter.name]}
-                  onChange={v => handleParamChange(parameter.name, v)}
-                  onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
-                  isInWorkflow={isInWorkflow}
-                />
-              ))
+            !parameterRules.length && isLoading && (
+              <div className="px-4 py-5"><Loading /></div>
             )
           }
         </div>
