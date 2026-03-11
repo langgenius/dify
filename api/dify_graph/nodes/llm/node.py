@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import select
 
-from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance
@@ -27,7 +26,7 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.file import FileTransferMethod, FileType, file_manager
 from dify_graph.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
@@ -63,6 +62,8 @@ from dify_graph.node_events import (
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
+from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
@@ -117,6 +118,7 @@ class LLMNode(Node[LLMNodeData]):
     _model_factory: ModelFactory
     _model_instance: ModelInstance
     _memory: PromptMessageMemory | None
+    code_executor: WorkflowCodeExecutor
 
     def __init__(
         self,
@@ -129,6 +131,7 @@ class LLMNode(Node[LLMNodeData]):
         model_factory: ModelFactory,
         model_instance: ModelInstance,
         http_client: HttpClientProtocol,
+        code_executor: WorkflowCodeExecutor,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -145,6 +148,7 @@ class LLMNode(Node[LLMNodeData]):
         self._model_factory = model_factory
         self._model_instance = model_instance
         self._memory = memory
+        LLMNode.code_executor = code_executor
 
         if llm_file_saver is None:
             dify_ctx = self.require_dify_context()
@@ -755,8 +759,9 @@ class LLMNode(Node[LLMNodeData]):
 
         return None
 
-    @staticmethod
+    @classmethod
     def fetch_prompt_messages(
+        cls,
         *,
         sys_query: str | None = None,
         sys_files: Sequence[File],
@@ -817,6 +822,7 @@ class LLMNode(Node[LLMNodeData]):
             # For completion model
             prompt_messages.extend(
                 _handle_completion_template(
+                    code_executor=cls.code_executor,
                     template=prompt_template,
                     context=context,
                     jinja2_variables=jinja2_variables,
@@ -1041,8 +1047,9 @@ class LLMNode(Node[LLMNodeData]):
             },
         }
 
-    @staticmethod
+    @classmethod
     def handle_list_messages(
+        cls,
         *,
         messages: Sequence[LLMNodeChatModelMessage],
         context: str | None,
@@ -1054,6 +1061,7 @@ class LLMNode(Node[LLMNodeData]):
         for message in messages:
             if message.edition_type == "jinja2":
                 result_text = _render_jinja2_message(
+                    code_executor=cls.code_executor,
                     template=message.jinja2_text or "",
                     jinja2_variables=jinja2_variables,
                     variable_pool=variable_pool,
@@ -1258,6 +1266,7 @@ def _combine_message_content_with_role(
 
 def _render_jinja2_message(
     *,
+    code_executor: WorkflowCodeExecutor,
     template: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
@@ -1269,7 +1278,7 @@ def _render_jinja2_message(
     for jinja2_variable in jinja2_variables:
         variable = variable_pool.get(jinja2_variable.value_selector)
         jinja2_inputs[jinja2_variable.variable] = variable.to_object() if variable else ""
-    code_execute_resp = CodeExecutor.execute_workflow_code_template(
+    code_execute_resp = code_executor.execute(
         language=CodeLanguage.JINJA2,
         code=template,
         inputs=jinja2_inputs,
@@ -1355,6 +1364,7 @@ def _handle_memory_completion_mode(
 
 def _handle_completion_template(
     *,
+    code_executor: WorkflowCodeExecutor,
     template: LLMNodeCompletionModelPromptTemplate,
     context: str | None,
     jinja2_variables: Sequence[VariableSelector],
@@ -1374,6 +1384,7 @@ def _handle_completion_template(
     prompt_messages = []
     if template.edition_type == "jinja2":
         result_text = _render_jinja2_message(
+            code_executor=code_executor,
             template=template.jinja2_text or "",
             jinja2_variables=jinja2_variables,
             variable_pool=variable_pool,

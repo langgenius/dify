@@ -111,7 +111,6 @@ ignore_imports =
     dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
     dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
     dify_graph.nodes.agent.agent_node -> models.model
-    dify_graph.nodes.llm.node -> core.helper.code_executor
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     dify_graph.nodes.llm.node -> core.model_manager

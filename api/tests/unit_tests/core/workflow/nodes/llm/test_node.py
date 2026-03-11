@@ -24,6 +24,7 @@ from dify_graph.model_runtime.entities.message_entities import (
 )
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
 from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,
@@ -112,6 +113,9 @@ def llm_node(
         "data": llm_node_data.model_dump(),
     }
     http_client = mock.MagicMock()
+    mock_code_executor = mock.MagicMock(spec=WorkflowCodeExecutor)
+    mock_code_executor.execute.return_value = {"result": ""}
+
     node = LLMNode(
         id="1",
         config=node_config,
@@ -122,6 +126,7 @@ def llm_node(
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
         http_client=http_client,
+        code_executor=mock_code_executor,
     )
     return node
 
@@ -635,6 +640,9 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         "data": llm_node_data.model_dump(),
     }
     http_client = mock.MagicMock()
+    mock_code_executor = mock.MagicMock(spec=WorkflowCodeExecutor)
+    mock_code_executor.execute.return_value = {"result": ""}
+
     node = LLMNode(
         id="1",
         config=node_config,
@@ -645,6 +653,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
         http_client=http_client,
+        code_executor=mock_code_executor,
     )
     return node, mock_file_saver
 

@@ -252,6 +252,7 @@ class DifyNodeFactory(NodeFactory):
                 model_instance=model_instance,
                 memory=memory,
                 http_client=self._http_request_http_client,
+                code_executor=self._code_executor,
             )
 
         if node_type == NodeType.DATASOURCE:

@@ -135,6 +135,7 @@ class MockNodeFactory(DifyNodeFactory):
                     mock_config=self.mock_config,
                     credentials_provider=self._llm_credentials_provider,
                     model_factory=self._llm_model_factory,
+                    code_executor=self._code_executor,
                 )
             else:
                 mock_instance = mock_class(

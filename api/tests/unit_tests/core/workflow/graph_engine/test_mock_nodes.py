@@ -16,6 +16,7 @@ from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.agent import AgentNode
 from dify_graph.nodes.code import CodeNode
+from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
 from dify_graph.nodes.document_extractor import DocumentExtractorNode
 from dify_graph.nodes.http_request import HttpRequestNode
 from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
@@ -66,8 +67,9 @@ class MockNodeMixin:
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
             kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
-            # LLM-like nodes now require an http_client; provide a mock by default for tests.
+            # LLM-like nodes now require an http_client and code_executor; provide mocks by default for tests.
             kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+            kwargs.setdefault("code_executor", MagicMock(spec=WorkflowCodeExecutor))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):

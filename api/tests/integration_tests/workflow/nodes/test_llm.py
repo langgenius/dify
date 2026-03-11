@@ -9,6 +9,7 @@ from core.llm_generator.output_parser.structured_output import _parse_structured
 from core.model_manager import ModelInstance
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamCompletedEvent
+from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
 from dify_graph.nodes.llm.node import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.protocols import HttpClientProtocol
@@ -67,6 +68,9 @@ def init_llm_node(config: dict) -> LLMNode:
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
+    mock_code_executor = MagicMock(spec=WorkflowCodeExecutor)
+    mock_code_executor.execute.return_value = {"result": ""}
+
     node = LLMNode(
         id=str(uuid.uuid4()),
         config=config,
@@ -76,6 +80,7 @@ def init_llm_node(config: dict) -> LLMNode:
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
         http_client=MagicMock(spec=HttpClientProtocol),
+        code_executor=mock_code_executor,
     )
 
     return node
