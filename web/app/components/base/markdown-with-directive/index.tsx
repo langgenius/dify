@@ -1,3 +1,4 @@
+'use client'
 import type { Components, StreamdownProps } from 'streamdown'
 import DOMPurify from 'dompurify'
 import remarkDirective from 'remark-directive'
