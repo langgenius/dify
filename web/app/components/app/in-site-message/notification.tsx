@@ -4,7 +4,7 @@ import type { InSiteMessageActionItem } from './index'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { IS_CLOUD_EDITION } from '@/config'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import InSiteMessage from './index'
 
 type NotificationBodyPayload = {
@@ -60,24 +60,11 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 
 function InSiteMessageNotification() {
   const { t } = useTranslation()
-  const dismissNotificationMutation = useMutation({
-    mutationKey: consoleQuery.notificationDismiss.mutationKey(),
-    mutationFn: async (notificationId: string) => {
-      return await consoleClient.notificationDismiss({
-        body: {
-          notification_id: notificationId,
-        },
-      })
-    },
-  })
+  const dismissNotificationMutation = useMutation(consoleQuery.notificationDismiss.mutationOptions())
 
-  const { data } = useQuery({
-    queryKey: consoleQuery.notification.queryKey(),
-    queryFn: async () => {
-      return await consoleClient.notification()
-    },
+  const { data } = useQuery(consoleQuery.notification.queryOptions({
     enabled: IS_CLOUD_EDITION,
-  })
+  }))
 
   const notification = data?.notifications?.[0]
   const parsedBody = notification ? parseNotificationBody(notification.body) : null
@@ -99,7 +86,11 @@ function InSiteMessageNotification() {
     if (action.action !== 'close')
       return
 
-    dismissNotificationMutation.mutate(notification.notification_id)
+    dismissNotificationMutation.mutate({
+      body: {
+        notification_id: notification.notification_id,
+      },
+    })
   }
 
   return (
