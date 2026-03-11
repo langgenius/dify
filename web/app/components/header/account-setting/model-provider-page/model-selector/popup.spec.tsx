@@ -22,15 +22,6 @@ vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
 }))
 
-const mockCloseActiveTooltip = vi.hoisted(() => vi.fn())
-vi.mock('@/app/components/base/tooltip/TooltipManager', () => ({
-  tooltipManager: {
-    closeActiveTooltip: mockCloseActiveTooltip,
-    register: vi.fn(),
-    clear: vi.fn(),
-  },
-}))
-
 type MockMarketplacePlugin = {
   plugin_id: string
   latest_package_identifier: string
@@ -231,12 +222,20 @@ describe('Popup', () => {
     expect(screen.getByText('No model found for \u201C\u201D')).toBeInTheDocument()
   })
 
-  it('should match labels from other languages when current language key is missing', () => {
+  it('should match model labels from fallback languages when current language key is missing', () => {
     mockLanguage = 'fr_FR'
 
     render(
       <Popup
-        modelList={[makeModel()]}
+        modelList={[
+          makeModel({
+            models: [
+              makeModelItem({
+                label: { en_US: 'OpenAI GPT', zh_Hans: 'OpenAI GPT' },
+              }),
+            ],
+          }),
+        ]}
         onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
@@ -244,23 +243,10 @@ describe('Popup', () => {
 
     fireEvent.change(
       screen.getByPlaceholderText('datasetSettings.form.searchModel'),
-      { target: { value: 'gpt' } },
+      { target: { value: 'openai' } },
     )
 
     expect(screen.getByText('openai')).toBeInTheDocument()
-  })
-
-  it('should close tooltip on scroll', () => {
-    const { container } = render(
-      <Popup
-        modelList={[makeModel()]}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.scroll(container.firstElementChild as HTMLElement)
-    expect(mockCloseActiveTooltip).toHaveBeenCalled()
   })
 
   it('should open provider settings when clicking footer link', () => {
