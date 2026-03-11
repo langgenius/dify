@@ -23,6 +23,15 @@ type ModernMonacoEditorProps = {
   style?: React.CSSProperties
 }
 
+type MonacoModule = typeof import('modern-monaco/editor-core')
+type EditorCallbacks = Pick<ModernMonacoEditorProps, 'onBlur' | 'onChange' | 'onFocus' | 'onReady'>
+type EditorSetup = {
+  editorOptions: MonacoEditor.IEditorOptions
+  initOptions?: InitOptions
+  language: string
+  resolvedTheme: string
+}
+
 let monacoInitPromise: Promise<typeof import('modern-monaco/editor-core') | null> | null = null
 let monacoInitOptions: InitOptions | null = null
 
@@ -35,6 +44,71 @@ const DEFAULT_INIT_OPTIONS: InitOptions = {
     LIGHT_THEME_ID,
     DARK_THEME_ID,
   ],
+}
+
+const createEditorModel = (monaco: MonacoModule, value: string, language: string) => {
+  return monaco.editor.createModel(value, language)
+}
+
+const syncEditorValue = (
+  editor: MonacoEditor.IStandaloneCodeEditor,
+  monaco: MonacoModule,
+  model: MonacoEditor.ITextModel,
+  value: string,
+  preventTriggerChangeEventRef: React.RefObject<boolean>,
+) => {
+  const currentValue = model.getValue()
+  if (currentValue === value)
+    return
+
+  if (editor.getOption(monaco.editor.EditorOption.readOnly)) {
+    editor.setValue(value)
+    return
+  }
+
+  preventTriggerChangeEventRef.current = true
+  try {
+    editor.executeEdits('', [{
+      range: model.getFullModelRange(),
+      text: value,
+      forceMoveMarkers: true,
+    }])
+    editor.pushUndoStop()
+  }
+  finally {
+    preventTriggerChangeEventRef.current = false
+  }
+}
+
+const bindEditorCallbacks = (
+  editor: MonacoEditor.IStandaloneCodeEditor,
+  monaco: MonacoModule,
+  callbacksRef: React.RefObject<EditorCallbacks>,
+  preventTriggerChangeEventRef: React.RefObject<boolean>,
+) => {
+  const changeDisposable = editor.onDidChangeModelContent(() => {
+    if (preventTriggerChangeEventRef.current)
+      return
+    callbacksRef.current.onChange?.(editor.getValue())
+  })
+  const keydownDisposable = editor.onKeyDown((event) => {
+    const { key, code } = event.browserEvent
+    if (key === ' ' || code === 'Space')
+      event.stopPropagation()
+  })
+  const focusDisposable = editor.onDidFocusEditorText(() => {
+    callbacksRef.current.onFocus?.()
+  })
+  const blurDisposable = editor.onDidBlurEditorText(() => {
+    callbacksRef.current.onBlur?.()
+  })
+
+  return () => {
+    blurDisposable.dispose()
+    focusDisposable.dispose()
+    keydownDisposable.dispose()
+    changeDisposable.dispose()
+  }
 }
 
 const initMonaco = async (initOptions?: InitOptions) => {
@@ -70,10 +144,10 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<MonacoEditor.ITextModel | null>(null)
-  const monacoRef = useRef<typeof import('modern-monaco/editor-core') | null>(null)
+  const monacoRef = useRef<MonacoModule | null>(null)
   const preventTriggerChangeEventRef = useRef(false)
   const valueRef = useRef(value)
-  const callbacksRef = useRef({ onChange, onFocus, onBlur, onReady })
+  const callbacksRef = useRef<EditorCallbacks>({ onChange, onFocus, onBlur, onReady })
 
   const editorOptions = useMemo<MonacoEditor.IEditorOptions>(() => ({
     automaticLayout: true,
@@ -85,20 +159,29 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     tabFocusMode: false,
     ...options,
   }), [readOnly, options])
-  const setupRef = useRef({
+  const setupRef = useRef<EditorSetup>({
     editorOptions,
     initOptions,
     language,
     resolvedTheme,
   })
-  valueRef.current = value
-  callbacksRef.current = { onChange, onFocus, onBlur, onReady }
-  setupRef.current = {
-    editorOptions,
-    initOptions,
-    language,
-    resolvedTheme,
-  }
+
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
+
+  useEffect(() => {
+    callbacksRef.current = { onChange, onFocus, onBlur, onReady }
+  }, [onChange, onFocus, onBlur, onReady])
+
+  useEffect(() => {
+    setupRef.current = {
+      editorOptions,
+      initOptions,
+      language,
+      resolvedTheme,
+    }
+  }, [editorOptions, initOptions, language, resolvedTheme])
 
   useEffect(() => {
     let disposed = false
@@ -117,7 +200,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
 
       monacoRef.current = monaco
 
-      const model = monaco.editor.createModel(valueRef.current, currentLanguage)
+      const model = createEditorModel(monaco, valueRef.current, currentLanguage)
       modelRef.current = model
 
       const editor = monaco.editor.create(containerRef.current, currentEditorOptions)
@@ -126,24 +209,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
 
       monaco.editor.setTheme(currentResolvedTheme)
 
-      const changeDisposable = editor.onDidChangeModelContent(() => {
-        if (preventTriggerChangeEventRef.current)
-          return
-        callbacksRef.current.onChange?.(editor.getValue())
-      })
-      const keydownDisposable = editor.onKeyDown((event) => {
-        const { key, code } = event.browserEvent
-        if (key === ' ' || code === 'Space')
-          event.stopPropagation()
-      })
-
-      const focusDisposable = editor.onDidFocusEditorText(() => {
-        callbacksRef.current.onFocus?.()
-      })
-      const blurDisposable = editor.onDidBlurEditorText(() => {
-        callbacksRef.current.onBlur?.()
-      })
-
+      const disposeCallbacks = bindEditorCallbacks(editor, monaco, callbacksRef, preventTriggerChangeEventRef)
       const resizeObserver = new ResizeObserver(() => {
         editor.layout()
       })
@@ -152,10 +218,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
 
       cleanup = () => {
         resizeObserver.disconnect()
-        blurDisposable.dispose()
-        focusDisposable.dispose()
-        keydownDisposable.dispose()
-        changeDisposable.dispose()
+        disposeCallbacks()
         editor.dispose()
         model.dispose()
       }
@@ -198,27 +261,7 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
     if (!editor || !monaco || !model)
       return
 
-    const current = model.getValue()
-    if (current === value)
-      return
-
-    if (editor.getOption(monaco.editor.EditorOption.readOnly)) {
-      editor.setValue(value)
-      return
-    }
-
-    preventTriggerChangeEventRef.current = true
-    try {
-      editor.executeEdits('', [{
-        range: model.getFullModelRange(),
-        text: value,
-        forceMoveMarkers: true,
-      }])
-      editor.pushUndoStop()
-    }
-    finally {
-      preventTriggerChangeEventRef.current = false
-    }
+    syncEditorValue(editor, monaco, model, value, preventTriggerChangeEventRef)
   }, [value])
 
   return (

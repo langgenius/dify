@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
@@ -68,10 +68,6 @@ const CodeEditor: FC<Props> = ({
   const [isFocus, setIsFocus] = React.useState(false)
   const minHeight = height || 200
   const [editorContentHeight, setEditorContentHeight] = useState(56)
-  const valueRef = useRef(value)
-  useEffect(() => {
-    valueRef.current = value
-  }, [value])
 
   const fileList = useMemo(() => {
     if (typeof value === 'object')
@@ -97,15 +93,15 @@ const CodeEditor: FC<Props> = ({
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor
     resizeEditorToContent()
-
-    editor.onDidFocusEditorText(() => {
-      setIsFocus(true)
-    })
-    editor.onDidBlurEditorText(() => {
-      setIsFocus(false)
-    })
-
     onMount?.(editor, monaco)
+  }
+
+  const handleEditorFocus = () => {
+    setIsFocus(true)
+  }
+
+  const handleEditorBlur = () => {
+    setIsFocus(false)
   }
 
   const outPutValue = (() => {
@@ -128,6 +124,8 @@ const CodeEditor: FC<Props> = ({
         value={outPutValue}
         readOnly={readOnly}
         onChange={handleEditorChange}
+        onFocus={handleEditorFocus}
+        onBlur={handleEditorBlur}
         onReady={handleEditorDidMount}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{
