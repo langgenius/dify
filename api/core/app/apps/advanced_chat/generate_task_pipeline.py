@@ -692,8 +692,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
-        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -714,6 +716,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             exceptions_count=event.exceptions_count,
         )
 
+        yield from self._handle_advanced_chat_message_end_event(
+            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+        )
         yield workflow_finish_resp
 
     def _handle_workflow_paused_event(
@@ -1031,6 +1036,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     break
                 case QueueWorkflowPausedEvent():
                     yield from self._handle_workflow_paused_event(event)
+                    break
+
+                case QueueWorkflowSucceededEvent():
+                    yield from self._handle_workflow_succeeded_event(event, trace_manager=trace_manager)
+                    break
+
+                case QueueWorkflowPartialSuccessEvent():
+                    yield from self._handle_workflow_partial_success_event(event, trace_manager=trace_manager)
                     break
 
                 case QueueStopEvent():
