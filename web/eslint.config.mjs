@@ -144,6 +144,13 @@ export default antfu(
     files: ['**/package.json'],
     rules: {
       'hyoban/no-dependency-version-prefix': 'error',
+      'jsonc/sort-keys': [
+        'error',
+        {
+          pathPattern: '^scripts$',
+          order: { type: 'asc' },
+        },
+      ],
     },
   },
   {
@@ -218,3 +225,6 @@ export default antfu(
     },
   },
 )
+  .disableRulesFix([
+    'e18e/prefer-array-at',
+  ])
