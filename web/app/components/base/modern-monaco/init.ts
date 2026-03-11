@@ -12,20 +12,12 @@ const DEFAULT_INIT_OPTIONS: InitOptions = {
 }
 
 let monacoInitPromise: Promise<typeof import('modern-monaco/editor-core') | null> | null = null
-let monacoInitOptions = DEFAULT_INIT_OPTIONS
-
-export const configureModernMonaco = (initOptions: InitOptions) => {
-  if (monacoInitPromise)
-    throw new Error('configureModernMonaco must be called before the first Monaco editor mounts.')
-
-  monacoInitOptions = initOptions
-}
 
 export const initMonaco = async () => {
   if (!monacoInitPromise) {
     monacoInitPromise = (async () => {
       const { init } = await import('modern-monaco')
-      return init(monacoInitOptions)
+      return init(DEFAULT_INIT_OPTIONS)
     })()
   }
 

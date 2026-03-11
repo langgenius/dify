@@ -31,10 +31,6 @@ type EditorSetup = {
   resolvedTheme: string
 }
 
-const createEditorModel = (monaco: MonacoModule, value: string, language: string) => {
-  return monaco.editor.createModel(value, language)
-}
-
 const syncEditorValue = (
   editor: MonacoEditor.IStandaloneCodeEditor,
   monaco: MonacoModule,
@@ -161,24 +157,24 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
       if (!monaco || disposed || !containerRef.current)
         return
 
-      const {
-        editorOptions: currentEditorOptions,
-        language: currentLanguage,
-        resolvedTheme: currentResolvedTheme,
-      } = setupRef.current
-
       monacoRef.current = monaco
 
-      const model = createEditorModel(monaco, valueRef.current, currentLanguage)
+      const editor = monaco.editor.create(containerRef.current, setupRef.current.editorOptions)
+      editorRef.current = editor
+
+      const model = monaco.editor.createModel(valueRef.current, setupRef.current.language)
       modelRef.current = model
 
-      const editor = monaco.editor.create(containerRef.current, currentEditorOptions)
-      editorRef.current = editor
       editor.setModel(model)
 
-      monaco.editor.setTheme(currentResolvedTheme)
+      monaco.editor.setTheme(setupRef.current.resolvedTheme)
 
-      const disposeCallbacks = bindEditorCallbacks(editor, monaco, callbacksRef, preventTriggerChangeEventRef)
+      const disposeCallbacks = bindEditorCallbacks(
+        editor,
+        monaco,
+        callbacksRef,
+        preventTriggerChangeEventRef,
+      )
       const resizeObserver = new ResizeObserver(() => {
         editor.layout()
       })
