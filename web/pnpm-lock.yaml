@@ -347,9 +347,6 @@ importers:
       tldts:
         specifier: 7.0.25
         version: 7.0.25
-      ufo:
-        specifier: 1.6.3
-        version: 1.6.3
       unist-util-visit:
         specifier: 5.1.0
         version: 5.1.0
