@@ -10,9 +10,8 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useLogout } from '@/service/use-common'
+import { useLogout, useUserProfile } from '@/service/use-common'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -21,10 +20,15 @@ export type IAppSelector = {
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { isEducationAccount } = useProviderContext()
 
   const { mutateAsync: logout } = useLogout()
+
+  if (!userProfile)
+    return null
+
   const handleLogout = async () => {
     await logout()
 

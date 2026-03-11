@@ -17,8 +17,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
-import { useAppContext } from '@/context/app-context'
-import { useIsLogin } from '@/service/use-common'
+import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
 function buildReturnUrl(pathname: string, search: string) {
@@ -62,7 +61,8 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
