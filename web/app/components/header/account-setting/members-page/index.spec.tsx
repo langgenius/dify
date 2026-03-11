@@ -267,6 +267,99 @@ describe('MembersPage', () => {
     expect(screen.getByText(/plansCommon\.unlimited/i)).toBeInTheDocument()
   })
 
+  it('should show non-billing member format for team plan even when billing is enabled', () => {
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.team,
+        total: { teamMembers: 50 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
+  })
+
+  it('should show invite button when user is manager but not owner', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+    } as unknown as AppContextValue)
+
+    render(<MembersPage />)
+
+    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  })
+
+  it('should use created_at as fallback when last_active_at is empty', () => {
+    const memberNoLastActive: Member = {
+      ...mockAccounts[1],
+      last_active_at: '',
+      created_at: '1700000000',
+    }
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [memberNoLastActive] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1700000000000)
+  })
+
+  it('should not show plural s when only one account in billing layout', () => {
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        type: Plan.sandbox,
+        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
+      } as unknown as ReturnType<typeof useProviderContext>['plan'],
+    }))
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.member/i)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('should not show plural s when only one account in non-billing layout', () => {
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText(/plansCommon\.memberAfter/i)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
+
+  it('should show normal role as fallback for unknown role', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: false,
+    } as unknown as AppContextValue)
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    render(<MembersPage />)
+
+    expect(screen.getByText('common.members.normal')).toBeInTheDocument()
+  })
+
   it('should show upgrade button when member limit is full', () => {
     vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
       enableBilling: true,

@@ -22,17 +22,17 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
-from core.workflow.constants import (
+from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
-from core.workflow.file.constants import maybe_file_object
-from core.workflow.file.models import File
-from core.workflow.variables import utils as variable_utils
-from core.workflow.variables.variables import FloatVariable, IntegerVariable, StringVariable
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.file.constants import maybe_file_object
+from dify_graph.file.models import File
+from dify_graph.variables import utils as variable_utils
+from dify_graph.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from core.workflow.variables import SecretVariable, Segment, SegmentType, VariableBase
+from dify_graph.variables import SecretVariable, Segment, SegmentType, VariableBase
 from factories import variable_factory
 from libs import helper
 
@@ -345,7 +345,7 @@ class Workflow(Base):  # bug
             "selected": false,
         }
 
-        For specific node type, refer to `core.workflow.nodes`
+        For specific node type, refer to `dify_graph.nodes`
         """
         graph_dict = self.graph_dict
         if "nodes" not in graph_dict:
@@ -1344,7 +1344,7 @@ class WorkflowDraftVariable(Base):
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
     #
-    # ref: api/core/workflow/entities/variable_pool.py:18
+    # ref: api/dify_graph/entities/variable_pool.py:18
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),

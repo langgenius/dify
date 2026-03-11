@@ -3,7 +3,7 @@ import type { ImageFile, VisionSettings } from '@/types/app'
 import { useParams } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import { getImageUploadErrorMessage, imageUpload } from './utils'
 

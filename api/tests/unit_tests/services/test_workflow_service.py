@@ -14,8 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.workflow.enums import NodeType
-from core.workflow.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
+from dify_graph.enums import NodeType
+from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
