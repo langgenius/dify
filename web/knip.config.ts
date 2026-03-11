@@ -20,11 +20,6 @@ const config: KnipConfig = {
 
     '@storybook/addon-onboarding',
 
-    // vinext related
-    'react-server-dom-webpack',
-    '@vitejs/plugin-rsc',
-    '@mdx-js/rollup',
-
     '@tsslint/compat-eslint',
     '@tsslint/config',
   ],
