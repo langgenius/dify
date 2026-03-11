@@ -14,9 +14,11 @@ import type { App } from '@/types/app'
 import {
   keepPreviousData,
   useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
@@ -133,6 +135,29 @@ export const useInvalidateAppList = () => {
       queryKey: [NAME_SPACE, 'list'],
     })
   }
+}
+
+export const useDeleteAppMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: consoleQuery.apps.deleteApp.mutationKey(),
+    mutationFn: (appId: string) => {
+      return consoleClient.apps.deleteApp({
+        params: { appId },
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [NAME_SPACE, 'list'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
+    },
+  })
 }
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
