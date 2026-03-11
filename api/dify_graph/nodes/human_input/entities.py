@@ -74,8 +74,10 @@ class EmailDeliveryConfig(BaseModel):
 
     def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
         if not user_id:
-            debug_recipients = EmailRecipients(whole_workspace=False, items=[])
-            return self.model_copy(update={"recipients": debug_recipients})
+            raise ValueError(
+                "Cannot create debug email recipient: user_id is empty. "
+                "Ensure the user is authenticated before sending debug emails."
+            )
         debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
         return self.model_copy(update={"recipients": debug_recipients})
 
@@ -149,7 +151,9 @@ def apply_debug_email_recipient(
         return method
     if not method.config.debug_mode:
         return method
-    debug_config = method.config.with_debug_recipient(user_id or "")
+    if not user_id:
+        return method
+    debug_config = method.config.with_debug_recipient(user_id)
     return method.model_copy(update={"config": debug_config})
 
 
