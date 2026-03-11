@@ -1,6 +1,6 @@
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
 import { useAppContext } from '@/context/app-context'
@@ -34,7 +34,7 @@ const UserInfo = () => {
           className="mr-4"
           avatar={userProfile.avatar_url}
           name={userProfile.name}
-          size={48}
+          size="2xl"
         />
         <div className="pt-1.5">
           <div className="system-md-semibold text-text-primary">
