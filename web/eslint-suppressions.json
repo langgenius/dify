@@ -1116,11 +1116,6 @@
       "count": 1
     }
   },
-  "app/components/base/avatar/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/base/block-input/index.stories.tsx": {
     "no-console": {
       "count": 2
