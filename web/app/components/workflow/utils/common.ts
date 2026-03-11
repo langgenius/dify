@@ -32,6 +32,9 @@ export const isEventTargetInputArea = (target: HTMLElement) => {
 
   if (target.contentEditable === 'true')
     return true
+
+  if (target.closest?.('.monaco-editor, .monaco-diff-editor'))
+    return true
 }
 
 /**

@@ -4,28 +4,27 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import SystemVariableKey, WorkflowNodeExecutionStatus
-from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
-from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from core.workflow.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
-from core.workflow.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables.segments import StringSegment
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
+from dify_graph.nodes.knowledge_index.entities import KnowledgeIndexNodeData
+from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
+from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
+from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
+from dify_graph.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import StringSegment
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def mock_graph_init_params():
     """Create mock GraphInitParams."""
-    return GraphInitParams(
-        tenant_id=str(uuid.uuid4()),
-        app_id=str(uuid.uuid4()),
+    return build_test_graph_init_params(
         workflow_id=str(uuid.uuid4()),
         graph_config={},
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
         user_id=str(uuid.uuid4()),
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,

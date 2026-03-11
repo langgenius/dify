@@ -3,16 +3,16 @@ from datetime import datetime
 from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events.node import NodeRunSucceededEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
-from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables import StringVariable
-from core.workflow.variables.segments import Segment
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
+from dify_graph.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import StringVariable
+from dify_graph.variables.segments import Segment
 
 
 class MockReadOnlyVariablePool:

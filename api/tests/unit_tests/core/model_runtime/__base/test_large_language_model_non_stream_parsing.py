@@ -1,10 +1,10 @@
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_plugin_result
+from dify_graph.model_runtime.model_providers.__base.large_language_model import _normalize_non_stream_plugin_result
 
 
 def _make_chunk(
