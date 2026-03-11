@@ -701,8 +701,8 @@ describe('update-plugin', () => {
         })
       })
 
-      it('should show error toast when task status is failed', async () => {
-        // Arrange - covers lines 99-100
+      it('should reset loading state when task status check fails', async () => {
+        // Arrange
         const mockToastNotify = vi.fn()
         vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
 
@@ -739,6 +739,53 @@ describe('update-plugin', () => {
         })
         // onSave should NOT be called when task fails
         expect(onSave).not.toHaveBeenCalled()
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
+        })
+        expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+      })
+
+      it('should stop loading when upgrade API returns failed task directly', async () => {
+        // Arrange
+        const mockToastNotify = vi.fn()
+        vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
+
+        mockUpdateFromMarketPlace.mockResolvedValue({
+          task: {
+            status: TaskStatus.failed,
+            plugins: [{
+              plugin_unique_identifier: 'test-target-id',
+              status: TaskStatus.failed,
+              message: 'failed to init environment',
+            }],
+          },
+        })
+        const onSave = vi.fn()
+        const payload = createMockMarketPlacePayload()
+
+        // Act
+        renderWithQueryClient(
+          <UpdateFromMarketplace
+            payload={payload}
+            onSave={onSave}
+            onCancel={vi.fn()}
+          />,
+        )
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+
+        // Assert
+        await waitFor(() => {
+          expect(mockToastNotify).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'failed to init environment',
+          })
+        })
+        expect(mockCheck).not.toHaveBeenCalled()
+        expect(onSave).not.toHaveBeenCalled()
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' })).toBeInTheDocument()
+        })
+        expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       })
     })
 

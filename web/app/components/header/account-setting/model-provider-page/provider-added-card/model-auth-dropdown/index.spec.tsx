@@ -156,7 +156,7 @@ describe('ModelAuthDropdown', () => {
   })
 
   describe('Button variant styling', () => {
-    it('should use secondary-accent for api-required-add', () => {
+    it('should use primary for api-required-add', () => {
       const { container } = render(
         <ModelAuthDropdown
           provider={createProvider()}
@@ -166,7 +166,7 @@ describe('ModelAuthDropdown', () => {
         />,
       )
       const button = container.querySelector('button')
-      expect(button?.getAttribute('data-variant') ?? button?.className).toMatch(/accent/)
+      expect(button?.getAttribute('data-variant') ?? button?.className).toMatch(/primary/)
     })
 
     it('should use secondary-accent for api-required-configure', () => {

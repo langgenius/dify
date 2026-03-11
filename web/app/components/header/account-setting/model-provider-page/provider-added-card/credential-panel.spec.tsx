@@ -212,7 +212,7 @@ describe('CredentialPanel', () => {
       expect(screen.queryByTestId('warning-icon')).not.toBeInTheDocument()
     })
 
-    it('should show red indicator and "Unavailable" for api-unavailable (exhausted + named unauthorized key)', () => {
+    it('should show red indicator and credential name for api-unavailable (exhausted + named unauthorized key)', () => {
       mockTrialCredits.isExhausted = true
       renderWithQueryClient(createProvider({
         preferred_provider_type: PreferredProviderTypeEnum.custom,
@@ -224,7 +224,6 @@ describe('CredentialPanel', () => {
         },
       }))
       expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'red')
-      expect(screen.getByText(/unavailable/i)).toBeInTheDocument()
       expect(screen.getByText('Bad Key')).toBeInTheDocument()
     })
   })
@@ -302,6 +301,27 @@ describe('CredentialPanel', () => {
     it('should use secondary text color for credits-active label', () => {
       const { container } = renderWithQueryClient(createProvider())
       expect(container.querySelector('.text-text-secondary')).toBeTruthy()
+    })
+
+    it('should use destructive text color for api-unavailable credential name', () => {
+      mockTrialCredits.isExhausted = true
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: undefined,
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      }))
+      expect(screen.getByText('Bad Key')).toHaveClass('text-text-destructive')
+    })
+
+    it('should use secondary text color for api-active credential name', () => {
+      renderWithQueryClient(createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+      }))
+      expect(screen.getByText('test-credential')).toHaveClass('text-text-secondary')
     })
   })
 

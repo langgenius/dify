@@ -1,10 +1,6 @@
 'use client'
 
 import type { PluginDetail } from '../../types'
-import {
-  RiArrowLeftRightLine,
-  RiCloseLine,
-} from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -180,7 +176,7 @@ const DetailHeader = ({
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />}
+                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="i-ri-arrow-left-right-line ml-1 h-3 w-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -255,7 +251,7 @@ const DetailHeader = ({
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+              <span aria-hidden className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
         )}

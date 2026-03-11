@@ -82,26 +82,21 @@ function StatusLabel({ variant, credentialName }: {
   variant: CardVariant
   credentialName: string | undefined
 }) {
-  const { t } = useTranslation()
-  const dotColor = variant === 'api-unavailable' ? 'red' : 'green'
+  const isDestructive = isDestructiveVariant(variant)
+  const dotColor = isDestructive ? 'red' : 'green'
   const showWarning = variant === 'api-fallback'
 
   return (
     <>
       <Indicator className="shrink-0" color={dotColor} />
       <span
-        className="truncate text-text-secondary"
+        className={`truncate ${isDestructive ? 'text-text-destructive' : 'text-text-secondary'}`}
         title={credentialName}
       >
         {credentialName}
       </span>
       {showWarning && (
-        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
-      )}
-      {variant === 'api-unavailable' && (
-        <span className="shrink-0 text-text-destructive system-2xs-medium">
-          {t('modelProvider.card.unavailable', { ns: 'common' })}
-        </span>
+        <Warning className="ml-auto h-3 w-3 shrink-0 text-text-warning" />
       )}
     </>
   )

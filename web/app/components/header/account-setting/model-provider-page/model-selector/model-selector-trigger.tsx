@@ -11,6 +11,7 @@ import { cn } from '@/utils/classnames'
 import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
 
 const STATUS_I18N_KEY: Partial<Record<ModelStatusEnum, string>> = {
   [ModelStatusEnum.quotaExceeded]: 'modelProvider.selector.creditsExhausted',
@@ -47,10 +48,22 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   const isSelected = !!currentProvider && !!currentModel
   const isDeprecated = !isSelected && !!defaultModel
   const isEmpty = !isSelected && !defaultModel
+  const selectedProvider = isSelected
+    ? modelProviders.find(provider => provider.provider === currentProvider.provider)
+    : undefined
+  const selectedProviderState = useCredentialPanelState(selectedProvider)
+  const shouldShowCreditsExhausted = isSelected
+    && selectedProviderState.priority === 'credits'
+    && selectedProviderState.supportsCredits
+    && selectedProviderState.isCreditsExhausted
+  const effectiveStatus = shouldShowCreditsExhausted
+    ? ModelStatusEnum.quotaExceeded
+    : currentModel?.status
 
-  const isActive = isSelected && currentModel.status === ModelStatusEnum.active
+  const isActive = isSelected && effectiveStatus === ModelStatusEnum.active
   const isDisabled = isDeprecated || (isSelected && !isActive)
-  const statusI18nKey = isSelected ? STATUS_I18N_KEY[currentModel.status] : undefined
+  const statusI18nKey = isSelected && effectiveStatus ? STATUS_I18N_KEY[effectiveStatus] : undefined
+  const isCreditsExhausted = isSelected && effectiveStatus === ModelStatusEnum.quotaExceeded
 
   const deprecatedProvider = isDeprecated
     ? modelProviders.find(p => p.provider === defaultModel.provider)
@@ -107,9 +120,14 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
         {isSelected && !readonly && !isActive && statusI18nKey && (
           <Tooltip>
             <TooltipTrigger
-              disabled={currentModel.status !== ModelStatusEnum.noPermission}
+              disabled={effectiveStatus !== ModelStatusEnum.noPermission}
               render={(
-                <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning px-[5px] py-0.5">
+                <div
+                  className={cn(
+                    'flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning px-[5px] py-0.5',
+                    isCreditsExhausted && 'min-w-[20px] justify-center bg-components-badge-bg-dimm',
+                  )}
+                >
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                   <span className="whitespace-nowrap text-text-warning system-xs-medium">
                     {t(statusI18nKey as 'modelProvider.selector.creditsExhausted', { ns: 'common' })}

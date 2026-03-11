@@ -10,8 +10,12 @@ import {
 import ModelSelectorTrigger from './model-selector-trigger'
 
 const mockUseProviderContext = vi.hoisted(() => vi.fn())
+const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
+}))
+vi.mock('../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: mockUseCredentialPanelState,
 }))
 
 const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -47,6 +51,16 @@ describe('ModelSelectorTrigger', () => {
     vi.clearAllMocks()
     mockUseProviderContext.mockReturnValue({
       modelProviders: [createModel()],
+    })
+    mockUseCredentialPanelState.mockReturnValue({
+      variant: 'credits-active',
+      priority: 'credits',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: false,
+      isCreditsExhausted: false,
+      credentialName: undefined,
+      credits: 100,
     })
   })
 
@@ -130,6 +144,28 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+    })
+
+    it('should apply credits exhausted badge style when model quota is exceeded', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'credits-exhausted',
+        priority: 'credits',
+        supportsCredits: true,
+        showPrioritySwitcher: true,
+        hasCredentials: false,
+        isCreditsExhausted: true,
+        credentialName: undefined,
+        credits: 0,
+      })
+
+      render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem()}
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted').parentElement).toHaveClass('bg-components-badge-bg-dimm')
     })
 
     it('should not show status badge when selected model is readonly', () => {

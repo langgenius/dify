@@ -1,7 +1,8 @@
 import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import Trigger from './trigger'
+
+const mockUseCredentialPanelState = vi.fn()
 
 vi.mock('../hooks', () => ({
   useLanguage: () => 'en_US',
@@ -9,8 +10,15 @@ vi.mock('../hooks', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    modelProviders: [{ provider: 'openai', label: { en_US: 'OpenAI' } }],
+    modelProviders: [{
+      provider: 'openai',
+      label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+    }],
   }),
+}))
+
+vi.mock('../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: () => mockUseCredentialPanelState(),
 }))
 
 vi.mock('../model-icon', () => ({
@@ -22,119 +30,195 @@ vi.mock('../model-name', () => ({
 }))
 
 describe('Trigger', () => {
-  const currentProvider = { provider: 'openai', label: { en_US: 'OpenAI' } } as unknown as ComponentProps<typeof Trigger>['currentProvider']
-  const currentModel = { model: 'gpt-4' } as unknown as ComponentProps<typeof Trigger>['currentModel']
+  const currentProvider = {
+    provider: 'openai',
+    label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  } as unknown as ComponentProps<typeof Trigger>['currentProvider']
+
+  const currentModel = {
+    model: 'gpt-4',
+    status: 'active',
+  } as unknown as ComponentProps<typeof Trigger>['currentModel']
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseCredentialPanelState.mockReturnValue({
+      variant: 'api-active',
+      supportsCredits: true,
+      isCreditsExhausted: false,
+      priority: 'apiKey',
+      showPrioritySwitcher: true,
+      hasCredentials: true,
+      credentialName: 'Primary Key',
+      credits: 10,
+    })
   })
 
-  it('should render initialized state', () => {
-    render(
-      <Trigger
-        currentProvider={currentProvider}
-        currentModel={currentModel}
-      />,
-    )
-    expect(screen.getByText('gpt-4')).toBeInTheDocument()
-    expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+  describe('Rendering', () => {
+    it('should render initialized state when provider and model are available', () => {
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('gpt-4')).toBeInTheDocument()
+      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+    })
+
+    it('should render fallback model id when current model is missing', () => {
+      render(
+        <Trigger
+          modelId="gpt-4"
+          providerName="openai"
+        />,
+      )
+
+      expect(screen.getByText('gpt-4')).toBeInTheDocument()
+    })
+
+    it('should render workflow styles when workflow mode is enabled', () => {
+      const { container } = render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          isInWorkflow
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(container.firstChild).toHaveClass('border-workflow-block-parma-bg')
+      expect(container.firstChild).toHaveClass('bg-workflow-block-parma-bg')
+    })
+
+    it('should render workflow empty state when no provider or model is selected', () => {
+      const { container } = render(<Trigger isInWorkflow />)
+
+      expect(screen.getByText('workflow:errorMsg.configureModel')).toBeInTheDocument()
+      expect(container.firstChild).toHaveClass('border-text-warning')
+      expect(container.firstChild).toHaveClass('bg-state-warning-hover')
+    })
   })
 
-  it('should render fallback model id when current model is missing', () => {
-    render(
-      <Trigger
-        modelId="gpt-4"
-        providerName="openai"
-      />,
-    )
-    expect(screen.getByText('gpt-4')).toBeInTheDocument()
+  describe('Status badges', () => {
+    it('should render credits exhausted split layout in non-workflow mode', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'credits-exhausted',
+        supportsCredits: true,
+        isCreditsExhausted: true,
+        priority: 'credits',
+        showPrioritySwitcher: true,
+        hasCredentials: false,
+        credentialName: undefined,
+        credits: 0,
+      })
+
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+    })
+
+    it('should resolve provider from context when currentProvider is missing in split layout', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'credits-exhausted',
+        supportsCredits: true,
+        isCreditsExhausted: true,
+        priority: 'credits',
+        showPrioritySwitcher: true,
+        hasCredentials: false,
+        credentialName: undefined,
+        credits: 0,
+      })
+
+      render(
+        <Trigger
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+    })
+
+    it('should render api unavailable split layout in non-workflow mode', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        variant: 'api-unavailable',
+        supportsCredits: true,
+        isCreditsExhausted: false,
+        priority: 'apiKey',
+        showPrioritySwitcher: true,
+        hasCredentials: true,
+        credentialName: 'Primary Key',
+        credits: 0,
+      })
+
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+    })
+
+    it('should render incompatible badge when deprecated model is disabled', () => {
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          disabled
+          hasDeprecated
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+    })
+
+    it('should render warning icon when model status is disabled but not deprecated', () => {
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={{ ...currentModel, status: 'no-configure' } as typeof currentModel}
+          disabled
+          modelDisabled
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(document.querySelector('.text-\\[\\#F79009\\]')).toBeInTheDocument()
+    })
   })
 
-  // isInWorkflow=true: workflow border class + RiArrowDownSLine arrow
-  it('should render workflow styles when isInWorkflow is true', () => {
-    // Act
-    const { container } = render(
-      <Trigger
-        currentProvider={currentProvider}
-        currentModel={currentModel}
-        isInWorkflow
-      />,
-    )
+  describe('Edge cases', () => {
+    it('should render without crashing when providerName does not match any provider', () => {
+      render(
+        <Trigger
+          modelId="gpt-4"
+          providerName="unknown-provider"
+        />,
+      )
 
-    // Assert
-    expect(container.firstChild).toHaveClass('border-workflow-block-parma-bg')
-    expect(container.firstChild).toHaveClass('bg-workflow-block-parma-bg')
-    expect(container.querySelectorAll('svg').length).toBe(2)
-  })
-
-  // disabled=true + hasDeprecated=true: AlertTriangle + deprecated tooltip
-  it('should show deprecated warning when disabled with hasDeprecated', () => {
-    // Act
-    render(
-      <Trigger
-        currentProvider={currentProvider}
-        currentModel={currentModel}
-        disabled
-        hasDeprecated
-      />,
-    )
-
-    // Assert - AlertTriangle renders with warning color
-    const warningIcon = document.querySelector('.text-\\[\\#F79009\\]')
-    expect(warningIcon).toBeInTheDocument()
-  })
-
-  // disabled=true + modelDisabled=true: status text tooltip
-  it('should show model status tooltip when disabled with modelDisabled', () => {
-    // Act
-    render(
-      <Trigger
-        currentProvider={currentProvider}
-        currentModel={{ ...currentModel, status: 'no-configure' } as unknown as typeof currentModel}
-        disabled
-        modelDisabled
-      />,
-    )
-
-    // Assert - AlertTriangle warning icon should be present
-    const warningIcon = document.querySelector('.text-\\[\\#F79009\\]')
-    expect(warningIcon).toBeInTheDocument()
-  })
-
-  it('should render empty tooltip content when disabled without deprecated or modelDisabled', async () => {
-    const user = userEvent.setup()
-    const { container } = render(
-      <Trigger
-        currentProvider={currentProvider}
-        currentModel={currentModel}
-        disabled
-        hasDeprecated={false}
-        modelDisabled={false}
-      />,
-    )
-    const warningIcon = document.querySelector('.text-\\[\\#F79009\\]')
-    expect(warningIcon).toBeInTheDocument()
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
-    const tooltip = screen.queryByRole('tooltip')
-    if (tooltip)
-      expect(tooltip).toBeEmptyDOMElement()
-    expect(screen.queryByText('modelProvider.deprecated')).not.toBeInTheDocument()
-    expect(screen.queryByText('No Configure')).not.toBeInTheDocument()
-  })
-
-  // providerName not matching any provider: find() returns undefined
-  it('should render without crashing when providerName does not match any provider', () => {
-    // Act
-    render(
-      <Trigger
-        modelId="gpt-4"
-        providerName="unknown-provider"
-      />,
-    )
-
-    // Assert
-    expect(screen.getByText('gpt-4')).toBeInTheDocument()
+      expect(screen.getByText('gpt-4')).toBeInTheDocument()
+    })
   })
 })

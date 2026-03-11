@@ -33,6 +33,16 @@ type Props = {
   isShowDowngradeWarningModal?: boolean
 }
 
+type FailedUpgradeResponse = {
+  task?: {
+    status?: TaskStatus
+    plugins?: Array<{
+      plugin_unique_identifier: string
+      message: string
+    }>
+  }
+}
+
 enum UploadStep {
   notStarted = 'notStarted',
   upgrading = 'upgrading',
@@ -83,13 +93,20 @@ const UpdatePluginModal: FC<Props> = ({
     if (uploadStep === UploadStep.notStarted) {
       setUploadStep(UploadStep.upgrading)
       try {
+        const response = await updateFromMarketPlace({
+          original_plugin_unique_identifier: originalPackageInfo.id,
+          new_plugin_unique_identifier: targetPackageInfo.id,
+        }) as Awaited<ReturnType<typeof updateFromMarketPlace>> & FailedUpgradeResponse
+
+        if (response.task?.status === TaskStatus.failed) {
+          setUploadStep(UploadStep.notStarted)
+          return
+        }
+
         const {
           all_installed: isInstalled,
           task_id: taskId,
-        } = await updateFromMarketPlace({
-          original_plugin_unique_identifier: originalPackageInfo.id,
-          new_plugin_unique_identifier: targetPackageInfo.id,
-        })
+        } = response
 
         if (isInstalled) {
           onSave()
@@ -102,6 +119,7 @@ const UpdatePluginModal: FC<Props> = ({
         })
         if (status === TaskStatus.failed) {
           Toast.notify({ type: 'error', message: error! })
+          setUploadStep(UploadStep.notStarted)
           return
         }
         onSave()
