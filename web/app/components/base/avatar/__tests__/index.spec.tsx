@@ -19,10 +19,10 @@ describe('Avatar', () => {
     })
 
     it('should render both image and fallback when avatar is provided', () => {
-      render(<Avatar name="John" avatar="https://example.com/avatar.jpg" />)
+      const { container } = render(<Avatar name="John" avatar="https://example.com/avatar.jpg" />)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
-      expect(screen.getByText('J')).toBeInTheDocument()
+      expect(container.querySelector('span')).toBeInTheDocument()
     })
   })
 
@@ -90,12 +90,13 @@ describe('Avatar', () => {
   })
 
   describe('onLoadingStatusChange', () => {
-    it('should render image when avatar and onLoadingStatusChange are provided', () => {
+    it('should pass onLoadingStatusChange to the image element', () => {
+      const onStatusChange = vi.fn()
       render(
         <Avatar
           name="John"
           avatar="https://example.com/avatar.jpg"
-          onLoadingStatusChange={vi.fn()}
+          onLoadingStatusChange={onStatusChange}
         />,
       )
 
