@@ -11,6 +11,14 @@ vi.mock('next/image', () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
 
+function expectDecorativeIcon(container: HTMLElement, src: string) {
+  const icon = container.querySelector('img')
+  expect(icon).toBeInTheDocument()
+  expect(icon).toHaveAttribute('src', src)
+  expect(icon).toHaveAttribute('alt', '')
+  expect(icon).toHaveAttribute('aria-hidden', 'true')
+}
+
 describe('markdown-with-directive', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -108,15 +116,13 @@ describe('markdown-with-directive', () => {
   // Validate WithIconCardItem rendering and image prop forwarding.
   describe('WithIconCardItem component', () => {
     it('should render icon image and child content', () => {
-      render(
+      const { container } = render(
         <WithIconCardItem icon="https://example.com/icon.png">
           <span>Card item content</span>
         </WithIconCardItem>,
       )
 
-      const icon = screen.getByAltText('icon')
-      expect(icon).toBeInTheDocument()
-      expect(icon).toHaveAttribute('src', 'https://example.com/icon.png')
+      expectDecorativeIcon(container, 'https://example.com/icon.png')
       expect(screen.getByText('Card item content')).toBeInTheDocument()
     })
   })
@@ -136,7 +142,7 @@ describe('markdown-with-directive', () => {
       expect(list).toBeInTheDocument()
       expect(list).toHaveClass('space-y-1')
       expect(screen.getByText('Card Title')).toBeInTheDocument()
-      expect(screen.getByAltText('icon')).toHaveAttribute('src', 'https://example.com/icon.png')
+      expectDecorativeIcon(container, 'https://example.com/icon.png')
     })
 
     it('should replace output with invalid content when directive is unknown', () => {
@@ -175,14 +181,14 @@ describe('markdown-with-directive', () => {
       const sanitizeSpy = vi.spyOn(DOMPurify, 'sanitize')
         .mockReturnValue(':withiconcarditem[Sanitized]{icon="https://example.com/safe.png"}')
 
-      render(<MarkdownWithDirective markdown="<script>alert(1)</script>" />)
+      const { container } = render(<MarkdownWithDirective markdown="<script>alert(1)</script>" />)
 
       expect(sanitizeSpy).toHaveBeenCalledWith('<script>alert(1)</script>', {
         ALLOWED_ATTR: [],
         ALLOWED_TAGS: [],
       })
       expect(screen.getByText('Sanitized')).toBeInTheDocument()
-      expect(screen.getByAltText('icon')).toHaveAttribute('src', 'https://example.com/safe.png')
+      expectDecorativeIcon(container, 'https://example.com/safe.png')
     })
 
     it('should render empty output and skip sanitizer when markdown is empty', () => {
