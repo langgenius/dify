@@ -75,6 +75,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
+  sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
@@ -119,6 +120,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   sidebarCollapseState,
   hideAvatar,
+  sendOnEnter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -244,7 +246,7 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (!sidebarCollapseState) {
-      const timer = setTimeout(() => handleWindowResize(), 200)
+      const timer = setTimeout(handleWindowResize, 200)
       return () => clearTimeout(timer)
     }
   }, [handleWindowResize, sidebarCollapseState])
@@ -283,7 +285,7 @@ const Chat: FC<ChatProps> = ({
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {
-                  const isLast = item.id === chatList[chatList.length - 1]?.id
+                  const isLast = item.id === chatList.at(-1)?.id
                   return (
                     <Answer
                       appData={appData}
@@ -363,6 +365,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendOnEnter={sendOnEnter}
                 />
               )
             }
