@@ -31,6 +31,7 @@ def tool_node(monkeypatch) -> ToolNode:
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
+    from dify_graph.nodes.protocols import ToolFileManagerProtocol
     from dify_graph.nodes.tool.tool_node import ToolNode
 
     graph_config: dict[str, Any] = {
@@ -69,11 +70,16 @@ def tool_node(monkeypatch) -> ToolNode:
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
+
+    # Provide a stub ToolFileManager to satisfy the updated ToolNode constructor
+    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+
     node = ToolNode(
         id="node-instance",
         config=config,
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        tool_file_manager_factory=tool_file_manager_factory,
     )
     return node
 
