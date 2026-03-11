@@ -12,6 +12,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -142,7 +143,7 @@ class MessagesCleanService:
         if batch_size <= 0:
             raise ValueError(f"batch_size ({batch_size}) must be greater than 0")
 
-        end_before = datetime.datetime.now() - datetime.timedelta(days=days)
+        end_before = naive_utc_now() - datetime.timedelta(days=days)
 
         logger.info(
             "clean_messages: days=%s, end_before=%s, batch_size=%s, policy=%s",

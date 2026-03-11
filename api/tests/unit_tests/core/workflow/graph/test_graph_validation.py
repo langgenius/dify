@@ -6,16 +6,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
-from core.workflow.graph import Graph
-from core.workflow.graph.validation import GraphValidationError
-from core.workflow.nodes.base.entities import BaseNodeData
-from core.workflow.nodes.base.node import Node
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from dify_graph.entities import GraphInitParams
+from dify_graph.enums import ErrorStrategy, NodeExecutionType, NodeType
+from dify_graph.graph import Graph
+from dify_graph.graph.validation import GraphValidationError
+from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.nodes.base.node import Node
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class _TestNodeData(BaseNodeData):
@@ -92,14 +91,14 @@ class _SimpleNodeFactory:
 @pytest.fixture
 def graph_init_dependencies() -> tuple[_SimpleNodeFactory, dict[str, object]]:
     graph_config: dict[str, object] = {"edges": [], "nodes": []}
-    init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        user_from="account",
+        invoke_from="service-api",
         call_depth=0,
     )
     variable_pool = VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={})
