@@ -158,7 +158,7 @@ const Answer: FC<AnswerProps> = ({
           <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
             <div
               ref={humanInputFormContainerRef}
-              className={cn('body-lg-regular relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary')}
+              className={cn('relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular')}
             >
               {
                 !responding && contentIsEmpty && !hasAgentThoughts && (
@@ -227,7 +227,7 @@ const Answer: FC<AnswerProps> = ({
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
               ref={contentRef}
-              className="body-lg-regular relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary"
+              className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular"
             >
               {
                 !responding && (
@@ -322,7 +322,7 @@ const Answer: FC<AnswerProps> = ({
           <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
             <div
               ref={contentRef}
-              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+              className={cn('relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular', workflowProcess && 'w-full')}
             >
               {
                 !responding && (

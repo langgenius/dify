@@ -7,6 +7,7 @@ from core.model_manager import ModelInstance
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -28,6 +29,7 @@ from dify_graph.nodes.llm import (
 )
 from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -61,13 +63,14 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
         credentials_provider: "CredentialsProvider",
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -90,6 +93,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             llm_file_saver = FileSaverImpl(
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -248,16 +252,13 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: QuestionClassifierNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
-        # Create typed NodeData from dict
-        typed_node_data = QuestionClassifierNodeData.model_validate(node_data)
-
-        variable_mapping = {"query": typed_node_data.query_variable_selector}
+        variable_mapping = {"query": node_data.query_variable_selector}
         variable_selectors: list[VariableSelector] = []
-        if typed_node_data.instruction:
-            variable_template_parser = VariableTemplateParser(template=typed_node_data.instruction)
+        if node_data.instruction:
+            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = list(variable_selector.value_selector)
