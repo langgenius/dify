@@ -40,7 +40,7 @@ const createMockEmblaApi = (): MockEmblaApi => ({
   canScrollPrev: vi.fn(() => mockCanScrollPrev),
   canScrollNext: vi.fn(() => mockCanScrollNext),
   slideNodes: vi.fn(() =>
-    Array.from({ length: mockSlideCount }, () => document.createElement('div')),
+    Array.from({ length: mockSlideCount }).fill(document.createElement('div')),
   ),
   on: vi.fn((event: EmblaEventName, callback: EmblaListener) => {
     listeners[event].push(callback)
@@ -50,13 +50,13 @@ const createMockEmblaApi = (): MockEmblaApi => ({
   }),
 })
 
-const emitEmblaEvent = (event: EmblaEventName, ...args: [MockEmblaApi | undefined] | []) => {
-  const api = args.length > 0 ? args[0] : mockApi
+function emitEmblaEvent(event: EmblaEventName, api?: MockEmblaApi) {
+  const resolvedApi = arguments.length === 1 ? mockApi : api
+
   listeners[event].forEach((callback) => {
-    callback(api)
+    callback(resolvedApi)
   })
 }
-
 const renderCarouselWithControls = (orientation: 'horizontal' | 'vertical' = 'horizontal') => {
   return render(
     <Carousel orientation={orientation}>
