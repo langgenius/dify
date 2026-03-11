@@ -96,7 +96,7 @@ function StatusLabel({ variant, credentialName }: {
         {credentialName}
       </span>
       {showWarning && (
-        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
+        <Warning className="ml-auto h-3 w-3 shrink-0 text-text-warning" />
       )}
       {variant === 'api-unavailable' && (
         <span className="shrink-0 text-text-destructive system-2xs-medium">
