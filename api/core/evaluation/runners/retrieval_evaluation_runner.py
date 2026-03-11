@@ -33,48 +33,39 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         """Compute retrieval evaluation metrics."""
-        # Merge retrieved contexts into items
-        result_by_index = {r.index: r for r in results}
+        if not node_run_result_list:
+            return []
+        if not default_metric:
+            raise ValueError("Default metric is required for retrieval evaluation")
+
         merged_items = []
-        for item in items:
-            result = result_by_index.get(item.index)
-            contexts = result.metadata.get("retrieved_contexts", []) if result else []
+        for i, node_result in enumerate(node_run_result_list):
+            # Extract retrieved contexts from outputs
+            outputs = node_result.outputs
+            contexts = list(outputs.get("retrieved_contexts", []))
+            query = self._extract_query(dict(node_result.inputs))
+            # Extract retrieved content from result list
+            result_list = outputs.get("result", [])
+            output = "\n---\n".join(
+                str(item.get("content", "")) for item in result_list if item.get("content")
+            )
+
             merged_items.append(
                 EvaluationItemInput(
-                    index=item.index,
-                    inputs=item.inputs,
-                    expected_output=item.expected_output,
+                    index=i,
+                    inputs={"query": query},
+                    output=output,
                     context=contexts,
                 )
             )
 
-        evaluated = self.evaluation_instance.evaluate_retrieval(
-            merged_items, default_metrics, model_provider, model_name, tenant_id
+        return self.evaluation_instance.evaluate_retrieval(
+            merged_items, default_metric.metric, model_provider, model_name, tenant_id
         )
-
-        # Merge metrics back into original results (preserve actual_output and metadata)
-        eval_by_index = {r.index: r for r in evaluated}
-        final_results = []
-        for result in results:
-            if result.index in eval_by_index:
-                eval_result = eval_by_index[result.index]
-                final_results.append(
-                    EvaluationItemResult(
-                        index=result.index,
-                        actual_output=result.actual_output,
-                        metrics=eval_result.metrics,
-                        metadata=result.metadata,
-                        error=result.error,
-                    )
-                )
-            else:
-                final_results.append(result)
-        return final_results
 
     @staticmethod
     def _extract_query(inputs: dict[str, Any]) -> str:
-        for key in ("query", "question", "input", "text"):
+        for key in ("query"):
             if key in inputs:
                 return str(inputs[key])
-        values = list(inputs.values())
-        return str(values[0]) if values else ""
+        return ""

@@ -126,7 +126,7 @@ class RagasEvaluator(BaseEvaluationInstance):
         samples = []
         for item in items:
             sample = SingleTurnSample(
-                user_input=self._inputs_to_query(item.inputs),
+                user_input=self._inputs_format(item.inputs, category),
                 response=item.expected_output or "",
                 retrieved_contexts=item.context or [],
             )
@@ -233,14 +233,15 @@ class RagasEvaluator(BaseEvaluationInstance):
             return 0.0
 
     @staticmethod
-    def _inputs_to_query(inputs: dict[str, Any]) -> str:
-        """Convert input dict to a query string."""
-        if "query" in inputs:
-            return str(inputs["query"])
-        if "question" in inputs:
-            return str(inputs["question"])
-        # Fallback: concatenate all input values
-        return " ".join(str(v) for v in inputs.values())
+    def _inputs_format(inputs: dict[str, Any], category: EvaluationCategory) -> str:
+        """Convert input dict to a prompt string."""
+        match category:
+            case EvaluationCategory.LLM:
+                return str(inputs["prompt"])
+            case EvaluationCategory.RETRIEVAL:
+                return str(inputs["query"])
+            case _:
+                return ""
 
     @staticmethod
     def _build_ragas_metrics(requested_metrics: list[str]) -> list[Any]:
