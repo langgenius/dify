@@ -1,9 +1,6 @@
 import time
 from unittest import mock
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from dify_graph.entities import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
     GraphRunStartedEvent,
@@ -12,6 +9,8 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from dify_graph.nodes.end.end_node import EndNode
 from dify_graph.nodes.end.entities import EndNodeData
@@ -29,6 +28,7 @@ from dify_graph.nodes.start.start_node import StartNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.utils.condition.entities import Condition
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -37,15 +37,10 @@ from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Graph, GraphRuntimeState]:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
+    graph_init_params = build_test_graph_init_params(
         graph_config=graph_config,
-        user_id="user",
         user_from="account",
         invoke_from="debugger",
-        call_depth=0,
     )
 
     variable_pool = VariablePool(

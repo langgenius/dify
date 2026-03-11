@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.workflow_entry import WorkflowEntry
@@ -49,7 +49,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import UserFrom
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -438,8 +437,8 @@ class WorkflowService:
         """
         try:
             from core.model_manager import ModelManager
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get model instance to validate provider+model combination
             model_manager = ModelManager()
@@ -558,8 +557,8 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from core.model_runtime.entities.model_entities import ModelType
             from core.provider_manager import ProviderManager
+            from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
             provider_manager = ProviderManager()
@@ -1016,7 +1015,7 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id)
         params = FormCreateParams(
             app_id=app_model.id,
             workflow_execution_id=None,
@@ -1064,13 +1063,15 @@ class WorkflowService:
         variable_pool: VariablePool,
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            user_id=account.id,
-            user_from=UserFrom.ACCOUNT.value,
-            invoke_from=InvokeFrom.DEBUGGER.value,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=account.id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -1082,6 +1083,7 @@ class WorkflowService:
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
         )
         return node
 

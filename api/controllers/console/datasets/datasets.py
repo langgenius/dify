@@ -25,12 +25,12 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
-from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
@@ -119,6 +119,14 @@ def _validate_indexing_technique(value: str | None) -> str | None:
     return value
 
 
+def _validate_doc_form(value: str | None) -> str | None:
+    if value is None:
+        return value
+    if value not in Dataset.DOC_FORM_LIST:
+        raise ValueError("Invalid doc_form.")
+    return value
+
+
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field("", max_length=400)
@@ -177,6 +185,14 @@ class IndexingEstimatePayload(BaseModel):
         result = _validate_indexing_technique(value)
         if result is None:
             raise ValueError("indexing_technique is required.")
+        return result
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        result = _validate_doc_form(value)
+        if result is None:
+            return "text_model"
         return result
 
 
@@ -791,7 +807,7 @@ class DatasetApiKeyApi(Resource):
             console_ns.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
+                custom="max_keys_exceeded",
             )
 
         key = ApiToken.generate_api_key(self.token_prefix, 24)

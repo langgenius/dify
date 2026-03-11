@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing_extensions import override
 
 from configs import dify_config
+from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.llm.model_access import build_dify_model_access
 from core.datasource.datasource_manager import DatasourceManager
 from core.helper.code_executor.code_executor import (
@@ -15,18 +16,20 @@ from core.helper.code_executor.code_executor import (
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.memory import PromptMessageMemory
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.summary_index.summary_index import SummaryIndex
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType, SystemVariableKey
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph.graph import NodeFactory
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.memory import PromptMessageMemory
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
 from dify_graph.nodes.code.entities import CodeLanguage
@@ -34,6 +37,7 @@ from dify_graph.nodes.code.limits import CodeNodeLimits
 from dify_graph.nodes.datasource import DatasourceNode
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
 from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from dify_graph.nodes.llm.entities import ModelConfig
@@ -46,6 +50,7 @@ from dify_graph.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
 )
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
+from dify_graph.nodes.tool.tool_node import ToolNode
 from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
@@ -108,6 +113,7 @@ class DifyNodeFactory(NodeFactory):
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
+        self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
         self._code_executor: WorkflowCodeExecutor = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -119,7 +125,7 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._template_renderer = CodeExecutorJinja2TemplateRenderer()
+        self._template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
         self._http_request_tool_file_manager_factory = ToolFileManager
@@ -139,7 +145,16 @@ class DifyNodeFactory(NodeFactory):
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
         )
 
-        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(graph_init_params.tenant_id)
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context.tenant_id)
+
+    @staticmethod
+    def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
+        raw_ctx = run_context.get(DIFY_RUN_CONTEXT_KEY)
+        if raw_ctx is None:
+            raise ValueError(f"run_context missing required key: {DIFY_RUN_CONTEXT_KEY}")
+        if isinstance(raw_ctx, DifyRunContext):
+            return raw_ctx
+        return DifyRunContext.model_validate(raw_ctx)
 
     @override
     def create_node(self, node_config: NodeConfigDict) -> Node:
@@ -205,6 +220,15 @@ class DifyNodeFactory(NodeFactory):
                 file_manager=self._http_request_file_manager,
             )
 
+        if node_type == NodeType.HUMAN_INPUT:
+            return HumanInputNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                form_repository=HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
+            )
+
         if node_type == NodeType.KNOWLEDGE_INDEX:
             return KnowledgeIndexNode(
                 id=node_id,
@@ -227,6 +251,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.DATASOURCE:
@@ -254,6 +279,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
                 unstructured_api_config=self._document_extractor_unstructured_api_config,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.QUESTION_CLASSIFIER:
@@ -268,6 +294,7 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+                http_client=self._http_request_http_client,
             )
 
         if node_type == NodeType.PARAMETER_EXTRACTOR:
@@ -282,6 +309,15 @@ class DifyNodeFactory(NodeFactory):
                 model_factory=self._llm_model_factory,
                 model_instance=model_instance,
                 memory=memory,
+            )
+
+        if node_type == NodeType.TOOL:
+            return ToolNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                tool_file_manager_factory=self._http_request_tool_file_manager_factory(),
             )
 
         return node_class(
@@ -344,7 +380,7 @@ class DifyNodeFactory(NodeFactory):
         )
         return fetch_memory(
             conversation_id=conversation_id,
-            app_id=self.graph_init_params.app_id,
+            app_id=self._dify_context.app_id,
             node_data_memory=node_memory,
             model_instance=model_instance,
         )

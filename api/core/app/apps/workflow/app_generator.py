@@ -28,10 +28,10 @@ from core.app.entities.task_entities import WorkflowAppBlockingResponse, Workflo
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
 from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository

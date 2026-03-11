@@ -5,7 +5,6 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -17,6 +16,7 @@ from dify_graph.graph_events import (
     GraphRunFailedEvent,
     NodeRunSucceededEvent,
 )
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import (
     LoopFailedEvent,
     LoopNextEvent,
@@ -412,24 +412,14 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             return build_segment_with_type(var_type, value)
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
-        # Import dependencies
-        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
-        from core.workflow.node_factory import DifyNodeFactory
         from dify_graph.entities import GraphInitParams
-        from dify_graph.graph import Graph
-        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-        from dify_graph.graph_engine.command_channels import InMemoryChannel
         from dify_graph.runtime import GraphRuntimeState
 
-        # Create GraphInitParams from node attributes
+        # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -439,22 +429,10 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             start_at=start_at.timestamp(),
         )
 
-        # Create a new node factory with the new GraphRuntimeState
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state_copy
-        )
-
-        # Initialize the loop graph with the new node factory
-        loop_graph = Graph.init(graph_config=self.graph_config, node_factory=node_factory, root_node_id=root_node_id)
-
-        # Create a new GraphEngine for this iteration
-        graph_engine = GraphEngine(
+        return self.graph_runtime_state.create_child_engine(
             workflow_id=self.workflow_id,
-            graph=loop_graph,
+            graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state_copy,
-            command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
-            config=GraphEngineConfig(),
+            graph_config=self.graph_config,
+            root_node_id=root_node_id,
         )
-        graph_engine.layer(LLMQuotaLayer())
-
-        return graph_engine

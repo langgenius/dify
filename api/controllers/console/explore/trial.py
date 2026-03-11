@@ -41,8 +41,8 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
 from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.app_fields import (

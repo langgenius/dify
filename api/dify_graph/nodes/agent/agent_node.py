@@ -13,9 +13,6 @@ from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.provider_manager import ProviderManager
 from core.tools.entities.tool_entities import (
     ToolIdentity,
@@ -32,6 +29,9 @@ from dify_graph.enums import (
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.file import File, FileTransferMethod
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
     AgentLogEvent,
     NodeEventBase,
@@ -80,9 +80,11 @@ class AgentNode(Node[AgentNodeData]):
     def _run(self) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
+        dify_ctx = self.require_dify_context()
+
         try:
             strategy = get_plugin_agent_strategy(
-                tenant_id=self.tenant_id,
+                tenant_id=dify_ctx.tenant_id,
                 agent_strategy_provider_name=self.node_data.agent_strategy_provider_name,
                 agent_strategy_name=self.node_data.agent_strategy_name,
             )
@@ -120,8 +122,8 @@ class AgentNode(Node[AgentNodeData]):
         try:
             message_stream = strategy.invoke(
                 params=parameters,
-                user_id=self.user_id,
-                app_id=self.app_id,
+                user_id=dify_ctx.user_id,
+                app_id=dify_ctx.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
                 credentials=credentials,
             )
@@ -144,8 +146,8 @@ class AgentNode(Node[AgentNodeData]):
                     "agent_strategy": self.node_data.agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
-                user_id=self.user_id,
-                tenant_id=self.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,
@@ -283,8 +285,13 @@ class AgentNode(Node[AgentNodeData]):
                         runtime_variable_pool: VariablePool | None = None
                         if node_data.version != "1" or node_data.tool_node_version is not None:
                             runtime_variable_pool = variable_pool
+                        dify_ctx = self.require_dify_context()
                         tool_runtime = ToolManager.get_agent_tool_runtime(
-                            self.tenant_id, self.app_id, entity, self.invoke_from, runtime_variable_pool
+                            dify_ctx.tenant_id,
+                            dify_ctx.app_id,
+                            entity,
+                            dify_ctx.invoke_from,
+                            runtime_variable_pool,
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
@@ -396,7 +403,8 @@ class AgentNode(Node[AgentNodeData]):
         from core.plugin.impl.plugin import PluginInstaller
 
         manager = PluginInstaller()
-        plugins = manager.list_plugins(self.tenant_id)
+        dify_ctx = self.require_dify_context()
+        plugins = manager.list_plugins(dify_ctx.tenant_id)
         try:
             current_plugin = next(
                 plugin
@@ -417,8 +425,11 @@ class AgentNode(Node[AgentNodeData]):
             return None
         conversation_id = conversation_id_variable.value
 
+        dify_ctx = self.require_dify_context()
         with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(Conversation).where(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
+            stmt = select(Conversation).where(
+                Conversation.app_id == dify_ctx.app_id, Conversation.id == conversation_id
+            )
             conversation = session.scalar(stmt)
 
             if not conversation:
@@ -429,9 +440,10 @@ class AgentNode(Node[AgentNodeData]):
         return memory
 
     def _fetch_model(self, value: dict[str, Any]) -> tuple[ModelInstance, AIModelEntity | None]:
+        dify_ctx = self.require_dify_context()
         provider_manager = ProviderManager()
         provider_model_bundle = provider_manager.get_provider_model_bundle(
-            tenant_id=self.tenant_id, provider=value.get("provider", ""), model_type=ModelType.LLM
+            tenant_id=dify_ctx.tenant_id, provider=value.get("provider", ""), model_type=ModelType.LLM
         )
         model_name = value.get("model", "")
         model_credentials = provider_model_bundle.configuration.get_current_credentials(
@@ -440,7 +452,7 @@ class AgentNode(Node[AgentNodeData]):
         provider_name = provider_model_bundle.configuration.provider.provider
         model_type_instance = provider_model_bundle.model_type_instance
         model_instance = ModelManager().get_model_instance(
-            tenant_id=self.tenant_id,
+            tenant_id=dify_ctx.tenant_id,
             provider=provider_name,
             model_type=ModelType(value.get("model_type", "")),
             model=model_name,

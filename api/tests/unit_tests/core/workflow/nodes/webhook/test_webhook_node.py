@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.entities.graph_init_params import GraphInitParams
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.nodes.trigger_webhook.entities import (
@@ -18,8 +18,6 @@ from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import FileVariable, StringVariable
-from models.enums import UserFrom
-from models.workflow import WorkflowType
 
 
 def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) -> TriggerWebhookNode:
@@ -30,14 +28,17 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     }
 
     graph_init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config={},
-        user_id="1",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "1",
+                "app_id": "1",
+                "user_id": "1",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     runtime_state = GraphRuntimeState(

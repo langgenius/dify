@@ -15,30 +15,6 @@ from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance
-from core.model_runtime.entities import (
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentType,
-    TextPromptMessageContent,
-)
-from core.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-    LLMStructuredOutput,
-    LLMUsage,
-)
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    PromptMessageContentUnionTypes,
-    PromptMessageRole,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
-from core.model_runtime.memory import PromptMessageMemory
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
@@ -52,6 +28,30 @@ from dify_graph.enums import (
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.model_runtime.entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+    TextPromptMessageContent,
+)
+from dify_graph.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+    LLMStructuredOutput,
+    LLMUsage,
+)
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageContentUnionTypes,
+    PromptMessageRole,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
+from dify_graph.model_runtime.memory import PromptMessageMemory
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
     ModelInvokeCompletedEvent,
     NodeEventBase,
@@ -64,6 +64,7 @@ from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
     ArrayFileSegment,
@@ -127,6 +128,7 @@ class LLMNode(Node[LLMNodeData]):
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -145,9 +147,11 @@ class LLMNode(Node[LLMNodeData]):
         self._memory = memory
 
         if llm_file_saver is None:
+            dify_ctx = self.require_dify_context()
             llm_file_saver = FileSaverImpl(
-                user_id=graph_init_params.user_id,
-                tenant_id=graph_init_params.tenant_id,
+                user_id=dify_ctx.user_id,
+                tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -242,7 +246,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
-                user_id=self.user_id,
+                user_id=self.require_dify_context().user_id,
                 structured_output_enabled=self.node_data.structured_output_enabled,
                 structured_output=self.node_data.structured_output,
                 file_saver=self._llm_file_saver,
@@ -702,7 +706,7 @@ class LLMNode(Node[LLMNodeData]):
                                         filename=upload_file.name,
                                         extension="." + upload_file.extension,
                                         mime_type=upload_file.mime_type,
-                                        tenant_id=self.tenant_id,
+                                        tenant_id=self.require_dify_context().tenant_id,
                                         type=FileType.IMAGE,
                                         transfer_method=FileTransferMethod.LOCAL_FILE,
                                         remote_url=upload_file.source_url,

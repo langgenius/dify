@@ -3,10 +3,10 @@ from datetime import datetime
 
 from pydantic import Field
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.file import File
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
 
 from .base import NodeEventBase

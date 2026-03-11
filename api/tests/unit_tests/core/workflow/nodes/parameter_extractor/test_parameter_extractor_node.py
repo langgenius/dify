@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from core.model_runtime.entities import LLMMode
+from dify_graph.model_runtime.entities import LLMMode
 from dify_graph.nodes.llm import ModelConfig, VisionConfig
 from dify_graph.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
 from dify_graph.nodes.parameter_extractor.exc import (

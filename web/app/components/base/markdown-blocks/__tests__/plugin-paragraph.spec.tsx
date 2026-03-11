@@ -1,10 +1,11 @@
 /* eslint-disable next/no-img-element */
+import type { ExtraProps } from 'streamdown'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { PluginParagraph } from '../plugin-paragraph'
-import { getMarkdownImageURL } from '../utils'
+import { getMarkdownImageURL, hasImageChild } from '../utils'
 
 // Mock dependencies
 vi.mock('@/service/use-plugins', () => ({
@@ -13,6 +14,7 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('../utils', () => ({
   getMarkdownImageURL: vi.fn(),
+  hasImageChild: vi.fn((): boolean => false),
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
@@ -25,13 +27,14 @@ vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
 }))
 
 /**
- * Interfaces to avoid 'any' and satisfy strict linting
+ * Helper to build a minimal hast-compatible Element node for testing.
+ * The runtime code only reads `node.children[*].tagName` and `.properties.src`,
+ * so we keep the mock minimal and cast to satisfy the full hast Element type.
  */
-type MockNode = {
-  children?: Array<{
-    tagName?: string
-    properties?: { src?: string }
-  }>
+type MockChild = { tagName?: string, properties?: { src?: string } }
+
+function mockNode(children: MockChild[]): ExtraProps['node'] {
+  return { type: 'element', tagName: 'p', properties: {}, children } as unknown as ExtraProps['node']
 }
 
 type HookReturn = {
@@ -64,7 +67,7 @@ describe('PluginParagraph', () => {
   })
 
   it('should render a standard paragraph when not an image', () => {
-    const node: MockNode = { children: [{ tagName: 'span' }] }
+    const node = mockNode([{ tagName: 'span' }])
     render(
       <PluginParagraph node={node}>
         Hello World
@@ -75,9 +78,7 @@ describe('PluginParagraph', () => {
   })
 
   it('should render an ImageGallery when the first child is an image', () => {
-    const node: MockNode = {
-      children: [{ tagName: 'img', properties: { src: 'test-img.png' } }],
-    }
+    const node = mockNode([{ tagName: 'img', properties: { src: 'test-img.png' } }])
     vi.mocked(getMarkdownImageURL).mockReturnValue('https://cdn.com/test-img.png')
 
     const { container } = render(
@@ -93,9 +94,7 @@ describe('PluginParagraph', () => {
   })
 
   it('should use a blob URL when asset data is successfully fetched', () => {
-    const node: MockNode = {
-      children: [{ tagName: 'img', properties: { src: 'test-img.png' } }],
-    }
+    const node = mockNode([{ tagName: 'img', properties: { src: 'test-img.png' } }])
     const mockBlob = new Blob([''], { type: 'image/png' })
     vi.mocked(usePluginReadmeAsset).mockReturnValue({
       data: mockBlob,
@@ -114,12 +113,10 @@ describe('PluginParagraph', () => {
   })
 
   it('should render remaining children below the image gallery', () => {
-    const node: MockNode = {
-      children: [
-        { tagName: 'img', properties: { src: 'test-img.png' } },
-        { tagName: 'text' },
-      ],
-    }
+    const node = mockNode([
+      { tagName: 'img', properties: { src: 'test-img.png' } },
+      { tagName: 'text' },
+    ])
 
     render(
       <PluginParagraph pluginInfo={mockPluginInfo} node={node}>
@@ -132,9 +129,7 @@ describe('PluginParagraph', () => {
   })
 
   it('should revoke the blob URL on unmount to prevent memory leaks', () => {
-    const node: MockNode = {
-      children: [{ tagName: 'img', properties: { src: 'test-img.png' } }],
-    }
+    const node = mockNode([{ tagName: 'img', properties: { src: 'test-img.png' } }])
     const mockBlob = new Blob([''], { type: 'image/png' })
     vi.mocked(usePluginReadmeAsset).mockReturnValue({
       data: mockBlob,
@@ -155,9 +150,7 @@ describe('PluginParagraph', () => {
 
   it('should open the image preview modal when an image in the gallery is clicked', async () => {
     const user = userEvent.setup()
-    const node: MockNode = {
-      children: [{ tagName: 'img', properties: { src: 'test-img.png' } }],
-    }
+    const node = mockNode([{ tagName: 'img', properties: { src: 'test-img.png' } }])
     vi.mocked(getMarkdownImageURL).mockReturnValue('https://cdn.com/gallery.png')
 
     const { container } = render(
@@ -177,5 +170,23 @@ describe('PluginParagraph', () => {
     const closeBtn = screen.getByText('Close')
     await user.click(closeBtn)
     expect(screen.queryByTestId('image-preview-modal')).not.toBeInTheDocument()
+  })
+
+  it('should render div instead of p when image is not the first child', () => {
+    vi.mocked(hasImageChild).mockReturnValue(true)
+
+    const node = mockNode([
+      { tagName: 'span' },
+      { tagName: 'img', properties: { src: 'test.png' } },
+    ])
+
+    render(
+      <PluginParagraph node={node}>
+        <span>Text</span>
+      </PluginParagraph>,
+    )
+
+    expect(screen.getByTestId('image-fallback-paragraph')).toBeInTheDocument()
+    expect(screen.getByTestId('image-fallback-paragraph').tagName).toBe('DIV')
   })
 })

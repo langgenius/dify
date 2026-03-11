@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.agent import AgentNode
 from dify_graph.nodes.code import CodeNode
@@ -22,8 +22,13 @@ from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from dify_graph.nodes.llm import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
+from dify_graph.nodes.protocols import HttpClientProtocol, ToolFileManagerProtocol
 from dify_graph.nodes.question_classifier import QuestionClassifierNode
 from dify_graph.nodes.template_transform import TemplateTransformNode
+from dify_graph.nodes.template_transform.template_renderer import (
+    Jinja2TemplateRenderer,
+    TemplateRenderError,
+)
 from dify_graph.nodes.tool import ToolNode
 
 if TYPE_CHECKING:
@@ -31,6 +36,18 @@ if TYPE_CHECKING:
     from dify_graph.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
+
+
+class _TestJinja2Renderer(Jinja2TemplateRenderer):
+    """Simple Jinja2 renderer for tests (avoids code executor)."""
+
+    def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
+        from jinja2 import Template as _Jinja2Template
+
+        try:
+            return _Jinja2Template(template).render(**variables)
+        except Exception as exc:  # pragma: no cover - pass through as contract error
+            raise TemplateRenderError(str(exc)) from exc
 
 
 class MockNodeMixin:
@@ -49,6 +66,18 @@ class MockNodeMixin:
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
             kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+            # LLM-like nodes now require an http_client; provide a mock by default for tests.
+            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+
+        # Ensure TemplateTransformNode receives a renderer now required by constructor
+        if isinstance(self, TemplateTransformNode):
+            kwargs.setdefault("template_renderer", _TestJinja2Renderer())
+
+        # Provide default tool_file_manager_factory for ToolNode subclasses
+        from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+
+        if isinstance(self, _ToolNode):
+            kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
 
         super().__init__(
             id=id,
@@ -583,13 +612,9 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -659,13 +684,9 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 

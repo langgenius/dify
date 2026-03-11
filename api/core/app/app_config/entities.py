@@ -4,9 +4,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.file import FileUploadConfig
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from dify_graph.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
@@ -281,7 +281,7 @@ class EasyUIBasedAppConfig(AppConfig):
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
     app_model_config_id: str
-    app_model_config_dict: dict
+    app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
     dataset: DatasetEntity | None = None

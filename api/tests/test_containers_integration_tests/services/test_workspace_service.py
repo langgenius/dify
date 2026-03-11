@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.workspace_service import WorkspaceService
@@ -29,7 +30,7 @@ class TestWorkspaceService:
                 "dify_config": mock_dify_config,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -50,10 +51,8 @@ class TestWorkspaceService:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant
         tenant = Tenant(
@@ -62,8 +61,8 @@ class TestWorkspaceService:
             plan="basic",
             custom_config='{"replace_webapp_logo": true, "remove_webapp_brand": false}',
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join with owner role
         join = TenantAccountJoin(
@@ -72,15 +71,15 @@ class TestWorkspaceService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def test_get_tenant_info_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_tenant_info_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of tenant information with all features enabled.
 
@@ -121,13 +120,12 @@ class TestWorkspaceService:
             assert "replace_webapp_logo" in result["custom_config"]
 
             # Verify database state
-            from extensions.ext_database import db
 
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_without_custom_config(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval when custom config features are disabled.
@@ -167,13 +165,12 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            from extensions.ext_database import db
 
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_normal_user_role(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for normal user role without privileged features.
@@ -191,11 +188,14 @@ class TestWorkspaceService:
         )
 
         # Update the join to have normal role
-        from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = (
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=account.id)
+            .first()
+        )
         join.role = TenantAccountRole.NORMAL
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Setup mocks for feature service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -220,11 +220,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_admin_role_and_logo_replacement(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for admin role with logo replacement enabled.
@@ -242,11 +242,14 @@ class TestWorkspaceService:
         )
 
         # Update the join to have admin role
-        from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = (
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=account.id)
+            .first()
+        )
         join.role = TenantAccountRole.ADMIN
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -268,10 +271,12 @@ class TestWorkspaceService:
             assert "replace_webapp_logo" in result["custom_config"]
 
             # Verify database state
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
-    def test_get_tenant_info_with_tenant_none(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_tenant_info_with_tenant_none(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test tenant info retrieval when tenant parameter is None.
 
@@ -290,7 +295,7 @@ class TestWorkspaceService:
         assert result is None
 
     def test_get_tenant_info_with_custom_config_variations(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval with various custom config configurations.
@@ -323,10 +328,8 @@ class TestWorkspaceService:
             # Update tenant custom config
             import json
 
-            from extensions.ext_database import db
-
             tenant.custom_config = json.dumps(config)
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Setup mocks
             mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -353,11 +356,11 @@ class TestWorkspaceService:
                 assert result["custom_config"]["remove_webapp_brand"] == config["remove_webapp_brand"]
 
                 # Verify database state
-                db.session.refresh(tenant)
+                db_session_with_containers.refresh(tenant)
                 assert tenant.id is not None
 
     def test_get_tenant_info_with_editor_role_and_limited_permissions(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for editor role with limited permissions.
@@ -375,11 +378,14 @@ class TestWorkspaceService:
         )
 
         # Update the join to have editor role
-        from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = (
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=account.id)
+            .first()
+        )
         join.role = TenantAccountRole.EDITOR
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -400,11 +406,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_dataset_operator_role(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for dataset operator role.
@@ -422,11 +428,14 @@ class TestWorkspaceService:
         )
 
         # Update the join to have dataset operator role
-        from extensions.ext_database import db
 
-        join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        join = (
+            db_session_with_containers.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=account.id)
+            .first()
+        )
         join.role = TenantAccountRole.DATASET_OPERATOR
-        db.session.commit()
+        db_session_with_containers.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -447,11 +456,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db.session.refresh(tenant)
+            db_session_with_containers.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_complex_custom_config_scenarios(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval with complex custom config scenarios.
@@ -491,10 +500,8 @@ class TestWorkspaceService:
             # Update tenant custom config
             import json
 
-            from extensions.ext_database import db
-
             tenant.custom_config = json.dumps(config)
-            db.session.commit()
+            db_session_with_containers.commit()
 
             # Setup mocks
             mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -525,5 +532,5 @@ class TestWorkspaceService:
                     assert result["custom_config"]["remove_webapp_brand"] is False
 
                 # Verify database state
-                db.session.refresh(tenant)
+                db_session_with_containers.refresh(tenant)
                 assert tenant.id is not None

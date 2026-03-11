@@ -2,11 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from models.enums import UserFrom
 
 
 class TestWorkflowEntryRedisChannel:
