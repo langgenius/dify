@@ -1,6 +1,8 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { ReactMarkdownWrapper } from '../react-markdown-wrapper'
+import StreamdownWrapper from '../streamdown-wrapper'
+
+const TILDE_RANGE_RE = /0\.3~8mm/
 
 vi.mock('@/app/components/base/markdown-blocks', () => ({
   AudioBlock: ({ children }: PropsWithChildren) => <div data-testid="audio-block">{children}</div>,
@@ -20,7 +22,7 @@ vi.mock('@/app/components/base/markdown-blocks/code-block', () => ({
   default: ({ children }: PropsWithChildren) => <code>{children}</code>,
 }))
 
-describe('ReactMarkdownWrapper', () => {
+describe('StreamdownWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -31,11 +33,11 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'Range: 0.3~8mm'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert - check that ~ is rendered as text, not as strikethrough (del element)
       // The content should contain the tilde as literal text
-      expect(screen.getByText(/0\.3~8mm/)).toBeInTheDocument()
+      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
       expect(document.querySelector('del')).toBeNull()
     })
 
@@ -44,7 +46,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'This is ~~strikethrough~~ text'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert - del element should be present for double tildes
       const delElement = document.querySelector('del')
@@ -57,7 +59,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'PCB thickness: 0.3~8mm and ~~removed feature~~ text'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
       // Only double tildes should create strikethrough
@@ -66,7 +68,7 @@ describe('ReactMarkdownWrapper', () => {
       expect(delElements[0].textContent).toBe('removed feature')
 
       // Single tilde should remain as literal text
-      expect(screen.getByText(/0\.3~8mm/)).toBeInTheDocument()
+      expect(screen.getByText(TILDE_RANGE_RE)).toBeInTheDocument()
     })
   })
 
@@ -76,7 +78,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = 'Hello World'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
       expect(screen.getByText('Hello World')).toBeInTheDocument()
@@ -87,11 +89,11 @@ describe('ReactMarkdownWrapper', () => {
       const content = '**bold text**'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
       expect(screen.getByText('bold text')).toBeInTheDocument()
-      expect(document.querySelector('strong')).not.toBeNull()
+      expect(document.querySelector('[data-streamdown="strong"]')).not.toBeNull()
     })
 
     it('should render italic text', () => {
@@ -99,7 +101,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = '*italic text*'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
       expect(screen.getByText('italic text')).toBeInTheDocument()
@@ -108,7 +110,7 @@ describe('ReactMarkdownWrapper', () => {
 
     it('should render standard Image component when pluginInfo is not provided', () => {
       // Act
-      render(<ReactMarkdownWrapper latexContent="![standard-img](https://example.com/img.png)" />)
+      render(<StreamdownWrapper latexContent="![standard-img](https://example.com/img.png)" />)
 
       // Assert
       expect(screen.getByTestId('img')).toBeInTheDocument()
@@ -119,7 +121,7 @@ describe('ReactMarkdownWrapper', () => {
       const content = '```javascript\nconsole.log("hello")\n```'
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} />)
+      render(<StreamdownWrapper latexContent={content} />)
 
       // Assert
       // We mocked code block to return <code>{children}</code>
@@ -135,7 +137,7 @@ describe('ReactMarkdownWrapper', () => {
       const pluginInfo = { pluginUniqueIdentifier: 'test-plugin', pluginId: 'plugin-1' }
 
       // Act
-      render(<ReactMarkdownWrapper latexContent={content} pluginInfo={pluginInfo} />)
+      render(<StreamdownWrapper latexContent={content} pluginInfo={pluginInfo} />)
 
       // Assert
       expect(screen.getByTestId('plugin-img')).toBeInTheDocument()
@@ -154,7 +156,7 @@ describe('ReactMarkdownWrapper', () => {
       }
 
       // Act
-      render(<ReactMarkdownWrapper latexContent="[link](https://example.com)" customComponents={customComponents} />)
+      render(<StreamdownWrapper latexContent="[link](https://example.com)" customComponents={customComponents} />)
 
       // Assert
       expect(screen.getByTestId('custom-link')).toBeInTheDocument()
@@ -162,28 +164,30 @@ describe('ReactMarkdownWrapper', () => {
 
     it('should disallow customDisallowedElements', () => {
       // Act - disallow strong (which is usually **bold**)
-      render(<ReactMarkdownWrapper latexContent="**bold**" customDisallowedElements={['strong']} />)
+      render(<StreamdownWrapper latexContent="**bold**" customDisallowedElements={['strong']} />)
 
       // Assert - strong element shouldn't be rendered (it will be stripped out)
-      expect(document.querySelector('strong')).toBeNull()
+      expect(document.querySelector('[data-streamdown="strong"]')).toBeNull()
     })
   })
 
   describe('Rehype AST modification', () => {
     it('should remove ref attributes from elements', () => {
       // Act
-      render(<ReactMarkdownWrapper latexContent={'<div ref="someRef">content</div>'} />)
+      render(<StreamdownWrapper latexContent={'<div ref="someRef">content</div>'} />)
 
-      // Assert - If ref isn't stripped, it gets passed to React DOM causing warnings, but here we just ensure content renders
+      // Assert - ref attribute should be removed
       expect(screen.getByText('content')).toBeInTheDocument()
+      expect(document.querySelector('[ref="someRef"]')).toBeNull()
     })
 
-    it('should convert invalid tag names to text nodes', () => {
-      // Act - <custom-element> is invalid because it contains a hyphen
-      render(<ReactMarkdownWrapper latexContent="<custom-element>content</custom-element>" />)
+    it('should strip disallowed tags but preserve their text content', () => {
+      // Act - <custom-element> is not in the allowed tag list
+      render(<StreamdownWrapper latexContent="<custom-element>content</custom-element>" />)
 
-      // Assert - The AST node is changed to text with value `<custom-element`
-      expect(screen.getByText(/<custom-element/)).toBeInTheDocument()
+      // Assert - rehype-sanitize strips the tag but keeps inner text
+      expect(screen.getByText('content')).toBeInTheDocument()
+      expect(document.querySelector('custom-element')).toBeNull()
     })
   })
 })
