@@ -18,6 +18,7 @@ class MockSearchQuery:
         self._table_name = table_name
         self._search_type = search_type
         self._limit_val = 10
+        self._filter_sql = None
 
     def select(self, columns):
         return self
@@ -27,12 +28,36 @@ class MockSearchQuery:
         return self
 
     def where(self, filter_sql):
+        self._filter_sql = filter_sql
         return self
+
+    def _apply_filter(self, row: dict[str, Any]) -> bool:
+        """Apply the filter SQL to check if a row matches."""
+        if self._filter_sql is None:
+            return True
+
+        # Extract literals (the document IDs) from the filter SQL
+        # Filter format: meta->>'document_id' IN ('doc1', 'doc2')
+        literals = [v for t, v in _extract_identifiers_and_literals(self._filter_sql) if t == "literal"]
+        if not literals:
+            return True
+
+        # Get the document_id from the row's meta field
+        meta = row.get("meta", "{}")
+        if isinstance(meta, str):
+            meta = json.loads(meta)
+        doc_id = meta.get("document_id")
+
+        return doc_id in literals
 
     def fetchall(self):
         data = _mock_tables.get(self._table_name, {})
         results = []
         for row in list(data.values())[: self._limit_val]:
+            # Apply filter if present
+            if not self._apply_filter(row):
+                continue
+
             if self._search_type == "vector":
                 # row format expected by _process_vector_results: (distance, id, text, meta)
                 results.append((0.1, row["id"], row["text"], row["meta"]))
