@@ -33,7 +33,7 @@ const createWorkflowNodesMap = (title = 'Node One'): WorkflowNodesMap => ({
 })
 
 const hasErrorIcon = (container: HTMLElement) => {
-  return container.querySelector('svg.text-text-destructive') !== null
+  return container.querySelector('svg.text-text-warning') !== null
 }
 
 const renderVariableBlock = (props: {

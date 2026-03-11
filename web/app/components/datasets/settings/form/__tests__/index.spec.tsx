@@ -127,6 +127,14 @@ vi.mock('@/service/use-common', () => ({
       ],
     },
   }),
+  useCurrentWorkspace: () => ({
+    data: {
+      trial_credits: 1000,
+      trial_credits_used: 100,
+      next_credit_reset_date: undefined,
+    },
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
