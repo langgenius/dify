@@ -7,4 +7,4 @@ export const systemFeaturesContract = base
     method: 'GET',
   })
   .input(type<unknown>())
-  .output(type<unknown>())
+  .output(type<{ d: string } | Record<string, unknown>>())
