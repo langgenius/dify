@@ -270,12 +270,16 @@ export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) 
     return null
 
   return (
-    <Streamdown
-      remarkPlugins={[remarkDirective, directivePlugin]}
-      rehypePlugins={directiveRehypePlugins}
-      components={directiveComponents}
-    >
-      {normalizedMarkdown}
-    </Streamdown>
+    <div className="markdown-body">
+      <Streamdown
+        mode="static"
+        remarkPlugins={[remarkDirective, directivePlugin]}
+        rehypePlugins={directiveRehypePlugins}
+        components={directiveComponents}
+      >
+        {normalizedMarkdown}
+      </Streamdown>
+    </div>
+
   )
 }

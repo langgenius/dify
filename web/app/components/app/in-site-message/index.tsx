@@ -110,7 +110,7 @@ function InSiteMessage({
         </div>
       </div>
 
-      <div className="px-4 pb-2 pt-4 text-text-secondary body-md-regular [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5">
+      <div className="px-4 pb-2 pt-4 text-text-secondary body-md-regular">
         <MarkdownWithDirective markdown={main} />
       </div>
 

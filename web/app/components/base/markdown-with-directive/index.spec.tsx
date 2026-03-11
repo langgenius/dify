@@ -5,6 +5,8 @@ import WithIconCardItem from './components/with-icon-card-item'
 import WithIconCardList from './components/with-icon-card-list'
 import { MarkdownWithDirective } from './index'
 
+const FOUR_COLON_RE = /:{4}/
+
 vi.mock('next/image', () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
@@ -153,6 +155,20 @@ describe('markdown-with-directive', () => {
 
       expect(screen.getByText('invalid content')).toBeInTheDocument()
       expect(screen.queryByText('Invalid Icon')).not.toBeInTheDocument()
+    })
+
+    it('should not render trailing fence text for four-colon container directives', () => {
+      const markdown = [
+        '::::withiconcardlist {className="custom-list"}',
+        ':withiconcarditem[Card Title]{icon="https://example.com/icon.png"}',
+        '::::',
+      ].join('\n')
+
+      const { container } = render(<MarkdownWithDirective markdown={markdown} />)
+
+      expect(screen.getByText('Card Title')).toBeInTheDocument()
+      expect(screen.queryByText(FOUR_COLON_RE)).not.toBeInTheDocument()
+      expect(container.textContent).not.toContain('::::')
     })
 
     it('should call sanitizer and render based on sanitized markdown', () => {
