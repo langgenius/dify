@@ -3624,11 +3624,6 @@
       "count": 2
     }
   },
-  "app/components/base/prompt-editor/plugins/on-blur-or-focus-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/prompt-editor/plugins/query-block/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
