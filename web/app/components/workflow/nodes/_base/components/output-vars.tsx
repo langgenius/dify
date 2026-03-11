@@ -59,11 +59,11 @@ export const VarItem: FC<VarItemProps> = ({
       <div className="py-1">
         <div className="flex">
           <div className="flex items-center leading-[18px]">
-            <div className="text-text-secondary code-sm-semibold">{name}</div>
-            <div className="ml-2 text-text-tertiary system-xs-regular">{type}</div>
+            <div className="code-sm-semibold text-text-secondary">{name}</div>
+            <div className="system-xs-regular ml-2 text-text-tertiary">{type}</div>
           </div>
         </div>
-        <div className="mt-0.5 text-text-tertiary system-xs-regular">
+        <div className="system-xs-regular mt-0.5 text-text-tertiary">
           {description}
           {subItems && (
             <div className="ml-2 border-l border-gray-200 pl-2">

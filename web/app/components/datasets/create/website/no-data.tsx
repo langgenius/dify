@@ -63,11 +63,11 @@ const NoData: FC<Props> = ({
           {currentProvider.emoji}
         </div>
         <div className="mb-1 mt-2 flex flex-col gap-y-1 pb-3 pt-1">
-          <span className="text-text-secondary system-md-semibold">
+          <span className="system-md-semibold text-text-secondary">
             {currentProvider.title}
             <Icon3Dots className="relative -left-1.5 -top-2.5 inline" />
           </span>
-          <div className="text-text-tertiary system-sm-regular">
+          <div className="system-sm-regular text-text-tertiary">
             {currentProvider.description}
           </div>
         </div>

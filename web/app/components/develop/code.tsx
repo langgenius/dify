@@ -40,7 +40,7 @@ function CopyButton({ code }: { code: string }) {
 
   useEffect(() => {
     if (copyCount > 0) {
-      const timeout = setTimeout(setCopyCount, 1000, 0)
+      const timeout = setTimeout(() => setCopyCount(0), 1000)
       return () => {
         clearTimeout(timeout)
       }

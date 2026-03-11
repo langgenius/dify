@@ -119,14 +119,14 @@ const Popup = () => {
             type: 'success',
             message: t('publishPipeline.success.message', { ns: 'datasetPipeline' }),
             children: (
-              <div className="text-text-secondary system-xs-regular">
+              <div className="system-xs-regular text-text-secondary">
                 <Trans
                   i18nKey="publishPipeline.success.tip"
                   ns="datasetPipeline"
                   components={{
                     CustomLink: (
                       <Link
-                        className="text-text-accent system-xs-medium"
+                        className="system-xs-medium text-text-accent"
                         href={`/datasets/${datasetId}/documents`}
                       >
                       </Link>
@@ -185,13 +185,13 @@ const Popup = () => {
         message: t('publishTemplate.success.message', { ns: 'datasetPipeline' }),
         children: (
           <div className="flex flex-col gap-y-1">
-            <span className="text-text-secondary system-xs-regular">
+            <span className="system-xs-regular text-text-secondary">
               {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
             <Link
               href={docLink()}
               target="_blank"
-              className="inline-block text-text-accent system-xs-medium-uppercase"
+              className="system-xs-medium-uppercase inline-block text-text-accent"
             >
               {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
             </Link>
@@ -219,14 +219,14 @@ const Popup = () => {
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
-        <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+        <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
           {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
         </div>
         {
           publishedAt
             ? (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center text-text-secondary system-sm-medium">
+                  <div className="system-sm-medium flex items-center text-text-secondary">
                     {t('common.publishedAt', { ns: 'workflow' })}
                     {' '}
                     {formatTimeFromNow(publishedAt)}
@@ -234,7 +234,7 @@ const Popup = () => {
                 </div>
               )
             : (
-                <div className="flex items-center text-text-secondary system-sm-medium">
+                <div className="system-sm-medium flex items-center text-text-secondary">
                   {t('common.autoSaved', { ns: 'workflow' })}
                   {' '}
                   ·
@@ -305,7 +305,7 @@ const Popup = () => {
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
                 <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
-                <span className="p-0.5 system-2xs-medium">
+                <span className="system-2xs-medium p-0.5">
                   {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>
               </PremiumBadge>

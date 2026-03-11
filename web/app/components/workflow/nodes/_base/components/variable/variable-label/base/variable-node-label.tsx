@@ -22,14 +22,14 @@ const VariableNodeLabel = ({
       {
         nodeTitle && (
           <div
-            className="max-w-[60px] truncate text-text-secondary system-xs-medium"
+            className="system-xs-medium max-w-[60px] truncate text-text-secondary"
             title={nodeTitle}
           >
             {nodeTitle}
           </div>
         )
       }
-      <div className="shrink-0 text-divider-deep system-xs-regular">/</div>
+      <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
     </>
   )
 }

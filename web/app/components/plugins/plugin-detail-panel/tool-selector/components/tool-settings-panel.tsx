@@ -39,10 +39,10 @@ const ParamsTips: FC = () => {
   const { t } = useTranslation()
   return (
     <div className="pb-1">
-      <div className="text-text-tertiary system-xs-regular">
+      <div className="system-xs-regular text-text-tertiary">
         {t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}
       </div>
-      <div className="text-text-tertiary system-xs-regular">
+      <div className="system-xs-regular text-text-tertiary">
         {t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}
       </div>
     </div>
@@ -109,7 +109,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
       {/* User settings only header */}
       {userSettingsOnly && (
         <div className="p-4 pb-1">
-          <div className="text-text-primary system-sm-semibold-uppercase">
+          <div className="system-sm-semibold-uppercase text-text-primary">
             {t('detailPanel.toolSelector.settings', { ns: 'plugin' })}
           </div>
         </div>
@@ -118,7 +118,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
       {/* Reasoning config only header */}
       {nodeId && reasoningConfigOnly && (
         <div className="mb-1 p-4 pb-1">
-          <div className="text-text-primary system-sm-semibold-uppercase">
+          <div className="system-sm-semibold-uppercase text-text-primary">
             {t('detailPanel.toolSelector.params', { ns: 'plugin' })}
           </div>
           <ParamsTips />

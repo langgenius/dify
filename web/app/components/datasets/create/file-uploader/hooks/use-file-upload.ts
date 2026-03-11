@@ -98,7 +98,8 @@ export const useFileUpload = ({
       docx: 'docx',
     }
 
-    return Array.from(supportTypes, item => extensionMap[item] || item)
+    return [...supportTypes]
+      .map(item => extensionMap[item] || item)
       .map(item => item.toLowerCase())
       .filter((item, index, self) => self.indexOf(item) === index)
       .map(item => item.toUpperCase())

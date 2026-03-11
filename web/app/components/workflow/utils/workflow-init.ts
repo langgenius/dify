@@ -325,7 +325,7 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
 
   const cycleEdges = getCycleEdges(nodes, edges)
   return edges.filter((edge) => {
-    return !cycleEdges.some(cycEdge => cycEdge.source === edge.source && cycEdge.target === edge.target)
+    return !cycleEdges.find(cycEdge => cycEdge.source === edge.source && cycEdge.target === edge.target)
   }).map((edge) => {
     edge.type = 'custom'
 

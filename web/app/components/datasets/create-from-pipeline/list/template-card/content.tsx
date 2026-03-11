@@ -38,18 +38,18 @@ const Content = ({
         </div>
         <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
           <div
-            className="truncate text-text-secondary system-md-semibold"
+            className="system-md-semibold truncate text-text-secondary"
             title={name}
           >
             {name}
           </div>
-          <div className="text-text-tertiary system-2xs-medium-uppercase">
+          <div className="system-2xs-medium-uppercase text-text-tertiary">
             {t(`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`, { ns: 'dataset' })}
           </div>
         </div>
       </div>
       <p
-        className="line-clamp-3 grow px-4 py-1 text-text-tertiary system-xs-regular"
+        className="system-xs-regular line-clamp-3 grow px-4 py-1 text-text-tertiary"
         title={description}
       >
         {description}

@@ -31,7 +31,7 @@ const InstructionEditorInWorkflow: FC<Props> = ({
   const filterVar = useCallback((payload: Var, selector: ValueSelector) => {
     const { nodesWithInspectVars } = workflowStore.getState()
     const nodeId = selector?.[0]
-    return nodesWithInspectVars.some(node => node.nodeId === nodeId) && payload.type !== VarType.file && payload.type !== VarType.arrayFile
+    return !!nodesWithInspectVars.find(node => node.nodeId === nodeId) && payload.type !== VarType.file && payload.type !== VarType.arrayFile
   }, [workflowStore])
   const {
     availableVars,

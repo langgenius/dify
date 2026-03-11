@@ -146,7 +146,7 @@ const ConfigPrompt: FC<Props> = ({
 
   const canChooseSystemRole = (() => {
     if (isChatModel && Array.isArray(payload))
-      return !payload.some(item => item.role === PromptRole.system)
+      return !payload.find(item => item.role === PromptRole.system)
 
     return false
   })()

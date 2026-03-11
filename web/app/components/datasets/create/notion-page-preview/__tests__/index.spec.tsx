@@ -188,7 +188,7 @@ describe('NotionPagePreview', () => {
     it('should show loading indicator initially', async () => {
       // Arrange - Delay API response to keep loading state
       mockFetchNotionPagePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 100, { content: 'test' })),
+        () => new Promise(resolve => setTimeout(() => resolve({ content: 'test' }), 100)),
       )
 
       // Act - Don't wait for content to load
@@ -701,7 +701,7 @@ describe('NotionPagePreview', () => {
 
     it('should handle unmount during loading', async () => {
       mockFetchNotionPagePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 1000, { content: 'delayed' })),
+        () => new Promise(resolve => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
       )
 
       // Act - Don't wait for content

@@ -55,12 +55,12 @@ const Actions = ({
               indeterminate={indeterminate}
               checked={checked}
             />
-            <span className="text-text-accent system-sm-medium">
+            <span className="system-sm-medium text-text-accent">
               {t('operation.selectAll', { ns: 'common' })}
             </span>
           </div>
           {tip && (
-            <div title={tip} className="max-w-full truncate text-text-tertiary system-xs-regular">
+            <div title={tip} className="system-xs-regular max-w-full truncate text-text-tertiary">
               {tip}
             </div>
           )}

@@ -46,7 +46,7 @@ export default {
         }
 
         const extraKeys = Object.keys(currentJson).filter(
-          key => !Object.hasOwn(englishJson, key),
+          key => !Object.prototype.hasOwnProperty.call(englishJson, key),
         )
 
         for (const key of extraKeys) {

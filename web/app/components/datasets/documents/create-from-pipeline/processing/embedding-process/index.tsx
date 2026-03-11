@@ -134,7 +134,7 @@ const EmbeddingProcess = ({
   return (
     <>
       <div className="flex flex-col gap-y-3">
-        <div className="flex items-center gap-x-1 text-text-secondary system-md-semibold-uppercase">
+        <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
           {(isEmbeddingWaiting || isEmbedding) && (
             <>
               <RiLoader2Fill className="size-4 animate-spin" />
@@ -151,7 +151,7 @@ const EmbeddingProcess = ({
               <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
                 <RiAedFill className="size-4 text-text-primary-on-surface" />
               </div>
-              <div className="grow text-text-primary system-md-medium">
+              <div className="system-md-medium grow text-text-primary">
                 {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
               </div>
               <UpgradeBtn loc="knowledge-speed-up" />
@@ -190,7 +190,7 @@ const EmbeddingProcess = ({
                   />
                 )}
                 <div className="flex w-0 grow items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
-                  <div className="truncate text-text-secondary system-xs-medium">
+                  <div className="system-xs-medium truncate text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
                   {

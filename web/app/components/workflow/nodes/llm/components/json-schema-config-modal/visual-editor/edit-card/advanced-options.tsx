@@ -39,7 +39,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
       {/* {showAdvancedOptions ? ( */}
       <div className="flex flex-col gap-y-1 px-2 py-1.5">
         <div className="flex w-full items-center gap-x-2">
-          <span className="text-text-tertiary system-2xs-medium-uppercase">
+          <span className="system-2xs-medium-uppercase text-text-tertiary">
             {t('nodes.llm.jsonSchema.stringValidations', { ns: 'workflow' })}
           </span>
           <div className="grow">
@@ -47,7 +47,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
           </div>
         </div>
         <div className="flex flex-col">
-          <div className="flex h-6 items-center text-text-secondary system-xs-medium">
+          <div className="system-xs-medium flex h-6 items-center text-text-secondary">
             Enum
           </div>
           <Textarea

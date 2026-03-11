@@ -114,7 +114,7 @@ const RunMode = ({
               <button
                 type="button"
                 className={cn(
-                  'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent system-xs-medium',
+                  'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
                 )}
                 disabled={true}
               >
@@ -130,7 +130,7 @@ const RunMode = ({
               >
                 <div
                   className={cn(
-                    'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent system-xs-medium hover:bg-state-accent-hover',
+                    'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
                   )}
                   style={{ userSelect: 'none' }}
                 >

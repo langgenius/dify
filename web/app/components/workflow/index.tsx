@@ -244,7 +244,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       if (isListening || status === WorkflowRunningStatus.Running)
         return
 
-      setTimeout(handleRefreshWorkflowDraft, 500)
+      setTimeout(() => handleRefreshWorkflowDraft(), 500)
     }
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 

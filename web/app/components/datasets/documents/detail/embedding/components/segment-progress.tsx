@@ -20,7 +20,7 @@ const SegmentProgress: FC<SegmentProgressProps> = React.memo(({
 
   return (
     <div className="flex w-full items-center">
-      <span className="text-text-secondary system-xs-medium">
+      <span className="system-xs-medium text-text-secondary">
         {`${t('embedding.segments', { ns: 'datasetDocuments' })} ${completed}/${total} · ${percent}%`}
       </span>
     </div>

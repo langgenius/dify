@@ -31,13 +31,13 @@ const ToolSelectorTrigger = ({
       </div>
       {
         !!selectedTagsLength && (
-          <div className="flex items-center gap-x-0.5 px-0.5 py-1 system-sm-medium">
+          <div className="system-sm-medium flex items-center gap-x-0.5 px-0.5 py-1">
             <span className="text-text-secondary">
               {tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')}
             </span>
             {
               selectedTagsLength > 2 && (
-                <div className="text-text-tertiary system-xs-medium">
+                <div className="system-xs-medium text-text-tertiary">
                   +
                   {selectedTagsLength - 2}
                 </div>

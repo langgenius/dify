@@ -161,7 +161,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <TriggerAll className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className="group w-full">
-                <div className="min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary system-md-semibold group-hover:text-text-primary">
+                <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
                     ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
                     : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
@@ -179,12 +179,12 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                   <div className="shrink-0">
                     {getTriggerIcon(trigger, triggerPlugins || [])}
                   </div>
-                  <div className="min-w-0 flex-1 truncate text-text-secondary system-sm-medium">
+                  <div className="system-sm-medium min-w-0 flex-1 truncate text-text-secondary">
                     {trigger.title}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center">
-                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} whitespace-nowrap system-xs-semibold-uppercase`}>
+                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
                     {trigger.status === 'enabled'
                       ? t('overview.status.running', { ns: 'appOverview' })
                       : t('overview.status.disable', { ns: 'appOverview' })}
@@ -204,7 +204,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
         {triggerCount === 0 && (
           <div className="p-3">
-            <div className="leading-4 text-text-tertiary system-xs-regular">
+            <div className="system-xs-regular leading-4 text-text-tertiary">
               {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
               {' '}
               <Link

@@ -178,9 +178,9 @@ describe('useMarketplacePlugins (integration)', () => {
     // Delay the response so we can observe the loading state
     const { postMarketplace } = await import('@/service/base')
     vi.mocked(postMarketplace).mockImplementationOnce(() => new Promise((resolve) => {
-      setTimeout(resolve, 200, {
+      setTimeout(() => resolve({
         data: { plugins: [], total: 0 },
-      })
+      }), 200)
     }))
 
     const { useMarketplacePlugins } = await import('../hooks')

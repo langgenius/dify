@@ -20,7 +20,7 @@ const Header = ({
 
   return (
     <div className="flex items-center gap-x-1 px-4 py-2">
-      <div className="grow text-text-secondary system-sm-semibold-uppercase">
+      <div className="system-sm-semibold-uppercase grow text-text-secondary">
         {t('addDocuments.stepTwo.chunkSettings', { ns: 'datasetPipeline' })}
       </div>
       <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>

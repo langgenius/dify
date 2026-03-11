@@ -192,7 +192,7 @@ const ToolSelector: FC<Props> = ({
         )}
         >
           {/* Header */}
-          <div className="px-4 pb-1 pt-3.5 text-text-primary system-xl-semibold">
+          <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">
             {t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}
           </div>
 

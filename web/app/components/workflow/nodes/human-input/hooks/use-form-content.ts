@@ -32,7 +32,7 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.form_content = draft.form_content.replaceAll(`{{#$output.${oldName}#}}`, `{{#$output.${payload.output_variable_name}#}}`)
       draft.inputs = draft.inputs.map(item => item.output_variable_name === oldName ? payload : item)
-      if (!draft.inputs.some(item => item.output_variable_name === payload.output_variable_name))
+      if (!draft.inputs.find(item => item.output_variable_name === payload.output_variable_name))
         draft.inputs = [...draft.inputs, payload]
     })
     setInputs(newInputs)

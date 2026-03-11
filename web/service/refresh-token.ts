@@ -22,7 +22,7 @@ function waitUntilTokenRefreshed() {
 }
 
 const isRefreshingSignAvailable = function (delta: number) {
-  const nowTime = Date.now()
+  const nowTime = new Date().getTime()
   const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
   return nowTime - Number.parseInt(lastTime) <= delta
 }
@@ -37,7 +37,7 @@ async function getNewAccessToken(timeout: number): Promise<void> {
     else {
       isRefreshing = true
       globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
-      globalThis.localStorage.setItem('last_refresh_time', Date.now().toString())
+      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
       globalThis.addEventListener('beforeunload', releaseRefreshLock)
 
       // Do not use baseFetch to refresh tokens.

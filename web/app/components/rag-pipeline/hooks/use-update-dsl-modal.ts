@@ -130,7 +130,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     systemVersion?: string,
   ) => {
     setShow(false)
-    setTimeout(setShowErrorModal, 300, true)
+    setTimeout(() => setShowErrorModal(true), 300)
     setVersions({
       importedVersion: importedVersion ?? '',
       systemVersion: systemVersion ?? '',

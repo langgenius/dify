@@ -685,7 +685,7 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
         return false
       try {
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
-        return !!modelId && modelsData.data.some(item => item.model === modelId)
+        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
       catch {
         return false

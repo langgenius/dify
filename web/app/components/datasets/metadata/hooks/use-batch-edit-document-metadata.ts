@@ -97,13 +97,13 @@ const useBatchEditDocumentMetadata = ({
       const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
       let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
         .filter((item) => {
-          return !removedList.some(removedItem => removedItem.id === item.id)
+          return !removedList.find(removedItem => removedItem.id === item.id)
         })
         .map(toCleanMetadataItem)
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
         updatedList.forEach((editedItem) => {
-          if (!newMetadataList.some(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
+          if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
             newMetadataList.push(toCleanMetadataItem(editedItem))
         })
       }

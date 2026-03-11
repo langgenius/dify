@@ -65,7 +65,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     if (primarySrc) {
       // Delayed generation of waveform data
       // eslint-disable-next-line ts/no-use-before-define
-      const timer = setTimeout(generateWaveformData, 1000, primarySrc)
+      const timer = setTimeout(() => generateWaveformData(primarySrc), 1000)
       return () => {
         audio.removeEventListener('loadedmetadata', setAudioData)
         audio.removeEventListener('timeupdate', setAudioTime)

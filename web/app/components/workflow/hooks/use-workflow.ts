@@ -141,7 +141,7 @@ export const useWorkflow = () => {
 
         if (incomers.length) {
           incomers.forEach((node) => {
-            if (!list.some(n => node.id === n.id)) {
+            if (!list.find(n => node.id === n.id)) {
               callback(node)
               traverse(node, callback)
             }
@@ -271,7 +271,7 @@ export const useWorkflow = () => {
     const affectedNodes = findUsedVarNodes(oldValeSelector, allNodes)
     if (affectedNodes.length > 0) {
       const newNodes = allNodes.map((node) => {
-        if (affectedNodes.some(n => n.id === node.id))
+        if (affectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
         return node
@@ -294,7 +294,7 @@ export const useWorkflow = () => {
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
       const newNodes = getNodes().map((node) => {
-        if (effectNodes.some(n => n.id === node.id))
+        if (effectNodes.find(n => n.id === node.id))
           return updateNodeVars(node, varSelector, [])
 
         return node

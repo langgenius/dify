@@ -381,7 +381,7 @@ const BasePanel: FC<BasePanelProps> = ({
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
-        'relative mr-1 h-full',
+        'relative mr-1  h-full',
       )}
       >
         <div
@@ -421,7 +421,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
     return (
       <div className={cn(
-        'relative mr-1 h-full',
+        'relative mr-1  h-full',
       )}
       >
         <div
@@ -642,10 +642,10 @@ const BasePanel: FC<BasePanelProps> = ({
             {
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
-                  <div className="mb-1 flex items-center text-text-secondary system-sm-semibold-uppercase">
+                  <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
                     {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
-                  <div className="mb-2 text-text-tertiary system-xs-regular">
+                  <div className="system-xs-regular mb-2 text-text-tertiary">
                     {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />

@@ -39,8 +39,8 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
           {!datasetId && (
             <>
               <div className="flex flex-col gap-y-1 pb-3">
-                <div className="text-text-primary title-2xl-semi-bold">{t('stepThree.creationTitle', { ns: 'datasetCreation' })}</div>
-                <div className="text-text-tertiary system-sm-regular">{t('stepThree.creationContent', { ns: 'datasetCreation' })}</div>
+                <div className="title-2xl-semi-bold text-text-primary">{t('stepThree.creationTitle', { ns: 'datasetCreation' })}</div>
+                <div className="system-sm-regular text-text-tertiary">{t('stepThree.creationContent', { ns: 'datasetCreation' })}</div>
               </div>
               <div className="flex items-center gap-x-4">
                 <AppIcon
@@ -52,10 +52,10 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
                   className="shrink-0"
                 />
                 <div className="flex grow flex-col gap-y-1">
-                  <div className="flex h-6 items-center text-text-secondary system-sm-semibold">
+                  <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
                     {t('stepThree.label', { ns: 'datasetCreation' })}
                   </div>
-                  <div className="w-full truncate rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled system-sm-regular">
+                  <div className="system-sm-regular w-full truncate rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled">
                     <span className="px-1">{datasetName || creationCache?.dataset?.name}</span>
                   </div>
                 </div>
@@ -65,8 +65,8 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
           )}
           {datasetId && (
             <div className="flex flex-col gap-y-1 pb-3">
-              <div className="text-text-primary title-2xl-semi-bold">{t('stepThree.additionTitle', { ns: 'datasetCreation' })}</div>
-              <div className="text-text-tertiary system-sm-regular">{`${t('stepThree.additionP1', { ns: 'datasetCreation' })} ${datasetName || creationCache?.dataset?.name} ${t('stepThree.additionP2', { ns: 'datasetCreation' })}`}</div>
+              <div className="title-2xl-semi-bold text-text-primary">{t('stepThree.additionTitle', { ns: 'datasetCreation' })}</div>
+              <div className="system-sm-regular text-text-tertiary">{`${t('stepThree.additionP1', { ns: 'datasetCreation' })} ${datasetName || creationCache?.dataset?.name} ${t('stepThree.additionP2', { ns: 'datasetCreation' })}`}</div>
             </div>
           )}
           <EmbeddingProcess
@@ -90,7 +90,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
               href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-text-accent system-sm-regular"
+              className="system-sm-regular text-text-accent"
             >
               {t('addDocuments.stepThree.learnMore', { ns: 'datasetPipeline' })}
             </a>

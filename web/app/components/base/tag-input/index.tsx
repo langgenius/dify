@@ -50,7 +50,7 @@ const TagInput: FC<TagInputProps> = ({
       return
     }
 
-    if ((items.includes(valueTrimmed))) {
+    if ((items.find(item => item === valueTrimmed))) {
       notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
       return
     }

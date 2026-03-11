@@ -141,7 +141,7 @@ export default {
         if (!key)
           return
 
-        if (!Object.hasOwn(state.englishJson, key))
+        if (!Object.prototype.hasOwnProperty.call(state.englishJson, key))
           return
 
         const currentNode = node.value ?? node

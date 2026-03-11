@@ -31,7 +31,7 @@ const AgentLogNav = ({
         <RiArrowLeftLine className="mr-1 h-3.5 w-3.5" />
         AGENT
       </Button>
-      <div className="mx-0.5 shrink-0 text-divider-deep system-xs-regular">/</div>
+      <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
       {
         agentOrToolLogItemStackLength > 1
           ? (
@@ -45,7 +45,7 @@ const AgentLogNav = ({
               </Button>
             )
           : (
-              <div className="flex items-center px-[5px] text-text-tertiary system-xs-medium-uppercase">
+              <div className="system-xs-medium-uppercase flex items-center px-[5px] text-text-tertiary">
                 {t('nodes.agent.strategy.label', { ns: 'workflow' })}
               </div>
             )
@@ -53,7 +53,7 @@ const AgentLogNav = ({
       {
         !!mid.length && (
           <>
-            <div className="mx-0.5 shrink-0 text-divider-deep system-xs-regular">/</div>
+            <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
             <AgentLogNavMore
               options={mid}
               onShowAgentOrToolLog={onShowAgentOrToolLog}
@@ -64,8 +64,8 @@ const AgentLogNav = ({
       {
         !!end && agentOrToolLogItemStackLength > 1 && (
           <>
-            <div className="mx-0.5 shrink-0 text-divider-deep system-xs-regular">/</div>
-            <div className="flex items-center px-[5px] text-text-tertiary system-xs-medium-uppercase">
+            <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
+            <div className="system-xs-medium-uppercase flex items-center px-[5px] text-text-tertiary">
               {end.label}
             </div>
           </>

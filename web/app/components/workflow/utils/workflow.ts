@@ -127,7 +127,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     if (outgoers.length) {
       outgoers.forEach((outgoer) => {
         // Only traverse if we haven't processed this node yet (avoid cycles)
-        if (!list.some(n => n.id === outgoer.id)) {
+        if (!list.find(n => n.id === outgoer.id)) {
           if (outgoer.data.type === BlockEnum.Iteration)
             list.push(...nodes.filter(node => node.parentId === outgoer.id))
           if (outgoer.data.type === BlockEnum.Loop)
@@ -148,7 +148,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
 
   // Start traversal from all start nodes
   startNodes.forEach((startNode) => {
-    if (!list.some(n => n.id === startNode.id))
+    if (!list.find(n => n.id === startNode.id))
       traverse(startNode, 1)
   })
 

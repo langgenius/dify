@@ -102,7 +102,7 @@ export const hasDuplicateStr = (strArr: string[]) => {
     else
       strObj[str] = 1
   })
-  return Object.keys(strObj).some(key => strObj[key] > 1)
+  return !!Object.keys(strObj).find(key => strObj[key] > 1)
 }
 
 const varRegex = /\{\{([a-z_]\w*)\}\}/gi

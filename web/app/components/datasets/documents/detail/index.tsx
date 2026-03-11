@@ -57,7 +57,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       onSuccess: (res) => {
         setImportStatus(res.job_status)
         if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
-          setTimeout(checkProcess, 2500, res.job_id)
+          setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === ProcessStatus.ERROR)
           Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}` })
       },
