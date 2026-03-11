@@ -9,7 +9,7 @@ const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   if (!children || children.length === 0)
     return
 
-  const hasCircle = !!children.find((c) => {
+  const hasCircle = children.some((c) => {
     const childId = c.message_id || (c as any).id
     return childId === removeId
   })
@@ -55,7 +55,7 @@ const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
   let { children } = newLog
 
   // check one step circle
-  const hasOneStepCircle = !!children.find((c) => {
+  const hasOneStepCircle = children.some((c) => {
     const childId = c.message_id || (c as any).id
     return childId === id
   })

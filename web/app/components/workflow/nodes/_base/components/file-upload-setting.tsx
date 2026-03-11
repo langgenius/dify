@@ -150,7 +150,7 @@ const FileUploadSetting: FC<Props> = ({
           title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
         >
           <div>
-            <div className="body-xs-regular mb-1.5 text-text-tertiary">
+            <div className="mb-1.5 text-text-tertiary body-xs-regular">
               {t('variableConfig.maxNumberTip', {
                 ns: 'appDebug',
                 imgLimit: formatFileSize(imgSizeLimit),

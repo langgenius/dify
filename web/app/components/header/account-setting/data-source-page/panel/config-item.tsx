@@ -47,13 +47,13 @@ const ConfigItem: FC<Props> = ({
   return (
     <div className={cn(s['workspace-item'], 'mb-1 flex items-center rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1')} key={payload.id}>
       <payload.logo className="ml-3 mr-1.5" />
-      <div className="system-sm-medium grow truncate py-[7px] text-text-secondary" title={payload.name}>{payload.name}</div>
+      <div className="grow truncate py-[7px] text-text-secondary system-sm-medium" title={payload.name}>{payload.name}</div>
       {
         payload.isActive
           ? <Indicator className="mr-[6px] shrink-0" color="green" />
           : <Indicator className="mr-[6px] shrink-0" color="yellow" />
       }
-      <div className={`system-xs-semibold-uppercase mr-3 shrink-0 ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
+      <div className={`mr-3 shrink-0 system-xs-semibold-uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
           payload.isActive
             ? t(isNotion ? 'dataSource.notion.connected' : 'dataSource.website.active', { ns: 'common' })

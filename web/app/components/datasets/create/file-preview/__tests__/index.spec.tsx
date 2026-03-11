@@ -112,7 +112,7 @@ describe('FilePreview', () => {
     it('should show loading indicator initially', async () => {
       // Arrange - Delay API response to keep loading state
       mockFetchFilePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'test' }), 100)),
+        () => new Promise(resolve => setTimeout(resolve, 100, { content: 'test' })),
       )
 
       const { container } = renderFilePreview()
@@ -607,7 +607,7 @@ describe('FilePreview', () => {
 
     it('should handle unmount during loading', async () => {
       mockFetchFilePreview.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
+        () => new Promise(resolve => setTimeout(resolve, 1000, { content: 'delayed' })),
       )
 
       const { unmount } = renderFilePreview()

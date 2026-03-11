@@ -64,7 +64,7 @@ const CrawledResult = ({
 
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
-      <div className="system-sm-medium pt-2 text-text-primary">
+      <div className="pt-2 text-text-primary system-sm-medium">
         {t(`${I18N_PREFIX}.scrapTimeInfo`, {
           ns: 'datasetCreation',
           total: list.length,

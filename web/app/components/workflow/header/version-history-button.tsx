@@ -21,7 +21,7 @@ const PopupContent = React.memo(() => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-x-1">
-      <div className="system-xs-medium px-0.5 text-text-secondary">
+      <div className="px-0.5 text-text-secondary system-xs-medium">
         {t('common.versionHistory', { ns: 'workflow' })}
       </div>
       <ShortcutsName keys={VERSION_HISTORY_SHORTCUT} bgColor="gray" textColor="secondary" />

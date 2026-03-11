@@ -106,17 +106,17 @@ const FormContent = () => {
               <RiCheckboxCircleFill className="h-8 w-8 text-text-success" />
             </div>
             <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.thanks', { ns: 'share' })}</div>
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.recorded', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.thanks', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.recorded', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 text-text-tertiary system-2xs-regular-uppercase">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               <DifyLogo size="small" />
             </div>
           </div>
@@ -134,17 +134,17 @@ const FormContent = () => {
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
             <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.expired', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.sorry', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.expired', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 text-text-tertiary system-2xs-regular-uppercase">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               <DifyLogo size="small" />
             </div>
           </div>
@@ -162,17 +162,17 @@ const FormContent = () => {
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
             <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.completed', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.sorry', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.completed', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 text-text-tertiary system-2xs-regular-uppercase">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               <DifyLogo size="small" />
             </div>
           </div>
@@ -190,7 +190,7 @@ const FormContent = () => {
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
             </div>
             <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.rateLimitExceeded', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.rateLimitExceeded', { ns: 'share' })}</div>
             </div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
@@ -198,7 +198,7 @@ const FormContent = () => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               <DifyLogo size="small" />
             </div>
           </div>
@@ -216,7 +216,7 @@ const FormContent = () => {
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
             </div>
             <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.formNotFound', { ns: 'share' })}</div>
+              <div className="text-text-primary title-4xl-semi-bold">{t('humanInput.formNotFound', { ns: 'share' })}</div>
             </div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
@@ -224,7 +224,7 @@ const FormContent = () => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
               <DifyLogo size="small" />
             </div>
           </div>
@@ -245,7 +245,7 @@ const FormContent = () => {
           background={site.icon_background}
           imageUrl={site.icon_url}
         />
-        <div className="system-xl-semibold grow text-text-primary">{site.title}</div>
+        <div className="grow text-text-primary system-xl-semibold">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
         <div className="border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-sm">
@@ -277,7 +277,7 @@ const FormContent = () => {
             'flex shrink-0 items-center gap-1.5 px-1',
           )}
           >
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+            <div className="text-text-tertiary system-2xs-medium-uppercase">{t('chat.poweredBy', { ns: 'share' })}</div>
             <DifyLogo size="small" />
           </div>
         </div>

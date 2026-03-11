@@ -33,8 +33,8 @@ export const TitleInput = memo(({
       value={localValue}
       onChange={e => setLocalValue(e.target.value)}
       className={`
-        system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
-        outline-none focus:shadow-xs
+        mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary outline-none
+        system-xl-semibold focus:shadow-xs
       `}
       placeholder={t('common.addTitle', { ns: 'workflow' }) || ''}
       onBlur={handleBlur}

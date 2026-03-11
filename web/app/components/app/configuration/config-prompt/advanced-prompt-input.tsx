@@ -122,7 +122,7 @@ const AdvancedPromptInput: FC<Props> = ({
   }
   const handleBlur = () => {
     const keys = getVars(value)
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key, ''))
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.some(item => item.variable === key)).map(key => getNewVar(key, ''))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       showConfirmAddVar()

@@ -33,7 +33,7 @@ const Header = ({
         </Button>
       </div>
       <a
-        className="system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent"
+        className="flex items-center gap-x-1 overflow-hidden text-text-accent system-xs-medium"
         href={docLink}
         target="_blank"
         rel="noopener noreferrer"

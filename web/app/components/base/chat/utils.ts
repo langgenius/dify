@@ -171,7 +171,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.slice().reverse().map(rootNode => ({
+  const stack = tree.toReversed().map(rootNode => ({
     node: rootNode,
     path: [rootNode],
   }))

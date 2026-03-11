@@ -169,12 +169,12 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           }}
         >
           {renderCollapseIcon()}
-          <span className="system-sm-semibold-uppercase text-text-secondary">{totalText}</span>
+          <span className="text-text-secondary system-sm-semibold-uppercase">{totalText}</span>
           <span className={cn('pl-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}>·</span>
           <button
             type="button"
             className={cn(
-              'system-xs-semibold-uppercase px-1.5 py-1 text-components-button-secondary-accent-text',
+              'px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase',
               hoverVisibleClass,
               isFullDocMode && isLoading && 'text-components-button-secondary-accent-text-disabled',
             )}

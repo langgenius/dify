@@ -85,7 +85,7 @@ export const useEdgesInteractions = () => {
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
-      return draft.filter(edge => !edgeWillBeDeleted.find(e => e.id === edge.id))
+      return draft.filter(edge => !edgeWillBeDeleted.some(e => e.id === edge.id))
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()

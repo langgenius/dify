@@ -44,10 +44,10 @@ const ToolTrigger = ({
         </div>
       )}
       {value?.tool_name && (
-        <div className="system-sm-medium grow text-components-input-text-filled">{value.tool_name}</div>
+        <div className="grow text-components-input-text-filled system-sm-medium">{value.tool_name}</div>
       )}
       {!value?.provider_name && (
-        <div className="system-sm-regular grow text-components-input-text-placeholder">
+        <div className="grow text-components-input-text-placeholder system-sm-regular">
           {!isConfigure ? t('detailPanel.toolSelector.placeholder', { ns: 'plugin' }) : t('detailPanel.configureTool', { ns: 'plugin' })}
         </div>
       )}

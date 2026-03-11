@@ -41,13 +41,13 @@ const Processing = ({
             <RiBookOpenLine className="size-5 text-text-accent" />
           </div>
           <div className="flex flex-col gap-y-2">
-            <div className="system-xl-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
-            <div className="system-sm-regular text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
+            <div className="text-text-secondary system-xl-semibold">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
+            <div className="text-text-tertiary system-sm-regular">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
             <a
               href={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
               target="_blank"
               rel="noreferrer noopener"
-              className="system-sm-regular text-text-accent"
+              className="text-text-accent system-sm-regular"
             >
               {t('addDocuments.stepThree.learnMore', { ns: 'datasetPipeline' })}
             </a>

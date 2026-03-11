@@ -83,7 +83,7 @@ export const usePipeline = () => {
     const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
     if (effectNodes.length > 0) {
       const newNodes = getNodes().map((node) => {
-        if (effectNodes.find(n => n.id === node.id))
+        if (effectNodes.some(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
 
         return node
@@ -99,7 +99,7 @@ export const usePipeline = () => {
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
       const newNodes = getNodes().map((node) => {
-        if (effectNodes.find(n => n.id === node.id))
+        if (effectNodes.some(n => n.id === node.id))
           return updateNodeVars(node, varSelector, [])
 
         return node

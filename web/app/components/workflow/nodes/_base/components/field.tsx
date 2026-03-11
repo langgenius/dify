@@ -41,7 +41,7 @@ const Field: FC<Props> = ({
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
-          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+          <div className={cn(isSubTitle ? 'text-text-tertiary system-xs-medium-uppercase' : 'text-text-secondary system-sm-semibold-uppercase')}>
             {title}
             {' '}
             {required && <span className="text-text-destructive">*</span>}

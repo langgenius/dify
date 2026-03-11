@@ -172,7 +172,7 @@ const Authorized = ({
           >
             {
               popupTitle && (
-                <div className="system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary">
+                <div className="px-3 pb-0.5 pt-[10px] text-text-tertiary system-xs-medium">
                   {popupTitle}
                 </div>
               )
@@ -218,7 +218,7 @@ const Authorized = ({
                         }
                       : undefined,
                   )}
-                  className="system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only"
+                  className="flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only system-xs-medium"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}

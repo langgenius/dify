@@ -60,11 +60,11 @@ const AudioBtn = ({
   }
   const handleToggle = async () => {
     if (audioState === 'playing' || audioState === 'loading') {
-      setTimeout(() => setAudioState('paused'), 1)
+      setTimeout(setAudioState, 1, 'paused')
       AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).pauseAudio()
     }
     else {
-      setTimeout(() => setAudioState('loading'), 1)
+      setTimeout(setAudioState, 1, 'loading')
       AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).playAudio()
     }
   }

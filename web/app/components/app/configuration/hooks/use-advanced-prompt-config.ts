@@ -82,9 +82,9 @@ const useAdvancedPromptConfig = ({
     }
     if (modelModeType === ModelModeType.chat) {
       return {
-        context: !!chatPromptConfig.prompt.find(p => checkHasContextBlock(p.text)),
+        context: chatPromptConfig.prompt.some(p => checkHasContextBlock(p.text)),
         history: false,
-        query: !!chatPromptConfig.prompt.find(p => checkHasQueryBlock(p.text)),
+        query: chatPromptConfig.prompt.some(p => checkHasQueryBlock(p.text)),
       }
     }
     else {

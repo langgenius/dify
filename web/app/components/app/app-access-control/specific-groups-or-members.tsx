@@ -29,7 +29,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
           <RiLockLine className="h-4 w-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="text-text-primary system-sm-medium">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
       </div>
     )
@@ -40,7 +40,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
           <RiLockLine className="h-4 w-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="text-text-primary system-sm-medium">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
           <AddMemberOrGroupDialog />
@@ -60,14 +60,14 @@ function RenderGroupsAndMembers() {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pb-1.5 pt-5"><p className="system-xs-regular text-center text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
+    return <div className="px-2 pb-1.5 pt-5"><p className="text-center text-text-tertiary system-xs-regular">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
   return (
     <>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
+      <p className="sticky top-0 text-text-tertiary system-2xs-medium-uppercase">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
       </div>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
+      <p className="sticky top-0 text-text-tertiary system-2xs-medium-uppercase">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
       </div>
@@ -89,8 +89,8 @@ function GroupItem({ group }: GroupItemProps) {
       icon={<RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
       onRemove={handleRemoveGroup}
     >
-      <p className="system-xs-regular text-text-primary">{group.name}</p>
-      <p className="system-xs-regular text-text-tertiary">{group.groupSize}</p>
+      <p className="text-text-primary system-xs-regular">{group.name}</p>
+      <p className="text-text-tertiary system-xs-regular">{group.groupSize}</p>
     </BaseItem>
   )
 }
@@ -109,7 +109,7 @@ function MemberItem({ member }: MemberItemProps) {
       icon={<Avatar className="h-[14px] w-[14px]" textClassName="text-[12px]" avatar={null} name={member.name} />}
       onRemove={handleRemoveMember}
     >
-      <p className="system-xs-regular text-text-primary">{member.name}</p>
+      <p className="text-text-primary system-xs-regular">{member.name}</p>
     </BaseItem>
   )
 }

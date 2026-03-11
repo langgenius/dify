@@ -199,7 +199,7 @@ const TextGeneration: FC<Props> = ({
       )}
       >
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? ' p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}
@@ -208,10 +208,10 @@ const TextGeneration: FC<Props> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
+            <div className="grow truncate text-text-secondary system-md-semibold">{siteInfo.title}</div>
           </div>
           {siteInfo.description && (
-            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
+            <div className="text-text-tertiary system-xs-regular">{siteInfo.description}</div>
           )}
         </div>
         {/* form */}

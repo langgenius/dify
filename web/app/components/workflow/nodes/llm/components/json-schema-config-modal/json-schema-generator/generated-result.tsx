@@ -64,7 +64,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
         isGenerating ? (
           <div className="flex h-[600px] flex-col items-center justify-center gap-y-3">
             <Loading type="area" />
-            <div className="system-xs-regular text-text-tertiary">{t('nodes.llm.jsonSchema.generating', { ns: 'workflow' })}</div>
+            <div className="text-text-tertiary system-xs-regular">{t('nodes.llm.jsonSchema.generating', { ns: 'workflow' })}</div>
           </div>
         ) : (
           <>
@@ -73,10 +73,10 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             </div>
             {/* Title */}
             <div className="flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5">
-              <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
+              <div className="flex pl-1 pr-8 text-text-primary system-xl-semibold">
                 {t('nodes.llm.jsonSchema.generatedResult', { ns: 'workflow' })}
               </div>
-              <div className="system-xs-regular flex px-1 text-text-tertiary">
+              <div className="flex px-1 text-text-tertiary system-xs-regular">
                 {t('nodes.llm.jsonSchema.resultTip', { ns: 'workflow' })}
               </div>
             </div>

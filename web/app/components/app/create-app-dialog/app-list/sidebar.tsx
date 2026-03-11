@@ -22,7 +22,7 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
       <ul className="pt-0.5">
         <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
       </ul>
-      <div className="system-xs-medium-uppercase mb-0.5 mt-3 px-3 pb-1 pt-2 text-text-tertiary">{t('newAppFromTemplate.byCategories', { ns: 'app' })}</div>
+      <div className="mb-0.5 mt-3 px-3 pb-1 pt-2 text-text-tertiary system-xs-medium-uppercase">{t('newAppFromTemplate.byCategories', { ns: 'app' })}</div>
       <ul className="flex grow flex-col gap-0.5">
         {categories.map(category => (<CategoryItem key={category} category={category} active={current === category} onClick={onClick} />))}
       </ul>
@@ -53,7 +53,7 @@ function CategoryItem({ category, active, onClick }: CategoryItemProps) {
       )}
       <AppCategoryLabel
         category={category}
-        className={cn('system-sm-medium text-components-menu-item-text group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active', active && 'system-sm-semibold')}
+        className={cn('text-components-menu-item-text system-sm-medium group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active', active && 'system-sm-semibold')}
       />
     </li>
   )

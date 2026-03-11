@@ -30,8 +30,8 @@ const ToolItem: FC<Props> = ({
       >
         <div className="flex h-8 grow items-center space-x-2 pl-3 pr-2">
           <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-          <div className="system-sm-medium max-w-[150px] shrink-0 truncate text-text-primary">{renderI18nObject(label, language)}</div>
-          <div className="system-xs-regular max-w-[150px] shrink-0  truncate text-text-quaternary">{org}</div>
+          <div className="max-w-[150px] shrink-0 truncate text-text-primary system-sm-medium">{renderI18nObject(label, language)}</div>
+          <div className="max-w-[150px] shrink-0 truncate text-text-quaternary system-xs-regular">{org}</div>
         </div>
         <Checkbox
           checked={isChecked}

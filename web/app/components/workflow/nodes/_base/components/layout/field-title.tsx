@@ -41,7 +41,7 @@ export const FieldTitle = memo(({
           }
         }}
       >
-        <div className="system-sm-semibold-uppercase flex items-center text-text-secondary">
+        <div className="flex items-center text-text-secondary system-sm-semibold-uppercase">
           {title}
           {
             showArrow && (

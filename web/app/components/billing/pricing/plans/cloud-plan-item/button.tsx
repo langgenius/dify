@@ -37,7 +37,7 @@ const Button = ({
       type="button"
       disabled={isPlanDisabled}
       className={cn(
-        'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
+        'flex items-center gap-x-2 py-3 pl-5 pr-4 system-xl-semibold',
         BUTTON_CLASSNAME[plan].btnClassname,
         isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
         isPlanDisabled && 'cursor-not-allowed',

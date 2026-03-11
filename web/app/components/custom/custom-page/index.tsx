@@ -20,7 +20,7 @@ const CustomPage = () => {
             <div className="title-xl-semi-bold">{t('upgradeTip.title', { ns: 'custom' })}</div>
             <div className="system-sm-regular">{t('upgradeTip.des', { ns: 'custom' })}</div>
           </div>
-          <div className="system-md-semibold flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white text-text-accent shadow-xs hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
+          <div className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white text-text-accent shadow-xs system-md-semibold hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
         </div>
       )}
       <CustomWebAppBrand />

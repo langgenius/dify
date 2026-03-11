@@ -147,7 +147,7 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=" relative">
+            <div className="relative">
               <input
                 className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"
@@ -157,7 +157,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
+              {!isFocus && unit && <div className="absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary system-sm-regular">{unit}</div>}
             </div>
           )
         }

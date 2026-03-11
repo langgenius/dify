@@ -63,7 +63,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       {hasConfigs && (
         <div className="space-y-0.5" aria-disabled={shouldDim}>
           {toolConfigs.map((key, index) => (
-            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md  bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
+            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
               <div title={key} className="max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary">
                 {key}
               </div>

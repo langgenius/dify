@@ -110,7 +110,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     // Filter out keys that are not properly defined (either not exist or exist but without valid name)
     const newPromptVariables = keys.filter((key) => {
       // Check if key exists in external data tools
-      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
+      if (externalDataToolsConfig.some((item: ExternalDataTool) => item.variable === key))
         return false
 
       // Check if key exists in prompt variables
@@ -178,7 +178,7 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className="h2 system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
+              <div className="h2 text-text-secondary system-sm-semibold-uppercase">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
                 <Tooltip
                   popupContent={(

@@ -29,7 +29,7 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
         <div className="flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center space-x-1">
             {!!headerIcon && <div className="flex h-6 w-6 items-center justify-center">{headerIcon}</div>}
-            <div className="system-sm-semibold text-text-secondary">{title}</div>
+            <div className="text-text-secondary system-sm-semibold">{title}</div>
           </div>
           <div className="flex items-center gap-2">
             {!!headerRight && <div>{headerRight}</div>}

@@ -56,7 +56,7 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="system-xs-medium pb-1 text-text-tertiary">
+      <div className="pb-1 text-text-tertiary system-xs-medium">
         {t('mcp.server.url', { ns: 'tools' })}
       </div>
       <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
@@ -237,7 +237,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                   <Mcp className="h-4 w-4 text-text-primary-on-surface" />
                 </div>
                 <div className="group w-full">
-                  <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
+                  <div className="min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary system-md-semibold group-hover:text-text-primary">
                     {t('mcp.server.title', { ns: 'tools' })}
                   </div>
                 </div>
@@ -274,7 +274,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
               >
                 <div className="flex items-center justify-center gap-[1px]">
                   <RiEditLine className="h-3.5 w-3.5" />
-                  <div className="system-xs-medium px-[3px] text-text-tertiary">
+                  <div className="px-[3px] text-text-tertiary system-xs-medium">
                     {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}
                   </div>
                 </div>

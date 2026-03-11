@@ -383,7 +383,7 @@ const SelectionContextmenu = () => {
     >
       <div ref={menuRef} className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
         <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+          <div className="px-2 py-2 text-text-tertiary system-xs-medium">
             {t('operator.vertical', { ns: 'workflow' })}
           </div>
           <div
@@ -417,7 +417,7 @@ const SelectionContextmenu = () => {
         </div>
         <div className="h-px bg-divider-regular"></div>
         <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+          <div className="px-2 py-2 text-text-tertiary system-xs-medium">
             {t('operator.horizontal', { ns: 'workflow' })}
           </div>
           <div

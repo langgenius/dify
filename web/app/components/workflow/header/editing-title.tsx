@@ -14,7 +14,7 @@ const EditingTitle = () => {
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
 
   return (
-    <div className={`system-xs-regular flex h-[18px] min-w-[300px] items-center whitespace-nowrap text-text-tertiary ${maximizeCanvas ? 'ml-2' : ''}`}>
+    <div className={`flex h-[18px] min-w-[300px] items-center whitespace-nowrap text-text-tertiary system-xs-regular ${maximizeCanvas ? 'ml-2' : ''}`}>
       {
         !!draftUpdatedAt && (
           <>

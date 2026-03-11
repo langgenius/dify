@@ -70,7 +70,7 @@ const LogViewer = ({ logs, className }: Props) => {
       return (
         <CodeEditor
           readOnly
-          title={<div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>}
+          title={<div className="text-text-secondary system-xs-semibold-uppercase">{title}</div>}
           language={CodeLanguage.json}
           value={parsedData}
           isJSONStringifyBeauty
@@ -82,7 +82,7 @@ const LogViewer = ({ logs, className }: Props) => {
     return (
       <div className="rounded-md bg-components-input-bg-normal">
         <div className="flex items-center justify-between px-2 py-1">
-          <div className="system-xs-semibold-uppercase text-text-secondary">
+          <div className="text-text-secondary system-xs-semibold-uppercase">
             {title}
           </div>
           <button
@@ -100,7 +100,7 @@ const LogViewer = ({ logs, className }: Props) => {
           </button>
         </div>
         <div className="px-2 pb-2 pt-1">
-          <pre className="code-xs-regular whitespace-pre-wrap break-all text-text-secondary">
+          <pre className="whitespace-pre-wrap break-all text-text-secondary code-xs-regular">
             {String(parsedData)}
           </pre>
         </div>
@@ -161,7 +161,7 @@ const LogViewer = ({ logs, className }: Props) => {
                   : (
                       <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
                     )}
-                <div className="system-xs-semibold-uppercase text-text-secondary">
+                <div className="text-text-secondary system-xs-semibold-uppercase">
                   {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
                   {' '}
                   #
@@ -170,7 +170,7 @@ const LogViewer = ({ logs, className }: Props) => {
               </div>
 
               <div className="flex items-center gap-1">
-                <div className="system-xs-regular text-text-tertiary">
+                <div className="text-text-tertiary system-xs-regular">
                   {dayjs(log.created_at).format('HH:mm:ss')}
                 </div>
                 <div className="h-3.5 w-3.5">

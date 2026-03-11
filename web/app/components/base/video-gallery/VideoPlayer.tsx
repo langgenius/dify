@@ -94,7 +94,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
     if (controlsTimeoutRef.current)
       clearTimeout(controlsTimeoutRef.current)
 
-    controlsTimeoutRef.current = setTimeout(() => setIsControlsVisible(false), 3000)
+    controlsTimeoutRef.current = setTimeout(setIsControlsVisible, 3000, false)
   }, [])
 
   const togglePlayPause = useCallback(() => {

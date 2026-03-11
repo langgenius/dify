@@ -96,7 +96,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
           <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
             <div className="px-8 pt-8">
               <div className="mb-4 flex items-center justify-between">
-                <div className="system-xl-semibold text-text-primary">{t(`${I18N_PREFIX}.configFirecrawl`, { ns: 'datasetCreation' })}</div>
+                <div className="text-text-primary system-xl-semibold">{t(`${I18N_PREFIX}.configFirecrawl`, { ns: 'datasetCreation' })}</div>
               </div>
 
               <div className="space-y-4">

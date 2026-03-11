@@ -47,7 +47,7 @@ const MenuBar: FC<MenuBarProps> = ({
         onCheck={onSelectedAll}
         disabled={isLoading}
       />
-      <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
+      <div className="flex-1 pl-5 text-text-secondary system-sm-semibold-uppercase">{totalText}</div>
       <SimpleSelect
         onSelect={onChangeStatus}
         items={statusList}

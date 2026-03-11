@@ -197,7 +197,7 @@ export function useInstallMultiState({
 
   // Callback: check if a plugin at given index is selected
   const isPluginSelected = useCallback((index: number) => {
-    return !!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)
+    return selectedPlugins.some(p => p.plugin_id === plugins[index]?.plugin_id)
   }, [selectedPlugins, plugins])
 
   // Callback: get all installable plugins with their indexes

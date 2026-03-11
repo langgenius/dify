@@ -50,15 +50,15 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
       >
         <div className="flex items-start self-stretch p-4 pb-0">
           <div className="flex grow flex-col items-start gap-1">
-            <div className="system-xl-semibold self-stretch text-text-primary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
-            <div className="body-xs-regular self-stretch text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
+            <div className="self-stretch text-text-primary system-xl-semibold">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="self-stretch text-text-tertiary body-xs-regular">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
             <a
               className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
               href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
               <RiBookOpenLine className="h-3 w-3 text-text-accent" />
-              <div className="body-xs-regular grow text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
+              <div className="grow text-text-accent body-xs-regular">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
             </a>
           </div>
           <div className="flex items-center">
@@ -74,7 +74,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
             onClick={handleOpenExternalAPIModal}
           >
             <RiAddLine className="h-4 w-4 text-components-button-primary-text" />
-            <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
+            <div className="text-components-button-primary-text system-sm-medium">{t('createExternalAPI', { ns: 'dataset' })}</div>
           </Button>
         </div>
         <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">

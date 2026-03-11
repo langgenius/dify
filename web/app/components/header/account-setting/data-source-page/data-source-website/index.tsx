@@ -83,7 +83,7 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
       <Panel
         type={DataSourceType.website}
         provider={provider}
-        isConfigured={sources.find(item => item.provider === provider) !== undefined}
+        isConfigured={sources.some(item => item.provider === provider)}
         onConfigure={() => showConfig(provider)}
         readOnly={!isCurrentWorkspaceManager}
         configuredList={sources.filter(item => item.provider === provider).map(item => ({

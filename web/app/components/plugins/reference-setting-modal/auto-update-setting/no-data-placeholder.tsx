@@ -22,7 +22,7 @@ const NoDataPlaceholder: FC<Props> = ({
     <div className={cn('flex items-center justify-center', className)}>
       <div className="flex flex-col items-center">
         {icon}
-        <div className="system-sm-regular mt-2 text-text-tertiary">{text}</div>
+        <div className="mt-2 text-text-tertiary system-sm-regular">{text}</div>
       </div>
     </div>
   )

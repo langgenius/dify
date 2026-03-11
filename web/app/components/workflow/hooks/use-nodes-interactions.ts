@@ -450,13 +450,11 @@ export const useNodesInteractions = () => {
       }
 
       if (
-        edges.find(
-          edge =>
-            edge.source === source
-            && edge.sourceHandle === sourceHandle
-            && edge.target === target
-            && edge.targetHandle === targetHandle,
-        )
+        edges.some(edge =>
+          edge.source === source
+          && edge.sourceHandle === sourceHandle
+          && edge.target === target
+          && edge.targetHandle === targetHandle)
       ) {
         return
       }
@@ -778,9 +776,7 @@ export const useNodesInteractions = () => {
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
+            !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
         )
       })
       setEdges(newEdges)
@@ -1582,9 +1578,7 @@ export const useNodesInteractions = () => {
       setNodes(newNodes)
       const remainingEdges = edges.filter(
         edge =>
-          !connectedEdges.find(
-            connectedEdge => connectedEdge.id === edge.id,
-          ),
+          !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
       )
       setEdges([...remainingEdges, ...reconnectedEdges])
       if (nodeType === BlockEnum.TriggerWebhook) {
@@ -2073,9 +2067,7 @@ export const useNodesInteractions = () => {
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
+            !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
         )
       })
       setEdges(newEdges)

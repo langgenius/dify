@@ -64,7 +64,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             <div className="flex">
               <div
                 onClick={showAuthorization}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
                 {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
@@ -74,7 +74,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               </div>
               <div
                 onClick={showCurlPanel}
-                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
                 {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">

@@ -96,14 +96,14 @@ const MCPServerModal = ({
       <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
-      <div className="title-2xl-semi-bold relative p-6 pb-3 text-xl text-text-primary">
+      <div className="relative p-6 pb-3 text-xl text-text-primary title-2xl-semi-bold">
         {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}
       </div>
       <div className="space-y-5 px-6 py-3">
         <div className="space-y-0.5">
           <div className="flex h-6 items-center gap-1">
-            <div className="system-sm-medium text-text-secondary">{t('mcp.server.modal.description', { ns: 'tools' })}</div>
-            <div className="system-xs-regular text-text-destructive-secondary">*</div>
+            <div className="text-text-secondary system-sm-medium">{t('mcp.server.modal.description', { ns: 'tools' })}</div>
+            <div className="text-text-destructive-secondary system-xs-regular">*</div>
           </div>
           <Textarea
             className="h-[96px] resize-none"
@@ -116,10 +116,10 @@ const MCPServerModal = ({
         {latestParams.length > 0 && (
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <div className="system-xs-medium-uppercase shrink-0 text-text-primary">{t('mcp.server.modal.parameters', { ns: 'tools' })}</div>
+              <div className="shrink-0 text-text-primary system-xs-medium-uppercase">{t('mcp.server.modal.parameters', { ns: 'tools' })}</div>
               <Divider type="horizontal" className="!m-0 !h-px grow bg-divider-subtle" />
             </div>
-            <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.server.modal.parametersTip', { ns: 'tools' })}</div>
+            <div className="mb-2 text-text-tertiary body-xs-regular">{t('mcp.server.modal.parametersTip', { ns: 'tools' })}</div>
             <div className="space-y-3">
               {latestParams.map(paramItem => (
                 <MCPServerParamItem

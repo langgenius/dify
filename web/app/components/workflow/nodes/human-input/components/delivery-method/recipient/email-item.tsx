@@ -35,9 +35,9 @@ const EmailItem = ({
         <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
       )}
       {!isError && <Avatar avatar={data.avatar_url} size={16} name={data.name || data.email} />}
-      <div title={data.email} className="system-xs-regular max-w-[500px] truncate text-text-primary">
+      <div title={data.email} className="max-w-[500px] truncate text-text-primary system-xs-regular">
         {email === data.email ? data.name : data.email}
-        {email === data.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
+        {email === data.email && <span className="text-text-tertiary system-xs-regular">{t('members.you', { ns: 'common' })}</span>}
       </div>
       {!disabled && (
         <RiCloseCircleFill

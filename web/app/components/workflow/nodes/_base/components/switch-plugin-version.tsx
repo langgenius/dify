@@ -96,7 +96,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 href={getMarketplaceUrl(`/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
                 target="_blank"
               >
-                <span className="system-xs-regular text-xs text-text-accent">
+                <span className="text-xs text-text-accent system-xs-regular">
                   {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}
                 </span>
                 <RiExternalLinkLine className="size-3 text-text-accent" />

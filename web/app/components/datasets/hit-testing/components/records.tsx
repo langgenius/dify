@@ -47,11 +47,11 @@ const Records = ({
 
   return (
     <div className="grow overflow-y-auto">
-      <table className="w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary ">
-        <thead className="sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]">
+      <table className="w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary">
+        <thead className="sticky top-0 h-7 text-xs font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]">
           <tr>
             <td className="rounded-l-lg bg-background-section-burn pl-3">{t('table.header.queryContent', { ns: 'datasetHitTesting' })}</td>
-            <td className="w-[128px]  bg-background-section-burn pl-3">{t('table.header.source', { ns: 'datasetHitTesting' })}</td>
+            <td className="w-[128px] bg-background-section-burn pl-3">{t('table.header.source', { ns: 'datasetHitTesting' })}</td>
             <td className="w-48 rounded-r-lg bg-background-section-burn pl-3">
               <div
                 className="flex cursor-pointer items-center"

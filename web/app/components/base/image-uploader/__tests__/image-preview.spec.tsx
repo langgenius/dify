@@ -51,7 +51,7 @@ describe('ImagePreview', () => {
     // In some test environments `write` lives on the prototype rather than
     // the clipboard instance itself; locate the actual owner so vi.spyOn
     // patches the right object.
-    const writeOwner = Object.prototype.hasOwnProperty.call(clipboardTarget, 'write')
+    const writeOwner = Object.hasOwn(clipboardTarget, 'write')
       ? clipboardTarget
       : (Object.getPrototypeOf(clipboardTarget) as { write: (items: ClipboardItem[]) => Promise<void> })
     vi.spyOn(writeOwner, 'write').mockImplementation((items: ClipboardItem[]) => {

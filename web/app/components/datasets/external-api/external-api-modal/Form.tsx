@@ -51,7 +51,7 @@ const Form: FC<FormProps> = React.memo(({
     return (
       <div key={variable} className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}>
         <div className="flex w-full items-center justify-between">
-          <label className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')} htmlFor={variable}>
+          <label className={cn(fieldLabelClassName, 'text-text-secondary system-sm-semibold')} htmlFor={variable}>
             {label[i18n.language] || label.en_US}
             {required && <span className="ml-1 text-red-500">*</span>}
           </label>
@@ -60,7 +60,7 @@ const Form: FC<FormProps> = React.memo(({
               href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
               target="_blank"
               rel="noopener noreferrer"
-              className="body-xs-regular flex items-center text-text-accent"
+              className="flex items-center text-text-accent body-xs-regular"
             >
               <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
               {t('externalAPIPanelDocumentation', { ns: 'dataset' })}

@@ -264,8 +264,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 noDecoration
                 popupContent={(
                   <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                    <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                    <div className="body-xs-regular mt-1 text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
+                    <div className="text-text-primary title-xs-semi-bold">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
+                    <div className="mt-1 text-text-secondary body-xs-regular">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
                   </div>
                 )}
               >
@@ -274,7 +274,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 </div>
               </Tooltip>
             )}
-            <div className="system-xs-medium-uppercase mr-0.5 text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
+            <div className="mr-0.5 text-text-tertiary system-xs-medium-uppercase">{t('structOutput.structured', { ns: 'app' })}</div>
             <Tooltip popupContent={
               <div className="max-w-[150px]">{t('structOutput.structuredTip', { ns: 'app' })}</div>
             }
