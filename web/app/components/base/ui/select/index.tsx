@@ -1,7 +1,9 @@
 'use client'
 
+import type { VariantProps } from 'class-variance-authority'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
+import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
@@ -12,61 +14,100 @@ export const SelectGroup = BaseSelect.Group
 export const SelectGroupLabel = BaseSelect.GroupLabel
 export const SelectSeparator = BaseSelect.Separator
 
+export const selectTriggerVariants = cva(
+  '',
+  {
+    variants: {
+      size: {
+        small: 'h-6 gap-px rounded-md px-[5px] py-0 system-xs-regular',
+        regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
+      },
+    },
+    defaultVariants: {
+      size: 'regular',
+    },
+  },
+)
+
+const contentPadding: Record<string, string> = {
+  small: 'px-[3px] py-1',
+  regular: 'p-1',
+  large: 'px-1.5 py-1',
+}
+
 type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof BaseSelect.Trigger> & {
   clearable?: boolean
   onClear?: () => void
   loading?: boolean
-}
+  destructive?: boolean
+} & VariantProps<typeof selectTriggerVariants>
 
 export function SelectTrigger({
   className,
   children,
+  size = 'regular',
   clearable = false,
   onClear,
   loading = false,
+  destructive = false,
+  disabled,
   ...props
 }: SelectTriggerProps) {
-  const showClear = clearable && !loading
+  const showClear = clearable && !loading && !destructive
+  const paddingClass = contentPadding[size ?? 'regular']
 
   return (
     <BaseSelect.Trigger
       className={cn(
-        'group relative flex h-8 w-full items-center rounded-lg border-0 bg-components-input-bg-normal px-2 text-left text-components-input-text-filled outline-none',
-        'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt disabled:cursor-not-allowed disabled:opacity-50',
+        'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-none',
+        'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+        selectTriggerVariants({ size }),
+        disabled && 'cursor-not-allowed bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:bg-components-input-bg-disabled',
+        destructive && 'border border-components-input-border-destructive bg-components-input-bg-destructive shadow-xs hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive',
         className,
       )}
+      disabled={disabled}
       {...props}
     >
-      <span className="grow truncate">{children}</span>
+      <span className={cn('grow truncate', paddingClass)}>
+        {children}
+      </span>
       {loading
         ? (
-            <span className="ml-1 shrink-0 text-text-quaternary">
+            <span className="shrink-0 text-text-quaternary">
               <span className="i-ri-loader-4-line h-3.5 w-3.5 animate-spin" />
             </span>
           )
-        : showClear
+        : destructive
           ? (
-              <span
-                role="button"
-                aria-label="Clear selection"
-                tabIndex={-1}
-                className="ml-1 shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClear?.()
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation()
-                }}
-              >
-                <span className="i-ri-close-circle-fill h-3.5 w-3.5" />
+              <span className="shrink-0 text-text-destructive-secondary">
+                <span className="i-ri-error-warning-line h-4 w-4" />
               </span>
             )
-          : (
-              <BaseSelect.Icon className="ml-1 shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
-                <span className="i-ri-arrow-down-s-line h-4 w-4" />
-              </BaseSelect.Icon>
-            )}
+          : showClear
+            ? (
+                <span
+                  role="button"
+                  aria-label="Clear selection"
+                  tabIndex={-1}
+                  className="shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClear?.()
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                  }}
+                >
+                  <span className="i-ri-close-circle-fill h-3.5 w-3.5" />
+                </span>
+              )
+            : (
+                <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary">
+                  <span className="i-ri-arrow-down-s-line h-4 w-4" />
+                </BaseSelect.Icon>
+              )}
     </BaseSelect.Trigger>
   )
 }

@@ -109,6 +109,63 @@ describe('Select wrappers', () => {
       const clearButton = screen.getByRole('button', { name: /clear selection/i })
       expect(() => fireEvent.click(clearButton)).not.toThrow()
     })
+
+    it('should apply regular size variant classes by default', () => {
+      renderOpenSelect()
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-sm-regular/)
+      expect(trigger.className).toMatch(/rounded-lg/)
+    })
+
+    it('should apply small size variant classes when size is small', () => {
+      renderOpenSelect({
+        triggerProps: { size: 'small' },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-xs-regular/)
+      expect(trigger.className).toMatch(/rounded-md/)
+    })
+
+    it('should apply large size variant classes when size is large', () => {
+      renderOpenSelect({
+        triggerProps: { size: 'large' },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-md-regular/)
+    })
+
+    it('should apply disabled styling with semantic tokens when disabled', () => {
+      renderOpenSelect({
+        triggerProps: { disabled: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toContain('bg-components-input-bg-disabled')
+      expect(trigger.className).toContain('text-components-input-text-filled-disabled')
+    })
+
+    it('should show error icon and apply destructive styling when destructive is true', () => {
+      renderOpenSelect({
+        triggerProps: { destructive: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toContain('border-components-input-border-destructive')
+      expect(trigger.className).toContain('bg-components-input-bg-destructive')
+      const errorIcon = trigger.querySelector('.i-ri-error-warning-line')
+      expect(errorIcon).toBeInTheDocument()
+    })
+
+    it('should hide clear button when destructive is true even if clearable', () => {
+      renderOpenSelect({
+        triggerProps: { clearable: true, destructive: true },
+      })
+
+      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
+    })
   })
 
   describe('SelectContent', () => {
