@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.variables.variables import StringVariable
+from dify_graph.variables import StringVariable
 from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
 
 
