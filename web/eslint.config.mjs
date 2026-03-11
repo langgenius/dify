@@ -144,13 +144,6 @@ export default antfu(
     files: ['**/package.json'],
     rules: {
       'hyoban/no-dependency-version-prefix': 'error',
-      'jsonc/sort-keys': [
-        'error',
-        {
-          pathPattern: '^scripts$',
-          order: { type: 'asc' },
-        },
-      ],
     },
   },
   {
