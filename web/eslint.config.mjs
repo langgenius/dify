@@ -46,6 +46,7 @@ export default antfu(
         'antfu/top-level-function': 'off',
       },
     },
+    e18e: false,
   },
   {
     rules: {
@@ -218,9 +219,3 @@ export default antfu(
     },
   },
 )
-  .disableRulesFix([
-    'e18e/prefer-array-at',
-    'e18e/prefer-spread-syntax',
-    'e18e/prefer-array-to-sorted',
-    'e18e/prefer-array-fill',
-  ])
