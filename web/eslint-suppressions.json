@@ -12898,14 +12898,6 @@
       "count": 2
     }
   },
-  "scripts/optimize-standalone.js": {
-    "e18e/prefer-static-regex": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
   "scripts/refactor-component.js": {
     "e18e/prefer-static-regex": {
       "count": 14

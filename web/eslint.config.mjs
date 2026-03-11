@@ -218,3 +218,6 @@ export default antfu(
     },
   },
 )
+  .disableRulesFix([
+    'e18e/prefer-array-at',
+  ])
