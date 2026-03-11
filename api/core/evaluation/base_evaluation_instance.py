@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.evaluation.entities.evaluation_entity import (
+    DefaultMetric,
     EvaluationCategory,
     EvaluationItemInput,
     EvaluationItemResult,
@@ -21,7 +22,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -33,7 +34,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -45,7 +46,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,

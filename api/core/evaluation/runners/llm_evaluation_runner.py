@@ -13,7 +13,6 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.workflow.node_events import NodeRunResult
-from models.model import App, AppMode
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,11 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
         # Merge actual_output into items for evaluation
         if not node_run_result_list:
             return []
+        if not default_metric:
+            raise ValueError("Default metric is required for LLM evaluation")
         merged_items = self._merge_results_into_items(node_run_result_list)
         return self.evaluation_instance.evaluate_llm(
-            merged_items, default_metrics, model_provider, model_name, tenant_id
+            merged_items, default_metric.metric, model_provider, model_name, tenant_id
         )
 
     @staticmethod

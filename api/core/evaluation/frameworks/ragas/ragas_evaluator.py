@@ -14,8 +14,8 @@ from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrappe
 logger = logging.getLogger(__name__)
 
 # Metric name mappings per category
-LLM_METRICS = ["faithfulness", "answer_relevancy", "answer_correctness", "answer_similarity"]
-RETRIEVAL_METRICS = ["context_precision", "context_recall", "context_relevancy"]
+LLM_METRICS = ["faithfulness", "answer_relevancy", "answer_correctness", "semantic_similarity"]
+RETRIEVAL_METRICS = ["context_precision", "context_recall", "context_relevance"]
 AGENT_METRICS = ["tool_call_accuracy", "answer_correctness"]
 WORKFLOW_METRICS = ["faithfulness", "answer_correctness"]
 
@@ -42,51 +42,51 @@ class RagasEvaluator(BaseEvaluationInstance):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
 
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         return self._evaluate(
-            items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
+            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
         )
 
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
 
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         return self._evaluate(
-            items, default_metrics, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
+            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
         )
 
     def _evaluate(
         self,
         items: list[EvaluationItemInput],
-        default_metrics: str,
+        metric_name: str,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -98,10 +98,10 @@ class RagasEvaluator(BaseEvaluationInstance):
         string similarity if RAGAS import fails.
         """
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        # Extract metric names from default_metrics string.
+        # Extract metric names from metric_name string.
         requested_metrics = (
-            [default_metrics]
-            if default_metrics
+            [metric_name]
+            if metric_name
             else self.get_supported_metrics(category)
         )
 
@@ -159,7 +159,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                     if metric_name in result_df.columns:
                         score = result_df.iloc[i][metric_name]
                         if score is not None and not (isinstance(score, float) and score != score):  # NaN check
-                            metrics.append(EvaluationMetric(name=metric_name, score=float(score)))
+                            metrics.append(EvaluationMetric(name=metric_name, value=float(score)))
                 results.append(EvaluationItemResult(index=item.index, metrics=metrics))
             return results
         except Exception:
@@ -181,7 +181,7 @@ class RagasEvaluator(BaseEvaluationInstance):
             for metric_name in requested_metrics:
                 try:
                     score = self._judge_with_llm(model_wrapper, metric_name, query, item)
-                    metrics.append(EvaluationMetric(name=metric_name, score=score))
+                    metrics.append(EvaluationMetric(name=metric_name, value=score))
                 except Exception:
                     logger.exception("Failed to compute metric %s for item %d", metric_name, item.index)
 
@@ -246,24 +246,26 @@ class RagasEvaluator(BaseEvaluationInstance):
     def _build_ragas_metrics(requested_metrics: list[str]) -> list[Any]:
         """Build RAGAS metric instances from metric names."""
         try:
-            from ragas.metrics import (
+            from ragas.metrics.collections import (
                 AnswerCorrectness,
                 AnswerRelevancy,
-                AnswerSimilarity,
                 ContextPrecision,
                 ContextRecall,
-                ContextRelevancy,
+                ContextRelevance,
                 Faithfulness,
+                SemanticSimilarity,
+                ToolCallAccuracy,
             )
 
             metric_map: dict[str, Any] = {
                 "faithfulness": Faithfulness,
                 "answer_relevancy": AnswerRelevancy,
                 "answer_correctness": AnswerCorrectness,
-                "answer_similarity": AnswerSimilarity,
+                "semantic_similarity": SemanticSimilarity,
                 "context_precision": ContextPrecision,
                 "context_recall": ContextRecall,
-                "context_relevancy": ContextRelevancy,
+                "context_relevance": ContextRelevance,
+                "tool_call_accuracy": ToolCallAccuracy,
             }
 
             metrics = []
