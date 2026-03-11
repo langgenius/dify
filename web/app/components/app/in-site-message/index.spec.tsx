@@ -1,4 +1,3 @@
-/* eslint-disable e18e/prefer-static-regex */
 import type { InSiteMessageActionItem } from './index'
 import { fireEvent, render, screen } from '@testing-library/react'
 import InSiteMessage from './index'
