@@ -487,6 +487,7 @@ class RetrievalService:
                         child_chunk_map[i.segment_id].append(i)
                     else:
                         child_chunk_map[i.segment_id] = [i]
+                    assert i.index_node_id is not None
                     if i.segment_id in doc_segment_map:
                         doc_segment_map[i.segment_id].append(i.index_node_id)
                     else:
