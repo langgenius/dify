@@ -31,7 +31,25 @@ vi.mock('@/app/components/app/configuration/config-prompt/confirm-add-var', () =
 }))
 
 vi.mock('react-sortablejs', () => ({
-  ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ReactSortable: ({
+    children,
+    list,
+    setList,
+  }: {
+    children: React.ReactNode
+    list: Array<{ id: number, name: string }>
+    setList: (list: Array<{ id: number, name: string }>) => void
+  }) => (
+    <div>
+      <button
+        data-testid="mock-sortable-apply"
+        onClick={() => setList([...list].reverse())}
+      >
+        Apply Sort
+      </button>
+      {children}
+    </div>
+  ),
 }))
 
 const defaultData: OpeningStatement = {
@@ -166,6 +184,23 @@ describe('OpeningSettingModal', () => {
     fireEvent.keyDown(closeButton, { key: ' ' })
 
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not call onCancel when close icon receives non-action key', async () => {
+    const onCancel = vi.fn()
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={onCancel}
+      />,
+    )
+
+    const closeButton = screen.getByTestId('close-modal')
+    closeButton.focus()
+    fireEvent.keyDown(closeButton, { key: 'Escape' })
+
+    expect(onCancel).not.toHaveBeenCalled()
   })
 
   it('should call onSave with updated data when save is clicked', async () => {
@@ -506,5 +541,74 @@ describe('OpeningSettingModal', () => {
     const editor = getPromptEditor()
     expect(editor.textContent?.trim()).toBe('')
     expect(screen.getByText('appDebug.openingStatement.placeholder')).toBeInTheDocument()
+  })
+
+  it('should render with empty suggested questions when field is missing', async () => {
+    await render(
+      <OpeningSettingModal
+        data={{ ...defaultData, suggested_questions: undefined } as unknown as OpeningStatement}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByDisplayValue('Question 1')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Question 2')).not.toBeInTheDocument()
+  })
+
+  it('should render prompt variable fallback key when name is empty', async () => {
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        promptVariables={[{ key: 'account_id', name: '', type: 'string', required: true }]}
+      />,
+    )
+
+    expect(getPromptEditor()).toBeInTheDocument()
+  })
+
+  it('should save reordered suggested questions after sortable setList', async () => {
+    const onSave = vi.fn()
+    await render(
+      <OpeningSettingModal
+        data={defaultData}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByTestId('mock-sortable-apply'))
+    await userEvent.click(screen.getByText(/operation\.save/))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      suggested_questions: ['Question 2', 'Question 1'],
+    }))
+  })
+
+  it('should not save when confirm dialog action runs with empty opening statement', async () => {
+    const onSave = vi.fn()
+    const view = await render(
+      <OpeningSettingModal
+        data={{ ...defaultData, opening_statement: 'Hello {{name}}' }}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByText(/operation\.save/))
+    expect(screen.getByTestId('confirm-add-var')).toBeInTheDocument()
+
+    view.rerender(
+      <OpeningSettingModal
+        data={{ ...defaultData, opening_statement: '   ' }}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByTestId('cancel-add'))
+    expect(onSave).not.toHaveBeenCalled()
   })
 })

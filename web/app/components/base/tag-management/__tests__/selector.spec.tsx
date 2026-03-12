@@ -139,6 +139,11 @@ describe('TagSelector', () => {
       // The trigger is wrapped in a PopoverButton
       expect(screen.getByRole('button')).toBeInTheDocument()
     })
+
+    it('should render when minWidth is provided', () => {
+      render(<TagSelector {...defaultProps} minWidth="320px" />)
+      expect(screen.getByRole('button')).toBeInTheDocument()
+    })
   })
 
   describe('Props', () => {

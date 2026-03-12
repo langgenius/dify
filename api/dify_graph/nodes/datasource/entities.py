@@ -3,7 +3,8 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 
 
 class DatasourceEntity(BaseModel):
@@ -16,6 +17,8 @@ class DatasourceEntity(BaseModel):
 
 
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
+    type: NodeType = NodeType.DATASOURCE
+
     class DatasourceInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]

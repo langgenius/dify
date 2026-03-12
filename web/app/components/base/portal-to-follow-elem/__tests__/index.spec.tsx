@@ -2,15 +2,32 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import * as React from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '..'
 
+type MockFloatingData = {
+  middlewareData?: {
+    hide?: {
+      referenceHidden?: boolean
+    }
+  }
+}
+
+let mockFloatingData: MockFloatingData = {}
 const useFloatingMock = vi.fn()
 
 vi.mock('@floating-ui/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@floating-ui/react')>()
   return {
     ...actual,
-    useFloating: (...args: Parameters<typeof actual.useFloating>) => {
-      useFloatingMock(...args)
-      return actual.useFloating(...args)
+    useFloating: (options: unknown) => {
+      useFloatingMock(options)
+      const data = actual.useFloating(options as Parameters<typeof actual.useFloating>[0])
+      return {
+        ...data,
+        ...mockFloatingData,
+        middlewareData: {
+          ...data.middlewareData,
+          ...mockFloatingData.middlewareData,
+        },
+      }
     },
   }
 })
@@ -123,8 +140,91 @@ describe('PortalToFollowElem', () => {
           placement: 'top-start',
         }),
       )
+    })
 
-      useFloatingMock.mockRestore()
+    it('should handle triggerPopupSameWidth prop', () => {
+      render(
+        <PortalToFollowElem triggerPopupSameWidth>
+          <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
+          <PortalToFollowElemContent>Content</PortalToFollowElemContent>
+        </PortalToFollowElem>,
+      )
+
+      type SizeMiddleware = {
+        name: 'size'
+        options: [{
+          apply: (args: {
+            elements: { floating: { style: Record<string, string> } }
+            rects: { reference: { width: number } }
+            availableHeight: number
+          }) => void
+        }]
+      }
+
+      const sizeMiddleware = useFloatingMock.mock.calls[0][0].middleware.find(
+        (m: { name: string }) => m.name === 'size',
+      ) as SizeMiddleware
+      expect(sizeMiddleware).toBeDefined()
+
+      // Manually trigger the apply function to cover line 81-82
+      const mockElements = {
+        floating: { style: {} as Record<string, string> },
+      }
+      const mockRects = {
+        reference: { width: 100 },
+      }
+      sizeMiddleware.options[0].apply({
+        elements: mockElements,
+        rects: mockRects,
+        availableHeight: 500,
+      })
+
+      expect(mockElements.floating.style.width).toBe('100px')
+      expect(mockElements.floating.style.maxHeight).toBe('500px')
+    })
+  })
+
+  describe('PortalToFollowElemTrigger asChild', () => {
+    it('should render correct data-state when open', () => {
+      const { getByRole } = render(
+        <PortalToFollowElem open={true}>
+          <PortalToFollowElemTrigger asChild>
+            <button>Trigger</button>
+          </PortalToFollowElemTrigger>
+        </PortalToFollowElem>,
+      )
+      expect(getByRole('button')).toHaveAttribute('data-state', 'open')
+    })
+
+    it('should handle missing ref on child', () => {
+      const { getByRole } = render(
+        <PortalToFollowElem>
+          <PortalToFollowElemTrigger asChild>
+            <button>Trigger</button>
+          </PortalToFollowElemTrigger>
+        </PortalToFollowElem>,
+      )
+      expect(getByRole('button')).toBeInTheDocument()
+    })
+  })
+
+  describe('Visibility', () => {
+    it('should hide content when reference is hidden', () => {
+      mockFloatingData = {
+        middlewareData: {
+          hide: { referenceHidden: true },
+        },
+      }
+
+      const { getByTestId } = render(
+        <PortalToFollowElem open={true}>
+          <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
+          <PortalToFollowElemContent data-testid="content">Hidden Content</PortalToFollowElemContent>
+        </PortalToFollowElem>,
+      )
+
+      expect(getByTestId('content')).toHaveStyle('visibility: hidden')
+      mockFloatingData = {}
     })
   })
 })
