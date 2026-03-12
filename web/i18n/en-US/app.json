@@ -116,7 +116,7 @@
   "iconPicker.image": "Image",
   "iconPicker.ok": "OK",
   "importBundleFailed": "Import bundle failed.",
-  "importDSL": "Import DSL file",
+  "importDSL": "Import App",
   "importFromDSL": "Import App",
   "importFromDSLFile": "Local File",
   "importFromDSLModal.learnMore": "Learn about DSL and ZIP formats",

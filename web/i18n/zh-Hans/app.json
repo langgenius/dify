@@ -116,7 +116,7 @@
   "iconPicker.image": "图片",
   "iconPicker.ok": "确认",
   "importBundleFailed": "导入 Bundle 失败",
-  "importDSL": "导入 DSL 文件",
+  "importDSL": "导入 App",
   "importFromDSL": "导入 DSL",
   "importFromDSLFile": "从 DSL 文件",
   "importFromDSLModal.learnMore": "了解 DSL 与 ZIP 格式",
