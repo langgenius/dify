@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import sessionmaker
 
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.enums import NodeType
 from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
@@ -22,7 +23,7 @@ def _make_service() -> WorkflowService:
     return WorkflowService(session_maker=sessionmaker())
 
 
-def _build_node_config(delivery_methods):
+def _build_node_config(delivery_methods: list[EmailDeliveryMethod]) -> NodeConfigDict:
     node_data = HumanInputNodeData(
         title="Human Input",
         delivery_methods=delivery_methods,
@@ -31,7 +32,7 @@ def _build_node_config(delivery_methods):
         user_actions=[],
     ).model_dump(mode="json")
     node_data["type"] = NodeType.HUMAN_INPUT.value
-    return {"id": "node-1", "data": node_data}
+    return NodeConfigDictAdapter.validate_python({"id": "node-1", "data": node_data})
 
 
 def _make_email_method(enabled: bool = True, debug_mode: bool = False) -> EmailDeliveryMethod:

@@ -2,6 +2,7 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult
@@ -30,7 +31,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         index_processor: IndexProcessorProtocol,
