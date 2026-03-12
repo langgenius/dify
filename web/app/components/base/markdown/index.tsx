@@ -22,6 +22,7 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
+  messageId?: string // Optional message ID for data persistence
 } & Pick<
   StreamdownWrapperProps,
   'customComponents' | 'customDisallowedElements' | 'remarkPlugins' | 'rehypePlugins' | 'isAnimating' | 'mode'
@@ -38,6 +39,7 @@ export const Markdown = memo((props: MarkdownProps) => {
     rehypePlugins,
     mode,
     className,
+    messageId,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
 
@@ -52,6 +54,7 @@ export const Markdown = memo((props: MarkdownProps) => {
         rehypePlugins={rehypePlugins}
         isAnimating={isAnimating}
         mode={mode}
+        messageId={messageId}
       />
     </div>
   )

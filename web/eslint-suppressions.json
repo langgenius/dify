@@ -1649,9 +1649,6 @@
     }
   },
   "app/components/base/chat/chat/answer/agent-content.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2334,8 +2331,18 @@
       "count": 9
     }
   },
+  "app/components/base/markdown-blocks/hooks/use-editor-common.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
   "app/components/base/markdown-blocks/link.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/base/markdown-blocks/markdown-editor.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
