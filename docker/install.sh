@@ -145,6 +145,47 @@ is_safe_directory() {
     return 1
 }
 
+# Verify that a directory is a valid git repository with the expected remote URL
+# This prevents RCE attacks where an attacker pre-creates a malicious directory
+verify_git_repository() {
+    local dir="$1"
+    local expected_url="https://github.com/${GITHUB_REPO}.git"
+
+    # Check if it's a git repository
+    if [ ! -d "$dir/.git" ]; then
+        print_error "Directory exists but is not a valid git repository"
+        echo "    This could be a security risk. Remove the directory and try again."
+        return 1
+    fi
+
+    # Get the remote URL
+    local remote_url
+    remote_url=$(cd "$dir" && git config --get remote.origin.url 2>/dev/null || echo "")
+
+    if [ -z "$remote_url" ]; then
+        print_error "Directory exists but has no remote origin configured"
+        echo "    This could be a security risk. Remove the directory and try again."
+        return 1
+    fi
+
+    # Verify the remote URL matches expected repository
+    # Accept both https and git@ formats
+    local normalized_url="$remote_url"
+    if [[ "$remote_url" == git@github.com:* ]]; then
+        normalized_url="https://github.com/${remote_url#git@github.com:}"
+    fi
+
+    if [ "$normalized_url" != "$expected_url" ]; then
+        print_error "Directory exists but remote URL does not match expected repository"
+        echo "    Expected: $expected_url"
+        echo "    Found: $remote_url"
+        echo "    This could be a security risk. Remove the directory and try again."
+        return 1
+    fi
+
+    return 0
+}
+
 # Check if we're running in the docker directory of a Dify repo,
 # or if we need to shallow clone the repository
 setup_working_directory() {
@@ -199,6 +240,10 @@ setup_working_directory() {
             print_error "Directory $clone_dir is not owned by you or root. Aborting for security."
             exit 1
         fi
+        # Verify this is a legitimate Dify repository (prevent RCE attacks)
+        if ! verify_git_repository "$clone_dir"; then
+            exit 1
+        fi
         cd "$clone_dir/docker"
         SCRIPT_DIR="$(pwd)"
         print_ok "Using existing Dify installation in $SCRIPT_DIR"
@@ -217,12 +262,19 @@ setup_working_directory() {
             print_warn "Incomplete Dify directory detected, re-cloning..."
             rm -rf "$clone_dir"
         else
+            # Verify this is a legitimate Dify repository before updating (prevent RCE attacks)
+            if ! verify_git_repository "$clone_dir"; then
+                exit 1
+            fi
             cd "$clone_dir"
             print_step "Updating Dify repository..."
-            if git pull origin "$GITHUB_BRANCH" 2>/dev/null; then
+            local git_pull_output
+            if git_pull_output=$(git pull origin "$GITHUB_BRANCH" 2>&1); then
                 print_ok "Updated Dify repository"
             else
-                print_warn "Could not update, using existing version"
+                print_warn "Could not update repository:"
+                echo "    $git_pull_output"
+                echo "    Using existing version"
             fi
             cd ..
         fi
@@ -249,8 +301,11 @@ setup_working_directory() {
             exit 1
         fi
 
-        if ! git clone --depth 1 --branch "$GITHUB_BRANCH" "https://github.com/${GITHUB_REPO}.git" "$clone_dir" 2>&1; then
-            print_error "Failed to clone repository"
+        local git_clone_output
+        if ! git_clone_output=$(git clone --depth 1 --branch "$GITHUB_BRANCH" "https://github.com/${GITHUB_REPO}.git" "$clone_dir" 2>&1); then
+            print_error "Failed to clone repository:"
+            echo "    $git_clone_output"
+            echo ""
             echo "Please check your network connection and try again."
             exit 1
         fi
@@ -961,7 +1016,10 @@ check_service_health() {
 
     if command -v jq &> /dev/null; then
         # Check if any service is not healthy/running using jq
-        if echo "$services" | jq -s 'map(select(.State != "running" and .State != "created")) | length == 0' >/dev/null 2>&1; then
+        # Compare the actual output string "true" or "false", not the exit code
+        local result
+        result=$(echo "$services" | jq -s 'map(select(.State != "running" and .State != "created")) | length == 0' 2>/dev/null)
+        if [ "$result" = "true" ]; then
             return 0
         fi
     else
