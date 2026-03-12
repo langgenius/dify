@@ -1,7 +1,7 @@
 import pytest
 
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
-from dify_graph.nodes.base.entities import BaseNodeData
 from dify_graph.nodes.base.node import Node
 
 # Ensures that all node classes are imported.
@@ -126,3 +126,20 @@ def test_init_subclass_sets_node_data_type_from_generic():
             return "1"
 
     assert _AutoNode._node_data_type is _TestNodeData
+
+
+def test_validate_node_data_uses_declared_node_data_type():
+    """Public validation should hydrate the subclass-declared node data model."""
+
+    class _AutoNode(Node[_TestNodeData]):
+        node_type = NodeType.CODE
+
+        @staticmethod
+        def version() -> str:
+            return "1"
+
+    base_node_data = BaseNodeData.model_validate({"type": NodeType.CODE, "title": "Test"})
+
+    validated = _AutoNode.validate_node_data(base_node_data)
+
+    assert isinstance(validated, _TestNodeData)
