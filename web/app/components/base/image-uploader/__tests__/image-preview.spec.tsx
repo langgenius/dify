@@ -424,5 +424,50 @@ describe('ImagePreview', () => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })
     })
+
+    it('should zoom out below 1 without resetting position', async () => {
+      const user = userEvent.setup()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+      const image = screen.getByRole('img', { name: 'Preview Image' })
+
+      await user.click(getZoomOutButton())
+      await waitFor(() => {
+        expect(image).toHaveStyle({ transform: 'scale(0.8333333333333334) translate(0px, 0px)' })
+      })
+    })
+
+    it('should keep drag move stable when rect data is unavailable', async () => {
+      const user = userEvent.setup()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const overlay = getOverlay()
+      const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
+      const imageParent = image.parentElement
+      if (!imageParent)
+        throw new Error('Image parent element not found')
+
+      vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
+      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
+
+      await user.click(getZoomInButton())
+      act(() => {
+        overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }))
+        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }))
+      })
+
+      expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
+    })
   })
 })

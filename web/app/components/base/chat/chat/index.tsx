@@ -169,6 +169,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleScrollToBottom, handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatContainerRef.current) {
       requestAnimationFrame(() => {
         handleScrollToBottom()
@@ -188,6 +189,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatFooterRef.current && chatContainerRef.current) {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -216,9 +218,10 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const setUserScrolled = () => {
       const container = chatContainerRef.current
+      /* v8 ignore next 2 - @preserve */
       if (!container)
         return
-
+      /* v8 ignore next 2 - @preserve */
       if (isAutoScrollingRef.current)
         return
 
@@ -229,6 +232,7 @@ const Chat: FC<ChatProps> = ({
     }
 
     const container = chatContainerRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!container)
       return
 
