@@ -2,6 +2,7 @@
 Human Input node entities.
 """
 
+import logging
 import re
 import uuid
 from collections.abc import Mapping, Sequence
@@ -17,6 +18,8 @@ from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH
 
 from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
+
+logger = logging.getLogger(__name__)
 
 _OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
 
@@ -74,7 +77,7 @@ class EmailDeliveryConfig(BaseModel):
 
     def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
         if not user_id:
-            raise ValueError("user_id must not be empty for debug email recipient")
+            raise AssertionError("user_id must not be empty for debug email recipient")
         debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
         return self.model_copy(update={"recipients": debug_recipients})
 
@@ -149,6 +152,7 @@ def apply_debug_email_recipient(
     if not method.config.debug_mode:
         return method
     if not user_id:
+        logger.warning("Debug email recipient skipped: user_id is None or empty")
         return method
     debug_config = method.config.with_debug_recipient(user_id)
     return method.model_copy(update={"config": debug_config})
