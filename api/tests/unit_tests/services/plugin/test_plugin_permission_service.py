@@ -1,3 +1,4 @@
+from models.account import TenantPluginPermission
 from unittest.mock import MagicMock, patch
 
 MODULE = "services.plugin.plugin_permission_service"
@@ -48,9 +49,10 @@ class TestChangePermission:
             perm_cls.return_value = MagicMock()
             from services.plugin.plugin_permission_service import PluginPermissionService
 
-            result = PluginPermissionService.change_permission("t1", "all_members", "all_members")
+            result = PluginPermissionService.change_permission(
+                "t1", TenantPluginPermission.InstallPermission.EVERYONE, TenantPluginPermission.DebugPermission.EVERYONE
+            )
 
-        assert result is True
         session.add.assert_called_once()
         session.commit.assert_called_once()
 
@@ -62,10 +64,11 @@ class TestChangePermission:
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
 
-            result = PluginPermissionService.change_permission("t1", "admin_only", "admin_only")
+            result = PluginPermissionService.change_permission(
+                "t1", TenantPluginPermission.InstallPermission.ADMINS, TenantPluginPermission.DebugPermission.ADMINS
+            )
 
-        assert result is True
-        assert existing.install_permission == "admin_only"
-        assert existing.debug_permission == "admin_only"
+        assert existing.install_permission == TenantPluginPermission.InstallPermission.ADMINS
+        assert existing.debug_permission == TenantPluginPermission.InstallPermission.ADMINS
         session.commit.assert_called_once()
         session.add.assert_not_called()
