@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { IS_CLOUD_EDITION } from '@/config'
+import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
@@ -23,6 +23,7 @@ import { CustomConfigurationStatusEnum, ModelFeatureEnum } from '../declarations
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
+import { providerSupportsCredits } from '../supports-credits'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap, providerIconMap, providerKeyToPluginId } from '../utils'
 import PopupItem from './popup-item'
 
@@ -55,16 +56,14 @@ const Popup: FC<PopupProps> = ({
   const { refreshPluginList } = useRefreshPluginList()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
-  const showCreditsExhaustedAlert = useMemo(() => {
-    return isCreditsExhausted && modelProviders.some(p => p.system_configuration.enabled && IS_CLOUD_EDITION)
-  }, [isCreditsExhausted, modelProviders])
-  const hasApiKeyFallback = useMemo(() => {
-    return modelProviders.some((p) => {
-      const isApiKeyActive = p.custom_configuration?.status === CustomConfigurationStatusEnum.active
-      const supportsCredits = p.system_configuration.enabled && IS_CLOUD_EDITION
-      return isApiKeyActive && supportsCredits
-    })
-  }, [modelProviders])
+  const { data: systemFeatures } = useSystemFeaturesQuery()
+  const trialModels = systemFeatures?.trial_models
+  const showCreditsExhaustedAlert = isCreditsExhausted
+    && modelProviders.some(provider => providerSupportsCredits(provider, trialModels))
+  const hasApiKeyFallback = modelProviders.some((provider) => {
+    const isApiKeyActive = provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
+    return isApiKeyActive && providerSupportsCredits(provider, trialModels)
+  })
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
     if (!allPlugins || isMarketplacePluginsLoading || installingProvider)
