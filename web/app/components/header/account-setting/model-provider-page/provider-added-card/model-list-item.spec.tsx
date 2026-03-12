@@ -248,7 +248,7 @@ describe('ModelListItem', () => {
     // Assert - ConfigModel should not render because status is not active/disabled
     expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
     const statusSwitch = screen.getByRole('switch')
-    expect(statusSwitch).toHaveClass('!cursor-not-allowed')
+    expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(statusSwitch)
     expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
     expect(enableModel).not.toHaveBeenCalled()
