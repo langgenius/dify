@@ -5,6 +5,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -298,11 +299,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LoopNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = LoopNodeData.model_validate(node_data)
-
         variable_mapping = {}
 
         # Extract loop node IDs statically from graph_config
@@ -320,14 +318,15 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 # Get node class
                 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
                 if node_type not in NODE_TYPE_CLASSES_MAPPING:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
+                node_version = str(typed_sub_node_config["data"].version)
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -342,7 +341,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in typed_node_data.loop_variables or []:
+        for loop_variable in node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping
@@ -412,24 +411,14 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             return build_segment_with_type(var_type, value)
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
-        # Import dependencies
-        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
-        from core.workflow.node_factory import DifyNodeFactory
         from dify_graph.entities import GraphInitParams
-        from dify_graph.graph import Graph
-        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-        from dify_graph.graph_engine.command_channels import InMemoryChannel
         from dify_graph.runtime import GraphRuntimeState
 
-        # Create GraphInitParams from node attributes
+        # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -439,22 +428,10 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             start_at=start_at.timestamp(),
         )
 
-        # Create a new node factory with the new GraphRuntimeState
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state_copy
-        )
-
-        # Initialize the loop graph with the new node factory
-        loop_graph = Graph.init(graph_config=self.graph_config, node_factory=node_factory, root_node_id=root_node_id)
-
-        # Create a new GraphEngine for this iteration
-        graph_engine = GraphEngine(
+        return self.graph_runtime_state.create_child_engine(
             workflow_id=self.workflow_id,
-            graph=loop_graph,
+            graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state_copy,
-            command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
-            config=GraphEngineConfig(),
+            graph_config=self.graph_config,
+            root_node_id=root_node_id,
         )
-        graph_engine.layer(LLMQuotaLayer())
-
-        return graph_engine

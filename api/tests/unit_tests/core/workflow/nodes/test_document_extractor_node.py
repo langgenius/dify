@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, UserFrom, WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
@@ -16,19 +16,21 @@ from dify_graph.nodes.document_extractor.node import (
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
+    _normalize_docx_zip,
 )
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment
 from dify_graph.variables.variables import StringVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
 def graph_init_params() -> GraphInitParams:
-    return GraphInitParams(
-        tenant_id="test_tenant",
-        app_id="test_app",
+    return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},
+        tenant_id="test_tenant",
+        app_id="test_app",
         user_id="test_user",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -83,6 +85,38 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error is not None
     assert "is not an ArrayFileSegment" in result.error
+
+
+def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """Empty file list should return SUCCEEDED with empty documents and ArrayStringSegment([])."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Provide an actual ArrayFileSegment with an empty list
+    mock_graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(value=[])
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
+
+
+def test_run_none_only_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """A file list containing only None (e.g., [None]) should be filtered to [] and succeed."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Use a Mock to bypass type validation for None entries in the list
+    afs = Mock(spec=ArrayFileSegment)
+    afs.value = [None]
+    mock_graph_runtime_state.variable_pool.get.return_value = afs
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
 
 
 @pytest.mark.parametrize(
@@ -384,3 +418,58 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
 
     assert expected_manual == result
+
+
+def _make_docx_zip(use_backslash: bool) -> bytes:
+    """Helper to build a minimal in-memory DOCX zip.
+
+    When use_backslash=True the ZIP entry names use backslash separators
+    (as produced by Evernote on Windows), otherwise forward slashes are used.
+    """
+    import zipfile
+
+    sep = "\\" if use_backslash else "/"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", b"<Types/>")
+        zf.writestr(f"_rels{sep}.rels", b"<Relationships/>")
+        zf.writestr(f"word{sep}document.xml", b"<w:document/>")
+        zf.writestr(f"word{sep}_rels{sep}document.xml.rels", b"<Relationships/>")
+    return buf.getvalue()
+
+
+def test_normalize_docx_zip_replaces_backslashes():
+    """ZIP entries with backslash separators must be rewritten to forward slashes."""
+    import zipfile
+
+    malformed = _make_docx_zip(use_backslash=True)
+    fixed = _normalize_docx_zip(malformed)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+    # No entry should contain a backslash after normalization
+    assert all("\\" not in name for name in names)
+
+
+def test_normalize_docx_zip_leaves_forward_slash_unchanged():
+    """ZIP entries that already use forward slashes must not be modified."""
+    import zipfile
+
+    normal = _make_docx_zip(use_backslash=False)
+    fixed = _normalize_docx_zip(normal)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+
+
+def test_normalize_docx_zip_returns_original_on_bad_zip():
+    """Non-zip bytes must be returned as-is without raising."""
+    garbage = b"not a zip file at all"
+    result = _normalize_docx_zip(garbage)
+    assert result == garbage

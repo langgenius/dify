@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 from typing_extensions import TypeIs
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -460,21 +461,18 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IterationNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IterationNodeData.model_validate(node_data)
-
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": typed_node_data.iterator_selector,
+            f"{node_id}.input_selector": node_data.iterator_selector,
         }
         iteration_node_ids = set()
 
         # Find all nodes that belong to this loop
         nodes = graph_config.get("nodes", [])
         for node in nodes:
-            node_data = node.get("data", {})
-            if node_data.get("iteration_id") == node_id:
+            node_config_data = node.get("data", {})
+            if node_config_data.get("iteration_id") == node_id:
                 in_iteration_node_id = node.get("id")
                 if in_iteration_node_id:
                     iteration_node_ids.add(in_iteration_node_id)
@@ -490,14 +488,15 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 # Get node class
                 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
                 if node_type not in NODE_TYPE_CLASSES_MAPPING:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
+                node_version = str(typed_sub_node_config["data"].version)
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -587,24 +586,14 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                         return
 
     def _create_graph_engine(self, index: int, item: object):
-        # Import dependencies
-        from core.app.workflow.layers.llm_quota import LLMQuotaLayer
-        from core.workflow.node_factory import DifyNodeFactory
         from dify_graph.entities import GraphInitParams
-        from dify_graph.graph import Graph
-        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-        from dify_graph.graph_engine.command_channels import InMemoryChannel
-        from dify_graph.runtime import GraphRuntimeState
+        from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState
 
-        # Create GraphInitParams from node attributes
+        # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
         # Create a deep copy of the variable pool for each iteration
@@ -621,28 +610,17 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             total_tokens=0,
             node_run_steps=0,
         )
+        root_node_id = self.node_data.start_node_id
+        if root_node_id is None:
+            raise StartNodeIdNotFoundError(f"field start_node_id in iteration {self._node_id} not found")
 
-        # Create a new node factory with the new GraphRuntimeState
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state_copy
-        )
-
-        # Initialize the iteration graph with the new node factory
-        iteration_graph = Graph.init(
-            graph_config=self.graph_config, node_factory=node_factory, root_node_id=self.node_data.start_node_id
-        )
-
-        if not iteration_graph:
-            raise IterationGraphNotFoundError("iteration graph not found")
-
-        # Create a new GraphEngine for this iteration
-        graph_engine = GraphEngine(
-            workflow_id=self.workflow_id,
-            graph=iteration_graph,
-            graph_runtime_state=graph_runtime_state_copy,
-            command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
-            config=GraphEngineConfig(),
-        )
-        graph_engine.layer(LLMQuotaLayer())
-
-        return graph_engine
+        try:
+            return self.graph_runtime_state.create_child_engine(
+                workflow_id=self.workflow_id,
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state_copy,
+                graph_config=self.graph_config,
+                root_node_id=root_node_id,
+            )
+        except ChildGraphNotFoundError as exc:
+            raise IterationGraphNotFoundError("iteration graph not found") from exc

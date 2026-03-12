@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -32,8 +32,8 @@ from core.app.entities.queue_entities import (
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import UserFrom
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import (
@@ -63,7 +63,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.nodes import NodeType
 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -119,13 +118,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=tenant_id or "",
-            app_id=self._app_id,
             workflow_id=workflow_id,
             graph_config=graph_config,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
+            run_context=build_dify_run_context(
+                tenant_id=tenant_id or "",
+                app_id=self._app_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
@@ -267,13 +268,15 @@ class WorkflowBasedAppRunner:
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
             workflow_id=workflow.id,
             graph_config=graph_config,
-            user_id="",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id="",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
 
@@ -300,9 +303,11 @@ class WorkflowBasedAppRunner:
         if not target_node_config:
             raise ValueError(f"{node_type_label} node id not found in workflow graph")
 
+        target_node_config = NodeConfigDictAdapter.validate_python(target_node_config)
+
         # Get node class
-        node_type = NodeType(target_node_config.get("data", {}).get("type"))
-        node_version = target_node_config.get("data", {}).get("version", "1")
+        node_type = target_node_config["data"].type
+        node_version = str(target_node_config["data"].version)
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # Use the variable pool from graph_runtime_state instead of creating a new one
