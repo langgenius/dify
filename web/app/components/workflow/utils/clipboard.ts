@@ -1,11 +1,10 @@
 import type { Edge, Node } from '../types'
 
-const WORKFLOW_CLIPBOARD_VERSION = 1
 const WORKFLOW_CLIPBOARD_KIND = 'dify-workflow-clipboard'
 
 type WorkflowClipboardPayload = {
   kind: string
-  version: number
+  version: string
   nodes: Node[]
   edges: Edge[]
 }
@@ -16,7 +15,7 @@ export type WorkflowClipboardData = {
 }
 
 export type WorkflowClipboardReadResult = WorkflowClipboardData & {
-  sourceVersion?: number
+  sourceVersion?: string
   isVersionMismatch: boolean
 }
 
@@ -136,7 +135,10 @@ export const isClipboardEdgeStructurallyValid = (value: unknown): value is Edge 
     && typeof value.target === 'string'
 }
 
-export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadResult => {
+export const parseWorkflowClipboardText = (
+  text: string,
+  currentClipboardVersion: string,
+): WorkflowClipboardReadResult => {
   if (!text)
     return emptyClipboardReadResult
 
@@ -144,7 +146,7 @@ export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadR
     const parsed = JSON.parse(text) as Partial<WorkflowClipboardPayload>
     if (
       parsed.kind !== WORKFLOW_CLIPBOARD_KIND
-      || typeof parsed.version !== 'number'
+      || typeof parsed.version !== 'string'
       || !isNodeArray(parsed.nodes)
       || !isEdgeArray(parsed.edges)
     ) {
@@ -160,7 +162,7 @@ export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadR
       nodes: validatedNodes,
       edges: validatedEdges,
       sourceVersion,
-      isVersionMismatch: sourceVersion !== WORKFLOW_CLIPBOARD_VERSION,
+      isVersionMismatch: sourceVersion !== currentClipboardVersion,
     }
   }
   catch {
@@ -168,10 +170,13 @@ export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadR
   }
 }
 
-export const stringifyWorkflowClipboardData = (payload: WorkflowClipboardData): string => {
+export const stringifyWorkflowClipboardData = (
+  payload: WorkflowClipboardData,
+  currentClipboardVersion: string,
+): string => {
   const data: WorkflowClipboardPayload = {
     kind: WORKFLOW_CLIPBOARD_KIND,
-    version: WORKFLOW_CLIPBOARD_VERSION,
+    version: currentClipboardVersion,
     nodes: payload.nodes,
     edges: payload.edges,
   }
@@ -179,15 +184,20 @@ export const stringifyWorkflowClipboardData = (payload: WorkflowClipboardData): 
   return JSON.stringify(data)
 }
 
-export const writeWorkflowClipboard = async (payload: WorkflowClipboardData): Promise<void> => {
-  const text = stringifyWorkflowClipboardData(payload)
+export const writeWorkflowClipboard = async (
+  payload: WorkflowClipboardData,
+  currentClipboardVersion: string,
+): Promise<void> => {
+  const text = stringifyWorkflowClipboardData(payload, currentClipboardVersion)
   await navigator.clipboard.writeText(text)
 }
 
-export const readWorkflowClipboard = async (): Promise<WorkflowClipboardReadResult> => {
+export const readWorkflowClipboard = async (
+  currentClipboardVersion: string,
+): Promise<WorkflowClipboardReadResult> => {
   try {
     const text = await navigator.clipboard.readText()
-    return parseWorkflowClipboardText(text)
+    return parseWorkflowClipboardText(text, currentClipboardVersion)
   }
   catch {
     return emptyClipboardReadResult

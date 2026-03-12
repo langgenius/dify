@@ -23,6 +23,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import Toast from '@/app/components/base/toast'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -122,6 +123,7 @@ const pruneClipboardNodesWithFilteredAncestors = (
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
+  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -1804,9 +1806,9 @@ export const useNodesInteractions = () => {
       }
 
       setClipboardData(clipboardData)
-      void writeWorkflowClipboard(clipboardData).catch(() => {})
+      void writeWorkflowClipboard(clipboardData, appDslVersion).catch(() => {})
     },
-    [getNodesReadOnly, workflowStore, store, isNodeCopyable],
+    [getNodesReadOnly, workflowStore, store, isNodeCopyable, appDslVersion],
   )
 
   const handleNodesPaste = useCallback(async () => {
@@ -1819,7 +1821,7 @@ export const useNodesInteractions = () => {
       mousePosition,
       setClipboardData,
     } = workflowStore.getState()
-    const clipboardData = await readWorkflowClipboard()
+    const clipboardData = await readWorkflowClipboard(appDslVersion)
     const hasSystemClipboard = clipboardData.nodes.length > 0
     const shouldRunCompatibilityCheck = hasSystemClipboard && clipboardData.isVersionMismatch
     if (hasSystemClipboard && clipboardData.isVersionMismatch) {
@@ -2259,6 +2261,7 @@ export const useNodesInteractions = () => {
     handleNodeIterationChildrenCopy,
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
+    appDslVersion,
   ])
 
   const handleNodesDuplicate = useCallback(

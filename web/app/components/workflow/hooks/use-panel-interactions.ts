@@ -1,14 +1,16 @@
 import type { MouseEvent } from 'react'
 import { useCallback } from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWorkflowStore } from '../store'
 import { readWorkflowClipboard } from '../utils'
 
 export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()
+  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
 
   const handlePaneContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault()
-    void readWorkflowClipboard().then(({ nodes, edges }) => {
+    void readWorkflowClipboard(appDslVersion).then(({ nodes, edges }) => {
       if (nodes.length)
         workflowStore.getState().setClipboardData({ nodes, edges })
     })
@@ -21,7 +23,7 @@ export const usePanelInteractions = () => {
         left: e.clientX - x,
       },
     })
-  }, [workflowStore])
+  }, [workflowStore, appDslVersion])
 
   const handlePaneContextmenuCancel = useCallback(() => {
     workflowStore.setState({

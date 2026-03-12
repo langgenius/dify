@@ -7,6 +7,7 @@ import {
 } from '../clipboard'
 
 describe('workflow clipboard storage', () => {
+  const currentVersion = '0.6.0'
   const readTextMock = vi.fn<() => Promise<string>>()
   const writeTextMock = vi.fn<(text: string) => Promise<void>>()
 
@@ -25,7 +26,7 @@ describe('workflow clipboard storage', () => {
   it('should return empty clipboard data when clipboard text is empty', async () => {
     readTextMock.mockResolvedValue('')
 
-    await expect(readWorkflowClipboard()).resolves.toEqual({
+    await expect(readWorkflowClipboard(currentVersion)).resolves.toEqual({
       nodes: [],
       edges: [],
       isVersionMismatch: false,
@@ -36,15 +37,15 @@ describe('workflow clipboard storage', () => {
     const nodes = [createNode({ id: 'node-1' })]
     const edges = [createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' })]
 
-    const serialized = stringifyWorkflowClipboardData({ nodes, edges })
+    const serialized = stringifyWorkflowClipboardData({ nodes, edges }, currentVersion)
     readTextMock.mockResolvedValue(serialized)
 
-    await writeWorkflowClipboard({ nodes, edges })
+    await writeWorkflowClipboard({ nodes, edges }, currentVersion)
     expect(writeTextMock).toHaveBeenCalledWith(serialized)
-    await expect(readWorkflowClipboard()).resolves.toEqual({
+    await expect(readWorkflowClipboard(currentVersion)).resolves.toEqual({
       nodes,
       edges,
-      sourceVersion: 1,
+      sourceVersion: currentVersion,
       isVersionMismatch: false,
     })
   })
@@ -54,21 +55,21 @@ describe('workflow clipboard storage', () => {
     const edges = [createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' })]
     readTextMock.mockResolvedValue(JSON.stringify({
       kind: 'dify-workflow-clipboard',
-      version: 2,
+      version: '0.5.0',
       nodes,
       edges,
     }))
 
-    await expect(readWorkflowClipboard()).resolves.toEqual({
+    await expect(readWorkflowClipboard(currentVersion)).resolves.toEqual({
       nodes,
       edges,
-      sourceVersion: 2,
+      sourceVersion: '0.5.0',
       isVersionMismatch: true,
     })
   })
 
   it('should return empty clipboard data for invalid JSON', () => {
-    expect(parseWorkflowClipboardText('{invalid-json')).toEqual({
+    expect(parseWorkflowClipboardText('{invalid-json', currentVersion)).toEqual({
       nodes: [],
       edges: [],
       isVersionMismatch: false,
@@ -81,7 +82,7 @@ describe('workflow clipboard storage', () => {
       version: 1,
       nodes: [],
       edges: [],
-    }))).toEqual({
+    }), currentVersion)).toEqual({
       nodes: [],
       edges: [],
       isVersionMismatch: false,
@@ -91,7 +92,7 @@ describe('workflow clipboard storage', () => {
   it('should return empty clipboard data when clipboard read fails', async () => {
     readTextMock.mockRejectedValue(new Error('clipboard denied'))
 
-    await expect(readWorkflowClipboard()).resolves.toEqual({
+    await expect(readWorkflowClipboard(currentVersion)).resolves.toEqual({
       nodes: [],
       edges: [],
       isVersionMismatch: false,

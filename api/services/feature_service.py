@@ -157,6 +157,7 @@ class PluginManagerModel(BaseModel):
 
 
 class SystemFeatureModel(BaseModel):
+    app_dsl_version: str = ""
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -223,7 +224,10 @@ class FeatureService:
 
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
+        from services.app_dsl_service import CURRENT_DSL_VERSION
+
         system_features = SystemFeatureModel()
+        system_features.app_dsl_version = CURRENT_DSL_VERSION
 
         cls._fulfill_system_params_from_env(system_features)
 
