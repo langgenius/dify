@@ -951,7 +951,7 @@ class WorkflowService:
         delivery_method = apply_debug_email_recipient(
             delivery_method,
             enabled=True,
-            user_id=account.id or "",
+            user_id=account.id,
         )
 
         variable_pool = self._build_human_input_variable_pool(
@@ -1521,3 +1521,4 @@ def _rebuild_single_file(tenant_id: str, value: Any, variable_entity_type: Varia
         return build_from_mappings(mappings=value, tenant_id=tenant_id)
     else:
         raise Exception("unreachable")
+
