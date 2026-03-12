@@ -351,3 +351,29 @@ class TestMCPToolUsageExtraction:
             )
             if expected_total:
                 assert usage.total_tokens == expected_total
+
+
+class TestMCPToolHandleNoneParameter:
+    def test_handle_none_parameter_preserves_empty_and_falsy_values(self) -> None:
+        tool = _make_mcp_tool()
+        params = {
+            "normal": "value",
+            "empty_str": "",
+            "whitespace_str": "   ",
+            "none_value": None,
+            "zero_int": 0,
+            "zero_float": 0.0,
+            "false_bool": False,
+            "empty_list": [],
+        }
+
+        filtered = tool._handle_none_parameter(params)
+
+        assert "none_value" not in filtered
+        assert filtered["normal"] == "value"
+        assert filtered["empty_str"] == ""
+        assert filtered["whitespace_str"] == "   "
+        assert filtered["zero_int"] == 0
+        assert filtered["zero_float"] == 0.0
+        assert filtered["false_bool"] is False
+        assert filtered["empty_list"] == []
