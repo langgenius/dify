@@ -3,6 +3,7 @@ from decimal import Decimal
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -77,7 +78,7 @@ class CodeNode(Node[CodeNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -466,15 +467,12 @@ class CodeNode(Node[CodeNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: CodeNodeData,
     ) -> Mapping[str, Sequence[str]]:
         _ = graph_config  # Explicitly mark as unused
-        # Create typed NodeData from dict
-        typed_node_data = CodeNodeData.model_validate(node_data)
-
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in typed_node_data.variables
+            for variable_selector in node_data.variables
         }
 
     @property
