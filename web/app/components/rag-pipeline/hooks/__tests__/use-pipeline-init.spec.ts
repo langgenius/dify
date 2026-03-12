@@ -326,3 +326,23 @@ describe('usePipelineInit', () => {
     })
   })
 })
+
+
+describe('usePipelineInit — non draft error handling', () => {
+  it('should stop loading and not call syncWorkflowDraft on non draft error', async () => {
+    const error = {
+      json: vi.fn().mockResolvedValue({ code: 'other_error' }),
+      bodyUsed: false,
+    }
+    mockFetchWorkflowDraft.mockReset()
+    mockFetchWorkflowDraft.mockRejectedValueOnce(error)
+
+    const { result } = renderHook(() => usePipelineInit())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+})
