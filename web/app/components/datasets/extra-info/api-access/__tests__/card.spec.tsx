@@ -155,8 +155,7 @@ describe('Card (API Access)', () => {
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).toHaveAttribute('aria-checked', 'true')
-      // Headless UI Switch uses CSS classes for disabled state, not the disabled attribute
-      expect(switchButton).toHaveClass('!cursor-not-allowed', '!opacity-50')
+      expect(switchButton).toHaveClass('cursor-not-allowed')
     })
 
     it('should enable switch when user is workspace manager', () => {

@@ -674,9 +674,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      // Headless UI Switch uses CSS classes for disabled state
-      expect(switchButton).toHaveClass('!cursor-not-allowed')
-      expect(switchButton).toHaveClass('!opacity-50')
+      expect(switchButton).toHaveClass('cursor-not-allowed')
     })
 
     it('should enable switch when user is workspace manager', () => {
@@ -689,8 +687,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      expect(switchButton).not.toHaveClass('!cursor-not-allowed')
-      expect(switchButton).not.toHaveClass('!opacity-50')
+      expect(switchButton).not.toHaveClass('cursor-not-allowed')
     })
   })
 

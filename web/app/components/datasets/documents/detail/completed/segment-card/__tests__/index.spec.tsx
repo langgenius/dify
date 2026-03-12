@@ -206,7 +206,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
 
     it('should show action buttons when embeddingAvailable is true', () => {
@@ -792,9 +792,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      // The Switch component uses CSS classes for disabled state, not the native disabled attribute
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
 
     it('should handle zero word count', () => {

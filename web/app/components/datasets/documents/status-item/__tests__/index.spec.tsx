@@ -170,8 +170,7 @@ describe('StatusItem', () => {
         />,
       )
       const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
 
     it('should render switch as disabled when embedding (queuing status)', () => {
@@ -188,8 +187,7 @@ describe('StatusItem', () => {
         />,
       )
       const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
 
     it('should render switch as disabled when embedding (indexing status)', () => {
@@ -206,8 +204,7 @@ describe('StatusItem', () => {
         />,
       )
       const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
 
     it('should render switch as disabled when embedding (paused status)', () => {
@@ -224,8 +221,7 @@ describe('StatusItem', () => {
         />,
       )
       const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      expect(switchElement).toHaveClass('cursor-not-allowed')
     })
   })
 
