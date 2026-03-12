@@ -60,7 +60,6 @@ def get_trace_task_to_case() -> dict:
     """Return TraceTaskName → TelemetryCase (inverse of _get_case_to_trace_task)."""
     return {v: k for k, v in _get_case_to_trace_task().items()}
 
-
 def _get_case_routing() -> dict:
     global _case_routing
     if _case_routing is None:
@@ -87,6 +86,9 @@ def _get_case_routing() -> dict:
         }
     return _case_routing
 
+# Public exports for tests and external consumers
+CASE_TO_TRACE_TASK = _get_case_to_trace_task()
+CASE_ROUTING = _get_case_routing()
 
 # ---------------------------------------------------------------------------
 # Helpers
