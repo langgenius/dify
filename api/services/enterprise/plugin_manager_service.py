@@ -28,6 +28,11 @@ class CheckCredentialPolicyComplianceRequest(BaseModel):
         return data
 
 
+class PreUninstallPluginRequest(BaseModel):
+    tenant_id: str
+    plugin_unique_identifier: str
+
+
 class CredentialPolicyViolationError(BaseServiceError):
     pass
 
@@ -55,3 +60,19 @@ class PluginManagerService:
             body.dify_credential_id,
             ret.get("result", False),
         )
+
+    @classmethod
+    def try_pre_uninstall_plugin(cls, body: PreUninstallPluginRequest):
+        try:
+            # the invocation must be synchronous.
+            EnterprisePluginManagerRequest.send_request(
+                "POST",
+                "/pre-uninstall-plugin",
+                json=body.model_dump(),
+            )
+        except Exception:
+            logger.exception(
+                "failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s",
+                body.tenant_id,
+                body.plugin_unique_identifier,
+            )
