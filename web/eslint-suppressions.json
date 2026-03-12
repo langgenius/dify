@@ -2772,9 +2772,6 @@
     }
   },
   "app/components/base/switch/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
