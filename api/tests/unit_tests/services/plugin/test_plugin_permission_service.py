@@ -70,6 +70,6 @@ class TestChangePermission:
             )
 
         assert existing.install_permission == TenantPluginPermission.InstallPermission.ADMINS
-        assert existing.debug_permission == TenantPluginPermission.InstallPermission.ADMINS
+        assert existing.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
         session.commit.assert_called_once()
         session.add.assert_not_called()
