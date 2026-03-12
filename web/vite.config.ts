@@ -2,17 +2,19 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { createDevProxyConfig } from './plugins/vite/proxy'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
 
 export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, projectRoot, '')
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
@@ -65,6 +67,10 @@ export default defineConfig(({ mode }) => {
           },
           server: {
             port: 3000,
+            proxy: createDevProxyConfig({
+              consoleApiTarget: env.VITE_CONSOLE_API_PROXY_TARGET,
+              publicApiTarget: env.VITE_PUBLIC_API_PROXY_TARGET,
+            }),
           },
           ssr: {
             // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
