@@ -76,7 +76,7 @@ describe('usePanelInteractions', () => {
     })
     readTextMock.mockResolvedValue(JSON.stringify({
       kind: 'dify-workflow-clipboard',
-      version: 1,
+      version: '0.6.0',
       nodes: [clipboardNode],
       edges: [clipboardEdge],
     }))
