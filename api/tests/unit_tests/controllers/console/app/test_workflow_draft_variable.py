@@ -60,7 +60,7 @@ def setup_test_context(test_app, endpoint_class, route_path, method, mock_accoun
     with (
         patch("controllers.console.app.wraps.db") as mock_db_wraps,
         patch("controllers.console.wraps.db", mock_db_wraps),
-        patch("controllers.console.app.workflow_draft_variable.db") as mock_db_stat,
+        patch("controllers.console.app.workflow_draft_variable.db"),
         patch("controllers.console.app.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_account, "tenant_123")),
     ):
