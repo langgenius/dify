@@ -233,14 +233,12 @@ class MCPTool(Tool):
         )
 
     def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:
+        """Normalize MCP tool parameters by removing only explicit `None` values.
+
+        Empty strings and other falsy values (e.g. 0, False, empty lists) are valid
+        and should be preserved so that MCP tools can receive them as-is.
         """
-        in mcp tool invoke, if the parameter is empty, it will be set to None
-        """
-        return {
-            key: value
-            for key, value in parameter.items()
-            if value is not None and not (isinstance(value, str) and value.strip() == "")
-        }
+        return {key: value for key, value in parameter.items() if value is not None}
 
     def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any]) -> CallToolResult:
         headers = self.headers.copy() if self.headers else {}
