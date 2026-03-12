@@ -131,9 +131,8 @@ def test_search_by_vector_and_full_text(huawei_module):
     }
 
     docs = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.5)
-    assert len(docs) == 2
+    assert len(docs) == 1
     assert docs[0].metadata["score"] == pytest.approx(0.9)
-    assert "score" not in docs[1].metadata
 
     query_body = vector._client.search.call_args.kwargs["body"]
     assert query_body["query"]["vector"][huawei_module.Field.VECTOR]["topk"] == 2

@@ -997,8 +997,9 @@ class TestRetrievalServiceInternals:
                     all_documents.append(text_doc)
 
             mock_embedding_search.side_effect = embedding_side_effect
-            mock_fulltext.side_effect = (
-                lambda flask_app,
+
+            def fulltext_side_effect(
+                flask_app,
                 dataset_id,
                 query,
                 top_k,
@@ -1007,8 +1008,11 @@ class TestRetrievalServiceInternals:
                 all_documents,
                 retrieval_method,
                 exceptions,
-                document_ids_filter=None: all_documents.append(fulltext_doc)
-            )
+                document_ids_filter=None,
+            ):
+                all_documents.append(fulltext_doc)
+
+            mock_fulltext.side_effect = fulltext_side_effect
             processor_instance = Mock()
             processor_instance.invoke.return_value = [processed_doc]
             mock_processor_class.return_value = processor_instance

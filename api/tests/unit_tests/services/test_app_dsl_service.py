@@ -370,10 +370,13 @@ def test_confirm_import_success_deletes_redis_key(monkeypatch):
     created_app = SimpleNamespace(id="confirmed-app", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
     monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
 
+    app_dsl_service.redis_client.delete.reset_mock()
     result = service.confirm_import(import_id="import-1", account=_account_mock())
     assert result.status == ImportStatus.COMPLETED
     assert result.app_id == "confirmed-app"
-    app_dsl_service.redis_client.delete.assert_called_once()
+    app_dsl_service.redis_client.delete.assert_called_once_with(
+        f"{app_dsl_service.IMPORT_INFO_REDIS_KEY_PREFIX}import-1"
+    )
 
 
 def test_confirm_import_exception_returns_failed(monkeypatch):
