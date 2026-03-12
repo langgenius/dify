@@ -51,28 +51,11 @@ describe('EditWorkspaceModal', () => {
 
     renderModal()
 
-    const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
+    const input = screen.getByLabelText(/account\.workspaceName/i)
     await user.clear(input)
     await user.type(input, 'New Workspace Name')
 
     expect(input).toHaveValue('New Workspace Name')
-  })
-
-  it('should reset name to current workspace name when cleared', async () => {
-    const user = userEvent.setup()
-
-    renderModal()
-
-    const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
-    await user.clear(input)
-    await user.type(input, 'New Workspace Name')
-    expect(input).toHaveValue('New Workspace Name')
-
-    // Click the clear button (Input component clear button)
-    const clearBtn = screen.getByTestId('input-clear')
-    await user.click(clearBtn)
-
-    expect(input).toHaveValue('Test Workspace')
   })
 
   it('should submit update when confirming as owner', async () => {
@@ -83,10 +66,10 @@ describe('EditWorkspaceModal', () => {
 
     renderModal()
 
-    const input = screen.getByPlaceholderText(/account\.workspaceNamePlaceholder/i)
+    const input = screen.getByLabelText(/account\.workspaceName/i)
     await user.clear(input)
     await user.type(input, 'Renamed Workspace')
-    await user.click(screen.getByTestId('edit-workspace-confirm'))
+    await user.click(screen.getByTestId('edit-workspace-save'))
 
     await waitFor(() => {
       expect(updateWorkspaceInfo).toHaveBeenCalledWith({
@@ -95,6 +78,8 @@ describe('EditWorkspaceModal', () => {
       })
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })
+
+    expect(mockOnCancel).not.toHaveBeenCalled()
   })
 
   it('should show error toast when update fails', async () => {
@@ -104,13 +89,35 @@ describe('EditWorkspaceModal', () => {
 
     renderModal()
 
-    await user.click(screen.getByTestId('edit-workspace-confirm'))
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Broken Workspace')
+    await user.click(screen.getByTestId('edit-workspace-save'))
 
     await waitFor(() => {
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
       }))
     })
+  })
+
+  it('should disable save button when there are no changes', async () => {
+    renderModal()
+
+    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
+  })
+
+  it('should disable save button and show error when the name is empty', async () => {
+    const user = userEvent.setup()
+
+    renderModal()
+
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+
+    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByTestId('edit-workspace-error')).toBeInTheDocument()
   })
 
   it('should disable confirm button for non-owners', async () => {
@@ -121,7 +128,7 @@ describe('EditWorkspaceModal', () => {
 
     renderModal()
 
-    expect(screen.getByTestId('edit-workspace-confirm')).toBeDisabled()
+    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
   })
 
   it('should call onCancel when close icon is clicked', async () => {

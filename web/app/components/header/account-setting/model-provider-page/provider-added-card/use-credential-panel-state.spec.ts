@@ -9,9 +9,14 @@ import {
 import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
 const mockTrialCredits = { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
+const mockTrialModels = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
 vi.mock('./use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
+}))
+
+vi.mock('@/context/global-public-context', () => ({
+  useSystemFeaturesQuery: () => ({ data: { trial_models: mockTrialModels } }),
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -20,7 +25,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test-provider',
+  provider: 'langgenius/openai/openai',
   provider_credential_schema: { credential_form_schemas: [] },
   custom_configuration: {
     status: CustomConfigurationStatusEnum.active,
@@ -170,7 +175,7 @@ describe('useCredentialPanelState', () => {
   })
 
   // apiKeyOnly priority
-  describe('apiKeyOnly priority (non-cloud / system disabled)', () => {
+  describe('apiKeyOnly priority (non-cloud / system disabled / not in trial_models)', () => {
     it('should return apiKeyOnly when system config disabled', () => {
       const provider = createProvider({
         system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
@@ -180,6 +185,20 @@ describe('useCredentialPanelState', () => {
 
       expect(result.current.priority).toBe('apiKeyOnly')
       expect(result.current.supportsCredits).toBe(false)
+    })
+
+    it('should return apiKeyOnly when provider not in trial_models even if system enabled', () => {
+      const provider = createProvider({
+        provider: 'langgenius/minimax/minimax',
+        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        preferred_provider_type: PreferredProviderTypeEnum.system,
+      })
+
+      const { result } = renderHook(() => useCredentialPanelState(provider))
+
+      expect(result.current.priority).toBe('apiKeyOnly')
+      expect(result.current.supportsCredits).toBe(false)
+      expect(result.current.showPrioritySwitcher).toBe(false)
     })
   })
 
@@ -208,6 +227,17 @@ describe('useCredentialPanelState', () => {
     it('should hide priority switcher when system config disabled', () => {
       const provider = createProvider({
         system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+      })
+
+      const { result } = renderHook(() => useCredentialPanelState(provider))
+
+      expect(result.current.showPrioritySwitcher).toBe(false)
+    })
+
+    it('should hide priority switcher when provider not in trial_models', () => {
+      const provider = createProvider({
+        provider: 'langgenius/zhipuai/zhipuai',
+        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
       })
 
       const { result } = renderHook(() => useCredentialPanelState(provider))

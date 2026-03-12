@@ -27,13 +27,13 @@ import EmbeddingModel from './components/embedding-model'
 import IndexMethod from './components/index-method'
 import RetrievalSetting from './components/retrieval-setting'
 import { useConfig } from './hooks/use-config'
+import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
 } from './types'
 import {
   getKnowledgeBaseValidationIssue,
-  isKnowledgeBaseEmbeddingIssue,
   KnowledgeBaseValidationIssueCode,
 } from './utils'
 
@@ -164,10 +164,15 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const validationIssue = useMemo(() => {
     return getKnowledgeBaseValidationIssue(validationPayload)
   }, [validationPayload])
+  const { status: embeddingModelStatus } = useEmbeddingModelStatus({
+    embeddingModel,
+    embeddingModelProvider,
+    embeddingModelList,
+  })
 
   const chunkStructureWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunkStructureRequired
   const chunksInputWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
-  const embeddingModelWarning = isKnowledgeBaseEmbeddingIssue(validationIssue)
+  const embeddingModelWarning = indexingTechnique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
 
   return (
     <div>

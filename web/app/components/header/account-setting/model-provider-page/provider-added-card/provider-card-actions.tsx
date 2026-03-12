@@ -94,7 +94,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               text={(
                 <>
                   <span>{version}</span>
-                  {isFromMarketplace && <span aria-hidden className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
+                  {isFromMarketplace && <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}

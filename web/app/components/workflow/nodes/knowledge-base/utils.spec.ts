@@ -79,11 +79,11 @@ describe('knowledge-base validation issue', () => {
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.chunksVariableRequired)
   })
 
-  it('maps no-configure to not configured', () => {
+  it('maps no-configure to configure required', () => {
     const issue = getKnowledgeBaseValidationIssue(
       makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noConfigure) }),
     )
-    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired)
   })
 
   it('maps credential-removed to API key unavailable', () => {
@@ -100,9 +100,19 @@ describe('knowledge-base validation issue', () => {
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted)
   })
 
-  it('maps disabled to incompatible', () => {
+  it('maps disabled to disabled', () => {
     const issue = getKnowledgeBaseValidationIssue(
       makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.disabled) }),
+    )
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelDisabled)
+  })
+
+  it('maps missing provider plugin to incompatible when embedding model is already configured', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({
+        embedding_model_provider: 'missing-provider',
+        _embeddingProviderModelList: undefined,
+      }),
     )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
   })

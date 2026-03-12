@@ -28,6 +28,10 @@ vi.mock('@/config', async (importOriginal) => {
   return { ...actual, IS_CLOUD_EDITION: true }
 })
 
+vi.mock('@/context/global-public-context', () => ({
+  useSystemFeaturesQuery: () => ({ data: { trial_models: ['langgenius/openai/openai'] } }),
+}))
+
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: mockToastNotify },
 }))
@@ -86,7 +90,7 @@ const createTestQueryClient = () => new QueryClient({
 })
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test-provider',
+  provider: 'langgenius/openai/openai',
   provider_credential_schema: { credential_form_schemas: [] },
   custom_configuration: {
     status: CustomConfigurationStatusEnum.active,
@@ -335,7 +339,7 @@ describe('CredentialPanel', () => {
 
       await waitFor(() => {
         expect(mockChangePriorityFn.mock.calls[0]?.[0]).toEqual({
-          params: { provider: 'test-provider' },
+          params: { provider: 'langgenius/openai/openai' },
           body: { preferred_provider_type: 'custom' },
         })
       })

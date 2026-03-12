@@ -8,11 +8,14 @@ import { useTranslation } from 'react-i18next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
-import { ModelStatusEnum } from '../declarations'
+import {
+  DERIVED_MODEL_STATUS_BADGE_I18N,
+  DERIVED_MODEL_STATUS_TOOLTIP_I18N,
+  deriveModelStatus,
+} from '../derive-model-status'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-import { MODEL_STATUS_I18N_KEY } from '../status-mapping'
 
 type ModelSelectorTriggerProps = {
   currentProvider?: Model
@@ -44,27 +47,25 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   const selectedProvider = isSelected
     ? modelProviders.find(provider => provider.provider === currentProvider.provider)
     : undefined
-  const selectedProviderState = useCredentialPanelState(selectedProvider)
-  const shouldShowCreditsExhausted = isSelected
-    && selectedProviderState.priority === 'credits'
-    && selectedProviderState.supportsCredits
-    && selectedProviderState.isCreditsExhausted
-  const shouldShowApiKeyUnavailable = isSelected && selectedProviderState.variant === 'api-unavailable'
-  const effectiveStatus = shouldShowCreditsExhausted
-    ? ModelStatusEnum.quotaExceeded
-    : shouldShowApiKeyUnavailable
-      ? ModelStatusEnum.credentialRemoved
-      : currentModel?.status
-
-  const isActive = isSelected && effectiveStatus === ModelStatusEnum.active
-  const isDisabled = isDeprecated || (isSelected && !isActive)
-  const statusI18nKey = isSelected && effectiveStatus ? MODEL_STATUS_I18N_KEY[effectiveStatus] : undefined
-  const isCreditsExhausted = isSelected && effectiveStatus === ModelStatusEnum.quotaExceeded
-  const shouldShowModelMeta = effectiveStatus === ModelStatusEnum.active
-
+  const selectedProviderState = useCredentialPanelState(isSelected ? selectedProvider : undefined)
   const deprecatedProvider = isDeprecated
     ? modelProviders.find(p => p.provider === defaultModel.provider)
     : undefined
+
+  const status = deriveModelStatus(
+    isSelected ? currentModel?.model : defaultModel?.model,
+    isSelected ? currentProvider?.provider : defaultModel?.provider,
+    isSelected ? selectedProvider : deprecatedProvider,
+    currentModel,
+    selectedProviderState,
+  )
+
+  const isActive = status === 'active'
+  const isDisabled = status !== 'active' && status !== 'empty'
+  const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status]
+  const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status]
+  const isCreditsExhausted = status === 'credits-exhausted'
+  const shouldShowModelMeta = status === 'active'
 
   return (
     <div
@@ -117,7 +118,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
         {isSelected && !readonly && !isActive && statusI18nKey && (
           <Tooltip>
             <TooltipTrigger
-              disabled={effectiveStatus !== ModelStatusEnum.noPermission}
+              disabled={!tooltipI18nKey}
               render={(
                 <div
                   className={cn(
@@ -132,9 +133,11 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
                 </div>
               )}
             />
-            <TooltipContent placement="top">
-              {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
-            </TooltipContent>
+            {tooltipI18nKey && (
+              <TooltipContent placement="top">
+                {t(tooltipI18nKey as 'modelProvider.selector.incompatibleTip', { ns: 'common' })}
+              </TooltipContent>
+            )}
           </Tooltip>
         )}
 

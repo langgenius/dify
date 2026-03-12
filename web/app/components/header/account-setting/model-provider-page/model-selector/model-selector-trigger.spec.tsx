@@ -192,6 +192,18 @@ describe('ModelSelectorTrigger', () => {
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
+    it('should show disabled badge when selected model is disabled', () => {
+      render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem({ status: ModelStatusEnum.disabled })}
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+    })
+
     it('should not show status badge when selected model is readonly', () => {
       render(
         <ModelSelectorTrigger

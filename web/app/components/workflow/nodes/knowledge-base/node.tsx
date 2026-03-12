@@ -10,12 +10,14 @@ import { useTranslation } from 'react-i18next'
 import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { DERIVED_MODEL_STATUS_BADGE_I18N } from '@/app/components/header/account-setting/model-provider-page/derive-model-status'
 import {
   useLanguage,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
+import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
 import {
   IndexMethodEnum,
@@ -23,7 +25,6 @@ import {
 import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
-  isKnowledgeBaseEmbeddingIssue,
   KnowledgeBaseValidationIssueCode,
 } from './utils'
 
@@ -128,6 +129,11 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   const validationIssueMessage = useMemo(() => {
     return getKnowledgeBaseValidationMessage(validationIssue, t)
   }, [validationIssue, t])
+  const { currentModel: currentEmbeddingModel, status: embeddingModelStatus } = useEmbeddingModelStatus({
+    embeddingModel: data.embedding_model,
+    embeddingModelProvider: data.embedding_model_provider,
+    embeddingModelList,
+  })
 
   const chunksDisplayValue = useMemo(() => {
     if (!data.index_chunk_variable_selector?.length)
@@ -141,23 +147,24 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     if (data.indexing_technique !== IndexMethodEnum.QUALIFIED)
       return '-'
 
-    if (isKnowledgeBaseEmbeddingIssue(validationIssue)) {
-      if (validationIssue?.code === KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
-        return t('nodes.knowledgeBase.notConfigured', { ns: 'workflow' })
-      return validationIssueMessage
+    if (embeddingModelStatus === 'empty')
+      return t('detailPanel.configureModel', { ns: 'plugin' })
+
+    if (embeddingModelStatus !== 'active') {
+      const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[embeddingModelStatus]
+      if (statusI18nKey)
+        return t(statusI18nKey as 'modelProvider.selector.incompatible', { ns: 'common' })
     }
 
-    const currentEmbeddingModelProvider = embeddingModelList.find(provider => provider.provider === data.embedding_model_provider)
-    const currentEmbeddingModel = currentEmbeddingModelProvider?.models.find(model => model.model === data.embedding_model)
     return currentEmbeddingModel?.label[language] || currentEmbeddingModel?.label.en_US || data.embedding_model || '-'
-  }, [data.embedding_model, data.embedding_model_provider, data.indexing_technique, embeddingModelList, language, validationIssue, validationIssueMessage, t])
+  }, [currentEmbeddingModel, data.embedding_model, data.indexing_technique, embeddingModelStatus, language, t])
 
   const indexMethodDisplay = settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay] || '-'
   const retrievalMethodDisplay = settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay] || '-'
 
   const chunksWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
   const indexMethodWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.indexMethodRequired
-  const embeddingWarning = isKnowledgeBaseEmbeddingIssue(validationIssue)
+  const embeddingWarning = data.indexing_technique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
   const showEmbeddingModelRow = data.indexing_technique === IndexMethodEnum.QUALIFIED
   const retrievalWarning = !!(validationIssue && RETRIEVAL_WARNING_CODES.has(validationIssue.code))
 
