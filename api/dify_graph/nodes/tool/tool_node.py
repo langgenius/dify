@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +36,9 @@ from .exc import (
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
     from dify_graph.runtime import GraphRuntimeState, VariablePool
+
+
+logger = logging.getLogger(__name__)
 
 
 class ToolNode(Node[ToolNodeData]):
@@ -100,6 +104,7 @@ class ToolNode(Node[ToolNodeData]):
                 variable_pool,
             )
         except ToolNodeError as e:
+            logger.warning(e, exc_info=True)
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -138,6 +143,7 @@ class ToolNode(Node[ToolNodeData]):
                 conversation_id=conversation_id.text if conversation_id else None,
             )
         except ToolNodeError as e:
+            logger.warning(e, exc_info=True)
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -161,6 +167,7 @@ class ToolNode(Node[ToolNodeData]):
                 tool_runtime=tool_runtime,
             )
         except ToolInvokeError as e:
+            logger.warning(e, exc_info=True)
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -171,6 +178,7 @@ class ToolNode(Node[ToolNodeData]):
                 )
             )
         except PluginInvokeError as e:
+            logger.warning(e, exc_info=True)
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,

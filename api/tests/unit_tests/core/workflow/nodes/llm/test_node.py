@@ -786,6 +786,68 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         )
         assert mock_saved_file in llm_node._file_outputs
 
+
+@pytest.mark.xfail(reason="_fetch_context should accept File objects in context arrays and treat them as context_files")
+def test_fetch_context_accepts_file_objects_as_context_files(llm_node: LLMNode, graph_runtime_state: GraphRuntimeState):
+    # Enable context and point to a custom variable
+    llm_node.node_data.context.enabled = True
+    llm_node.node_data.context.variable_selector = ("nodeA", "ctx")
+
+    # Build a File object and store it inside an Array segment via VariablePool.add
+    file_obj = File(
+        id=str(uuid.uuid4()),
+        tenant_id="1",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id=str(uuid.uuid4()),
+        filename="img.png",
+        extension=".png",
+        mime_type="image/png",
+        size=10,
+    )
+    graph_runtime_state.variable_pool.add(("nodeA", "ctx"), [file_obj])
+
+    # Run _fetch_context generator and collect event
+    gen = llm_node._fetch_context(llm_node.node_data)
+    events = list(gen)
+
+    # Expect a single RunRetrieverResourceEvent with our file as context_files
+    assert len(events) == 1
+    event = events[0]
+    assert hasattr(event, "context_files")
+    assert event.context_files
+    assert event.context_files[0].filename == "img.png"
+
+
+@pytest.mark.xfail(reason="_fetch_context should accept file mapping dicts (dify_model_identity) as context_files")
+def test_fetch_context_accepts_file_dicts_as_context_files(llm_node: LLMNode, graph_runtime_state: GraphRuntimeState):
+    from dify_graph.file.constants import FILE_MODEL_IDENTITY
+
+    llm_node.node_data.context.enabled = True
+    llm_node.node_data.context.variable_selector = ("nodeB", "ctx")
+
+    file_mapping = {
+        "dify_model_identity": FILE_MODEL_IDENTITY,
+        "tenant_id": "1",
+        "type": FileType.IMAGE.value,
+        "transfer_method": FileTransferMethod.LOCAL_FILE.value,
+        "related_id": str(uuid.uuid4()),
+        "filename": "pic.jpeg",
+        "extension": ".jpeg",
+        "mime_type": "image/jpeg",
+        "size": 12,
+    }
+    graph_runtime_state.variable_pool.add(("nodeB", "ctx"), [file_mapping])
+
+    gen = llm_node._fetch_context(llm_node.node_data)
+    events = list(gen)
+
+    assert len(events) == 1
+    event = events[0]
+    assert hasattr(event, "context_files")
+    assert event.context_files
+    assert event.context_files[0].filename == "pic.jpeg"
+
     def test_unknown_content_type(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
