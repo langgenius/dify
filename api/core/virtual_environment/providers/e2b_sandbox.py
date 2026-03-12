@@ -1,3 +1,4 @@
+import logging
 import posixpath
 import shlex
 import threading
@@ -31,6 +32,8 @@ from core.virtual_environment.channel.transport import (
     TransportWriteCloser,
 )
 from core.virtual_environment.constants import COMMAND_EXECUTION_TIMEOUT_SECONDS
+
+logger = logging.getLogger(__name__)
 
 """
 import logging
@@ -132,35 +135,53 @@ class E2BEnvironment(VirtualEnvironment):
         The sandbox lifetime is capped by ``WORKFLOW_MAX_EXECUTION_TIME`` so the
         provider can rely on E2B's native timeout instead of a background
         keepalive thread that continuously extends the session.
+
+        E2B allocates the remote sandbox before metadata probing completes, so
+        startup failures must best-effort terminate the sandbox before the
+        exception escapes.
         """
         # Import E2B SDK lazily so it is loaded after gevent monkey-patching.
         from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
         # TODO: add Dify as the user agent
-        sandbox = Sandbox.create(
-            template=options.get(self.OptionsKey.E2B_DEFAULT_TEMPLATE, "code-interpreter-v1"),
-            timeout=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
-            api_key=options.get(self.OptionsKey.API_KEY, ""),
-            api_url=options.get(self.OptionsKey.E2B_API_URL, self._E2B_API_URL),
-            envs=dict(environments),
-        )
-        info = sandbox.get_info(api_key=options.get(self.OptionsKey.API_KEY, ""))
-        system_info = sandbox.commands.run("uname -m -s").stdout.strip()
-        system_parts = system_info.split()
-        if len(system_parts) == 2:
-            os_part, arch_part = system_parts
-        else:
-            arch_part = system_parts[0]
-            os_part = system_parts[1] if len(system_parts) > 1 else ""
+        sandbox = None
+        sandbox_id: str | None = None
+        api_key = options.get(self.OptionsKey.API_KEY, "")
+        try:
+            sandbox = Sandbox.create(
+                template=options.get(self.OptionsKey.E2B_DEFAULT_TEMPLATE, "code-interpreter-v1"),
+                timeout=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+                api_key=api_key,
+                api_url=options.get(self.OptionsKey.E2B_API_URL, self._E2B_API_URL),
+                envs=dict(environments),
+            )
+            info = sandbox.get_info(api_key=api_key)
+            sandbox_id = info.sandbox_id
+            system_info = sandbox.commands.run("uname -m -s").stdout.strip()
+            system_parts = system_info.split()
+            if len(system_parts) == 2:
+                os_part, arch_part = system_parts
+            else:
+                arch_part = system_parts[0]
+                os_part = system_parts[1] if len(system_parts) > 1 else ""
 
-        return Metadata(
-            id=info.sandbox_id,
-            arch=self._convert_architecture(arch_part.strip()),
-            os=self._convert_operating_system(os_part.strip()),
-            store={
-                self.StoreKey.SANDBOX: sandbox,
-            },
-        )
+            return Metadata(
+                id=info.sandbox_id,
+                arch=self._convert_architecture(arch_part.strip()),
+                os=self._convert_operating_system(os_part.strip()),
+                store={
+                    self.StoreKey.SANDBOX: sandbox,
+                },
+            )
+        except Exception:
+            if sandbox_id is None and sandbox is not None:
+                sandbox_id = getattr(sandbox, "sandbox_id", None)
+            if sandbox_id is not None:
+                try:
+                    Sandbox.kill(api_key=api_key, sandbox_id=sandbox_id)
+                except Exception:
+                    logger.exception("Failed to cleanup E2B sandbox after startup failure")
+            raise
 
     def release_environment(self) -> None:
         """

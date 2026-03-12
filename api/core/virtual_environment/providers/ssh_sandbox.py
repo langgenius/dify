@@ -76,6 +76,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
     ) -> None:
         self._connections: dict[str, Any] = {}
         self._commands: dict[str, CommandStatus] = {}
+        self._command_channels: dict[str, Any] = {}
         self._lock = threading.Lock()
         super().__init__(tenant_id=tenant_id, options=options, environments=environments, user_id=user_id)
 
@@ -163,6 +164,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
 
         with self._lock:
             self._commands[pid] = CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)
+            self._command_channels[pid] = channel
 
         threading.Thread(
             target=self._consume_channel_output,
@@ -178,6 +180,23 @@ class SSHSandboxEnvironment(VirtualEnvironment):
         if status is None:
             return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=None)
         return status
+
+    def terminate_command(self, connection_handle: ConnectionHandle, pid: str) -> bool:
+        """Best-effort termination by closing the SSH channel that owns the command."""
+
+        _ = connection_handle
+        with self._lock:
+            channel = self._command_channels.get(pid)
+            if channel is None:
+                return False
+            self._commands[pid] = CommandStatus(
+                status=CommandStatus.Status.COMPLETED,
+                exit_code=self._COMMAND_TIMEOUT_EXIT_CODE,
+            )
+
+        with contextlib.suppress(Exception):
+            channel.close()
+        return True
 
     def upload_file(self, path: str, content: BytesIO) -> None:
         destination_path = self._workspace_path(path)
@@ -424,6 +443,7 @@ class SSHSandboxEnvironment(VirtualEnvironment):
                 channel.close()
 
             with self._lock:
+                self._command_channels.pop(pid, None)
                 self._commands[pid] = CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=exit_code)
 
     def _set_sftp_operation_timeout(self, sftp: Any) -> None:

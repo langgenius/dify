@@ -5,8 +5,6 @@ from pathlib import PurePosixPath
 from core.sandbox.entities.files import SandboxFileDownloadTicket, SandboxFileNode
 from core.sandbox.inspector.archive_source import SandboxFileArchiveSource
 from core.sandbox.inspector.base import SandboxFileSource
-from core.sandbox.inspector.runtime_source import SandboxFileRuntimeSource
-from core.sandbox.manager import SandboxManager
 
 
 class SandboxFileBrowser:
@@ -31,14 +29,6 @@ class SandboxFileBrowser:
         return "." if normalized in (".", "") else normalized
 
     def _backend(self) -> SandboxFileSource:
-        sandbox = SandboxManager.get(self._sandbox_id)
-        if sandbox is not None:
-            return SandboxFileRuntimeSource(
-                tenant_id=self._tenant_id,
-                app_id=self._app_id,
-                sandbox_id=self._sandbox_id,
-                runtime=sandbox.vm,
-            )
         return SandboxFileArchiveSource(
             tenant_id=self._tenant_id,
             app_id=self._app_id,

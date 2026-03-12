@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Callable
 
 import pytest
 
@@ -18,6 +19,7 @@ def _make_future(
     exit_code: int = 0,
     delay_completion: float = 0,
     close_streams: bool = True,
+    terminate_command: Callable[[], bool] | None = None,
 ) -> CommandFuture:
     stdout_transport = QueueTransportReadCloser()
     stderr_transport = QueueTransportReadCloser()
@@ -48,6 +50,7 @@ def _make_future(
         stdout_transport=stdout_transport,
         stderr_transport=stderr_transport,
         poll_status=poll_status,
+        terminate_command=terminate_command,
         poll_interval=0.05,
     )
 
@@ -76,6 +79,21 @@ def test_result_raises_timeout_error_when_exceeded():
 
     with pytest.raises(CommandTimeoutError):
         future.result(timeout=0.2)
+
+
+def test_timeout_requests_command_termination():
+    terminated = threading.Event()
+
+    future = _make_future(
+        delay_completion=10.0,
+        close_streams=False,
+        terminate_command=lambda: terminated.set() or True,
+    )
+
+    with pytest.raises(CommandTimeoutError):
+        future.result(timeout=0.2)
+
+    assert terminated.wait(timeout=1.0)
 
 
 def test_done_returns_false_while_running():
@@ -113,6 +131,19 @@ def test_result_raises_cancelled_error_after_cancel():
 
     with pytest.raises(CommandCancelledError):
         future.result()
+
+
+def test_cancel_requests_command_termination():
+    terminated = threading.Event()
+
+    future = _make_future(
+        delay_completion=10.0,
+        close_streams=False,
+        terminate_command=lambda: terminated.set() or True,
+    )
+
+    assert future.cancel() is True
+    assert terminated.wait(timeout=1.0)
 
 
 def test_nonzero_exit_code_is_returned():

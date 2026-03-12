@@ -26,6 +26,9 @@ class CommandFuture:
     Lightweight future for command execution.
     Mirrors concurrent.futures.Future API with 4 essential methods:
     result(), done(), cancel(), cancelled().
+
+    When a command is cancelled or times out the future now asks the provider
+    to terminate the underlying process/session before marking itself done.
     """
 
     def __init__(
@@ -35,6 +38,7 @@ class CommandFuture:
         stdout_transport: TransportReadCloser,
         stderr_transport: TransportReadCloser,
         poll_status: Callable[[], CommandStatus],
+        terminate_command: Callable[[], bool] | None = None,
         poll_interval: float = 0.1,
     ):
         self._pid = pid
@@ -42,6 +46,7 @@ class CommandFuture:
         self._stdout_transport = stdout_transport
         self._stderr_transport = stderr_transport
         self._poll_status = poll_status
+        self._terminate_command = terminate_command
         self._poll_interval = poll_interval
 
         self._done_event = threading.Event()
@@ -49,7 +54,9 @@ class CommandFuture:
         self._result: CommandResult | None = None
         self._exception: BaseException | None = None
         self._cancelled = False
+        self._timed_out = False
         self._started = False
+        self._termination_requested = False
 
     def result(self, timeout: float | None = None) -> CommandResult:
         """
@@ -61,14 +68,21 @@ class CommandFuture:
         Raises:
             CommandTimeoutError: If timeout exceeded.
             CommandCancelledError: If command was cancelled.
+
+        A timeout is terminal for this future: it triggers best-effort command
+        termination and subsequent ``result()`` calls keep raising timeout.
         """
         self._ensure_started()
 
         if not self._done_event.wait(timeout):
+            self._request_stop(timed_out=True)
             raise CommandTimeoutError(f"Command timed out after {timeout}s")
 
         if self._cancelled:
             raise CommandCancelledError("Command was cancelled")
+
+        if self._timed_out:
+            raise CommandTimeoutError("Command timed out")
 
         if self._exception is not None:
             raise self._exception
@@ -82,16 +96,10 @@ class CommandFuture:
 
     def cancel(self) -> bool:
         """
-        Attempt to cancel command by closing transports.
+        Attempt to cancel command by terminating it and closing transports.
         Returns True if cancelled, False if already completed.
         """
-        with self._lock:
-            if self._done_event.is_set():
-                return False
-            self._cancelled = True
-            self._close_transports()
-            self._done_event.set()
-            return True
+        return self._request_stop(cancelled=True)
 
     def cancelled(self) -> bool:
         return self._cancelled
@@ -102,6 +110,28 @@ class CommandFuture:
                 self._started = True
                 thread = threading.Thread(target=self._execute, daemon=True)
                 thread.start()
+
+    def _request_stop(self, *, cancelled: bool = False, timed_out: bool = False) -> bool:
+        should_terminate = False
+        with self._lock:
+            if self._done_event.is_set():
+                return False
+
+            if cancelled:
+                self._cancelled = True
+            if timed_out:
+                self._timed_out = True
+
+            should_terminate = not self._termination_requested
+            if should_terminate:
+                self._termination_requested = True
+
+            self._close_transports()
+            self._done_event.set()
+
+        if should_terminate:
+            self._terminate_running_command()
+        return True
 
     def _execute(self) -> None:
         stdout_buf = bytearray()
@@ -141,7 +171,7 @@ class CommandFuture:
             self._close_transports()
 
     def _wait_for_completion(self) -> int | None:
-        while not self._cancelled:
+        while not self._cancelled and not self._timed_out:
             try:
                 status = self._poll_status()
             except NotSupportedOperationError:
@@ -167,3 +197,12 @@ class CommandFuture:
         for transport in (self._stdin_transport, self._stdout_transport, self._stderr_transport):
             with contextlib.suppress(Exception):
                 transport.close()
+
+    def _terminate_running_command(self) -> None:
+        if self._terminate_command is None:
+            return
+
+        try:
+            self._terminate_command()
+        except Exception:
+            logger.exception("Failed to terminate command for pid %s", self._pid)

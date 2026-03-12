@@ -71,6 +71,7 @@ def submit_command(
         stdout_transport=stdout_transport,
         stderr_transport=stderr_transport,
         poll_status=partial(env.get_command_status, connection, pid),
+        terminate_command=partial(env.terminate_command, connection, pid),
     )
 
 

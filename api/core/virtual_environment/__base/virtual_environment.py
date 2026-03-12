@@ -11,7 +11,18 @@ from core.virtual_environment.channel.transport import TransportReadCloser, Tran
 class VirtualEnvironment(ABC):
     """
     Base class for virtual environment implementations.
+
+    ``VirtualEnvironment`` instances are configured at construction time but do
+    not allocate provider resources until ``open_enviroment()`` is called.
+    This keeps object construction side-effect free and gives callers a chance
+    to own startup error handling explicitly.
     """
+
+    tenant_id: str
+    user_id: str | None
+    options: Mapping[str, Any]
+    _environments: Mapping[str, str]
+    _metadata: Metadata | None
 
     def __init__(
         self,
@@ -21,19 +32,45 @@ class VirtualEnvironment(ABC):
         user_id: str | None = None,
     ) -> None:
         """
-        Initialize the virtual environment with metadata.
+        Initialize the virtual environment configuration.
 
         Args:
             tenant_id: The tenant ID associated with this environment (required).
             options: Provider-specific configuration options.
             environments: Environment variables to set in the virtual environment.
             user_id: The user ID associated with this environment (optional).
+
+        The provider runtime itself is created later by ``open_enviroment()``.
         """
 
         self.tenant_id = tenant_id
         self.user_id = user_id
         self.options = options
-        self.metadata = self._construct_environment(options, environments or {})
+        self._environments = dict(environments or {})
+        self._metadata = None
+
+    @property
+    def metadata(self) -> Metadata:
+        """Provider metadata for a started environment.
+
+        Raises:
+            RuntimeError: If the environment has not been started yet.
+        """
+
+        if self._metadata is None:
+            raise RuntimeError("Virtual environment has not been started")
+        return self._metadata
+
+    def open_enviroment(self) -> Metadata:
+        """Allocate provider resources and return the resulting metadata.
+
+        Multiple calls are safe and return the existing metadata after the first
+        successful start.
+        """
+
+        if self._metadata is None:
+            self._metadata = self._construct_environment(self.options, self._environments)
+        return self._metadata
 
     @abstractmethod
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
@@ -130,6 +167,18 @@ class VirtualEnvironment(ABC):
             Exception: If the environment cannot be released.
             Multiple calls to `release_environment` with the same `environment_id` is acceptable.
         """
+
+    def terminate_command(self, connection_handle: ConnectionHandle, pid: str) -> bool:
+        """Best-effort termination hook for a running command.
+
+        Providers that can map ``pid`` back to a real process/session should
+        override this method and stop the command. The default implementation is
+        a no-op so providers without a termination mechanism remain compatible.
+        """
+
+        _ = connection_handle
+        _ = pid
+        return False
 
     @abstractmethod
     def execute_command(

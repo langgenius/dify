@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+import signal
 import subprocess
 from collections.abc import Mapping, Sequence
 from functools import cached_property
@@ -245,6 +246,16 @@ class LocalVirtualEnvironment(VirtualEnvironment):
             return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=exit_code)
         except ChildProcessError:
             return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=None)
+
+    def terminate_command(self, connection_handle: ConnectionHandle, pid: str) -> bool:
+        """Terminate a locally spawned process by PID when cancellation is requested."""
+
+        _ = connection_handle
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+        except ProcessLookupError:
+            return False
+        return True
 
     def _get_os_architecture(self) -> Arch:
         """

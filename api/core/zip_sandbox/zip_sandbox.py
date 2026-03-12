@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from core.sandbox.builder import SandboxBuilder
 from core.sandbox.entities.sandbox_type import SandboxType
-from core.sandbox.manager import SandboxManager
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.storage.noop_storage import NoopSandboxStorage
 from core.virtual_environment.__base.exec import CommandExecutionError, PipelineExecutionError
@@ -100,25 +99,28 @@ class ZipSandbox:
         self._sandbox_id = uuid4().hex
 
         storage = NoopSandboxStorage()
-        self._sandbox = (
-            SandboxBuilder(self._tenant_id, SandboxType(provider_type))
-            .options(provider_options)
-            .user(self._user_id)
-            .app(self._app_id)
-            .storage(storage, assets_id="zip-sandbox")
-            .build()
-        )
-        self._sandbox.wait_ready(timeout=60)
-        self._vm = self._sandbox.vm
-
-        SandboxManager.register(self._sandbox_id, self._sandbox)
+        try:
+            self._sandbox = (
+                SandboxBuilder(self._tenant_id, SandboxType(provider_type))
+                .options(provider_options)
+                .user(self._user_id)
+                .app(self._app_id)
+                .storage(storage, assets_id="zip-sandbox")
+                .build()
+            )
+            self._sandbox.wait_ready(timeout=60)
+            self._vm = self._sandbox.vm
+        except Exception:
+            if self._sandbox is not None:
+                self._sandbox.release()
+            self._vm = None
+            self._sandbox = None
+            self._sandbox_id = None
+            raise
 
     def _stop(self) -> None:
         if self._vm is None:
             return
-
-        if self._sandbox_id:
-            SandboxManager.unregister(self._sandbox_id)
 
         if self._sandbox is not None:
             self._sandbox.release()

@@ -42,6 +42,7 @@ class FakeVirtualEnvironment(VirtualEnvironment):
         self.last_execute_cwd: str | None = None
         self.released_connections: list[str] = []
         super().__init__(tenant_id="test-tenant", options={}, environments={})
+        self.open_enviroment()
 
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         return Metadata(id="fake", arch=Arch.ARM64, os=OperatingSystem.LINUX)

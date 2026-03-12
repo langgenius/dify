@@ -19,12 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class DifyCliInitializer(AsyncSandboxInitializer):
-    _cli_api_session: object | None
-
     def __init__(self, cli_root: str | Path | None = None) -> None:
         self._locator = DifyCliLocator(root=cli_root)
         self._tools: list[object] = []
-        self._cli_api_session = None
 
     def initialize(self, sandbox: Sandbox, ctx: SandboxInitializeContext) -> None:
         vm = sandbox.vm
@@ -57,7 +54,7 @@ class DifyCliInitializer(AsyncSandboxInitializer):
             logger.info("No tools found in bundle for assets_id=%s", ctx.assets_id)
             return
 
-        self._cli_api_session = CliApiSessionManager().create(
+        global_cli_session = CliApiSessionManager().create(
             tenant_id=ctx.tenant_id,
             user_id=ctx.user_id,
             context=CliContext(tool_access=ToolAccessPolicy.from_dependencies(bundle.get_tool_dependencies())),
@@ -67,7 +64,7 @@ class DifyCliInitializer(AsyncSandboxInitializer):
             ["mkdir", "-p", cli.global_tools_path], error_message="Failed to create global tools dir"
         ).execute(raise_on_error=True)
 
-        config = DifyCliConfig.create(self._cli_api_session, ctx.tenant_id, bundle.get_tool_dependencies())
+        config = DifyCliConfig.create(global_cli_session, ctx.tenant_id, bundle.get_tool_dependencies())
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
         config_path = cli.global_config_path
         vm.upload_file(config_path, BytesIO(config_json.encode("utf-8")))

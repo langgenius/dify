@@ -131,6 +131,7 @@ class SandboxBuilder:
                 environments=self._environments,
                 user_id=self._user_id,
             )
+            vm.open_enviroment()
             sandbox = Sandbox(
                 vm=vm,
                 storage=self._storage,
@@ -174,7 +175,11 @@ class SandboxBuilder:
 
                     if sandbox.is_cancelled():
                         return
-                    sandbox.mount()
+                    # Storage mount is part of readiness. If restore/mount fails,
+                    # the sandbox must surface initialization failure instead of
+                    # becoming "ready" with missing files.
+                    if not sandbox.mount():
+                        raise RuntimeError("Sandbox storage mount failed")
                     sandbox.mark_ready()
             except Exception as exc:
                 try:

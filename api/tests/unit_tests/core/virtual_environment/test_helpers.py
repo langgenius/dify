@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,
@@ -64,6 +65,7 @@ class FakeVirtualEnvironment(VirtualEnvironment):
         self._establish_count = 0
         self._release_count = 0
         super().__init__(tenant_id="test-tenant", options={}, environments={})
+        self.open_enviroment()
 
     def _construct_environment(self, _options: Mapping[str, Any], _environments: Mapping[str, str]) -> Metadata:
         return Metadata(id="fake-id", arch=Arch.AMD64, os=OperatingSystem.LINUX)
@@ -110,6 +112,10 @@ class FakeVirtualEnvironment(VirtualEnvironment):
     @classmethod
     def validate(cls, _options: Mapping[str, Any]) -> None:
         pass
+
+    @classmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        return []
 
 
 class TestWithConnection:

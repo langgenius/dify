@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .initializer.app_assets_initializer import AppAssetsInitializer
     from .initializer.dify_cli_initializer import DifyCliInitializer
     from .initializer.draft_app_assets_initializer import DraftAppAssetsInitializer
-    from .manager import SandboxManager
     from .sandbox import Sandbox
     from .storage import ArchiveSandboxStorage, SandboxStorage
     from .utils.debug import sandbox_debug
@@ -47,7 +46,6 @@ __all__ = [
     "SandboxBuilder",
     "SandboxInitializeContext",
     "SandboxInitializer",
-    "SandboxManager",
     "SandboxProviderApiEntity",
     "SandboxStorage",
     "SandboxType",
