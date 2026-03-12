@@ -155,6 +155,36 @@ def test_search_by_vector_and_full_text(huawei_module):
     assert docs[0].page_content == "text-hit"
 
 
+def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch):
+    class FakeDocument:
+        def __init__(self, page_content, vector, metadata):
+            self.page_content = page_content
+            self.vector = vector
+            self.metadata = None
+
+    monkeypatch.setattr(huawei_module, "Document", FakeDocument)
+
+    vector = huawei_module.HuaweiCloudVector("collection", _config(huawei_module))
+    vector._client.search.return_value = {
+        "hits": {
+            "hits": [
+                {
+                    "_score": 0.9,
+                    "_source": {
+                        huawei_module.Field.CONTENT_KEY: "doc-a",
+                        huawei_module.Field.VECTOR: [0.1],
+                        huawei_module.Field.METADATA_KEY: {"doc_id": "1"},
+                    },
+                }
+            ]
+        }
+    }
+
+    docs = vector.search_by_vector([0.1, 0.2], top_k=1, score_threshold=0.5)
+
+    assert docs == []
+
+
 def test_create_and_create_collection_paths(huawei_module, monkeypatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
