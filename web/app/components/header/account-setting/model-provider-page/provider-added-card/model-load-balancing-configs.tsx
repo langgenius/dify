@@ -164,7 +164,7 @@ const ModelLoadBalancingConfigs = ({
             withSwitch && (
               <Switch
                 value={Boolean(draftConfig.enabled)}
-                size="l"
+                size="lg"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
                 onChange={value => toggleModalBalancing(value)}

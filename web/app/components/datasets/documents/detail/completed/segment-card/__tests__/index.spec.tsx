@@ -206,7 +206,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should show action buttons when embeddingAvailable is true', () => {
@@ -792,9 +792,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      // The Switch component uses CSS classes for disabled state, not the native disabled attribute
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should handle zero word count', () => {
@@ -877,7 +876,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('bg-components-toggle-bg')
+      expect(switchElement).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render real Switch component with unchecked state', () => {
@@ -893,7 +892,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked')
+      expect(switchElement).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should render real SegmentIndexTag with position formatting', () => {
