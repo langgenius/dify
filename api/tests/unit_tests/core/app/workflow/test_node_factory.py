@@ -108,10 +108,9 @@ class TestDifyNodeFactory:
 
         monkeypatch.setattr(
             "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.CODE: {"1": DummyNode}},
+            {NodeType.CODE: {"1": DummyCodeNode}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-        monkeypatch.setattr("core.workflow.node_factory.CodeNode", DummyCodeNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": NodeType.CODE.value}})
 
@@ -122,10 +121,9 @@ class TestDifyNodeFactory:
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
             "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.TEMPLATE_TRANSFORM: {"1": DummyNode}},
+            {NodeType.TEMPLATE_TRANSFORM: {"1": DummyTemplateTransformNode}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-        monkeypatch.setattr("core.workflow.node_factory.TemplateTransformNode", DummyTemplateTransformNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": NodeType.TEMPLATE_TRANSFORM.value}})
 
@@ -136,10 +134,9 @@ class TestDifyNodeFactory:
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
             "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.HTTP_REQUEST: {"1": DummyNode}},
+            {NodeType.HTTP_REQUEST: {"1": DummyHttpRequestNode}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-        monkeypatch.setattr("core.workflow.node_factory.HttpRequestNode", DummyHttpRequestNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": NodeType.HTTP_REQUEST.value}})
 
@@ -150,10 +147,9 @@ class TestDifyNodeFactory:
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
             "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.KNOWLEDGE_RETRIEVAL: {"1": DummyNode}},
+            {NodeType.KNOWLEDGE_RETRIEVAL: {"1": DummyKnowledgeRetrievalNode}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-        monkeypatch.setattr("core.workflow.node_factory.KnowledgeRetrievalNode", DummyKnowledgeRetrievalNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": NodeType.KNOWLEDGE_RETRIEVAL.value}})
 
@@ -164,10 +160,9 @@ class TestDifyNodeFactory:
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
             "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.DOCUMENT_EXTRACTOR: {"1": DummyNode}},
+            {NodeType.DOCUMENT_EXTRACTOR: {"1": DummyDocumentExtractorNode}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-        monkeypatch.setattr("core.workflow.node_factory.DocumentExtractorNode", DummyDocumentExtractorNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": NodeType.DOCUMENT_EXTRACTOR.value}})
 
