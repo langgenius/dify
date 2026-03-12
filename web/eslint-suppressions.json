@@ -6521,9 +6521,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
