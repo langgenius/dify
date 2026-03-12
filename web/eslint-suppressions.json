@@ -1923,15 +1923,9 @@
   "app/components/base/features/new-feature-panel/annotation-reply/config-param.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
