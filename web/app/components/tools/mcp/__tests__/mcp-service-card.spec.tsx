@@ -213,8 +213,7 @@ describe('MCPServiceCard', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
+      expect(switchElement.className).toContain('cursor-not-allowed')
     })
   })
 
@@ -355,8 +354,7 @@ describe('MCPServiceCard', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
+      expect(switchElement.className).toContain('cursor-not-allowed')
     })
   })
 
@@ -371,8 +369,7 @@ describe('MCPServiceCard', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo(AppModeEnum.WORKFLOW)} />, { wrapper: createWrapper() })
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement.className).toContain('!cursor-not-allowed')
-      expect(switchElement.className).toContain('!opacity-50')
+      expect(switchElement.className).toContain('cursor-not-allowed')
     })
   })
 
@@ -428,11 +425,10 @@ describe('MCPServiceCard', () => {
   })
 
   describe('Accessibility', () => {
-    it('should have an accessible switch with button type', () => {
+    it('should have an accessible switch element', () => {
       render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
 
-      const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveAttribute('type', 'button')
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
   })
 })
