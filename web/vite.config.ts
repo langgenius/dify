@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: isTest
       ? [
+          // TODO: remove tsconfigPaths from test config after vitest supports it natively
           tsconfigPaths(),
           react(),
           {
@@ -34,7 +35,6 @@ export default defineConfig(({ mode }) => {
         ]
       : isStorybook
         ? [
-            tsconfigPaths(),
             react(),
           ]
         : [
@@ -54,16 +54,14 @@ export default defineConfig(({ mode }) => {
             // }),
           ],
     resolve: {
-      alias: {
-        '~@': projectRoot,
-      },
+      tsconfigPaths: true,
     },
 
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['nuqs'],
+            exclude: ['@tanstack/react-query'],
           },
           server: {
             port: 3000,

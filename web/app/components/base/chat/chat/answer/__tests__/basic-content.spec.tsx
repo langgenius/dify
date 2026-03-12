@@ -39,6 +39,28 @@ describe('BasicContent', () => {
     expect(markdown).toHaveAttribute('data-content', 'Annotated Content')
   })
 
+  it('renders empty string if logAnnotation content is missing', () => {
+    const itemWithEmptyAnnotation = {
+      ...mockItem,
+      annotation: {
+        logAnnotation: {
+          content: '',
+        },
+      },
+    }
+    const { rerender } = render(<BasicContent item={itemWithEmptyAnnotation as ChatItem} />)
+    expect(screen.getByTestId('basic-content-markdown')).toHaveAttribute('data-content', '')
+
+    const itemWithUndefinedAnnotation = {
+      ...mockItem,
+      annotation: {
+        logAnnotation: {},
+      },
+    }
+    rerender(<BasicContent item={itemWithUndefinedAnnotation as ChatItem} />)
+    expect(screen.getByTestId('basic-content-markdown')).toHaveAttribute('data-content', '')
+  })
+
   it('wraps Windows UNC paths in backticks', () => {
     const itemWithUNC = {
       ...mockItem,
