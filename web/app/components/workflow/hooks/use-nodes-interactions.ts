@@ -48,7 +48,11 @@ import {
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
+  isClipboardEdgeStructurallyValid,
+  isClipboardNodeStructurallyValid,
+  isClipboardValueCompatibleWithDefault,
   readWorkflowClipboard,
+  sanitizeClipboardValueByDefault,
   writeWorkflowClipboard,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
@@ -75,6 +79,46 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   x: 0,
   y: 21, // Adjusted based on visual testing feedback
 } as const
+
+const pruneClipboardNodesWithFilteredAncestors = (
+  sourceNodes: Node[],
+  candidateNodes: Node[],
+): Node[] => {
+  const candidateNodeIds = new Set(candidateNodes.map(node => node.id))
+  const filteredRootIds = sourceNodes
+    .filter(node => !candidateNodeIds.has(node.id))
+    .map(node => node.id)
+
+  if (!filteredRootIds.length)
+    return candidateNodes
+
+  const childrenByParent = new Map<string, string[]>()
+  sourceNodes.forEach((node) => {
+    if (!node.parentId)
+      return
+
+    const children = childrenByParent.get(node.parentId) ?? []
+    children.push(node.id)
+    childrenByParent.set(node.parentId, children)
+  })
+
+  const filteredNodeIds = new Set(filteredRootIds)
+  const queue = [...filteredRootIds]
+
+  while (queue.length) {
+    const currentNodeId = queue.shift()!
+    const children = childrenByParent.get(currentNodeId) ?? []
+    children.forEach((childId) => {
+      if (filteredNodeIds.has(childId))
+        return
+
+      filteredNodeIds.add(childId)
+      queue.push(childId)
+    })
+  }
+
+  return candidateNodes.filter(node => !filteredNodeIds.has(node.id))
+}
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -1777,6 +1821,7 @@ export const useNodesInteractions = () => {
     } = workflowStore.getState()
     const clipboardData = await readWorkflowClipboard()
     const hasSystemClipboard = clipboardData.nodes.length > 0
+    const shouldRunCompatibilityCheck = hasSystemClipboard && clipboardData.isVersionMismatch
     if (hasSystemClipboard && clipboardData.isVersionMismatch) {
       Toast.notify({
         type: 'warning',
@@ -1796,7 +1841,10 @@ export const useNodesInteractions = () => {
     if (hasSystemClipboard)
       setClipboardData(clipboardData)
 
-    if (!clipboardElements.length)
+    const validatedClipboardElements = clipboardElements.filter(isClipboardNodeStructurallyValid)
+    const validatedClipboardEdges = clipboardEdges.filter(isClipboardEdgeStructurallyValid)
+
+    if (!validatedClipboardElements.length)
       return
 
     const { getNodes, setNodes, edges, setEdges } = store.getState()
@@ -1805,22 +1853,41 @@ export const useNodesInteractions = () => {
     const edgesToPaste: Edge[] = []
     const nodes = getNodes()
 
-    const supportedClipboardElements = clipboardElements.filter((node) => {
+    let compatibleClipboardElements = validatedClipboardElements.filter((node) => {
       if (node.type === CUSTOM_NOTE_NODE)
         return true
-      return !!nodesMetaDataMap?.[node.data.type as BlockEnum]
+
+      const nodeDefaultValue = getNodeDefaultValueForPaste(node)
+      if (!nodeDefaultValue)
+        return false
+
+      if (
+        shouldRunCompatibilityCheck
+        && !isClipboardValueCompatibleWithDefault(nodeDefaultValue, node.data)
+      ) {
+        return false
+      }
+
+      return true
     })
 
-    if (!supportedClipboardElements.length)
+    if (shouldRunCompatibilityCheck) {
+      compatibleClipboardElements = pruneClipboardNodesWithFilteredAncestors(
+        validatedClipboardElements,
+        compatibleClipboardElements,
+      )
+    }
+
+    if (!compatibleClipboardElements.length)
       return
 
-    const clipboardNodeIds = new Set(supportedClipboardElements.map(node => node.id))
-    const rootClipboardNodes = supportedClipboardElements.filter(
+    const clipboardNodeIds = new Set(compatibleClipboardElements.map(node => node.id))
+    const rootClipboardNodes = compatibleClipboardElements.filter(
       node => !node.parentId || !clipboardNodeIds.has(node.parentId),
     )
     const positionReferenceNodes = rootClipboardNodes.length
       ? rootClipboardNodes
-      : supportedClipboardElements
+      : compatibleClipboardElements
     const { x, y } = getTopLeftNodePosition(positionReferenceNodes)
     const { screenToFlowPosition } = reactflow
     const currentPosition = screenToFlowPosition({
@@ -1839,12 +1906,30 @@ export const useNodesInteractions = () => {
       if (nodeToPaste.type !== CUSTOM_NOTE_NODE && !nodeDefaultValue)
         return
 
+      const mergedData = shouldRunCompatibilityCheck
+        ? sanitizeClipboardValueByDefault(nodeDefaultValue ?? {}, nodeToPaste.data) as Record<string, unknown>
+        : {
+            ...(nodeToPaste.type !== CUSTOM_NOTE_NODE ? nodeDefaultValue : {}),
+            ...nodeToPaste.data,
+          }
+      const sourceTitle = typeof mergedData.title === 'string'
+        ? mergedData.title
+        : typeof nodeToPaste.data.title === 'string'
+          ? nodeToPaste.data.title
+          : 'Node'
+      const sourceDesc = typeof mergedData.desc === 'string'
+        ? mergedData.desc
+        : typeof nodeToPaste.data.desc === 'string'
+          ? nodeToPaste.data.desc
+          : ''
+
       const { newNode, newIterationStartNode, newLoopStartNode }
         = generateNewNode({
           type: nodeToPaste.type,
           data: {
-            ...(nodeToPaste.type !== CUSTOM_NOTE_NODE ? nodeDefaultValue : {}),
-            ...nodeToPaste.data,
+            ...mergedData,
+            type: nodeToPaste.data.type,
+            desc: sourceDesc,
             selected: false,
             _isBundled: false,
             _connectedSourceHandleIds: [],
@@ -1854,7 +1939,7 @@ export const useNodesInteractions = () => {
             iteration_id: undefined,
             isInLoop: false,
             loop_id: undefined,
-            title: genNewNodeTitleFromOld(nodeToPaste.data.title),
+            title: genNewNodeTitleFromOld(sourceTitle),
           },
           position: {
             x: nodeToPaste.position.x + offsetX,
@@ -1873,7 +1958,7 @@ export const useNodesInteractions = () => {
           iterationNodeData.start_node_id = newIterationStartNode.id
         }
 
-        const oldIterationStartNodeInClipboard = supportedClipboardElements.find(
+        const oldIterationStartNodeInClipboard = compatibleClipboardElements.find(
           n =>
             n.parentId === nodeToPaste.id
             && n.type === CUSTOM_ITERATION_START_NODE,
@@ -1881,7 +1966,7 @@ export const useNodesInteractions = () => {
         if (oldIterationStartNodeInClipboard && newIterationStartNode)
           idMapping[oldIterationStartNodeInClipboard.id] = newIterationStartNode.id
 
-        const copiedIterationChildren = supportedClipboardElements.filter(
+        const copiedIterationChildren = compatibleClipboardElements.filter(
           n =>
             n.parentId === nodeToPaste.id
             && n.type !== CUSTOM_ITERATION_START_NODE,
@@ -1893,17 +1978,34 @@ export const useNodesInteractions = () => {
             if (child.type !== CUSTOM_NOTE_NODE && !childDefaultValue)
               return
 
+            const mergedChildData = shouldRunCompatibilityCheck
+              ? sanitizeClipboardValueByDefault(childDefaultValue ?? {}, child.data) as Record<string, unknown>
+              : {
+                  ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
+                  ...child.data,
+                }
+            const childSourceTitle = typeof mergedChildData.title === 'string'
+              ? mergedChildData.title
+              : typeof child.data.title === 'string'
+                ? child.data.title
+                : 'Node'
+            const childSourceDesc = typeof mergedChildData.desc === 'string'
+              ? mergedChildData.desc
+              : typeof child.data.desc === 'string'
+                ? child.data.desc
+                : ''
+
             const { newNode: newChild } = generateNewNode({
               type: child.type,
               data: {
-                ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
-                ...child.data,
+                ...mergedChildData,
+                desc: childSourceDesc,
                 selected: false,
                 _isBundled: false,
                 _connectedSourceHandleIds: [],
                 _connectedTargetHandleIds: [],
                 _dimmed: false,
-                title: genNewNodeTitleFromOld(child.data.title),
+                title: genNewNodeTitleFromOld(childSourceTitle),
                 isInIteration: true,
                 iteration_id: newNode.id,
                 isInLoop: false,
@@ -1956,7 +2058,7 @@ export const useNodesInteractions = () => {
           loopNodeData.start_node_id = newLoopStartNode.id
         }
 
-        const oldLoopStartNodeInClipboard = supportedClipboardElements.find(
+        const oldLoopStartNodeInClipboard = compatibleClipboardElements.find(
           n =>
             n.parentId === nodeToPaste.id
             && n.type === CUSTOM_LOOP_START_NODE,
@@ -1964,7 +2066,7 @@ export const useNodesInteractions = () => {
         if (oldLoopStartNodeInClipboard && newLoopStartNode)
           idMapping[oldLoopStartNodeInClipboard.id] = newLoopStartNode.id
 
-        const copiedLoopChildren = supportedClipboardElements.filter(
+        const copiedLoopChildren = compatibleClipboardElements.filter(
           n =>
             n.parentId === nodeToPaste.id
             && n.type !== CUSTOM_LOOP_START_NODE,
@@ -1976,17 +2078,34 @@ export const useNodesInteractions = () => {
             if (child.type !== CUSTOM_NOTE_NODE && !childDefaultValue)
               return
 
+            const mergedChildData = shouldRunCompatibilityCheck
+              ? sanitizeClipboardValueByDefault(childDefaultValue ?? {}, child.data) as Record<string, unknown>
+              : {
+                  ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
+                  ...child.data,
+                }
+            const childSourceTitle = typeof mergedChildData.title === 'string'
+              ? mergedChildData.title
+              : typeof child.data.title === 'string'
+                ? child.data.title
+                : 'Node'
+            const childSourceDesc = typeof mergedChildData.desc === 'string'
+              ? mergedChildData.desc
+              : typeof child.data.desc === 'string'
+                ? child.data.desc
+                : ''
+
             const { newNode: newChild } = generateNewNode({
               type: child.type,
               data: {
-                ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
-                ...child.data,
+                ...mergedChildData,
+                desc: childSourceDesc,
                 selected: false,
                 _isBundled: false,
                 _connectedSourceHandleIds: [],
                 _connectedTargetHandleIds: [],
                 _dimmed: false,
-                title: genNewNodeTitleFromOld(child.data.title),
+                title: genNewNodeTitleFromOld(childSourceTitle),
                 isInIteration: false,
                 iteration_id: undefined,
                 isInLoop: true,
@@ -2075,7 +2194,7 @@ export const useNodesInteractions = () => {
       }
     })
 
-    const sourceEdges = clipboardEdges.length ? clipboardEdges : edges
+    const sourceEdges = validatedClipboardEdges.length ? validatedClipboardEdges : edges
 
     sourceEdges.forEach((edge) => {
       const sourceId = idMapping[edge.source]
@@ -2140,7 +2259,6 @@ export const useNodesInteractions = () => {
     handleNodeIterationChildrenCopy,
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
-    nodesMetaDataMap,
   ])
 
   const handleNodesDuplicate = useCallback(

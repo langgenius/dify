@@ -32,6 +32,109 @@ const emptyClipboardReadResult: WorkflowClipboardReadResult = {
 
 const isNodeArray = (value: unknown): value is Node[] => Array.isArray(value)
 const isEdgeArray = (value: unknown): value is Edge[] => Array.isArray(value)
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+
+export const sanitizeClipboardValueByDefault = (defaultValue: unknown, incomingValue: unknown): unknown => {
+  if (defaultValue === undefined)
+    return incomingValue
+
+  if (Array.isArray(defaultValue))
+    return Array.isArray(incomingValue) ? incomingValue : [...defaultValue]
+
+  if (isPlainObject(defaultValue)) {
+    if (!isPlainObject(incomingValue)) {
+      return Object.fromEntries(
+        Object.entries(defaultValue).map(([key, value]) => [
+          key,
+          sanitizeClipboardValueByDefault(value, undefined),
+        ]),
+      )
+    }
+
+    const merged: Record<string, unknown> = {}
+    const keys = new Set([
+      ...Object.keys(defaultValue),
+      ...Object.keys(incomingValue),
+    ])
+
+    keys.forEach((key) => {
+      const hasDefault = Object.hasOwn(defaultValue, key)
+      const hasIncoming = Object.hasOwn(incomingValue, key)
+      if (hasDefault && hasIncoming) {
+        merged[key] = sanitizeClipboardValueByDefault(
+          defaultValue[key],
+          incomingValue[key],
+        )
+        return
+      }
+
+      if (hasIncoming) {
+        merged[key] = incomingValue[key]
+        return
+      }
+
+      merged[key] = sanitizeClipboardValueByDefault(defaultValue[key], undefined)
+    })
+
+    return merged
+  }
+
+  if (typeof defaultValue === 'number')
+    return typeof incomingValue === 'number' && Number.isFinite(incomingValue) ? incomingValue : defaultValue
+
+  return typeof incomingValue === typeof defaultValue ? incomingValue : defaultValue
+}
+
+export const isClipboardValueCompatibleWithDefault = (defaultValue: unknown, incomingValue: unknown): boolean => {
+  if (incomingValue === undefined)
+    return true
+
+  if (defaultValue === undefined)
+    return true
+
+  if (Array.isArray(defaultValue))
+    return Array.isArray(incomingValue)
+
+  if (isPlainObject(defaultValue)) {
+    if (!isPlainObject(incomingValue))
+      return false
+
+    return Object.entries(defaultValue).every(([key, value]) => {
+      return isClipboardValueCompatibleWithDefault(
+        value,
+        incomingValue[key],
+      )
+    })
+  }
+
+  if (typeof defaultValue === 'number')
+    return typeof incomingValue === 'number' && Number.isFinite(incomingValue)
+
+  return typeof incomingValue === typeof defaultValue
+}
+
+export const isClipboardNodeStructurallyValid = (value: unknown): value is Node => {
+  if (!isPlainObject(value))
+    return false
+
+  if (typeof value.id !== 'string' || typeof value.type !== 'string')
+    return false
+
+  if (!isPlainObject(value.data) || !isPlainObject(value.position))
+    return false
+
+  return Number.isFinite(value.position.x) && Number.isFinite(value.position.y)
+}
+
+export const isClipboardEdgeStructurallyValid = (value: unknown): value is Edge => {
+  if (!isPlainObject(value))
+    return false
+
+  return typeof value.id === 'string'
+    && typeof value.source === 'string'
+    && typeof value.target === 'string'
+}
 
 export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadResult => {
   if (!text)
@@ -50,9 +153,12 @@ export const parseWorkflowClipboardText = (text: string): WorkflowClipboardReadR
 
     const sourceVersion = parsed.version
 
+    const validatedNodes = parsed.nodes.filter(isClipboardNodeStructurallyValid)
+    const validatedEdges = parsed.edges.filter(isClipboardEdgeStructurallyValid)
+
     return {
-      nodes: parsed.nodes,
-      edges: parsed.edges,
+      nodes: validatedNodes,
+      edges: validatedEdges,
       sourceVersion,
       isVersionMismatch: sourceVersion !== WORKFLOW_CLIPBOARD_VERSION,
     }
