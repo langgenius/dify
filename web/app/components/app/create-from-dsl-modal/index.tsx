@@ -272,7 +272,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       >
         <div className="flex items-start justify-between pb-3 pl-6 pr-5 pt-6">
           <div className="text-text-primary title-2xl-semi-bold">
-            {t('importFromDSL', { ns: 'app' })}
+            {t('importApp', { ns: 'app' })}
           </div>
           <div
             className="flex h-8 w-8 cursor-pointer items-center justify-center"

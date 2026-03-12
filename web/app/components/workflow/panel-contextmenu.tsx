@@ -34,6 +34,7 @@ const PanelContextmenu = () => {
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
+  const pipelineId = useStore(s => s.pipelineId)
 
   useEffect(() => {
     if (panelMenu)
@@ -143,7 +144,7 @@ const PanelContextmenu = () => {
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
-          {t('common.importDSL', { ns: 'workflow' })}
+          {!pipelineId ? t('importApp', { ns: 'app' }) : t('common.importDSL', { ns: 'workflow' })}
         </div>
       </div>
     </div>

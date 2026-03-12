@@ -89,7 +89,7 @@ const CreateAppCard = ({
           className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
           <FileArrow01 className="mr-2 h-4 w-4 shrink-0" />
-          {t('importDSL', { ns: 'app' })}
+          {t('importApp', { ns: 'app' })}
         </button>
       </div>
 

@@ -285,7 +285,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
       ? [{
           id: 'import',
-          title: t('common.importDSL', { ns: 'workflow' }),
+          title: t('importApp', { ns: 'app' }),
           icon: <RiFileUploadLine />,
           onClick: () => {
             setOpen(false)
