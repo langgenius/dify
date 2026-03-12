@@ -118,4 +118,11 @@ describe('MarkdownButton (integration)', () => {
     const comp = MarkdownButton as NamedExoticComponent<{ node: unknown }>
     expect(comp.displayName).toBe('MarkdownButton')
   })
+
+  it('falls back to empty label when first child value is missing', () => {
+    const node: TestNode = { properties: {}, children: [{}] }
+    renderWithCtx(node)
+
+    expect(screen.getByRole('button')).toHaveTextContent('')
+  })
 })
