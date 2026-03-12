@@ -193,7 +193,7 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch />)
 
     const mainSwitch = screen.getByTestId('load-balancing-switch-main')
-    expect(mainSwitch).toHaveClass('!cursor-not-allowed')
+    expect(mainSwitch).toHaveAttribute('aria-disabled', 'true')
 
     // Clicking should not trigger any changes (effectively disabled)
     await user.click(mainSwitch)
