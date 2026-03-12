@@ -429,17 +429,18 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
+        resolved_icon_type: IconType
         if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
-            icon_type = icon_type_value
+            resolved_icon_type = IconType(icon_type_value)
         else:
-            icon_type = IconType.EMOJI
+            resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
             # Update existing app
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
@@ -452,10 +453,10 @@ class AppDslService:
             app = App()
             app.id = str(uuid4())
             app.tenant_id = account.current_tenant_id
-            app.mode = app_mode.value
+            app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
             app.enable_site = True
