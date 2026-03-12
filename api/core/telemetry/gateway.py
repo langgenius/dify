@@ -87,6 +87,10 @@ def _get_case_routing() -> dict:
         }
     return _case_routing
 
+# Public exports for tests and external consumers
+CASE_TO_TRACE_TASK = _get_case_to_trace_task()
+CASE_ROUTING = _get_case_routing()
+
 
 # ---------------------------------------------------------------------------
 # Helpers
