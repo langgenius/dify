@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['nuqs'],
+            exclude: ['@tanstack/react-query'],
           },
           server: {
             port: 3000,
