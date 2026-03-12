@@ -144,8 +144,9 @@ class TestWorkflowAppGeneratorGenerate:
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: setattr(self, "app_id", app_id)
-                or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None: (
+                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                )
             },
         )
         monkeypatch.setattr(
