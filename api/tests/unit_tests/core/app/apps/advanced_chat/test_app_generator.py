@@ -150,8 +150,9 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: setattr(self, "app_id", app_id)
-                or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None: (
+                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                )
             },
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", DummyTraceQueueManager)
@@ -1124,8 +1125,9 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: setattr(self, "app_id", app_id)
-                or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None: (
+                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                )
             },
         )
         monkeypatch.setattr(
@@ -1202,8 +1204,9 @@ class TestAdvancedChatAppGeneratorInternals:
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
-                "__init__": lambda self, app_id=None, user_id=None: setattr(self, "app_id", app_id)
-                or setattr(self, "user_id", user_id)
+                "__init__": lambda self, app_id=None, user_id=None: (
+                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
+                )
             },
         )
         monkeypatch.setattr(
