@@ -348,4 +348,3 @@ def validate_human_input_submission(
     if missing_inputs:
         missing_list = ", ".join(missing_inputs)
         raise HumanInputSubmissionValidationError(f"Missing required inputs: {missing_list}")
-
