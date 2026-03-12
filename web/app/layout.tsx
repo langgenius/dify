@@ -1,6 +1,6 @@
 import type { Viewport } from 'next'
 import { Agentation } from 'agentation'
-import { Provider as JotaiProvider } from 'jotai'
+import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
