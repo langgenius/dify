@@ -42,13 +42,11 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
         for i, node_result in enumerate(node_run_result_list):
             # Extract retrieved contexts from outputs
             outputs = node_result.outputs
-            contexts = list(outputs.get("retrieved_contexts", []))
             query = self._extract_query(dict(node_result.inputs))
             # Extract retrieved content from result list
             result_list = outputs.get("result", [])
-            output = "\n---\n".join(
-                str(item.get("content", "")) for item in result_list if item.get("content")
-            )
+            contexts = [item.get("content", "") for item in result_list if item.get("content")]
+            output = "\n---\n".join(contexts)
 
             merged_items.append(
                 EvaluationItemInput(
