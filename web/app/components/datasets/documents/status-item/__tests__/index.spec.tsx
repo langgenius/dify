@@ -169,9 +169,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (queuing status)', () => {
@@ -187,9 +186,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (indexing status)', () => {
@@ -205,9 +203,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (paused status)', () => {
@@ -223,9 +220,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
