@@ -2266,7 +2266,7 @@ class TestWorkflowServiceDraftExecution:
         draft_workflow.graph_dict = {"nodes": []}
 
         node_id = "start-node"
-        node_config = {"id": node_id, "data": {"type": "start"}}
+        node_config = {"id": node_id, "data": MagicMock(type=NodeType.START)}
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
 
@@ -2342,7 +2342,7 @@ class TestWorkflowServiceDraftExecution:
         draft_workflow = MagicMock(spec=Workflow)
         draft_workflow.graph_dict = {"nodes": []}
         node_id = "llm-node"
-        node_config = {"id": node_id, "data": {"type": "llm"}}
+        node_config = {"id": node_id, "data": MagicMock(type=NodeType.LLM)}
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
         service.get_draft_workflow = MagicMock(return_value=draft_workflow)
@@ -2440,7 +2440,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft.tenant_id = "tenant-1"
         draft.app_id = "app-1"
         draft.graph_dict = {"nodes": []}
-        draft.get_node_config_by_id.return_value = {"data": {"type": "human-input"}}
+        draft.get_node_config_by_id.return_value = {"id": "node-1", "data": MagicMock(type=NodeType.HUMAN_INPUT)}
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         mock_node = MagicMock()
