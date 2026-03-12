@@ -79,7 +79,16 @@ export const usePipelineInit = () => {
               handleGetInitialWorkflowData()
             })
           }
+          else {
+            console.error(err)
+            setIsLoading(false)
+          }
+        }).catch(() => {
+          setIsLoading(false)
         })
+      }
+      else {
+        setIsLoading(false)
       }
     }
   }, [nodesTemplate, edgesTemplate, workflowStore, datasetId])
