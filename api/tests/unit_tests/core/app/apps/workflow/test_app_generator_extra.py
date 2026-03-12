@@ -12,6 +12,11 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
 
 
+def _init_dummy_trace_queue_manager(self, app_id=None, user_id=None) -> None:
+    self.app_id = app_id
+    self.user_id = user_id
+
+
 class TestWorkflowAppGeneratorValidation:
     def test_should_prepare_user_inputs(self):
         generator = WorkflowAppGenerator()
@@ -143,11 +148,7 @@ class TestWorkflowAppGeneratorGenerate:
         DummyTraceQueueManager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
+            {"__init__": _init_dummy_trace_queue_manager},
         )
         monkeypatch.setattr(
             "core.app.apps.workflow.app_generator.TraceQueueManager",

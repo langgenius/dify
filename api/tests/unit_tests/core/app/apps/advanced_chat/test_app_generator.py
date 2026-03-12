@@ -16,6 +16,11 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
 
 
+def _init_dummy_trace_queue_manager(self, app_id=None, user_id=None) -> None:
+    self.app_id = app_id
+    self.user_id = user_id
+
+
 class TestAdvancedChatAppGeneratorValidation:
     def test_generate_requires_query(self):
         generator = AdvancedChatAppGenerator()
@@ -149,11 +154,7 @@ class TestAdvancedChatAppGeneratorInternals:
         DummyTraceQueueManager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
+            {"__init__": _init_dummy_trace_queue_manager},
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", DummyTraceQueueManager)
 
@@ -1124,11 +1125,7 @@ class TestAdvancedChatAppGeneratorInternals:
         DummyTraceQueueManager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
+            {"__init__": _init_dummy_trace_queue_manager},
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
@@ -1203,11 +1200,7 @@ class TestAdvancedChatAppGeneratorInternals:
         DummyTraceQueueManager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
+            {"__init__": _init_dummy_trace_queue_manager},
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
