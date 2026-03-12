@@ -46,8 +46,6 @@ class DraftAppAssetsInitializer(SyncSandboxInitializer):
 
     def initialize(self, sandbox: Sandbox, ctx: SandboxInitializeContext) -> None:
         tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
-        if tree.empty():
-            return
 
         # --- 1. Run the build pipeline (SkillBuilder compiles .md inline) ---
         accessor = AppAssetService.get_accessor(ctx.tenant_id, ctx.app_id)
