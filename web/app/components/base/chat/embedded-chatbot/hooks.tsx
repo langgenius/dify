@@ -146,18 +146,20 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
-      let prevValue = conversationIdInfo?.[appId || '']
-      if (typeof prevValue === 'string')
-        prevValue = {}
-      setConversationIdInfo({
-        ...conversationIdInfo,
-        [appId || '']: {
-          ...prevValue,
-          [userId || 'DEFAULT']: changeConversationId,
-        },
+      setConversationIdInfo((prev) => {
+        let prevValue = prev?.[appId || '']
+        if (typeof prevValue === 'string')
+          prevValue = {}
+        return {
+          ...prev,
+          [appId || '']: {
+            ...prevValue,
+            [userId || 'DEFAULT']: changeConversationId,
+          },
+        }
       })
     }
-  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
+  }, [appId, setConversationIdInfo, userId])
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -441,7 +443,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleChangeConversation, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
