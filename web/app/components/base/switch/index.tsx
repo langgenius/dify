@@ -6,8 +6,10 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
+const switchRootStateClassName = 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-[checked]:bg-components-toggle-bg data-[checked]:hover:bg-components-toggle-bg-hover data-[disabled]:cursor-not-allowed data-[disabled]:bg-components-toggle-bg-unchecked-disabled data-[disabled]:hover:bg-components-toggle-bg-unchecked-disabled data-[disabled]:data-[checked]:bg-components-toggle-bg-disabled data-[disabled]:data-[checked]:hover:bg-components-toggle-bg-disabled'
+
 const switchRootVariants = cva(
-  'group relative inline-flex shrink-0 items-center transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-components-toggle-bg motion-reduce:transition-none',
+  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-components-toggle-bg motion-reduce:transition-none ${switchRootStateClassName}`,
   {
     variants: {
       size: {
@@ -24,14 +26,14 @@ const switchRootVariants = cva(
 )
 
 const switchThumbVariants = cva(
-  'block transition-transform duration-200 ease-in-out motion-reduce:transition-none',
+  'block bg-components-toggle-knob shadow-sm transition-transform duration-200 ease-in-out group-hover:bg-components-toggle-knob-hover group-hover:shadow-md group-data-[disabled]:bg-components-toggle-knob-disabled group-data-[disabled]:shadow-none motion-reduce:transition-none',
   {
     variants: {
       size: {
-        xs: 'h-1.5 w-1 rounded-[1px]',
-        sm: 'h-2 w-[7px] rounded-[2px]',
-        md: 'h-3 w-2.5 rounded-[3px]',
-        lg: 'size-3.5 rounded-[4px]',
+        xs: 'h-1.5 w-1 rounded-[1px] data-[checked]:translate-x-1.5',
+        sm: 'h-2 w-[7px] rounded-[2px] data-[checked]:translate-x-[9px]',
+        md: 'h-3 w-2.5 rounded-[3px] data-[checked]:translate-x-[14px]',
+        lg: 'size-3.5 rounded-[4px] data-[checked]:translate-x-4',
       },
     },
     defaultVariants: {
@@ -41,13 +43,6 @@ const switchThumbVariants = cva(
 )
 
 export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
-
-const thumbCheckedTranslate: Record<SwitchSize, string> = {
-  xs: 'translate-x-1.5',
-  sm: 'translate-x-[9px]',
-  md: 'translate-x-[14px]',
-  lg: 'translate-x-4',
-}
 
 const spinnerSizeConfig: Partial<Record<SwitchSize, {
   icon: string
@@ -90,7 +85,7 @@ const Switch = ({
   'aria-labelledby': ariaLabelledBy,
   'data-testid': dataTestid,
 }: SwitchProps & {
-  ref?: React.RefObject<HTMLButtonElement>
+  ref?: React.Ref<HTMLElement>
 }) => {
   const isDisabled = disabled || loading
   const spinner = loading ? spinnerSizeConfig[size] : undefined
@@ -104,33 +99,11 @@ const Switch = ({
       aria-busy={loading || undefined}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
-      className={state => cn(
-        switchRootVariants({ size }),
-        state.disabled
-          ? cn(
-              'cursor-not-allowed',
-              state.checked
-                ? 'bg-components-toggle-bg-disabled'
-                : 'bg-components-toggle-bg-unchecked-disabled',
-            )
-          : cn(
-              'cursor-pointer',
-              state.checked
-                ? 'bg-components-toggle-bg hover:bg-components-toggle-bg-hover'
-                : 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover',
-            ),
-        className,
-      )}
+      className={cn(switchRootVariants({ size }), className)}
       data-testid={dataTestid}
     >
       <BaseSwitch.Thumb
-        className={state => cn(
-          switchThumbVariants({ size }),
-          state.disabled
-            ? 'bg-components-toggle-knob-disabled'
-            : 'bg-components-toggle-knob shadow-sm group-hover:bg-components-toggle-knob-hover group-hover:shadow-md',
-          state.checked ? thumbCheckedTranslate[size] : 'translate-x-0',
-        )}
+        className={switchThumbVariants({ size })}
       />
       {spinner
         ? (

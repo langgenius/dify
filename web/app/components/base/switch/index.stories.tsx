@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Switch from '.'
 import { SwitchSkeleton } from './skeleton'
 
@@ -235,6 +235,78 @@ export const Loading: Story = {
     docs: {
       description: {
         story: 'Loading state disables interaction and shows a spinning icon (i-ri-loader-2-line) for md/lg sizes. Spinner position mirrors the knob: appears on the opposite side of the checked state.',
+      },
+    },
+  },
+}
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+const MutationLoadingDemo = () => {
+  const [enabled, setEnabled] = useState(false)
+  const [requestCount, setRequestCount] = useState(0)
+  const [isPending, startTransition] = useTransition()
+
+  const handleChange = (nextValue: boolean) => {
+    if (isPending)
+      return
+
+    startTransition(async () => {
+      setRequestCount(current => current + 1)
+      await wait(1200)
+      setEnabled(nextValue)
+    })
+  }
+
+  return (
+    <div className="w-[340px] space-y-4 rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-sm">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-text-primary">Mutation Loading Guard</p>
+        <p className="text-xs text-text-tertiary">
+          Click once to start a simulated mutate call. While the request is pending, the switch enters
+          {' '}
+          <code className="rounded bg-state-base-hover px-1 py-0.5 text-[11px]">loading</code>
+          {' '}
+          and rejects duplicate clicks.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-components-panel-border-subtle bg-background-default-dodge px-3 py-2 shadow-sm">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-text-primary">Enable Auto Retry</p>
+          <p className="text-xs text-text-tertiary">
+            {isPending ? 'Saving…' : enabled ? 'Saved as on' : 'Saved as off'}
+          </p>
+        </div>
+        <Switch
+          size="lg"
+          value={enabled}
+          loading={isPending}
+          onChange={handleChange}
+          aria-label="Enable Auto Retry"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs text-text-tertiary">
+        <div className="rounded-lg bg-state-base-hover px-3 py-2">
+          <div className="font-medium text-text-secondary">Committed Value</div>
+          <div>{enabled ? 'On' : 'Off'}</div>
+        </div>
+        <div className="rounded-lg bg-state-base-hover px-3 py-2">
+          <div className="font-medium text-text-secondary">Mutate Count</div>
+          <div>{requestCount}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export const MutationLoadingGuard: Story = {
+  render: () => <MutationLoadingDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Simulates a controlled switch backed by an async mutate call. The component keeps its previous committed value, sets `loading` during the request, and blocks duplicate clicks until the mutation resolves.',
       },
     },
   },

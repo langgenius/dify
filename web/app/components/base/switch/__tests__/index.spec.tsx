@@ -4,18 +4,22 @@ import { describe, expect, it, vi } from 'vitest'
 import Switch from '../index'
 import { SwitchSkeleton } from '../skeleton'
 
+const getThumb = (switchElement: HTMLElement) => switchElement.querySelector('span')
+
 describe('Switch', () => {
   it('should render in unchecked state when value is false', () => {
     render(<Switch value={false} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toBeInTheDocument()
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
+    expect(switchElement).not.toHaveAttribute('data-checked')
   })
 
   it('should render in checked state when value is true', () => {
     render(<Switch value={true} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveAttribute('aria-checked', 'true')
+    expect(switchElement).toHaveAttribute('data-checked', '')
   })
 
   it('should call onChange with next value when clicked', async () => {
@@ -54,7 +58,8 @@ describe('Switch', () => {
     render(<Switch value={false} disabled onChange={onChange} />)
 
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('cursor-not-allowed')
+    expect(switchElement).toHaveClass('data-[disabled]:cursor-not-allowed')
+    expect(switchElement).toHaveAttribute('data-disabled', '')
 
     await user.click(switchElement)
     expect(onChange).not.toHaveBeenCalled()
@@ -80,24 +85,33 @@ describe('Switch', () => {
     expect(screen.getByRole('switch')).toHaveClass('custom-test-class')
   })
 
-  it('should apply correct background colors based on value prop', () => {
+  it('should expose checked state styling hooks on the root and thumb', () => {
     const { rerender } = render(<Switch value={false} />)
     const switchElement = screen.getByRole('switch')
+    const thumb = getThumb(switchElement)
 
-    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked')
+    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked', 'data-[checked]:bg-components-toggle-bg')
+    expect(thumb).toHaveClass('data-[checked]:translate-x-[14px]')
+    expect(thumb).not.toHaveAttribute('data-checked')
 
     rerender(<Switch value={true} />)
-    expect(switchElement).toHaveClass('bg-components-toggle-bg')
+    expect(switchElement).toHaveAttribute('data-checked', '')
+    expect(thumb).toHaveAttribute('data-checked', '')
   })
 
-  it('should apply disabled background tokens instead of opacity', () => {
+  it('should expose disabled state styling hooks instead of relying on opacity', () => {
     const { rerender } = render(<Switch value={false} disabled />)
     const switchElement = screen.getByRole('switch')
 
-    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked-disabled')
+    expect(switchElement).toHaveClass(
+      'data-[disabled]:bg-components-toggle-bg-unchecked-disabled',
+      'data-[disabled]:data-[checked]:bg-components-toggle-bg-disabled',
+    )
+    expect(switchElement).toHaveAttribute('data-disabled', '')
 
     rerender(<Switch value={true} disabled />)
-    expect(switchElement).toHaveClass('bg-components-toggle-bg-disabled')
+    expect(switchElement).toHaveAttribute('data-disabled', '')
+    expect(switchElement).toHaveAttribute('data-checked', '')
   })
 
   it('should have focus-visible ring styles', () => {
@@ -119,8 +133,9 @@ describe('Switch', () => {
       render(<Switch value={false} loading onChange={onChange} />)
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('cursor-not-allowed')
+      expect(switchElement).toHaveClass('data-[disabled]:cursor-not-allowed')
       expect(switchElement).toHaveAttribute('aria-busy', 'true')
+      expect(switchElement).toHaveAttribute('data-disabled', '')
 
       await user.click(switchElement)
       expect(onChange).not.toHaveBeenCalled()
@@ -142,14 +157,15 @@ describe('Switch', () => {
       expect(container.querySelector('span[aria-hidden="true"] i')).not.toBeInTheDocument()
     })
 
-    it('should apply disabled background tokens when loading', () => {
+    it('should apply disabled data-state hooks when loading', () => {
       const { rerender } = render(<Switch value={false} loading />)
       const switchElement = screen.getByRole('switch')
 
-      expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked-disabled')
+      expect(switchElement).toHaveAttribute('data-disabled', '')
 
       rerender(<Switch value={true} loading />)
-      expect(switchElement).toHaveClass('bg-components-toggle-bg-disabled')
+      expect(switchElement).toHaveAttribute('data-disabled', '')
+      expect(switchElement).toHaveAttribute('data-checked', '')
     })
   })
 })
