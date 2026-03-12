@@ -61,11 +61,11 @@ const Editor: FC<Props> = ({
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
-    <div className={cn(className, 'relative')}>
+    <div className={cn(className, 'relative min-h-8')}>
       <>
         <PromptEditor
           instanceId={instanceId}
-          className={cn(promptMinHeightClassName, '!leading-[18px]')}
+          className={cn(promptMinHeightClassName, 'leading-[18px]')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
           value={value}
