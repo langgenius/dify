@@ -7,7 +7,7 @@ from celery.signals import worker_init
 from flask_login import user_loaded_from_request, user_logged_in
 from opentelemetry import trace
 from opentelemetry.propagate import set_global_textmap
-from opentelemetry.propagators.b3 import B3Format
+from opentelemetry.propagators.b3 import B3MultiFormat
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
@@ -24,7 +24,7 @@ def setup_context_propagation() -> None:
         CompositePropagator(
             [
                 TraceContextTextMapPropagator(),
-                B3Format(),
+                B3MultiFormat(),
             ]
         )
     )
