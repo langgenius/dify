@@ -164,7 +164,7 @@ const EditMetadataBatchModal: FC<Props> = ({
 
       <div className="mt-4 flex items-center justify-between">
         <div className="flex select-none items-center">
-          <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
+          <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
           <div className="ml-2 mr-1 text-text-secondary system-xs-medium">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={
             <div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>
