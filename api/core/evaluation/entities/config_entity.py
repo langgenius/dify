@@ -17,3 +17,8 @@ class BaseEvaluationConfig(BaseModel):
 class RagasConfig(BaseEvaluationConfig):
     """RAGAS-specific configuration."""
     pass
+
+
+class DeepEvalConfig(BaseEvaluationConfig):
+    """DeepEval-specific configuration."""
+    pass
