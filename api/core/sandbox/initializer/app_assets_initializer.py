@@ -26,6 +26,10 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         (
             pipeline(vm)
             .add(
+                ["mkdir", "-p", f"/tmp/.dify/{sandbox.id}"],
+                error_message="Failed to create assets temp directory",
+            )
+            .add(
                 ["curl", "-fsSL", download_url, "-o", assets.zip_path],
                 error_message="Failed to download assets zip",
             )
