@@ -177,7 +177,13 @@ class WeaviateVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(cache_key):
-                return
+                if self._client.collections.exists(self._collection_name):
+                    return
+                redis_client.delete(cache_key)
+                logger.warning(
+                    "Stale Redis cache for collection %s: class deleted externally, recreating",
+                    self._collection_name,
+                )
 
             try:
                 if not self._client.collections.exists(self._collection_name):
