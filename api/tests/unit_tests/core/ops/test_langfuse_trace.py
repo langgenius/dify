@@ -124,7 +124,7 @@ class TestLangFuseDataTraceCompletionStartTime:
         ):
             trace.workflow_trace(trace_info)
 
-        generation = add_generation.call_args.args[0]
+        generation = add_generation.call_args.kwargs["langfuse_generation_data"]
         assert generation.completion_start_time == start_time + timedelta(seconds=1.2)
 
     def test_ignores_invalid_ttft_values(self):
