@@ -1,10 +1,10 @@
 import type { ModelProvider } from '../declarations'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import {
   PreferredProviderTypeEnum,
 } from '../declarations'
+import { providerSupportsCredits } from '../supports-credits'
 import { useTrialCredits } from './use-trial-credits'
 
 export type UsagePriority = 'credits' | 'apiKey' | 'apiKeyOnly'
@@ -82,14 +82,9 @@ export function useCredentialPanelState(provider: ModelProvider | undefined): Cr
   const { data: systemFeatures } = useSystemFeaturesQuery()
   const trialModels = systemFeatures?.trial_models
 
-  const systemConfig = provider?.system_configuration
   const preferredType = provider?.preferred_provider_type
 
-  const providerKey = provider?.provider
-  const supportsCredits = !!systemConfig?.enabled
-    && IS_CLOUD_EDITION
-    && !!providerKey
-    && (trialModels as string[] ?? []).includes(providerKey)
+  const supportsCredits = providerSupportsCredits(provider, trialModels)
 
   const priority: UsagePriority = !supportsCredits
     ? 'apiKeyOnly'

@@ -36,6 +36,9 @@ const mockMarketplacePlugins = vi.hoisted(() => ({
 const mockContextModelProviders = vi.hoisted(() => ({
   current: [] as MockContextProvider[],
 }))
+const mockTrialModels = vi.hoisted(() => ({
+  current: ['test-openai', 'test-anthropic'] as string[],
+}))
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
   return {
@@ -56,19 +59,37 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
 }))
 
-vi.mock('../provider-added-card/use-trial-credits', () => ({
-  useTrialCredits: () => ({
-    credits: 200,
-    totalCredits: 200,
-    isExhausted: false,
-    isLoading: false,
-    nextCreditResetDate: undefined,
+vi.mock('@/context/global-public-context', () => ({
+  useSystemFeaturesQuery: () => ({
+    data: { trial_models: mockTrialModels.current },
   }),
+}))
+
+const mockTrialCredits = vi.hoisted(() => ({
+  credits: 200,
+  totalCredits: 200,
+  isExhausted: false,
+  isLoading: false,
+  nextCreditResetDate: undefined as number | undefined,
+}))
+vi.mock('../provider-added-card/use-trial-credits', () => ({
+  useTrialCredits: () => mockTrialCredits,
+}))
+
+vi.mock('../provider-added-card/model-auth-dropdown/credits-exhausted-alert', () => ({
+  default: ({ hasApiKeyFallback }: { hasApiKeyFallback: boolean }) => (
+    <div data-testid="credits-exhausted-alert" data-has-api-key-fallback={String(hasApiKeyFallback)} />
+  ),
 }))
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return { ...actual, IS_CLOUD_EDITION: true }
+})
 
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-plugins', () => ({
@@ -148,6 +169,14 @@ describe('Popup', () => {
     mockMarketplacePlugins.current = []
     mockMarketplacePlugins.isLoading = false
     mockContextModelProviders.current = []
+    mockTrialModels.current = ['test-openai', 'test-anthropic']
+    Object.assign(mockTrialCredits, {
+      credits: 200,
+      totalCredits: 200,
+      isExhausted: false,
+      isLoading: false,
+      nextCreditResetDate: undefined,
+    })
   })
 
   it('should filter models by search and allow clearing search', () => {
@@ -247,6 +276,89 @@ describe('Popup', () => {
     )
 
     expect(screen.getByText('openai')).toBeInTheDocument()
+  })
+
+  it('should show credits exhausted alert when an exhausted provider supports credits', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute('data-has-api-key-fallback', 'false')
+  })
+
+  it('should not show credits exhausted alert when only non-trial system providers are exhausted', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockTrialModels.current = ['test-anthropic']
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
+  })
+
+  it('should not mark api key fallback for non-trial system providers', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockTrialModels.current = ['test-anthropic']
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        custom_configuration: {
+          status: 'active',
+        } as MockContextProvider['custom_configuration'],
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
   })
 
   it('should open provider settings when clicking footer link', () => {
