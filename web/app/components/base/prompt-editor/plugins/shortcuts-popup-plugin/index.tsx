@@ -46,7 +46,7 @@ const ALT_ALIASES = new Set(['alt', 'option'])
 const SHIFT_ALIASES = new Set(['shift'])
 
 function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
-  /* v8 ignore next 2 - @preserve */
+  /* v8 ignore next 2 -- plugin always provides a default hotkey ('mod+/'); undefined hotkey is not reachable via public props flow. @preserve */
   if (!hotkey)
     return false
 
@@ -141,7 +141,7 @@ export default function ShortcutsPopupPlugin({
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
-  /* v8 ignore next - @preserve */
+  /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/jsdom). @preserve */
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
   const useContainer = !!containerEl && containerEl !== document.body
 
@@ -174,7 +174,7 @@ export default function ShortcutsPopupPlugin({
         const selection = $getSelection()
         if ($isRangeSelection(selection)) {
           const domSelection = window.getSelection()
-          /* v8 ignore next 2 - @preserve */
+          /* v8 ignore next 2 -- selection availability is timing-dependent during Lexical updates; guard exists for transient null/zero-range states. @preserve */
           if (domSelection && domSelection.rangeCount > 0)
             lastSelectionRef.current = domSelection.getRangeAt(0).cloneRange()
         }
@@ -184,7 +184,7 @@ export default function ShortcutsPopupPlugin({
 
   const isEditorFocused = useCallback(() => {
     const root = editor.getRootElement()
-    /* v8 ignore next 2 - @preserve */
+    /* v8 ignore next 2 -- root can be null during Lexical mount/unmount transitions before DOM root attachment. @preserve */
     if (!root)
       return false
     return root.contains(document.activeElement)
@@ -210,7 +210,7 @@ export default function ShortcutsPopupPlugin({
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
-        /* v8 ignore next 10 - @preserve */
+        /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in jsdom is unreliable. @preserve */
         if (root) {
           const sc = range.startContainer
           const node = sc.nodeType === Node.ELEMENT_NODE
@@ -270,7 +270,7 @@ export default function ShortcutsPopupPlugin({
       return
 
     const onMouseDown = (e: MouseEvent) => {
-      /* v8 ignore next 2 - @preserve */
+      /* v8 ignore next 2 -- outside-click listener can race with ref cleanup during close/unmount; null-ref path is a safety guard. @preserve */
       if (!portalRef.current)
         return
       if (!portalRef.current.contains(e.target as Node))

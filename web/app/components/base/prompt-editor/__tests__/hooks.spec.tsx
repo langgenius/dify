@@ -104,6 +104,14 @@ const SelectOrDeleteHarness = ({ nodeKey, command }: {
   )
 }
 
+const SelectOrDeleteNoRefHarness = ({ nodeKey, command }: {
+  nodeKey: string
+  command?: SelectOrDeleteCommand
+}) => {
+  useSelectOrDelete(nodeKey, command)
+  return <div data-testid="select-or-delete-no-ref">node</div>
+}
+
 const TriggerHarness = () => {
   const [ref, open] = useTrigger()
   return (
@@ -112,6 +120,11 @@ const TriggerHarness = () => {
       <span>{open ? 'open' : 'closed'}</span>
     </div>
   )
+}
+
+const TriggerNoRefHarness = () => {
+  const [, open] = useTrigger()
+  return <span data-testid="trigger-no-ref-state">{open ? 'open' : 'closed'}</span>
 }
 
 const LexicalTextEntityHarness = ({
@@ -325,6 +338,19 @@ describe('prompt-editor/hooks', () => {
       expect(mockState.clearSelection).not.toHaveBeenCalled()
       expect(mockState.setSelected).not.toHaveBeenCalled()
     })
+
+    it('should skip select listener registration when consumer does not attach the returned ref', () => {
+      const { unmount } = render(
+        <SelectOrDeleteNoRefHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
+      )
+
+      screen.getByTestId('select-or-delete-no-ref').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+      expect(mockState.clearSelection).not.toHaveBeenCalled()
+      expect(mockState.setSelected).not.toHaveBeenCalled()
+
+      expect(() => unmount()).not.toThrow()
+    })
   })
 
   // Trigger hook toggles dropdown/popup state from bound DOM element.
@@ -340,6 +366,18 @@ describe('prompt-editor/hooks', () => {
 
       await user.click(screen.getByTestId('trigger-target'))
       expect(screen.getByText('closed')).toBeInTheDocument()
+    })
+
+    it('should keep state unchanged when consumer does not attach the returned ref', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<TriggerNoRefHarness />)
+
+      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+
+      await user.click(screen.getByTestId('trigger-no-ref-state'))
+      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+
+      expect(() => unmount()).not.toThrow()
     })
   })
 

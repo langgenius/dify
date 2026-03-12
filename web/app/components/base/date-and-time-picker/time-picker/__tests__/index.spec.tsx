@@ -98,6 +98,17 @@ describe('TimePicker', () => {
       expect(input).toHaveValue('10:00 AM')
     })
 
+    it('should handle document mousedown listener while picker is open', () => {
+      render(<TimePicker {...baseProps} value="10:00 AM" timezone="UTC" />)
+
+      const input = screen.getByRole('textbox')
+      fireEvent.click(input)
+      expect(input).toHaveValue('')
+
+      fireEvent.mouseDown(document.body)
+      expect(input).toHaveValue('')
+    })
+
     it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
       render(
@@ -487,6 +498,59 @@ describe('TimePicker', () => {
 
   // Timezone change effect tests
   describe('Timezone Changes', () => {
+    it('should return early when only onChange reference changes', () => {
+      const value = dayjs('2024-01-01T10:30:00Z')
+      const onChangeA = vi.fn()
+      const onChangeB = vi.fn()
+
+      const { rerender } = render(
+        <TimePicker
+          {...baseProps}
+          onChange={onChangeA}
+          value={value}
+          timezone="UTC"
+        />,
+      )
+
+      rerender(
+        <TimePicker
+          {...baseProps}
+          onChange={onChangeB}
+          value={value}
+          timezone="UTC"
+        />,
+      )
+
+      expect(onChangeA).not.toHaveBeenCalled()
+      expect(onChangeB).not.toHaveBeenCalled()
+      expect(screen.getByDisplayValue('10:30 AM')).toBeInTheDocument()
+    })
+
+    it('should safely return when value changes to an unparsable time string', () => {
+      const onChange = vi.fn()
+      const invalidValue = 123 as unknown as TimePickerProps['value']
+      const { rerender } = render(
+        <TimePicker
+          {...baseProps}
+          onChange={onChange}
+          value={dayjs('2024-01-01T10:30:00Z')}
+          timezone="UTC"
+        />,
+      )
+
+      rerender(
+        <TimePicker
+          {...baseProps}
+          onChange={onChange}
+          value={invalidValue}
+          timezone="UTC"
+        />,
+      )
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(screen.getByRole('textbox')).toHaveValue('')
+    })
+
     it('should call onChange when timezone changes with an existing value', () => {
       const onChange = vi.fn()
       const value = dayjs('2024-01-01T10:30:00Z')
@@ -594,6 +658,36 @@ describe('TimePicker', () => {
       expect(onChange).not.toHaveBeenCalled()
     })
 
+    it('should preserve selected time when value is removed and timezone is undefined', () => {
+      const onChange = vi.fn()
+      const { rerender } = render(
+        <TimePicker
+          {...baseProps}
+          onChange={onChange}
+          value={dayjs('2024-01-01T10:30:00Z')}
+          timezone="UTC"
+        />,
+      )
+
+      rerender(
+        <TimePicker
+          {...baseProps}
+          onChange={onChange}
+          value={undefined}
+          timezone={undefined}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('textbox'))
+      fireEvent.click(screen.getByRole('button', { name: /operation\.ok/i }))
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      const emitted = onChange.mock.calls[0][0]
+      expect(isDayjsObject(emitted)).toBe(true)
+      expect(emitted.hour()).toBe(10)
+      expect(emitted.minute()).toBe(30)
+    })
+
     it('should not update when neither timezone nor value changes', () => {
       const onChange = vi.fn()
       const value = dayjs('2024-01-01T10:30:00Z')
@@ -678,6 +772,19 @@ describe('TimePicker', () => {
       )
 
       expect(screen.getByDisplayValue('09:15 AM')).toBeInTheDocument()
+    })
+
+    it('should return empty display value for an unparsable truthy string', () => {
+      const invalidValue = 123 as unknown as TimePickerProps['value']
+      render(
+        <TimePicker
+          {...baseProps}
+          value={invalidValue}
+          timezone="UTC"
+        />,
+      )
+
+      expect(screen.getByRole('textbox')).toHaveValue('')
     })
   })
 

@@ -210,6 +210,16 @@ describe('toDayjs', () => {
     expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
   })
 
+  it('falls through to common formats when explicit format fails without timezone', () => {
+    const result = toDayjs('2024-05-01', { format: 'DD/MM/YYYY' })
+    expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
+  })
+
+  it('returns undefined when explicit format parsing fails and no fallback matches', () => {
+    const result = toDayjs('not-a-date-value', { format: 'YYYY/MM/DD' })
+    expect(result).toBeUndefined()
+  })
+
   it('uses custom formats array', () => {
     const result = toDayjs('2024/05/01', { formats: ['YYYY/MM/DD'] })
     expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
@@ -225,6 +235,24 @@ describe('toDayjs', () => {
     expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
     expect(result?.hour()).toBe(0)
     expect(result?.minute()).toBe(0)
+  })
+
+  it('uses timezone fallback parser for non-standard datetime strings', () => {
+    const result = toDayjs('May 1, 2024 2:30 PM', { timezone: 'America/New_York' })
+    expect(result?.isValid()).toBe(true)
+    expect(result?.year()).toBe(2024)
+    expect(result?.month()).toBe(4)
+    expect(result?.date()).toBe(1)
+    expect(result?.utcOffset()).toBe(dayjs.tz('2024-05-01', 'America/New_York').utcOffset())
+  })
+
+  it('uses timezone fallback parser when custom formats are empty', () => {
+    const result = toDayjs('2024-05-01T14:30:00Z', {
+      timezone: 'America/New_York',
+      formats: [],
+    })
+    expect(result?.isValid()).toBe(true)
+    expect(result?.utcOffset()).toBe(dayjs.tz('2024-05-01', 'America/New_York').utcOffset())
   })
 })
 

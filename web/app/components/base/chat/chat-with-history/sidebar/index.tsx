@@ -68,7 +68,6 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     setShowConfirm(null)
   }, [])
   const handleDelete = useCallback(() => {
-    /* v8 ignore next -- guarded callback remains as a runtime safety check. */
     if (showConfirm)
       handleDeleteConversation(showConfirm.id, { onSuccess: handleCancelConfirm })
   }, [showConfirm, handleDeleteConversation, handleCancelConfirm])
@@ -76,13 +75,10 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     setShowRename(null)
   }, [])
   const handleRename = useCallback((newName: string) => {
-    /* v8 ignore next -- guarded callback remains as a runtime safety check. */
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
-  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. */
   const pinnedTitle = t('chat.pinnedTitle', { ns: 'share' }) || ''
-  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. */
   const deleteConversationContent = t('chat.deleteConversation.content', { ns: 'share' }) || ''
 
   return (

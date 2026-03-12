@@ -2,7 +2,6 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as ReactI18next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useChatWithHistoryContext } from '../../context'
 import Header from '../index'
@@ -302,17 +301,6 @@ describe('Header Component', () => {
     })
 
     it('should handle empty translated delete content via fallback', async () => {
-      const mockedTranslation = {
-        t: vi.fn((key: string, options?: { ns?: string }) => {
-          if (key === 'chat.deleteConversation.content')
-            return ''
-          return `${options?.ns}.${key}`
-        }),
-        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
-        ready: true,
-      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
-      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
-
       const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
       setup({
         currentConversationId: 'conv-1',

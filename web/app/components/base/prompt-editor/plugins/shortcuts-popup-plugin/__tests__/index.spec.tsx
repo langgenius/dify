@@ -102,6 +102,13 @@ function focusAndTriggerHotkey(key: string, modifiers: Partial<Record<'ctrlKey' 
 }
 
 describe('ShortcutsPopupPlugin', () => {
+  it('does not render popup when never opened', async () => {
+    render(<MinimalEditor />)
+    await waitFor(() => {
+      expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
+    })
+  })
+
   // ─── Basic open / close ───
   it('opens on hotkey when editor is focused', async () => {
     render(<MinimalEditor />)

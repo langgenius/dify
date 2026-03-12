@@ -24,7 +24,6 @@ const RenameModal: FC<IRenameModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [tempName, setTempName] = useState(name)
-  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. */
   const conversationNamePlaceholder = t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''
 
   return (

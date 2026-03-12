@@ -53,7 +53,7 @@ const TimePicker = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      /* v8 ignore next 2 - @preserve */
+      /* v8 ignore next 2 -- outside-click closing is handled by PortalToFollowElem; this local ref guard is a defensive fallback. */
       if (containerRef.current && !containerRef.current.contains(event.target as Node))
         setIsOpen(false)
     }
@@ -83,13 +83,11 @@ const TimePicker = ({
     prevTimezoneRef.current = timezone
 
     // Skip if neither timezone changed nor value changed
-    /* v8 ignore next 2 - @preserve */
     if (!timezoneChanged && !valueChanged)
       return
 
     if (value !== undefined && value !== null) {
       const dayjsValue = toDayjs(value, { timezone })
-      /* v8 ignore next 2 - @preserve */
       if (!dayjsValue)
         return
 
