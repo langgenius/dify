@@ -9,7 +9,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggle switch component with multiple sizes (xs, sm, md, lg, l). Built on Headless UI Switch with smooth animations.',
+        component: 'Toggle switch component with multiple sizes (xs, sm, md, lg). Built on Base UI Switch with Figma-aligned design tokens, hover states, and focus-visible ring.',
       },
     },
   },
@@ -20,7 +20,7 @@ const meta = {
   argTypes: {
     size: {
       control: 'select',
-      options: ['xs', 'sm', 'md', 'lg', 'l'],
+      options: ['xs', 'sm', 'md', 'lg'],
       description: 'Switch size',
     },
     value: {
@@ -107,7 +107,6 @@ const SizeComparisonDemo = () => {
     sm: false,
     md: true,
     lg: true,
-    l: false,
   })
 
   return (
@@ -115,31 +114,25 @@ const SizeComparisonDemo = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch size="xs" value={states.xs} onChange={v => setStates({ ...states, xs: v })} />
-          <span className="text-sm text-gray-700">Extra Small (xs)</span>
+          <span className="text-sm text-gray-700">Extra Small (xs) — 14×10</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch size="sm" value={states.sm} onChange={v => setStates({ ...states, sm: v })} />
-          <span className="text-sm text-gray-700">Small (sm)</span>
+          <span className="text-sm text-gray-700">Small (sm) — 20×12</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch size="md" value={states.md} onChange={v => setStates({ ...states, md: v })} />
-          <span className="text-sm text-gray-700">Medium (md)</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="l" value={states.l} onChange={v => setStates({ ...states, l: v })} />
-          <span className="text-sm text-gray-700">Large (l)</span>
+          <span className="text-sm text-gray-700">Regular (md) — 28×16</span>
         </div>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch size="lg" value={states.lg} onChange={v => setStates({ ...states, lg: v })} />
-          <span className="text-sm text-gray-700">Extra Large (lg)</span>
+          <span className="text-sm text-gray-700">Large (lg) — 36×20</span>
         </div>
       </div>
     </div>

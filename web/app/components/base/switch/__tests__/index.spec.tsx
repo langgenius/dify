@@ -28,7 +28,6 @@ describe('Switch', () => {
     expect(onChange).toHaveBeenCalledWith(true)
     expect(onChange).toHaveBeenCalledTimes(1)
 
-    // Controlled component stays the same until parent updates value.
     expect(switchElement).toHaveAttribute('aria-checked', 'false')
   })
 
@@ -54,7 +53,7 @@ describe('Switch', () => {
     render(<Switch value={false} disabled onChange={onChange} />)
 
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
+    expect(switchElement).toHaveClass('cursor-not-allowed')
 
     await user.click(switchElement)
     expect(onChange).not.toHaveBeenCalled()
@@ -62,9 +61,8 @@ describe('Switch', () => {
 
   it('should apply correct size classes', () => {
     const { rerender } = render(<Switch value={false} size="xs" />)
-    // We only need to find the element once
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-sm')
+    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-[2px]')
 
     rerender(<Switch value={false} size="sm" />)
     expect(switchElement).toHaveClass('h-3', 'w-5')
@@ -72,11 +70,11 @@ describe('Switch', () => {
     rerender(<Switch value={false} size="md" />)
     expect(switchElement).toHaveClass('h-4', 'w-7')
 
-    rerender(<Switch value={false} size="l" />)
+    rerender(<Switch value={false} size="lg" />)
     expect(switchElement).toHaveClass('h-5', 'w-9')
 
-    rerender(<Switch value={false} size="lg" />)
-    expect(switchElement).toHaveClass('h-6', 'w-11')
+    rerender(<Switch value={false} size="l" />)
+    expect(switchElement).toHaveClass('h-5', 'w-9')
   })
 
   it('should apply custom className', () => {
@@ -92,5 +90,27 @@ describe('Switch', () => {
 
     rerender(<Switch value={true} />)
     expect(switchElement).toHaveClass('bg-components-toggle-bg')
+  })
+
+  it('should apply disabled background tokens instead of opacity', () => {
+    const { rerender } = render(<Switch value={false} disabled />)
+    const switchElement = screen.getByRole('switch')
+
+    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked-disabled')
+
+    rerender(<Switch value={true} disabled />)
+    expect(switchElement).toHaveClass('bg-components-toggle-bg-disabled')
+  })
+
+  it('should have focus-visible ring styles', () => {
+    render(<Switch value={false} />)
+    const switchElement = screen.getByRole('switch')
+    expect(switchElement).toHaveClass('focus-visible:ring-2')
+  })
+
+  it('should respect prefers-reduced-motion', () => {
+    render(<Switch value={false} />)
+    const switchElement = screen.getByRole('switch')
+    expect(switchElement).toHaveClass('motion-reduce:transition-none')
   })
 })
