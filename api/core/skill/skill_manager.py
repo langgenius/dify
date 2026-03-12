@@ -20,7 +20,17 @@ class SkillManager:
             return SkillBundle.model_validate_json(data)
 
         key = AssetPaths.skill_bundle(tenant_id, app_id, assets_id)
-        data = AppAssetService.get_storage().load_once(key)
+        try:
+            data = AppAssetService.get_storage().load_once(key)
+        except FileNotFoundError:
+            logger.exception(
+                "Skill bundle not found in storage: key=%s, tenant_id=%s, app_id=%s, assets_id=%s",
+                key,
+                tenant_id,
+                app_id,
+                assets_id,
+            )
+            raise
         bundle = SkillBundle.model_validate_json(data)
         redis_client.setex(cache_key, _CACHE_TTL, bundle.model_dump_json(indent=2).encode("utf-8"))
         return bundle
