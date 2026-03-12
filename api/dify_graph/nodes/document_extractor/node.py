@@ -376,6 +376,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
             temp_file.write(file_content)
             temp_file.flush()
+        try:
             with open(temp_file.name, "rb") as file:
                 elements = partition_via_api(
                     file=file,
@@ -383,6 +384,7 @@ def _extract_text_from_doc(file_content: bytes, *, unstructured_api_config: Unst
                     api_url=unstructured_api_config.api_url,
                     api_key=api_key,
                 )
+        finally:
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
@@ -623,6 +625,7 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
             with tempfile.NamedTemporaryFile(suffix=".ppt", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
+            try:
                 with open(temp_file.name, "rb") as file:
                     elements = partition_via_api(
                         file=file,
@@ -630,6 +633,7 @@ def _extract_text_from_ppt(file_content: bytes, *, unstructured_api_config: Unst
                         api_url=unstructured_api_config.api_url,
                         api_key=api_key,
                     )
+            finally:
                 os.unlink(temp_file.name)
         else:
             with io.BytesIO(file_content) as file:
@@ -651,6 +655,7 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
+            try:
                 with open(temp_file.name, "rb") as file:
                     elements = partition_via_api(
                         file=file,
@@ -658,6 +663,7 @@ def _extract_text_from_pptx(file_content: bytes, *, unstructured_api_config: Uns
                         api_url=unstructured_api_config.api_url,
                         api_key=api_key,
                     )
+            finally:
                 os.unlink(temp_file.name)
         else:
             with io.BytesIO(file_content) as file:
@@ -678,6 +684,7 @@ def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: Uns
             with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as temp_file:
                 temp_file.write(file_content)
                 temp_file.flush()
+            try:
                 with open(temp_file.name, "rb") as file:
                     elements = partition_via_api(
                         file=file,
@@ -685,6 +692,7 @@ def _extract_text_from_epub(file_content: bytes, *, unstructured_api_config: Uns
                         api_url=unstructured_api_config.api_url,
                         api_key=api_key,
                     )
+            finally:
                 os.unlink(temp_file.name)
         else:
             pypandoc.download_pandoc()
