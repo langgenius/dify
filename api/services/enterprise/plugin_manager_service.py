@@ -3,7 +3,7 @@ import logging
 
 from pydantic import BaseModel
 
-from configs import dify_config
+from services.enterprise.base import EnterprisePluginManagerRequest
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
@@ -37,6 +37,7 @@ class PreUninstallPluginRequest(BaseModel):
 class CredentialPolicyViolationError(BaseServiceError):
     pass
 
+
 class PluginManagerService:
     @classmethod
     def check_credential_policy_compliance(cls, body: CheckCredentialPolicyComplianceRequest):
@@ -69,7 +70,6 @@ class PluginManagerService:
                 "POST",
                 "/pre-uninstall-plugin",
                 json=body.model_dump(),
-                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         except Exception:
             logger.exception(

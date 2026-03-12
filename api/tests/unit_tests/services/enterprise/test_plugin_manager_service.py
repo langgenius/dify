@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from httpx import HTTPStatusError
 
-from configs import dify_config
 from services.enterprise.plugin_manager_service import (
     PluginManagerService,
     PreUninstallPluginRequest,
@@ -34,7 +33,6 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-123", "plugin_unique_identifier": "com.example.my_plugin"},
-                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
 
     def test_try_pre_uninstall_plugin_http_error_soft_fails(self):
@@ -61,7 +59,6 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
-                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()
 
@@ -85,6 +82,5 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
-                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()
