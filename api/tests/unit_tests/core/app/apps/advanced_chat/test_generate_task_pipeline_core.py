@@ -240,12 +240,12 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_iteration_and_loop_handlers(self):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
-        pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = (
-            lambda **kwargs: "iter_start"
+        pipeline._workflow_response_converter.workflow_iteration_start_to_stream_response = lambda **kwargs: (
+            "iter_start"
         )
         pipeline._workflow_response_converter.workflow_iteration_next_to_stream_response = lambda **kwargs: "iter_next"
-        pipeline._workflow_response_converter.workflow_iteration_completed_to_stream_response = (
-            lambda **kwargs: "iter_done"
+        pipeline._workflow_response_converter.workflow_iteration_completed_to_stream_response = lambda **kwargs: (
+            "iter_done"
         )
         pipeline._workflow_response_converter.workflow_loop_start_to_stream_response = lambda **kwargs: "loop_start"
         pipeline._workflow_response_converter.workflow_loop_next_to_stream_response = lambda **kwargs: "loop_next"

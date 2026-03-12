@@ -7,17 +7,15 @@ const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
 }))
 
-vi.mock('../react-markdown-wrapper', () => ({
-  ReactMarkdownWrapper: () => null,
-}))
-
 vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<unknown>) => {
-    void loader()
-    return (props: { latexContent: string }) => {
+  default: () => {
+    const MockStreamdownWrapper = (props: { latexContent: string }) => {
       mockReactMarkdownWrapper(props)
       return <div data-testid="react-markdown-wrapper">{props.latexContent}</div>
     }
+
+    MockStreamdownWrapper.displayName = 'MockStreamdownWrapper'
+    return MockStreamdownWrapper
   },
 }))
 
