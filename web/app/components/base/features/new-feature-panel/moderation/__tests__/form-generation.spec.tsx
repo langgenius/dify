@@ -3,6 +3,12 @@ import type { CodeBasedExtensionForm } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import FormGeneration from '../form-generation'
 
+const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en-US' } }))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: () => mockLocale.value,
+}))
+
 const i18n = (en: string, zh = en): I18nText =>
   ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
 
@@ -21,6 +27,7 @@ const createForm = (overrides: Partial<CodeBasedExtensionForm> = {}): CodeBasedE
 describe('FormGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockLocale.value = 'en-US'
   })
 
   it('should render text-input form fields', () => {
@@ -129,5 +136,23 @@ describe('FormGeneration', () => {
     fireEvent.click(screen.getByText('GPT-4'))
 
     expect(onChange).toHaveBeenCalledWith({ model: 'gpt-4' })
+  })
+
+  it('should render zh-Hans labels for select field and options', () => {
+    mockLocale.value = 'zh-Hans'
+    const form = createForm({
+      type: 'select',
+      variable: 'model',
+      label: i18n('Model', '模型'),
+      options: [
+        { label: i18n('GPT-4', '智谱-4'), value: 'gpt-4' },
+        { label: i18n('GPT-3.5', '智谱-3.5'), value: 'gpt-3.5' },
+      ],
+    })
+    render(<FormGeneration forms={[form]} value={{}} onChange={vi.fn()} />)
+
+    expect(screen.getByText('模型')).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/placeholder\.select/))
+    expect(screen.getByText('智谱-4')).toBeInTheDocument()
   })
 })
