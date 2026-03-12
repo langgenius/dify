@@ -4723,11 +4723,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/card/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/plugins/install-plugin/base/installed.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
