@@ -15,7 +15,6 @@ const switchRootVariants = cva(
         sm: 'h-3 w-5 rounded-[3.5px] p-0.5',
         md: 'h-4 w-7 rounded-[5px] p-0.5',
         lg: 'h-5 w-9 rounded-[6px] p-[3px]',
-        l: 'h-5 w-9 rounded-[6px] p-[3px]',
       },
     },
     defaultVariants: {
@@ -33,7 +32,6 @@ const switchThumbVariants = cva(
         sm: 'h-2 w-[7px] rounded-[2px]',
         md: 'h-3 w-2.5 rounded-[3px]',
         lg: 'size-3.5 rounded-[4px]',
-        l: 'size-3.5 rounded-[4px]',
       },
     },
     defaultVariants: {
@@ -42,14 +40,30 @@ const switchThumbVariants = cva(
   },
 )
 
-type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
+export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
 
 const thumbCheckedTranslate: Record<SwitchSize, string> = {
   xs: 'translate-x-1.5',
   sm: 'translate-x-[9px]',
   md: 'translate-x-[14px]',
   lg: 'translate-x-4',
-  l: 'translate-x-4',
+}
+
+const spinnerSizeConfig: Partial<Record<SwitchSize, {
+  icon: string
+  uncheckedPosition: string
+  checkedPosition: string
+}>> = {
+  md: {
+    icon: 'size-2',
+    uncheckedPosition: 'left-[calc(50%+6px)]',
+    checkedPosition: 'left-[calc(50%-6px)]',
+  },
+  lg: {
+    icon: 'size-2.5',
+    uncheckedPosition: 'left-[calc(50%+8px)]',
+    checkedPosition: 'left-[calc(50%-8px)]',
+  },
 }
 
 type SwitchProps = {
@@ -57,6 +71,7 @@ type SwitchProps = {
   'onChange'?: (value: boolean) => void
   'size'?: SwitchSize
   'disabled'?: boolean
+  'loading'?: boolean
   'className'?: string
   'aria-label'?: string
   'aria-labelledby'?: string
@@ -69,6 +84,7 @@ const Switch = ({
   onChange,
   size = 'md',
   disabled = false,
+  loading = false,
   className,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
@@ -76,12 +92,16 @@ const Switch = ({
 }: SwitchProps & {
   ref?: React.RefObject<HTMLButtonElement>
 }) => {
+  const isDisabled = disabled || loading
+  const spinner = loading ? spinnerSizeConfig[size] : undefined
+
   return (
     <BaseSwitch.Root
       ref={ref}
       checked={value}
       onCheckedChange={checked => onChange?.(checked)}
-      disabled={disabled}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       className={state => cn(
@@ -112,6 +132,20 @@ const Switch = ({
           state.checked ? thumbCheckedTranslate[size] : 'translate-x-0',
         )}
       />
+      {spinner
+        ? (
+            <span
+              className={cn(
+                'absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
+                spinner.icon,
+                value ? spinner.checkedPosition : spinner.uncheckedPosition,
+              )}
+              aria-hidden="true"
+            >
+              <i className="i-ri-loader-2-line size-full animate-spin text-text-tertiary motion-reduce:animate-none" />
+            </span>
+          )
+        : null}
     </BaseSwitch.Root>
   )
 }
