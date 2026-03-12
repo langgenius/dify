@@ -55,7 +55,7 @@ const ALLOWED_TAGS: Record<string, string[]> = {
   input: ['type', 'name', 'value', 'placeholder', 'checked', 'dataTip', 'dataOptions'],
   textarea: ['name', 'placeholder', 'value'],
   label: ['htmlFor'],
-  details: ['dataThink'],
+  details: ['dataThink', 'data-think'],
   video: ['src'],
   audio: ['src'],
   source: ['src'],
