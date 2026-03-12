@@ -1,5 +1,6 @@
-from models.account import TenantPluginPermission
 from unittest.mock import MagicMock, patch
+
+from models.account import TenantPluginPermission
 
 MODULE = "services.plugin.plugin_permission_service"
 
