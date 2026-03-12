@@ -200,6 +200,33 @@ describe('Popup', () => {
     expect((input as HTMLInputElement).value).toBe('')
   })
 
+  it('should not show compatible-only helper text when no scope features are applied', () => {
+    render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown')).not.toBeInTheDocument()
+  })
+
+  it('should show compatible-only helper banner when scope features are applied', () => {
+    const { container } = render(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.vision]}
+      />,
+    )
+
+    expect(screen.getByTestId('compatible-models-banner')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-information-2-fill')).toBeInTheDocument()
+  })
+
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
     const modelList = [
       makeModel({ models: [makeModelItem({ features: [ModelFeatureEnum.toolCall, ModelFeatureEnum.vision] })] }),

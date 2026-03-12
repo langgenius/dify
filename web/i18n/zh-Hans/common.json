@@ -442,6 +442,7 @@
   "modelProvider.selector.modelProviderSettings": "模型供应商设置",
   "modelProvider.selector.noProviderConfigured": "未配置模型提供商",
   "modelProvider.selector.noProviderConfiguredDesc": "前往插件市场安装，或在设置中配置提供商。",
+  "modelProvider.selector.onlyCompatibleModelsShown": "仅显示兼容的模型",
   "modelProvider.selector.rerankTip": "请设置 Rerank 模型",
   "modelProvider.selector.tip": "该模型已被删除。请添模型或选择其他模型。",
   "modelProvider.setupModelFirst": "请先设置您的模型",

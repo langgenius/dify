@@ -179,6 +179,17 @@ const Popup: FC<PopupProps> = ({
             )
           }
         </div>
+        {scopeFeatures.length > 0 && (
+          <div
+            data-testid="compatible-models-banner"
+            className="mt-2 flex items-center gap-1 rounded-lg bg-background-section-burn px-2.5 py-2"
+          >
+            <span className="i-ri-information-2-fill h-4 w-4 shrink-0 text-text-accent" />
+            <p className="text-text-secondary system-xs-medium">
+              {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
+            </p>
+          </div>
+        )}
       </div>
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
