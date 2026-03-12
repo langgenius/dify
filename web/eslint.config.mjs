@@ -151,7 +151,7 @@ export default antfu(
   },
   {
     name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx'],
+    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
