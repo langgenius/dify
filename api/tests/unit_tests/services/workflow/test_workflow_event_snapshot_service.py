@@ -3,6 +3,7 @@ import queue
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import cycle
 from threading import Event
 
 import pytest
@@ -229,7 +230,7 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
 
 import json
 import queue
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Event
@@ -691,7 +692,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
         task_id_hint="task-1",
     )
     monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
-    time_values: Iterator[float] = iter([0.0, 6.0, 21.0])
+    time_values = cycle([0.0, 6.0, 21.0, 26.0])
     monkeypatch.setattr(service_module.time, "time", lambda: next(time_values))
 
     # Act

@@ -573,6 +573,7 @@ from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from dify_graph.nodes.trigger_webhook.entities import ContentType, WebhookBodyParameter, WebhookData, WebhookParameter
 from dify_graph.variables.types import SegmentType
 from models.enums import AppTriggerStatus
 from models.model import App
@@ -920,7 +921,7 @@ def test_validate_json_value_should_return_original_for_unmapped_supported_segme
     monkeypatch.setattr(service_module.logger, "warning", warning_mock)
 
     # Act
-    result = WebhookService._validate_json_value("param", {"x": 1}, SegmentType.FILE)
+    result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
 
     # Assert
     assert result == {"x": 1}
@@ -938,7 +939,7 @@ def test_validate_and_convert_value_should_wrap_conversion_errors() -> None:
 def test_process_parameters_should_raise_when_required_parameter_missing() -> None:
     # Arrange
     raw_params = {"optional": "x"}
-    config = [{"name": "required_param", "type": SegmentType.STRING, "required": True}]
+    config = [WebhookParameter(name="required_param", type=SegmentType.STRING, required=True)]
 
     # Act / Assert
     with pytest.raises(ValueError, match="Required parameter missing"):
@@ -948,7 +949,7 @@ def test_process_parameters_should_raise_when_required_parameter_missing() -> No
 def test_process_parameters_should_include_unconfigured_parameters() -> None:
     # Arrange
     raw_params = {"known": "1", "unknown": "x"}
-    config = [{"name": "known", "type": SegmentType.NUMBER, "required": False}]
+    config = [WebhookParameter(name="known", type=SegmentType.NUMBER, required=False)]
 
     # Act
     result = WebhookService._process_parameters(raw_params, config, is_form_data=True)
@@ -964,8 +965,8 @@ def test_process_body_parameters_should_raise_when_required_text_raw_is_missing(
     with pytest.raises(ValueError, match="Required body content missing"):
         WebhookService._process_body_parameters(
             raw_body={"raw": ""},
-            body_configs=[{"name": "raw", "required": True}],
-            content_type="text/plain",
+            body_configs=[WebhookBodyParameter(name="raw", required=True)],
+            content_type=ContentType.TEXT,
         )
 
 
@@ -973,12 +974,12 @@ def test_process_body_parameters_should_skip_file_config_for_multipart_form_data
     # Arrange
     raw_body = {"message": "hello", "extra": "x"}
     body_configs = [
-        {"name": "upload", "type": SegmentType.FILE, "required": True},
-        {"name": "message", "type": SegmentType.STRING, "required": True},
+        WebhookBodyParameter(name="upload", type=SegmentType.FILE, required=True),
+        WebhookBodyParameter(name="message", type=SegmentType.STRING, required=True),
     ]
 
     # Act
-    result = WebhookService._process_body_parameters(raw_body, body_configs, "multipart/form-data")
+    result = WebhookService._process_body_parameters(raw_body, body_configs, ContentType.FORM_DATA)
 
     # Assert
     assert result == {"message": "hello", "extra": "x"}
@@ -987,7 +988,7 @@ def test_process_body_parameters_should_skip_file_config_for_multipart_form_data
 def test_validate_required_headers_should_accept_sanitized_header_names() -> None:
     # Arrange
     headers = {"x_api_key": "123"}
-    configs = [{"name": "x-api-key", "required": True}]
+    configs = [WebhookParameter(name="x-api-key", required=True)]
 
     # Act
     WebhookService._validate_required_headers(headers, configs)
@@ -999,7 +1000,7 @@ def test_validate_required_headers_should_accept_sanitized_header_names() -> Non
 def test_validate_required_headers_should_raise_when_required_header_missing() -> None:
     # Arrange
     headers = {"x-other": "123"}
-    configs = [{"name": "x-api-key", "required": True}]
+    configs = [WebhookParameter(name="x-api-key", required=True)]
 
     # Act / Assert
     with pytest.raises(ValueError, match="Required header missing"):
@@ -1009,7 +1010,7 @@ def test_validate_required_headers_should_raise_when_required_header_missing() -
 def test_validate_http_metadata_should_return_content_type_mismatch_error() -> None:
     # Arrange
     webhook_data = {"method": "POST", "headers": {"Content-Type": "application/json"}}
-    node_data = {"method": "post", "content_type": "text/plain"}
+    node_data = WebhookData(method="post", content_type=ContentType.TEXT)
 
     # Act
     result = WebhookService._validate_http_metadata(webhook_data, node_data)
@@ -1276,9 +1277,9 @@ def test_sync_webhook_relationships_should_log_when_lock_release_fails(monkeypat
     assert logger_exception_mock.call_count == 1
 
 
-def test_generate_webhook_response_should_fallback_when_response_body_is_not_string() -> None:
+def test_generate_webhook_response_should_fallback_when_response_body_is_not_json() -> None:
     # Arrange
-    node_config = {"data": {"status_code": 200, "response_body": object()}}
+    node_config = {"data": {"status_code": 200, "response_body": "{bad-json"}}
 
     # Act
     body, status = WebhookService.generate_webhook_response(node_config)
