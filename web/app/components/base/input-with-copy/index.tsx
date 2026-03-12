@@ -41,7 +41,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
   const tooltipText = copied
     ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
     : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
-  /* v8 ignore next -- @preserve */
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeTooltipText = tooltipText || ''
 
   return (

@@ -7,7 +7,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [windowSize, setWindowSize] = useState({
-    /* v8 ignore start */
+    /* v8 ignore start -- this client component can still be evaluated in non-browser contexts (SSR/type tooling); window fallback prevents reference errors. */
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
     /* v8 ignore stop */
@@ -29,7 +29,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
   }, [])
 
   useEffect(() => {
-    /* v8 ignore next 2 - @preserve */
+    /* v8 ignore next 2 -- ref is expected after mount, but null can occur during rapid mount/unmount timing in React lifecycle edges. */
     if (!svgRef.current)
       return
 
@@ -57,7 +57,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       })
     }
     catch {
-      /* v8 ignore next 2 - @preserve */
+      /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. */
       if (!svgRef.current)
         return
       svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'

@@ -18,7 +18,7 @@ const SearchInput = ({
   }, [onChange])
 
   const placeholderText = t('dataSource.notion.selector.searchPages', { ns: 'common' })
-  /* v8 ignore next -- @preserve */
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safePlaceholderText = placeholderText || ''
 
   return (
