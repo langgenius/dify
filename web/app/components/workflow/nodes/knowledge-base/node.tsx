@@ -47,7 +47,7 @@ const SettingRow = memo(({
           : 'bg-workflow-block-parma-bg',
       )}
     >
-      <div className={cn('mr-2 shrink-0 system-xs-medium-uppercase', warning ? 'text-text-warning' : 'text-text-tertiary')}>
+      <div className="mr-2 shrink-0 text-text-tertiary system-xs-medium-uppercase">
         {label}
       </div>
       <div
@@ -141,13 +141,16 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     if (data.indexing_technique !== IndexMethodEnum.QUALIFIED)
       return '-'
 
-    if (isKnowledgeBaseEmbeddingIssue(validationIssue))
+    if (isKnowledgeBaseEmbeddingIssue(validationIssue)) {
+      if (validationIssue?.code === KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
+        return t('nodes.knowledgeBase.notConfigured', { ns: 'workflow' })
       return validationIssueMessage
+    }
 
     const currentEmbeddingModelProvider = embeddingModelList.find(provider => provider.provider === data.embedding_model_provider)
     const currentEmbeddingModel = currentEmbeddingModelProvider?.models.find(model => model.model === data.embedding_model)
     return currentEmbeddingModel?.label[language] || currentEmbeddingModel?.label.en_US || data.embedding_model || '-'
-  }, [data.embedding_model, data.embedding_model_provider, data.indexing_technique, embeddingModelList, language, validationIssue, validationIssueMessage])
+  }, [data.embedding_model, data.embedding_model_provider, data.indexing_technique, embeddingModelList, language, validationIssue, validationIssueMessage, t])
 
   const indexMethodDisplay = settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay] || '-'
   const retrievalMethodDisplay = settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay] || '-'

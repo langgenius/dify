@@ -687,6 +687,7 @@
   "nodes.knowledgeBase.embeddingModelIsRequired": "Embedding model is required",
   "nodes.knowledgeBase.embeddingModelNotConfigured": "Embedding model not configured",
   "nodes.knowledgeBase.indexMethodIsRequired": "Index method is required",
+  "nodes.knowledgeBase.notConfigured": "Not configured",
   "nodes.knowledgeBase.rerankingModelIsInvalid": "Reranking model is invalid",
   "nodes.knowledgeBase.rerankingModelIsRequired": "Reranking model is required",
   "nodes.knowledgeBase.retrievalSettingIsRequired": "Retrieval setting is required",

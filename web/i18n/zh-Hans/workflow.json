@@ -686,6 +686,7 @@
   "nodes.knowledgeBase.embeddingModelIsRequired": "Embedding 模型是必需的",
   "nodes.knowledgeBase.embeddingModelNotConfigured": "Embedding 模型未配置",
   "nodes.knowledgeBase.indexMethodIsRequired": "索引方法是必需的",
+  "nodes.knowledgeBase.notConfigured": "未配置",
   "nodes.knowledgeBase.rerankingModelIsInvalid": "无效的 Reranking 模型",
   "nodes.knowledgeBase.rerankingModelIsRequired": "Reranking 模型是必需的",
   "nodes.knowledgeBase.retrievalSettingIsRequired": "检索设置是必需的",
