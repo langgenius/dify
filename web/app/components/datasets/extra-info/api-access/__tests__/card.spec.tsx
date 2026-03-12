@@ -155,7 +155,7 @@ describe('Card (API Access)', () => {
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).toHaveAttribute('aria-checked', 'true')
-      expect(switchButton).toHaveClass('cursor-not-allowed')
+      expect(switchButton).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should enable switch when user is workspace manager', () => {
@@ -163,7 +163,7 @@ describe('Card (API Access)', () => {
       render(<Card apiEnabled={true} />)
 
       const switchButton = screen.getByRole('switch')
-      expect(switchButton).not.toBeDisabled()
+      expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
     })
   })
 

@@ -169,8 +169,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toHaveClass('cursor-not-allowed')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (queuing status)', () => {
@@ -186,8 +186,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toHaveClass('cursor-not-allowed')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (indexing status)', () => {
@@ -203,8 +203,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toHaveClass('cursor-not-allowed')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (paused status)', () => {
@@ -220,8 +220,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toHaveClass('cursor-not-allowed')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
   })
 

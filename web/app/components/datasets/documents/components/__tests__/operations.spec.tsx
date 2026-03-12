@@ -118,7 +118,7 @@ describe('Operations', () => {
     it('should render disabled switch when embeddingAvailable is false in list scene', () => {
       render(<Operations {...defaultProps} embeddingAvailable={false} scene="list" />)
       const disabledSwitch = screen.getByRole('switch')
-      expect(disabledSwitch).toHaveClass('cursor-not-allowed')
+      expect(disabledSwitch).toHaveAttribute('aria-disabled', 'true')
     })
   })
 

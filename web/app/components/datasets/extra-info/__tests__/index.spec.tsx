@@ -674,7 +674,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      expect(switchButton).toHaveClass('cursor-not-allowed')
+      expect(switchButton).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should enable switch when user is workspace manager', () => {
@@ -687,7 +687,7 @@ describe('ApiAccessCard', () => {
       )
 
       const switchButton = screen.getByRole('switch')
-      expect(switchButton).not.toHaveClass('cursor-not-allowed')
+      expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
     })
   })
 
