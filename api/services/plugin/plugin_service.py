@@ -30,10 +30,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider import ProviderCredential
 from models.provider_ids import GenericProviderID
-from services.enterprise.plugin_manager_service import (
-    PluginManagerService,
-    PreUninstallPluginRequest,
-)
+from services.enterprise.plugin_manager_service import PluginManagerService, PreUninstallPluginRequest
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 

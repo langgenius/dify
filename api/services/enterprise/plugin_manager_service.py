@@ -70,12 +70,11 @@ class PluginManagerService:
                 "POST",
                 "/pre-uninstall-plugin",
                 json=body.model_dump(),
-                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         except Exception:
             logger.exception(
-                "failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s, ",
+                "failed to perform pre uninstall plugin hook. tenant_id: %s, plugin_unique_identifier: %s",
                 body.tenant_id,
                 body.plugin_unique_identifier,
             )
