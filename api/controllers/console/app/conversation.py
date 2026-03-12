@@ -377,7 +377,7 @@ class CompletionConversationApi(Resource):
         # FIXME, the type ignore in this file
         if args.annotation_status == "annotated":
             query = (
-                query.options(selectinload(Conversation.message_annotations))
+                query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
                 .join(  # type: ignore
                     MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                 )
@@ -516,7 +516,7 @@ class ChatConversationApi(Resource):
         match args.annotation_status:
             case "annotated":
                 query = (
-                    query.options(selectinload(Conversation.message_annotations))
+                    query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
                     .join(  # type: ignore
                         MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
                     )
