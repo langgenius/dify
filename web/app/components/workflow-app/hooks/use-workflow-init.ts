@@ -104,7 +104,17 @@ export const useWorkflowInit = () => {
               handleGetInitialWorkflowData()
             })
           }
+          else {
+            console.error(err)
+            workflowStore.setState({ isWorkflowDataLoaded: false })
+            setIsLoading(false)
+          }
+        }).catch(() => {
+          setIsLoading(false)
         })
+      }
+      else {
+        setIsLoading(false)
       }
     }
   }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
