@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from yarl import URL
 
+from services.enterprise.plugin_manager_service import PluginManagerService, PreUninstallPluginRequest
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
@@ -518,6 +519,13 @@ class PluginService:
             if plugin:
                 plugin_id = plugin.plugin_id
                 logger.info("Deleting credentials for plugin: %s", plugin_id)
+                if dify_config.ENTERPRISE_ENABLED:
+                    PluginManagerService.try_pre_uninstall_plugin(
+                        PreUninstallPluginRequest(
+                            tenant_id=tenant_id,
+                            plugin_unique_identifier=plugin.plugin_unique_identifier,
+                        )
+                    )
 
                 # Delete provider credentials that match this plugin
                 credentials = db.session.scalars(

@@ -3,6 +3,7 @@ import logging
 
 from pydantic import BaseModel
 
+from configs import dify_config
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
@@ -69,6 +70,8 @@ class PluginManagerService:
                 "POST",
                 "/pre-uninstall-plugin",
                 json=body.model_dump(),
+                raise_for_status=True,
+                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         except Exception:
             logger.exception(

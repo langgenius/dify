@@ -19,6 +19,10 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """

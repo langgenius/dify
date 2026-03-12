@@ -14,6 +14,8 @@ from services.enterprise.plugin_manager_service import (
     PreUninstallPluginRequest,
 )
 
+_FAKE_TIMEOUT = 30
+
 
 class TestTryPreUninstallPlugin:
     def test_try_pre_uninstall_plugin_success(self):
@@ -22,9 +24,15 @@ class TestTryPreUninstallPlugin:
             plugin_unique_identifier="com.example.my_plugin",
         )
 
-        with patch(
-            "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
-        ) as mock_send_request:
+        with (
+            patch(
+                "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
+            ) as mock_send_request,
+            patch(
+                "services.enterprise.plugin_manager_service.dify_config"
+            ) as mock_config,
+        ):
+            mock_config.ENTERPRISE_REQUEST_TIMEOUT = _FAKE_TIMEOUT
             mock_send_request.return_value = {}
 
             PluginManagerService.try_pre_uninstall_plugin(body)
@@ -33,6 +41,8 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-123", "plugin_unique_identifier": "com.example.my_plugin"},
+                raise_for_status=True,
+                timeout=_FAKE_TIMEOUT,
             )
 
     def test_try_pre_uninstall_plugin_http_error_soft_fails(self):
@@ -46,7 +56,11 @@ class TestTryPreUninstallPlugin:
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
             ) as mock_send_request,
             patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
+            patch(
+                "services.enterprise.plugin_manager_service.dify_config"
+            ) as mock_config,
         ):
+            mock_config.ENTERPRISE_REQUEST_TIMEOUT = _FAKE_TIMEOUT
             mock_send_request.side_effect = HTTPStatusError(
                 "502 Bad Gateway",
                 request=None,
@@ -59,6 +73,8 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
+                raise_for_status=True,
+                timeout=_FAKE_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()
 
@@ -73,7 +89,11 @@ class TestTryPreUninstallPlugin:
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
             ) as mock_send_request,
             patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
+            patch(
+                "services.enterprise.plugin_manager_service.dify_config"
+            ) as mock_config,
         ):
+            mock_config.ENTERPRISE_REQUEST_TIMEOUT = _FAKE_TIMEOUT
             mock_send_request.side_effect = ConnectionError("network unreachable")
 
             PluginManagerService.try_pre_uninstall_plugin(body)
@@ -82,5 +102,7 @@ class TestTryPreUninstallPlugin:
                 "POST",
                 "/pre-uninstall-plugin",
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
+                raise_for_status=True,
+                timeout=_FAKE_TIMEOUT,
             )
             mock_logger.exception.assert_called_once()
