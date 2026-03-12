@@ -164,8 +164,8 @@ class TestDataSourceApi:
         where_clause = getattr(statement, "whereclause", None)
         assert where_clause is not None
         compiled_where = str(where_clause)
-        assert "tenant_id" in compiled_where
-        assert "id" in compiled_where
+        assert "data_source_oauth_bindings.tenant_id" in compiled_where
+        assert "data_source_oauth_bindings.id" in compiled_where
 
     def test_patch_enable_already_enabled(self, app, patch_tenant, mock_engine):
         api = DataSourceApi()
