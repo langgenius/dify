@@ -1,15 +1,13 @@
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     NodeType,
     SystemVariableKey,
@@ -21,11 +19,10 @@ from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
+from dify_graph.nodes.protocols import ToolFileManagerProtocol
 from dify_graph.variables.segments import ArrayAnySegment, ArrayFileSegment
 from dify_graph.variables.variables import ArrayAnyVariable
-from extensions.ext_database import db
 from factories import file_factory
-from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .entities import ToolNodeData
@@ -36,7 +33,8 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from dify_graph.runtime import VariablePool
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
 
 class ToolNode(Node[ToolNodeData]):
@@ -45,6 +43,23 @@ class ToolNode(Node[ToolNodeData]):
     """
 
     node_type = NodeType.TOOL
+
+    def __init__(
+        self,
+        id: str,
+        config: NodeConfigDict,
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        tool_file_manager_factory: ToolFileManagerProtocol,
+    ):
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._tool_file_manager_factory = tool_file_manager_factory
 
     @classmethod
     def version(cls) -> str:
@@ -271,11 +286,9 @@ class ToolNode(Node[ToolNodeData]):
 
                 tool_file_id = str(url).split("/")[-1].split(".")[0]
 
-                with Session(db.engine) as session:
-                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
-                    tool_file = session.scalar(stmt)
-                    if tool_file is None:
-                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
+                _, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
+                if not tool_file:
+                    raise ToolFileError(f"tool file {tool_file_id} not found")
 
                 mapping = {
                     "tool_file_id": tool_file_id,
@@ -294,11 +307,9 @@ class ToolNode(Node[ToolNodeData]):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-                with Session(db.engine) as session:
-                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
-                    tool_file = session.scalar(stmt)
-                    if tool_file is None:
-                        raise ToolFileError(f"tool file {tool_file_id} not exists")
+                _, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
+                if not tool_file:
+                    raise ToolFileError(f"tool file {tool_file_id} not exists")
 
                 mapping = {
                     "tool_file_id": tool_file_id,
@@ -474,7 +485,7 @@ class ToolNode(Node[ToolNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: ToolNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -483,9 +494,8 @@ class ToolNode(Node[ToolNodeData]):
         :param node_data: node data
         :return:
         """
-        # Create typed NodeData from dict
-        typed_node_data = ToolNodeData.model_validate(node_data)
-
+        _ = graph_config  # Explicitly mark as unused
+        typed_node_data = node_data
         result = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]

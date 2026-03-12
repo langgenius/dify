@@ -21,6 +21,7 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.signature import sign_upload_file
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     NodeType,
     SystemVariableKey,
@@ -64,6 +65,7 @@ from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import VariablePool
 from dify_graph.variables import (
     ArrayFileSegment,
@@ -120,13 +122,14 @@ class LLMNode(Node[LLMNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
         credentials_provider: CredentialsProvider,
         model_factory: ModelFactory,
         model_instance: ModelInstance,
+        http_client: HttpClientProtocol,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -149,6 +152,7 @@ class LLMNode(Node[LLMNodeData]):
             llm_file_saver = FileSaverImpl(
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                http_client=http_client,
             )
         self._llm_file_saver = llm_file_saver
 
@@ -951,14 +955,11 @@ class LLMNode(Node[LLMNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LLMNodeData,
     ) -> Mapping[str, Sequence[str]]:
         # graph_config is not used in this node type
         _ = graph_config  # Explicitly mark as unused
-        # Create typed NodeData from dict
-        typed_node_data = LLMNodeData.model_validate(node_data)
-
-        prompt_template = typed_node_data.prompt_template
+        prompt_template = node_data.prompt_template
         variable_selectors = []
         if isinstance(prompt_template, list):
             for prompt in prompt_template:
@@ -976,7 +977,7 @@ class LLMNode(Node[LLMNodeData]):
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        memory = typed_node_data.memory
+        memory = node_data.memory
         if memory and memory.query_prompt_template:
             query_variable_selectors = VariableTemplateParser(
                 template=memory.query_prompt_template
@@ -984,16 +985,16 @@ class LLMNode(Node[LLMNodeData]):
             for variable_selector in query_variable_selectors:
                 variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        if typed_node_data.context.enabled:
-            variable_mapping["#context#"] = typed_node_data.context.variable_selector
+        if node_data.context.enabled:
+            variable_mapping["#context#"] = node_data.context.variable_selector
 
-        if typed_node_data.vision.enabled:
-            variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
+        if node_data.vision.enabled:
+            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
 
-        if typed_node_data.memory:
+        if node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
-        if typed_node_data.prompt_config:
+        if node_data.prompt_config:
             enable_jinja = False
 
             if isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
@@ -1006,7 +1007,7 @@ class LLMNode(Node[LLMNodeData]):
                         break
 
             if enable_jinja:
-                for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
+                for variable_selector in node_data.prompt_config.jinja2_variables or []:
                     variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}
