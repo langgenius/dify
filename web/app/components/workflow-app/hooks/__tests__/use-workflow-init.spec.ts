@@ -105,3 +105,31 @@ describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
     expect(order.indexOf('hash:new-hash')).toBeLessThan(order.indexOf('fetch:2'))
   })
 })
+
+
+describe('useWorkflowInit — non draft error handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWorkflowStoreGetState.mockReturnValue({
+      setDraftUpdatedAt: mockSetDraftUpdatedAt,
+      setToolPublished: mockSetToolPublished,
+      setPublishedAt: mockSetPublishedAt,
+      setLastPublishedHasUserInput: mockSetLastPublishedHasUserInput,
+      setFileUploadConfig: mockSetFileUploadConfig,
+    })
+    mockFetchWorkflowDraft.mockRejectedValueOnce({
+      json: vi.fn().mockResolvedValue({ code: 'other_error' }),
+      bodyUsed: false,
+    })
+  })
+
+  it('should stop loading and not call syncWorkflowDraft on non draft error', async () => {
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+})
