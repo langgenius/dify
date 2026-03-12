@@ -116,6 +116,7 @@ class TestLangFuseDataTraceCompletionStartTime:
             patch.object(trace, "add_span"),
             patch.object(trace, "add_generation") as add_generation,
             patch.object(trace, "get_service_account_with_tenant", return_value=MagicMock()),
+            patch("core.ops.langfuse_trace.langfuse_trace.db", MagicMock()),
             patch(
                 "core.ops.langfuse_trace.langfuse_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
                 return_value=repository,
