@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
@@ -34,7 +35,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         datasource_manager: DatasourceManagerProtocol,
@@ -181,7 +182,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DatasourceNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -190,11 +191,10 @@ class DatasourceNode(Node[DatasourceNodeData]):
         :param node_data: node data
         :return:
         """
-        typed_node_data = DatasourceNodeData.model_validate(node_data)
         result = {}
-        if typed_node_data.datasource_parameters:
-            for parameter_name in typed_node_data.datasource_parameters:
-                input = typed_node_data.datasource_parameters[parameter_name]
+        if node_data.datasource_parameters:
+            for parameter_name in node_data.datasource_parameters:
+                input = node_data.datasource_parameters[parameter_name]
                 match input.type:
                     case "mixed":
                         assert isinstance(input.value, str)

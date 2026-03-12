@@ -8,7 +8,8 @@ from pydantic import (
 )
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from dify_graph.nodes.base import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 from dify_graph.nodes.llm.entities import ModelConfig, VisionConfig
 from dify_graph.variables.types import SegmentType
 
@@ -83,6 +84,7 @@ class ParameterExtractorNodeData(BaseNodeData):
     Parameter Extractor Node Data.
     """
 
+    type: NodeType = NodeType.PARAMETER_EXTRACTOR
     model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]
