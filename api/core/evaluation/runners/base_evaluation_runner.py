@@ -102,13 +102,9 @@ class BaseEvaluationRunner(ABC):
                 logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
         if customized_metrics and node_run_result_mapping_list:
             try:
-                evaluated_results = self.evaluate_metrics(
+                evaluated_results = self._evaluate_customized(
                     node_run_result_mapping_list=node_run_result_mapping_list,
-                    node_run_result_list=node_run_result_list,
-                    default_metric=default_metric,
                     customized_metrics=customized_metrics,
-                    model_provider=model_provider,
-                    model_name=model_name,
                     tenant_id=tenant_id,
                 )
             except Exception:
@@ -138,9 +134,8 @@ class BaseEvaluationRunner(ABC):
 
     def _evaluate_customized(
         self,
-        items: list[EvaluationItemInput],
-        results: list[EvaluationItemResult],
-        customized_metrics: dict[str, Any],
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]],
+        customized_metrics: CustomizedMetrics,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         """Delegate to the instance's customized workflow evaluator.
@@ -150,8 +145,10 @@ class BaseEvaluationRunner(ABC):
         ``evaluate_with_customized_workflow()`` reads ``actual_output``
         from each ``EvaluationItemResult``.
         """
-        evaluated = self.evaluation_instance.evaluate_with_customized_workflow(
-            items, results, customized_metrics, tenant_id,
+        evaluated_results = self.evaluation_instance.evaluate_with_customized_workflow(
+            node_run_result_mapping_list=node_run_result_mapping_list,
+            customized_metrics=customized_metrics,
+            tenant_id=tenant_id,
         )
 
         # Merge metrics back preserving actual_output and metadata from Phase 1

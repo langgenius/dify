@@ -14,6 +14,7 @@ from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
+    EvaluationDatasetInput,
     EvaluationItemInput,
     EvaluationRunData,
     EvaluationRunRequest,
@@ -455,7 +456,7 @@ class EvaluationService:
         tenant_id: str,
         target_type: str,
         target_id: str,
-        input_list: list[EvaluationItemInput],
+        input_list: list[EvaluationDatasetInput],
         max_workers: int = 5,
     ) -> list[dict[str, NodeRunResult]]:
         """Execute the evaluation target for every test-data item in parallel.
@@ -475,7 +476,7 @@ class EvaluationService:
 
         flask_app: Flask = current_app._get_current_object()  # type: ignore
 
-        def _worker(item: EvaluationItemInput) -> dict[str, NodeRunResult]:
+        def _worker(item: EvaluationDatasetInput) -> dict[str, NodeRunResult]:
             with flask_app.app_context():
                 from models.engine import db
 
@@ -532,7 +533,7 @@ class EvaluationService:
         session: Session,
         target_type: str,
         target_id: str,
-        item: EvaluationItemInput,
+        item: EvaluationDatasetInput,
     ) -> Mapping[str, object]:
         """Execute a single evaluation target with one test-data item.
 

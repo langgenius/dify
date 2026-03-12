@@ -29,6 +29,12 @@ class EvaluationItemInput(BaseModel):
     context: list[str] | None = None
 
 
+class EvaluationDatasetInput(BaseModel):
+    index: int
+    inputs: dict[str, Any]
+    expected_output: str | None = None
+
+
 class EvaluationItemResult(BaseModel):
     index: int
     actual_output: str | None = None
@@ -61,7 +67,7 @@ class CustomizedMetricOutputField(BaseModel):
 
 class CustomizedMetrics(BaseModel):
     evaluation_workflow_id: str
-    input_fields: dict[str, str]
+    input_fields: dict[str, Any]
     output_fields: list[CustomizedMetricOutputField]
 
 
@@ -90,4 +96,4 @@ class EvaluationRunData(BaseModel):
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
     customized_metrics: CustomizedMetrics | None = None
     judgment_config: JudgmentConfig | None = None
-    input_list: list[EvaluationItemInput]
+    input_list: list[EvaluationDatasetInput]
