@@ -199,7 +199,9 @@ class LangFuseDataTrace(BaseTraceInstance):
                 completion_tokens = 0
                 completion_start_time = None
                 try:
-                    usage_data = process_data.get("usage") if "usage" in process_data else outputs.get("usage", {})
+                    usage_data = process_data.get("usage")
+                    if not isinstance(usage_data, dict):
+                        usage_data = outputs.get("usage")
                     if not isinstance(usage_data, dict):
                         usage_data = {}
                     prompt_tokens = usage_data.get("prompt_tokens", 0)
