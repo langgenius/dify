@@ -120,6 +120,7 @@
   "common.branch": "ZWEIG",
   "common.chooseDSL": "Wählen Sie eine DSL(yml)-Datei",
   "common.chooseStartNodeToRun": "Wählen Sie den Startknoten zum Ausführen",
+  "common.clipboardVersionCompatibilityWarning": "Dieser Inhalt wurde aus einer anderen Dify-App-Version kopiert. Einige Teile sind möglicherweise nicht kompatibel.",
   "common.configure": "Konfigurieren",
   "common.configureRequired": "Konfiguration erforderlich",
   "common.conversationLog": "Konversationsprotokoll",

@@ -120,6 +120,7 @@
   "common.branch": "BRANCH",
   "common.chooseDSL": "Choose DSL file",
   "common.chooseStartNodeToRun": "Choose the start node to run",
+  "common.clipboardVersionCompatibilityWarning": "Deze inhoud is gekopieerd vanuit een andere Dify-appversie. Sommige onderdelen zijn mogelijk niet compatibel.",
   "common.configure": "Configure",
   "common.configureRequired": "Configure Required",
   "common.conversationLog": "Conversation Log",

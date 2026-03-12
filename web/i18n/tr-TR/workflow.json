@@ -120,6 +120,7 @@
   "common.branch": "DAL",
   "common.chooseDSL": "DSL(yml) dosyasını seçin",
   "common.chooseStartNodeToRun": "Çalıştırmak için başlangıç düğümünü seçin",
+  "common.clipboardVersionCompatibilityWarning": "Bu içerik farklı bir Dify uygulama sürümünden kopyalandı. Bazı bölümler uyumsuz olabilir.",
   "common.configure": "Yapılandır",
   "common.configureRequired": "Yapılandırma Gerekli",
   "common.conversationLog": "Konuşma Günlüğü",

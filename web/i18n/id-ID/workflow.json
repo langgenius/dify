@@ -120,6 +120,7 @@
   "common.branch": "CABANG",
   "common.chooseDSL": "Pilih file DSL",
   "common.chooseStartNodeToRun": "Pilih node awal untuk dijalankan",
+  "common.clipboardVersionCompatibilityWarning": "Konten ini disalin dari versi aplikasi Dify yang berbeda. Beberapa bagian mungkin tidak kompatibel.",
   "common.configure": "Konfigurasikan",
   "common.configureRequired": "Konfigurasi yang Diperlukan",
   "common.conversationLog": "Log Percakapan",

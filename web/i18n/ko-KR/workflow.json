@@ -120,6 +120,7 @@
   "common.branch": "브랜치",
   "common.chooseDSL": "DSL(yml) 파일 선택",
   "common.chooseStartNodeToRun": "실행할 시작 노드를 선택하세요",
+  "common.clipboardVersionCompatibilityWarning": "이 콘텐츠는 다른 Dify 앱 버전에서 복사되었습니다. 일부 항목은 호환되지 않을 수 있습니다.",
   "common.configure": "구성",
   "common.configureRequired": "구성 필요",
   "common.conversationLog": "대화 로그",

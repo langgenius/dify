@@ -120,6 +120,7 @@
   "common.branch": "ГІЛКА",
   "common.chooseDSL": "Виберіть файл DSL(yml)",
   "common.chooseStartNodeToRun": "Виберіть початковий вузол для запуску",
+  "common.clipboardVersionCompatibilityWarning": "Цей вміст скопійовано з іншої версії застосунку Dify. Деякі частини можуть бути несумісними.",
   "common.configure": "Налаштувати",
   "common.configureRequired": "Потрібна конфігурація",
   "common.conversationLog": "Журнал розмов",
