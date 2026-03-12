@@ -25,7 +25,7 @@ const ShareQRCode = ({ content }: Props) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      /* v8 ignore next 2 -- this handler can fire during open/close transitions where the panel ref is temporarily null; guard is defensive. */
+      /* v8 ignore next 2 -- this handler can fire during open/close transitions where the panel ref is temporarily null; guard is defensive. @preserve */
       if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node))
         setIsShow(false)
     }
@@ -50,7 +50,7 @@ const ShareQRCode = ({ content }: Props) => {
   }
 
   const tooltipText = t(`${prefixEmbedded}`, { ns: 'appOverview' })
-  /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. */
+  /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
 
   return (

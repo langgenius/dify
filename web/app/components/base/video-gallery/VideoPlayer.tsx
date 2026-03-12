@@ -55,7 +55,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const video = videoRef.current
-    /* v8 ignore next 2 -- video element is expected post-mount; null guard protects against lifecycle timing during mount/unmount. */
+    /* v8 ignore next 2 -- video element is expected post-mount; null guard protects against lifecycle timing during mount/unmount. @preserve */
     if (!video)
       return
 
@@ -100,7 +100,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current
-    /* v8 ignore next -- click handler can race with unmount in tests/runtime; guard prevents calling methods on a detached video node. */
+    /* v8 ignore next -- click handler can race with unmount in tests/runtime; guard prevents calling methods on a detached video node. @preserve */
     if (video) {
       if (isPlaying)
         video.pause()
@@ -111,7 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current
-    /* v8 ignore next -- defensive null-check for ref lifecycle edges before mutating media properties. */
+    /* v8 ignore next -- defensive null-check for ref lifecycle edges before mutating media properties. @preserve */
     if (video) {
       const newMutedState = !video.muted
       video.muted = newMutedState
@@ -123,7 +123,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   const toggleFullscreen = useCallback(() => {
     const video = videoRef.current
-    /* v8 ignore next -- defensive null-check so fullscreen calls are skipped if video ref is detached. */
+    /* v8 ignore next -- defensive null-check so fullscreen calls are skipped if video ref is detached. @preserve */
     if (video) {
       if (document.fullscreenElement)
         document.exitFullscreen()
@@ -140,7 +140,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const updateVideoProgress = useCallback((clientX: number, updateTime = false) => {
     const progressBar = progressRef.current
     const video = videoRef.current
-    /* v8 ignore next -- progress callbacks may fire while refs are not yet attached or already torn down; guard avoids invalid DOM access. */
+    /* v8 ignore next -- progress callbacks may fire while refs are not yet attached or already torn down; guard avoids invalid DOM access. @preserve */
     if (progressBar && video) {
       const rect = progressBar.getBoundingClientRect()
       const pos = (clientX - rect.left) / rect.width
@@ -175,7 +175,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
 
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      /* v8 ignore next -- global mousemove listener remains registered briefly; skip updates once dragging has ended. */
+      /* v8 ignore next -- global mousemove listener remains registered briefly; skip updates once dragging has ended. @preserve */
       if (isDragging)
         updateVideoProgress(e.clientX)
     }
@@ -197,7 +197,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   }, [isDragging, updateVideoProgress])
 
   const checkSize = useCallback(() => {
-    /* v8 ignore next 2 -- container ref may be null before first paint or after unmount while resize events are in flight. */
+    /* v8 ignore next 2 -- container ref may be null before first paint or after unmount while resize events are in flight. @preserve */
     if (containerRef.current)
       setIsSmallSize(containerRef.current.offsetWidth < 400)
   }, [])
@@ -211,7 +211,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const volumeBar = volumeRef.current
     const video = videoRef.current
-    /* v8 ignore next -- defensive check for ref availability during drag/click lifecycle transitions. */
+    /* v8 ignore next -- defensive check for ref availability during drag/click lifecycle transitions. @preserve */
     if (volumeBar && video) {
       const rect = volumeBar.getBoundingClientRect()
       const newVolume = (e.clientX - rect.left) / rect.width
