@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => {
         return vi.fn()
       }),
       registerUpdateListener: vi.fn(() => vi.fn()),
+      registerNodeTransform: vi.fn(() => vi.fn()),
       dispatchCommand: vi.fn(),
       getRootElement: vi.fn(() => rootElement),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
@@ -50,7 +51,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@lexical/code', () => ({
-  CodeNode: class CodeNode {},
+  CodeNode: class CodeNode { },
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
@@ -76,8 +77,34 @@ vi.mock('lexical', async (importOriginal) => {
 })
 
 vi.mock('@lexical/react/LexicalComposer', () => ({
-  LexicalComposer: ({ children }: { children: ReactNode }) => (
-    <div data-testid="lexical-composer">{children}</div>
+  LexicalComposer: ({ initialConfig, children }: {
+    initialConfig: {
+      onError?: (error: Error) => void
+      nodes?: Array<{ replace?: unknown, with: (arg: { __text: string }) => void }>
+    }
+    children: ReactNode
+  }) => {
+    if (initialConfig?.onError) {
+      try {
+        initialConfig.onError(new Error('test error'))
+      }
+      catch (e) {
+        // ignore error
+        console.error(e)
+      }
+    }
+    if (initialConfig?.nodes) {
+      const textNodeConf = initialConfig.nodes.find((n: { replace?: unknown, with: (arg: { __text: string }) => void }) => n?.replace)
+      if (textNodeConf)
+        textNodeConf.with({ __text: 'test' })
+    }
+    return <div data-testid="lexical-composer">{children}</div>
+  },
+}))
+
+vi.mock('../plugins/shortcuts-popup-plugin', () => ({
+  default: ({ children }: { children: (closePortal: () => void, onInsert: () => void) => ReactNode }) => (
+    <div data-testid="shortcuts-popup-plugin">{children(vi.fn(), vi.fn())}</div>
   ),
 }))
 
@@ -263,6 +290,88 @@ describe('PromptEditor', () => {
         />,
       )
 
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render multiple shortcutPopups', () => {
+      const PopupA: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({ onClose }) => (
+        <button data-testid="popup-a" onClick={onClose}>A</button>
+      )
+      const PopupB: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({ onClose }) => (
+        <button data-testid="popup-b" onClick={onClose}>B</button>
+      )
+
+      render(
+        <PromptEditor
+          shortcutPopups={[
+            { hotkey: 'ctrl+a', Popup: PopupA },
+            { hotkey: 'ctrl+b', Popup: PopupB },
+          ]}
+        />,
+      )
+
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render without onChange and not crash', () => {
+      expect(() =>
+        render(<PromptEditor compact={false} placeholder="Empty" />),
+      ).not.toThrow()
+    })
+
+    it('should render with editable=false', () => {
+      render(<PromptEditor editable={false} placeholder="read only" />)
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render with isSupportFileVar=true', () => {
+      render(<PromptEditor isSupportFileVar={true} />)
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render all block types when show=true', () => {
+      render(
+        <PromptEditor
+          contextBlock={{ show: true, datasets: [] }}
+          queryBlock={{ show: true }}
+          historyBlock={{ show: true, history: { user: 'u', assistant: 'a' } }}
+          variableBlock={{ show: true }}
+          workflowVariableBlock={{ show: true }}
+          currentBlock={{ show: true, generatorType: 'summarize' as unknown as import('../types').CurrentBlockType['generatorType'] }}
+          requestURLBlock={{ show: true }}
+          errorMessageBlock={{ show: true }}
+          lastRunBlock={{ show: true }}
+        />,
+      )
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should render externalToolBlock when variableBlock is not shown', () => {
+      render(
+        <PromptEditor
+          variableBlock={{ show: false }}
+          externalToolBlock={{ show: true }}
+        />,
+      )
+      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
+    })
+
+    it('should unmount component to cover onRef cleanup', () => {
+      const { unmount } = render(<PromptEditor />)
+      expect(() => unmount()).not.toThrow()
+    })
+
+    it('should render hitl block when show=true', () => {
+      render(
+        <PromptEditor
+          hitlInputBlock={{
+            show: true,
+            nodeId: 'node-1',
+            onFormInputItemRemove: vi.fn(),
+            onFormInputItemRename: vi.fn(),
+          }}
+        />,
+      )
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
     })
   })
