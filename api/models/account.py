@@ -231,7 +231,9 @@ class Account(UserMixin, TypeBase):
 
 class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
+    ACTIVE = "active"
     ARCHIVE = "archive"
+    SUSPENDED = "suspended"
 
 
 class Tenant(TypeBase):

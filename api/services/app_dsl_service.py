@@ -550,7 +550,7 @@ class AppDslService:
             "kind": "app",
             "app": {
                 "name": app_model.name,
-                "mode": app_model.mode,
+                "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
                 "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,
