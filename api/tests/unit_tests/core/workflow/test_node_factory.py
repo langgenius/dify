@@ -5,10 +5,18 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
+from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import NodeType, SystemVariableKey
 from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.variables.segments import StringSegment
+
+
+def _assert_typed_node_config(config, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
+    assert config["id"] == node_id
+    assert isinstance(config["data"], BaseNodeData)
+    assert config["data"].type == node_type
+    assert config["data"].version == version
 
 
 class TestFetchMemory:
@@ -248,7 +256,7 @@ class TestDifyNodeFactoryCreateNode:
         return factory
 
     def test_rejects_unknown_node_type(self, factory):
-        with pytest.raises(ValueError, match="Unknown node type: missing"):
+        with pytest.raises(ValueError, match="Input should be"):
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
 
     def test_rejects_missing_class_mapping(self, monkeypatch, factory):
@@ -285,12 +293,12 @@ class TestDifyNodeFactoryCreateNode:
         result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
 
         assert result is matched_node
-        matched_node_class.assert_called_once_with(
-            id="node-id",
-            config={"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}},
-            graph_init_params=sentinel.graph_init_params,
-            graph_runtime_state=sentinel.graph_runtime_state,
-        )
+        matched_node_class.assert_called_once()
+        kwargs = matched_node_class.call_args.kwargs
+        assert kwargs["id"] == "node-id"
+        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=NodeType.START, version="9")
+        assert kwargs["graph_init_params"] is sentinel.graph_init_params
+        assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
         latest_node_class.assert_not_called()
 
     def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch, factory):
@@ -305,12 +313,12 @@ class TestDifyNodeFactoryCreateNode:
         result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
 
         assert result is latest_node
-        latest_node_class.assert_called_once_with(
-            id="node-id",
-            config={"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}},
-            graph_init_params=sentinel.graph_init_params,
-            graph_runtime_state=sentinel.graph_runtime_state,
-        )
+        latest_node_class.assert_called_once()
+        kwargs = latest_node_class.call_args.kwargs
+        assert kwargs["id"] == "node-id"
+        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=NodeType.START, version="9")
+        assert kwargs["graph_init_params"] is sentinel.graph_init_params
+        assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name"),
@@ -327,12 +335,11 @@ class TestDifyNodeFactoryCreateNode:
     )
     def test_creates_specialized_nodes(self, monkeypatch, factory, node_type, constructor_name):
         created_node = object()
-        constructor = MagicMock(return_value=created_node)
-        monkeypatch.setattr(node_factory, constructor_name, constructor)
+        constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
             node_factory,
             "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: object()}},
+            {node_type: {node_factory.LATEST_VERSION: constructor}},
         )
 
         if constructor_name == "HumanInputNode":
@@ -355,7 +362,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result is created_node
         kwargs = constructor.call_args.kwargs
         assert kwargs["id"] == "node-id"
-        assert kwargs["config"] == node_config
+        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=node_type)
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
 
@@ -401,38 +408,44 @@ class TestDifyNodeFactoryCreateNode:
         expected_extra_kwargs,
     ):
         created_node = object()
-        constructor = MagicMock(return_value=created_node)
-        build_model_instance = MagicMock(return_value=sentinel.model_instance)
-        build_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory, constructor_name, constructor)
+        constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
             node_factory,
             "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: object()}},
+            {node_type: {node_factory.LATEST_VERSION: constructor}},
         )
-        factory._build_model_instance_for_llm_node = build_model_instance
-        factory._build_memory_for_llm_node = build_memory
-
-        node_config = {"id": "node-id", "data": {"type": node_type.value}}
-        result = factory.create_node(node_config)
-
-        assert result is created_node
-        build_model_instance.assert_called_once_with(node_config["data"])
-        build_memory.assert_called_once_with(
-            node_data=node_config["data"],
-            model_instance=sentinel.model_instance,
-        )
-        assert constructor.call_args.kwargs == {
-            "id": "node-id",
-            "config": node_config,
-            "graph_init_params": sentinel.graph_init_params,
-            "graph_runtime_state": sentinel.graph_runtime_state,
+        llm_init_kwargs = {
             "credentials_provider": sentinel.credentials_provider,
             "model_factory": sentinel.model_factory,
             "model_instance": sentinel.model_instance,
             "memory": sentinel.memory,
             **expected_extra_kwargs,
         }
+        build_llm_init_kwargs = MagicMock(return_value=llm_init_kwargs)
+        factory._build_llm_compatible_node_init_kwargs = build_llm_init_kwargs
+
+        node_config = {"id": "node-id", "data": {"type": node_type.value}}
+        result = factory.create_node(node_config)
+
+        assert result is created_node
+        build_llm_init_kwargs.assert_called_once()
+        helper_kwargs = build_llm_init_kwargs.call_args.kwargs
+        assert helper_kwargs["node_class"] is constructor
+        assert isinstance(helper_kwargs["node_data"], BaseNodeData)
+        assert helper_kwargs["node_data"].type == node_type
+        assert helper_kwargs["include_http_client"] is (node_type != NodeType.PARAMETER_EXTRACTOR)
+
+        constructor_kwargs = constructor.call_args.kwargs
+        assert constructor_kwargs["id"] == "node-id"
+        _assert_typed_node_config(constructor_kwargs["config"], node_id="node-id", node_type=node_type)
+        assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
+        assert constructor_kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
+        assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
+        assert constructor_kwargs["model_factory"] is sentinel.model_factory
+        assert constructor_kwargs["model_instance"] is sentinel.model_instance
+        assert constructor_kwargs["memory"] is sentinel.memory
+        for key, value in expected_extra_kwargs.items():
+            assert constructor_kwargs[key] is value
 
 
 class TestDifyNodeFactoryModelInstance:
@@ -444,7 +457,7 @@ class TestDifyNodeFactoryModelInstance:
         return factory
 
     @pytest.fixture
-    def llm_model_setup(self, monkeypatch, factory):
+    def llm_model_setup(self, factory):
         def _configure(
             *,
             completion_params=None,
@@ -458,6 +471,7 @@ class TestDifyNodeFactoryModelInstance:
                 mode="chat",
                 completion_params=completion_params or {},
             )
+            node_data = SimpleNamespace(model=node_data_model)
             provider_model = MagicMock() if has_provider_model else None
             provider_model_bundle = SimpleNamespace(
                 configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=provider_model))
@@ -473,14 +487,10 @@ class TestDifyNodeFactoryModelInstance:
                 parameters=None,
                 stop=None,
             )
-            monkeypatch.setattr(
-                node_factory.ModelConfig,
-                "model_validate",
-                MagicMock(return_value=node_data_model),
-            )
             factory._llm_credentials_provider.fetch.return_value = credentials
             factory._llm_model_factory.init_model_instance.return_value = model_instance
             return SimpleNamespace(
+                node_data=node_data,
                 credentials=credentials,
                 provider_model=provider_model,
                 model_type_instance=model_type_instance,
@@ -489,34 +499,30 @@ class TestDifyNodeFactoryModelInstance:
 
         return _configure
 
-    def test_requires_llm_mode(self, monkeypatch, factory):
-        monkeypatch.setattr(
-            node_factory.ModelConfig,
-            "model_validate",
-            MagicMock(
-                return_value=SimpleNamespace(
-                    provider="provider",
-                    name="model",
-                    mode="",
-                    completion_params={},
-                )
-            ),
+    def test_requires_llm_mode(self, factory):
+        node_data = SimpleNamespace(
+            model=SimpleNamespace(
+                provider="provider",
+                name="model",
+                mode="",
+                completion_params={},
+            )
         )
 
         with pytest.raises(node_factory.LLMModeRequiredError, match="LLM mode is required"):
-            factory._build_model_instance_for_llm_node({"model": {}})
+            factory._build_model_instance_for_llm_node(node_data)
 
     def test_raises_when_provider_model_is_missing(self, factory, llm_model_setup):
-        llm_model_setup(has_provider_model=False)
+        setup = llm_model_setup(has_provider_model=False)
 
         with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
-            factory._build_model_instance_for_llm_node({"model": {}})
+            factory._build_model_instance_for_llm_node(setup.node_data)
 
     def test_raises_when_model_schema_is_missing(self, factory, llm_model_setup):
         setup = llm_model_setup(model_schema=None)
 
         with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
-            factory._build_model_instance_for_llm_node({"model": {}})
+            factory._build_model_instance_for_llm_node(setup.node_data)
 
         setup.provider_model.raise_for_status.assert_called_once()
 
@@ -526,7 +532,7 @@ class TestDifyNodeFactoryModelInstance:
             model_schema={"schema": "value"},
         )
 
-        result = factory._build_model_instance_for_llm_node({"model": {}})
+        result = factory._build_model_instance_for_llm_node(setup.node_data)
 
         assert result is setup.model_instance
         assert result.provider == "provider"
@@ -548,7 +554,7 @@ class TestDifyNodeFactoryMemory:
 
     def test_returns_none_when_memory_is_not_configured(self, factory):
         result = factory._build_memory_for_llm_node(
-            node_data={},
+            node_data=SimpleNamespace(memory=None),
             model_instance=sentinel.model_instance,
         )
 
@@ -558,13 +564,11 @@ class TestDifyNodeFactoryMemory:
     def test_uses_string_segment_conversation_id(self, monkeypatch, factory):
         memory_config = sentinel.memory_config
         factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
-        model_validate = MagicMock(return_value=memory_config)
         fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory.MemoryConfig, "model_validate", model_validate)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
         result = factory._build_memory_for_llm_node(
-            node_data={"memory": {"window": 5}},
+            node_data=SimpleNamespace(memory=memory_config),
             model_instance=sentinel.model_instance,
         )
 
@@ -572,7 +576,6 @@ class TestDifyNodeFactoryMemory:
         factory.graph_runtime_state.variable_pool.get.assert_called_once_with(
             ["sys", SystemVariableKey.CONVERSATION_ID]
         )
-        model_validate.assert_called_once_with({"window": 5})
         fetch_memory.assert_called_once_with(
             conversation_id="conversation-id",
             app_id="app-id",
@@ -583,13 +586,11 @@ class TestDifyNodeFactoryMemory:
     def test_ignores_non_string_segment_conversation_ids(self, monkeypatch, factory):
         memory_config = sentinel.memory_config
         factory.graph_runtime_state.variable_pool.get.return_value = sentinel.segment
-        model_validate = MagicMock(return_value=memory_config)
         fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory.MemoryConfig, "model_validate", model_validate)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
         result = factory._build_memory_for_llm_node(
-            node_data={"memory": {"window": 5}},
+            node_data=SimpleNamespace(memory=memory_config),
             model_instance=sentinel.model_instance,
         )
 

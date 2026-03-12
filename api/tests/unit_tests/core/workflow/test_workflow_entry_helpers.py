@@ -7,12 +7,17 @@ import pytest
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow import workflow_entry
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.graph_events import GraphRunFailedEvent
 from dify_graph.nodes import NodeType
 from dify_graph.runtime import ChildGraphNotFoundError
+
+
+def _build_typed_node_config(node_type: NodeType):
+    return NodeConfigDictAdapter.validate_python({"id": "node-id", "data": {"type": node_type}})
 
 
 class TestWorkflowChildEngineBuilder:
@@ -235,7 +240,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: {"id": "node-id", "data": {"type": NodeType.START}},
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.START),
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
@@ -297,7 +302,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: {"id": "node-id", "data": {"type": NodeType.DATASOURCE}},
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.DATASOURCE),
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
@@ -347,7 +352,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: {"id": "node-id", "data": {"type": NodeType.START}},
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.START),
             )
 
             with pytest.raises(WorkflowNodeRunFailedError):
