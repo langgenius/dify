@@ -150,6 +150,17 @@ describe('SettingContent', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('should not call onClose when close icon receives non-action key', () => {
+    const onClose = vi.fn()
+    renderWithProvider({ onClose })
+
+    const closeIconButton = screen.getByTestId('close-setting-modal')
+    closeIconButton.focus()
+    fireEvent.keyDown(closeIconButton, { key: 'Escape' })
+
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('should call onClose when cancel button is clicked to close', () => {
     const onClose = vi.fn()
     renderWithProvider({ onClose })
