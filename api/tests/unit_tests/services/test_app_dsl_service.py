@@ -206,6 +206,7 @@ def test_import_app_overwrite_only_allows_workflow_and_advanced_chat(monkeypatch
 
 def test_import_app_pending_stores_import_info_in_redis():
     service = AppDslService(MagicMock())
+    app_dsl_service.redis_client.setex.reset_mock()
     result = service.import_app(
         account=_account_mock(),
         import_mode=ImportMode.YAML_CONTENT,
