@@ -33,9 +33,9 @@ class DifyCliInitializer(AsyncSandboxInitializer):
         # FIXME(Mairuis): should be more robust, effectively.
         binary = self._locator.resolve(vm.metadata.os, vm.metadata.arch)
 
-        pipeline(vm).add(
-            ["mkdir", "-p", f"{cli.root}/bin"], error_message="Failed to create dify CLI directory"
-        ).execute(raise_on_error=True)
+        pipeline(vm).add(["mkdir", "-p", cli.bin_dir], error_message="Failed to create dify CLI directory").execute(
+            raise_on_error=True
+        )
 
         vm.upload_file(cli.bin_path, BytesIO(binary.path.read_bytes()))
 
@@ -69,7 +69,7 @@ class DifyCliInitializer(AsyncSandboxInitializer):
 
         config = DifyCliConfig.create(self._cli_api_session, ctx.tenant_id, bundle.get_tool_dependencies())
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
-        config_path = f"{cli.global_tools_path}/{DifyCli.CONFIG_FILENAME}"
+        config_path = cli.global_config_path
         vm.upload_file(config_path, BytesIO(config_json.encode("utf-8")))
 
         pipeline(vm, cwd=cli.global_tools_path).add(

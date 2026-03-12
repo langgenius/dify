@@ -72,14 +72,14 @@ class SandboxBashSession:
         tools: ToolDependencies,
         cli_api_session: CliApiSession,
     ) -> str:
-        node_tools_path = f"{cli.tools_root}/{node_id}"
+        node_tools_path = cli.node_tools_path(node_id)
         config_json = json.dumps(
             DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, tool_deps=tools).model_dump(
                 mode="json"
             ),
             ensure_ascii=False,
         )
-        config_path = shlex.quote(f"{node_tools_path}/{DifyCli.CONFIG_FILENAME}")
+        config_path = shlex.quote(cli.node_config_path(node_id))
 
         vm = self._sandbox.vm
         # Merge mkdir + config write into a single pipeline to reduce round-trips.

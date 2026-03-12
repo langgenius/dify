@@ -26,11 +26,11 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
         (
             pipeline(vm)
             .add(
-                ["mkdir", "-p", f"/tmp/.dify/{sandbox.id}"],
+                ["mkdir", "-p", assets.root],
                 error_message="Failed to create assets temp directory",
             )
             .add(
-                ["curl", "-fsSL", download_url, "-o", assets.zip_path],
+                ["sh", "-c", 'curl -fsSL "$1" -o "$2"', "sh", download_url, assets.zip_path],
                 error_message="Failed to download assets zip",
             )
             # Create the assets directory first to ensure it exists even if zip is empty
@@ -41,12 +41,12 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {assets.zip_path} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", 'unzip "$1" -d "$2" 2>/dev/null || [ $? -eq 1 ]', "sh", assets.zip_path, AppAssets.PATH],
                 error_message="Failed to unzip assets",
             )
             # Ensure directories have execute permission for traversal and files are readable
             .add(
-                ["sh", "-c", f"chmod -R u+rwX,go+rX {AppAssets.PATH}"],
+                ["sh", "-c", 'chmod -R u+rwX,go+rX "$1"', "sh", AppAssets.PATH],
                 error_message="Failed to set permissions on assets",
             )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)

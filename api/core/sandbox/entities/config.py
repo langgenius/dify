@@ -19,15 +19,25 @@ class DifyCli:
 
     # --- instance attributes ---
     root: str
+    bin_dir: str
     bin_path: str
     tools_root: str
     global_tools_path: str
+    global_config_path: str
 
     def __init__(self, env_id: str) -> None:
         self.root = f"/tmp/.dify/{env_id}"
-        self.bin_path = f"{self.root}/bin/dify"
+        self.bin_dir = f"{self.root}/bin"
+        self.bin_path = f"{self.bin_dir}/dify"
         self.tools_root = f"{self.root}/tools"
         self.global_tools_path = f"{self.root}/tools/global"
+        self.global_config_path = f"{self.global_tools_path}/{DifyCli.CONFIG_FILENAME}"
+
+    def node_tools_path(self, node_id: str) -> str:
+        return f"{self.tools_root}/{node_id}"
+
+    def node_config_path(self, node_id: str) -> str:
+        return f"{self.node_tools_path(node_id)}/{DifyCli.CONFIG_FILENAME}"
 
 
 class AppAssets:
@@ -40,7 +50,9 @@ class AppAssets:
 
     PATH: Final[str] = "skills"
 
+    root: str
     zip_path: str
 
     def __init__(self, env_id: str) -> None:
-        self.zip_path = f"/tmp/.dify/{env_id}/assets.zip"
+        self.root = f"/tmp/.dify/{env_id}"
+        self.zip_path = f"{self.root}/assets.zip"
