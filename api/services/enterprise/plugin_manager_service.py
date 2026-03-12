@@ -4,7 +4,6 @@ import logging
 from pydantic import BaseModel
 
 from services.enterprise.base import EnterprisePluginManagerRequest
-from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
 logger = logging.getLogger(__name__)
