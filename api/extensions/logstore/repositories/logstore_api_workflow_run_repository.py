@@ -79,9 +79,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.version = data.get("version") or ""
     status_val = data.get("status")
     try:
-        model.status = (
-            WorkflowExecutionStatus(str(status_val)) if status_val else WorkflowExecutionStatus.RUNNING
-        )
+        model.status = WorkflowExecutionStatus(str(status_val)) if status_val else WorkflowExecutionStatus.RUNNING
     except ValueError:
         logger.warning("Invalid status value: %s, falling back to RUNNING", status_val)
         model.status = WorkflowExecutionStatus.RUNNING
