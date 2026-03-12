@@ -60,9 +60,9 @@ describe('deriveTriggerStatus', () => {
     expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, undefined, baseCredentialState)).toBe('incompatible')
   })
 
-  it('returns incompatible when model status is not active', () => {
+  it('returns configure-required when model status is no-configure', () => {
     const model = { ...mockModel, status: ModelStatusEnum.noConfigure } as ModelItem
-    expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('incompatible')
+    expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('configure-required')
   })
 
   it('returns incompatible when model status is noPermission', () => {
@@ -70,9 +70,9 @@ describe('deriveTriggerStatus', () => {
     expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('incompatible')
   })
 
-  it('returns incompatible when model status is disabled', () => {
+  it('returns disabled when model status is disabled', () => {
     const model = { ...mockModel, status: ModelStatusEnum.disabled } as ModelItem
-    expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('incompatible')
+    expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('disabled')
   })
 
   it('returns active when all conditions are satisfied', () => {

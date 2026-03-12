@@ -224,7 +224,7 @@ describe('Trigger', () => {
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })
 
-    it('should render incompatible badge when model status is non-active', () => {
+    it('should render configure required badge when model status is no-configure', () => {
       render(
         <Trigger
           currentProvider={currentProvider}
@@ -234,7 +234,20 @@ describe('Trigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+    })
+
+    it('should render disabled badge when model status is disabled', () => {
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          currentModel={{ ...currentModel, status: 'disabled' } as typeof currentModel}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
     })
 
     it('should render incompatible badge when provider plugin is not installed', () => {

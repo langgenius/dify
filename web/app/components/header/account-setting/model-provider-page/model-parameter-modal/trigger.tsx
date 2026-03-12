@@ -89,9 +89,27 @@ const Trigger: FC<TriggerProps> = ({
             : <div className="truncate text-[13px] font-normal text-components-input-text-filled">{modelId}</div>}
         </div>
         {badgeKey && (
-          <Tooltip>
-            <TooltipTrigger
-              render={(
+          tooltipKey
+            ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <div className="flex shrink-0 items-center pr-0.5">
+                        <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
+                          <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                          <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                            {t(badgeKey as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  />
+                  <TooltipContent placement="top">
+                    {t(tooltipKey as 'modelProvider.selector.incompatibleTip', { ns: 'common' })}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            : (
                 <div className="flex shrink-0 items-center pr-0.5">
                   <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                     <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
@@ -100,12 +118,7 @@ const Trigger: FC<TriggerProps> = ({
                     </span>
                   </div>
                 </div>
-              )}
-            />
-            <TooltipContent placement="top">
-              {t(tooltipKey as 'modelProvider.selector.incompatibleTip', { ns: 'common' })}
-            </TooltipContent>
-          </Tooltip>
+              )
         )}
         {!badgeKey && (
           <div className="flex shrink-0 items-center pr-1">

@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from './types'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   IndexingType,
 } from '@/app/components/datasets/create/step-two'
@@ -22,8 +21,10 @@ export enum KnowledgeBaseValidationIssueCode {
   chunksVariableRequired = 'chunks-variable-required',
   indexMethodRequired = 'index-method-required',
   embeddingModelNotConfigured = 'embedding-model-not-configured',
+  embeddingModelConfigureRequired = 'embedding-model-configure-required',
   embeddingModelApiKeyUnavailable = 'embedding-model-api-key-unavailable',
   embeddingModelCreditsExhausted = 'embedding-model-credits-exhausted',
+  embeddingModelDisabled = 'embedding-model-disabled',
   embeddingModelIncompatible = 'embedding-model-incompatible',
   retrievalSettingRequired = 'retrieval-setting-required',
   rerankingModelRequired = 'reranking-model-required',
@@ -32,36 +33,23 @@ export enum KnowledgeBaseValidationIssueCode {
 
 type KnowledgeBaseValidationIssue = {
   code: KnowledgeBaseValidationIssueCode
-  i18nKey: I18nKeysWithPrefix<'workflow', 'nodes.knowledgeBase.'>
 }
 
 type KnowledgeBaseValidationPayload = Pick<KnowledgeBaseNodeType, 'chunk_structure' | 'index_chunk_variable_selector' | 'indexing_technique' | 'embedding_model' | 'embedding_model_provider' | '_embeddingModelList' | '_embeddingProviderModelList' | '_rerankModelList'> & {
   retrieval_model?: Pick<KnowledgeBaseNodeType['retrieval_model'], 'search_method' | 'reranking_enable' | 'reranking_model'>
 }
 
-const ISSUE_I18N_KEY_MAP = {
-  [KnowledgeBaseValidationIssueCode.chunkStructureRequired]: 'nodes.knowledgeBase.chunkIsRequired',
-  [KnowledgeBaseValidationIssueCode.chunksVariableRequired]: 'nodes.knowledgeBase.chunksVariableIsRequired',
-  [KnowledgeBaseValidationIssueCode.indexMethodRequired]: 'nodes.knowledgeBase.indexMethodIsRequired',
-  [KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured]: 'nodes.knowledgeBase.embeddingModelNotConfigured',
-  [KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable]: 'nodes.knowledgeBase.embeddingModelApiKeyUnavailable',
-  [KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted]: 'nodes.knowledgeBase.embeddingModelCreditsExhausted',
-  [KnowledgeBaseValidationIssueCode.embeddingModelIncompatible]: 'nodes.knowledgeBase.embeddingModelIncompatible',
-  [KnowledgeBaseValidationIssueCode.retrievalSettingRequired]: 'nodes.knowledgeBase.retrievalSettingIsRequired',
-  [KnowledgeBaseValidationIssueCode.rerankingModelRequired]: 'nodes.knowledgeBase.rerankingModelIsRequired',
-  [KnowledgeBaseValidationIssueCode.rerankingModelInvalid]: 'nodes.knowledgeBase.rerankingModelIsInvalid',
-} as const satisfies Record<KnowledgeBaseValidationIssueCode, I18nKeysWithPrefix<'workflow', 'nodes.knowledgeBase.'>>
-
 const EMBEDDING_ISSUE_CODES = new Set<KnowledgeBaseValidationIssueCode>([
   KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured,
+  KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired,
   KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable,
   KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted,
+  KnowledgeBaseValidationIssueCode.embeddingModelDisabled,
   KnowledgeBaseValidationIssueCode.embeddingModelIncompatible,
 ])
 
 const resolveIssue = (code: KnowledgeBaseValidationIssueCode): KnowledgeBaseValidationIssue => ({
   code,
-  i18nKey: ISSUE_I18N_KEY_MAP[code],
 })
 
 const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): KnowledgeBaseValidationIssue | null => {
@@ -83,6 +71,9 @@ const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): Knowled
   const currentEmbeddingModel = embeddingModelCandidates?.find(model => model.model === embedding_model)
 
   if (!currentEmbeddingModel) {
+    if (!currentEmbeddingModelProvider)
+      return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
+
     const providerExists = hasProviderScopedModelList || currentEmbeddingModelProvider
     return resolveIssue(providerExists
       ? KnowledgeBaseValidationIssueCode.embeddingModelIncompatible
@@ -93,13 +84,14 @@ const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): Knowled
     case ModelStatusEnum.active:
       return null
     case ModelStatusEnum.noConfigure:
-      return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
+      return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired)
     case ModelStatusEnum.credentialRemoved:
       return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable)
     case ModelStatusEnum.quotaExceeded:
       return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted)
-    case ModelStatusEnum.noPermission:
     case ModelStatusEnum.disabled:
+      return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelDisabled)
+    case ModelStatusEnum.noPermission:
     default:
       return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
   }
@@ -158,7 +150,34 @@ export const getKnowledgeBaseValidationMessage = (
   if (!issue)
     return ''
 
-  return t(issue.i18nKey, { ns: 'workflow' })
+  switch (issue.code) {
+    case KnowledgeBaseValidationIssueCode.chunkStructureRequired:
+      return t('nodes.knowledgeBase.chunkIsRequired', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.chunksVariableRequired:
+      return t('nodes.knowledgeBase.chunksVariableIsRequired', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.indexMethodRequired:
+      return t('nodes.knowledgeBase.indexMethodIsRequired', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured:
+      return t('nodes.knowledgeBase.embeddingModelNotConfigured', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired:
+      return t('modelProvider.selector.configureRequired', { ns: 'common' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable:
+      return t('modelProvider.selector.apiKeyUnavailable', { ns: 'common' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted:
+      return t('modelProvider.selector.creditsExhausted', { ns: 'common' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelDisabled:
+      return t('modelProvider.selector.disabled', { ns: 'common' })
+    case KnowledgeBaseValidationIssueCode.embeddingModelIncompatible:
+      return t('modelProvider.selector.incompatible', { ns: 'common' })
+    case KnowledgeBaseValidationIssueCode.retrievalSettingRequired:
+      return t('nodes.knowledgeBase.retrievalSettingIsRequired', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.rerankingModelRequired:
+      return t('nodes.knowledgeBase.rerankingModelIsRequired', { ns: 'workflow' })
+    case KnowledgeBaseValidationIssueCode.rerankingModelInvalid:
+      return t('nodes.knowledgeBase.rerankingModelIsInvalid', { ns: 'workflow' })
+    default:
+      return ''
+  }
 }
 
 export const isKnowledgeBaseEmbeddingIssue = (issue: KnowledgeBaseValidationIssue | null | undefined) => {
