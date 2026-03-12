@@ -385,13 +385,12 @@ class Node(Generic[NodeDataT]):
             start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
-        from dify_graph.nodes.agent.agent_node import AgentNode
-        from dify_graph.nodes.agent.entities import AgentNodeData
-
-        if isinstance(self, AgentNode):
+        if self.node_type == NodeType.AGENT:
+            agent_strategy_name = getattr(self.node_data, "agent_strategy_name", "")
+            agent_strategy_icon = getattr(self, "agent_strategy_icon", None)
             start_event.agent_strategy = AgentNodeStrategyInit(
-                name=cast(AgentNodeData, self.node_data).agent_strategy_name,
-                icon=self.agent_strategy_icon,
+                name=agent_strategy_name,
+                icon=agent_strategy_icon,
             )
 
         # ===
