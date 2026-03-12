@@ -735,10 +735,18 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
             if spk is None:
-                merged_results.append((None, current_text))
+                # Flush the current speaker's accumulated text before the speakerless caption
+                merged_results.append((current_speaker, current_text))
+                merged_results.append((None, txt))
+                # Reset: next caption with a speaker starts fresh
+                current_speaker = None
+                current_text = ""
                 continue
 
-            if spk == current_speaker:
+            if current_speaker is None:
+                # Previous caption was speakerless; start a new speaker run
+                current_speaker, current_text = spk, txt
+            elif spk == current_speaker:
                 # If it is the same speaker, merge the utterances (joined by space)
                 current_text += " " + txt
             else:
@@ -746,8 +754,9 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
                 merged_results.append((current_speaker, current_text))
                 current_speaker, current_text = spk, txt
 
-        # Add the last element
-        merged_results.append((current_speaker, current_text))
+        # Add the last element (skip if already flushed by a trailing speakerless caption)
+        if current_speaker is not None or current_text:
+            merged_results.append((current_speaker, current_text))
     else:
         merged_results = raw_results
 
