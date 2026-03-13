@@ -1,12 +1,31 @@
+from collections.abc import Sequence
 from enum import IntEnum, StrEnum, auto
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
+from dify_graph.model_runtime.entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
+
+
+class VisionConfigOptions(BaseModel):
+    variable_selector: Sequence[str] = Field(default_factory=lambda: ["sys", "files"])
+    detail: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.HIGH
+
+
+class VisionConfig(BaseModel):
+    enabled: bool = False
+    configs: VisionConfigOptions = Field(default_factory=VisionConfigOptions)
+
+    @field_validator("configs", mode="before")
+    @classmethod
+    def convert_none_configs(cls, v: Any):
+        if v is None:
+            return VisionConfigOptions()
+        return v
 
 
 class AgentNodeData(BaseNodeData):
@@ -15,6 +34,7 @@ class AgentNodeData(BaseNodeData):
     agent_strategy_name: str
     agent_strategy_label: str  # redundancy
     memory: MemoryConfig | None = None
+    vision: VisionConfig = Field(default_factory=VisionConfig)
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version
     # and requires using the legacy parameter parsing rules.
