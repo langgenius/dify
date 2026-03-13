@@ -2,7 +2,8 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 from sqlalchemy import select
 
@@ -33,6 +34,13 @@ class AbstractVectorFactory(ABC):
     def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
         index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
+
+
+_DELEGATED_METHOD_MAP: dict[str, Callable[[BaseVector], Callable[..., Any]]] = {
+    "get_type": lambda vector_processor: vector_processor.get_type,
+    "get_ids_by_metadata_field": lambda vector_processor: vector_processor.get_ids_by_metadata_field,
+    "to_index_struct": lambda vector_processor: cast(Any, vector_processor).to_index_struct,
+}
 
 
 class Vector:
@@ -322,9 +330,8 @@ class Vector:
         return texts
 
     def __getattr__(self, name):
-        if self._vector_processor is not None:
-            method = getattr(self._vector_processor, name)
-            if callable(method):
-                return method
+        method_getter = _DELEGATED_METHOD_MAP.get(name)
+        if method_getter is not None and self._vector_processor is not None:
+            return method_getter(self._vector_processor)
 
         raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
