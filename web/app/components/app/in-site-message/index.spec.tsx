@@ -21,6 +21,7 @@ describe('InSiteMessage', () => {
   const renderComponent = (actions: InSiteMessageActionItem[], props?: Partial<React.ComponentProps<typeof InSiteMessage>>) => {
     return render(
       <InSiteMessage
+        notificationId="test-notification-id"
         title="Title\\nLine"
         subtitle="Subtitle\\nLine"
         main="Main content"
@@ -34,8 +35,8 @@ describe('InSiteMessage', () => {
   describe('Rendering', () => {
     it('should render title, subtitle, markdown content, and action buttons', () => {
       const actions: InSiteMessageActionItem[] = [
-        { action: 'close', text: 'Close', type: 'default' },
-        { action: 'link', text: 'Learn more', type: 'primary', data: 'https://example.com' },
+        { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
+        { action: 'link', action_name: 'learn_more', text: 'Learn more', type: 'primary', data: 'https://example.com' },
       ]
 
       renderComponent(actions, { className: 'custom-message' })
@@ -56,7 +57,7 @@ describe('InSiteMessage', () => {
     })
 
     it('should fallback to default header background when headerBgUrl is empty string', () => {
-      const actions: InSiteMessageActionItem[] = [{ action: 'close', text: 'Close', type: 'default' }]
+      const actions: InSiteMessageActionItem[] = [{ action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' }]
 
       const { container } = renderComponent(actions, { headerBgUrl: '' })
       const header = container.querySelector('div[style]')
@@ -68,7 +69,7 @@ describe('InSiteMessage', () => {
   describe('Actions', () => {
     it('should call onAction and hide component when close action is clicked', () => {
       const onAction = vi.fn()
-      const closeAction: InSiteMessageActionItem = { action: 'close', text: 'Close', type: 'default' }
+      const closeAction: InSiteMessageActionItem = { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' }
 
       renderComponent([closeAction], { onAction })
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -80,6 +81,7 @@ describe('InSiteMessage', () => {
     it('should open a new tab when link action data is a string', () => {
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
+        action_name: 'confirm',
         text: 'Open link',
         type: 'primary',
         data: 'https://example.com',
@@ -103,6 +105,7 @@ describe('InSiteMessage', () => {
 
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
+        action_name: 'confirm',
         text: 'Open self',
         type: 'primary',
         data: { href: 'https://example.com/self', target: '_self' },
@@ -118,6 +121,7 @@ describe('InSiteMessage', () => {
     it('should not trigger navigation when link data is invalid', () => {
       const linkAction: InSiteMessageActionItem = {
         action: 'link',
+        action_name: 'confirm',
         text: 'Broken link',
         type: 'primary',
         data: { rel: 'noopener' },

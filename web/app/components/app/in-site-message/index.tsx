@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
 import { cn } from '@/utils/classnames'
-import { trackEvent } from '@/app/components/base/amplitude'
 
 type InSiteMessageAction = 'link' | 'close'
 type InSiteMessageButtonType = 'primary' | 'default'
