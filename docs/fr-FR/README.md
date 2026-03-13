@@ -182,6 +182,12 @@ Déployez Dify en un clic sur Alibaba Cloud avec [Alibaba Cloud Data Management]
 
 Déployez Dify sur AKS en un clic en utilisant [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Déployer sur Render
+
+Déployez Dify sur [Render](https://render.com) en utilisant le Blueprint [render.yaml](../../render.yaml). Cliquez sur le bouton ci-dessous pour déployer :
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## Contribuer
 
 Pour ceux qui souhaitent contribuer du code, consultez notre [Guide de contribution](./CONTRIBUTING.md).

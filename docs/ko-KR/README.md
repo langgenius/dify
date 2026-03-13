@@ -176,6 +176,12 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
 
+#### Render에 배포
+
+[render.yaml](../../render.yaml) Blueprint를 사용하여 Dify를 [Render](https://render.com)에 배포합니다. 아래 버튼을 클릭하여 배포:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/langgenius/dify)
+
 ## 기여
 
 코드에 기여하고 싶은 분들은 [기여 가이드](./CONTRIBUTING.md)를 참조하세요.
