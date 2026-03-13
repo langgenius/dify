@@ -131,6 +131,10 @@ describe('SettingsModal', () => {
     })
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('should render the modal and expose the expanded settings section', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
@@ -211,5 +215,18 @@ describe('SettingsModal', () => {
       enable_sso: mockAppInfo.enable_sso,
     }))
     expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should clear the delayed hide-more timer when the modal unmounts after closing', () => {
+    vi.useFakeTimers()
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+    const { unmount } = renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    fireEvent.click(screen.getByText('common.operation.cancel'))
+    unmount()
+
+    expect(clearTimeoutSpy).toHaveBeenCalled()
+    vi.runAllTimers()
   })
 })
