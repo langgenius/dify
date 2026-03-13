@@ -3,6 +3,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from redis.exceptions import LockError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -124,38 +125,61 @@ class DatasourceProviderService:
                 return {}
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
-                current_user = get_current_user()
-                decrypted_credentials = self.decrypt_datasource_provider_credentials(
-                    tenant_id=tenant_id,
-                    datasource_provider=datasource_provider,
-                    plugin_id=plugin_id,
-                    provider=provider,
-                )
-                datasource_provider_id = DatasourceProviderID(f"{plugin_id}/{provider}")
-                provider_name = datasource_provider_id.provider_name
-                redirect_uri = (
-                    f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
-                    f"{datasource_provider_id}/datasource/callback"
-                )
-                system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
-                refreshed_credentials = OAuthHandler().refresh_credentials(
-                    tenant_id=tenant_id,
-                    user_id=current_user.id,
-                    plugin_id=datasource_provider_id.plugin_id,
-                    provider=provider_name,
-                    redirect_uri=redirect_uri,
-                    system_credentials=system_credentials or {},
-                    credentials=decrypted_credentials,
-                )
-                datasource_provider.encrypted_credentials = self.encrypt_datasource_provider_credentials(
-                    tenant_id=tenant_id,
-                    raw_credentials=refreshed_credentials.credentials,
-                    provider=provider,
-                    plugin_id=plugin_id,
-                    datasource_provider=datasource_provider,
-                )
-                datasource_provider.expires_at = refreshed_credentials.expires_at
-                session.commit()
+                lock_key = f"oauth_token_refresh_lock:{tenant_id}_{datasource_provider.id}"
+                try:
+                    with redis_client.lock(lock_key, timeout=30, blocking_timeout=0):
+                        # double-check after acquiring lock: another request may have already refreshed
+                        session.refresh(datasource_provider)
+                        if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(
+                            time.time()
+                        ):
+                            current_user = get_current_user()
+                            decrypted_credentials = self.decrypt_datasource_provider_credentials(
+                                tenant_id=tenant_id,
+                                datasource_provider=datasource_provider,
+                                plugin_id=plugin_id,
+                                provider=provider,
+                            )
+                            datasource_provider_id = DatasourceProviderID(f"{plugin_id}/{provider}")
+                            provider_name = datasource_provider_id.provider_name
+                            redirect_uri = (
+                                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
+                                f"{datasource_provider_id}/datasource/callback"
+                            )
+                            system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
+                            refreshed_credentials = OAuthHandler().refresh_credentials(
+                                tenant_id=tenant_id,
+                                user_id=current_user.id,
+                                plugin_id=datasource_provider_id.plugin_id,
+                                provider=provider_name,
+                                redirect_uri=redirect_uri,
+                                system_credentials=system_credentials or {},
+                                credentials=decrypted_credentials,
+                            )
+                            datasource_provider.encrypted_credentials = self.encrypt_datasource_provider_credentials(
+                                tenant_id=tenant_id,
+                                raw_credentials=refreshed_credentials.credentials,
+                                provider=provider,
+                                plugin_id=plugin_id,
+                                datasource_provider=datasource_provider,
+                            )
+                            datasource_provider.expires_at = refreshed_credentials.expires_at
+                            session.commit()
+                            # Signal waiters that refresh is done
+                            signal_key = f"oauth_refresh_done:{lock_key}"
+                            redis_client.set(signal_key, 1, ex=60)
+                except LockError:
+                    # Another request is refreshing; poll Redis signal key
+                    # instead of hitting PostgreSQL on every retry.
+                    signal_key = f"oauth_refresh_done:{lock_key}"
+                    backoff = 0.1
+                    for _ in range(5):
+                        time.sleep(backoff)
+                        if redis_client.exists(signal_key):
+                            break
+                        backoff = min(backoff * 2, 1.0)
+                    # One final DB read to get the refreshed credentials
+                    session.refresh(datasource_provider)
 
             return self.decrypt_datasource_provider_credentials(
                 tenant_id=tenant_id,
