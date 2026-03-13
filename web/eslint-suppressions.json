@@ -1923,15 +1923,9 @@
   "app/components/base/features/new-feature-panel/annotation-reply/config-param.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -2088,9 +2082,6 @@
   "app/components/base/form/components/base/base-field.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     },
     "ts/no-explicit-any": {
       "count": 3
@@ -2250,11 +2241,6 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/input-with-copy/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -3272,9 +3258,6 @@
     }
   },
   "app/components/datasets/create/website/firecrawl/options.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3454,9 +3437,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/list/item.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/header.tsx": {
@@ -4032,9 +4012,6 @@
   "app/components/datasets/metadata/edit-metadata-batch/modal.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
@@ -6876,9 +6853,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7134,9 +7108,6 @@
   "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-label.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-name.tsx": {
