@@ -28,12 +28,12 @@ class TestRefreshTokenApi:
         return app
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return Api(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client."""
         api.add_resource(RefreshTokenApi, "/refresh-token")
         return app.test_client()
