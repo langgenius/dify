@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from typing import IO, Any, Literal, Optional, Union, cast, overload
 
 from configs import dify_config
@@ -7,20 +7,20 @@ from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
-from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.callbacks.base_callback import Callback
+from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.entities.rerank_entities import RerankResult
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dify_graph.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from dify_graph.model_runtime.model_providers.__base.rerank_model import RerankModel
+from dify_graph.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from dify_graph.model_runtime.model_providers.__base.tts_model import TTSModel
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -35,9 +35,12 @@ class ModelInstance:
 
     def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
         self.provider_model_bundle = provider_model_bundle
-        self.model = model
+        self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
         self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        # Runtime LLM invocation fields.
+        self.parameters: Mapping[str, Any] = {}
+        self.stop: Sequence[str] = ()
         self.model_type_instance = self.provider_model_bundle.model_type_instance
         self.load_balancing_manager = self._get_load_balancing_manager(
             configuration=provider_model_bundle.configuration,
@@ -163,7 +166,7 @@ class ModelInstance:
             Union[LLMResult, Generator],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -191,7 +194,7 @@ class ModelInstance:
             int,
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 prompt_messages=prompt_messages,
                 tools=tools,
@@ -200,7 +203,7 @@ class ModelInstance:
 
     def invoke_text_embedding(
         self, texts: list[str], user: str | None = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
-    ) -> TextEmbeddingResult:
+    ) -> EmbeddingResult:
         """
         Invoke large language model
 
@@ -212,12 +215,40 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
         return cast(
-            TextEmbeddingResult,
+            EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
+                user=user,
+                input_type=input_type,
+            ),
+        )
+
+    def invoke_multimodal_embedding(
+        self,
+        multimodel_documents: list[dict],
+        user: str | None = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+    ) -> EmbeddingResult:
+        """
+        Invoke large language model
+
+        :param multimodel_documents: multimodel documents to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
+        if not isinstance(self.model_type_instance, TextEmbeddingModel):
+            raise Exception("Model type instance is not TextEmbeddingModel")
+        return cast(
+            EmbeddingResult,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model_name,
+                credentials=self.credentials,
+                multimodel_documents=multimodel_documents,
                 user=user,
                 input_type=input_type,
             ),
@@ -236,7 +267,7 @@ class ModelInstance:
             list[int],
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 texts=texts,
             ),
@@ -266,7 +297,41 @@ class ModelInstance:
             RerankResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
+                credentials=self.credentials,
+                query=query,
+                docs=docs,
+                score_threshold=score_threshold,
+                top_n=top_n,
+                user=user,
+            ),
+        )
+
+    def invoke_multimodal_rerank(
+        self,
+        query: dict,
+        docs: list[dict],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+    ) -> RerankResult:
+        """
+        Invoke rerank model
+
+        :param query: search query
+        :param docs: docs for reranking
+        :param score_threshold: score threshold
+        :param top_n: top n
+        :param user: unique user id
+        :return: rerank result
+        """
+        if not isinstance(self.model_type_instance, RerankModel):
+            raise Exception("Model type instance is not RerankModel")
+        return cast(
+            RerankResult,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke_multimodal_rerank,
+                model=self.model_name,
                 credentials=self.credentials,
                 query=query,
                 docs=docs,
@@ -290,7 +355,7 @@ class ModelInstance:
             bool,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 text=text,
                 user=user,
@@ -311,7 +376,7 @@ class ModelInstance:
             str,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 file=file,
                 user=user,
@@ -334,7 +399,7 @@ class ModelInstance:
             Iterable[bytes],
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
-                model=self.model,
+                model=self.model_name,
                 credentials=self.credentials,
                 content_text=content_text,
                 user=user,
@@ -407,7 +472,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
         return self.model_type_instance.get_tts_model_voices(
-            model=self.model, credentials=self.credentials, language=language
+            model=self.model_name, credentials=self.credentials, language=language
         )
 
 
@@ -460,6 +525,32 @@ class ModelManager:
             model_type=model_type,
             model=default_model_entity.model,
         )
+
+    def check_model_support_vision(self, tenant_id: str, provider: str, model: str, model_type: ModelType) -> bool:
+        """
+        Check if model supports vision
+        :param tenant_id: tenant id
+        :param provider: provider name
+        :param model: model name
+        :return: True if model supports vision, False otherwise
+        """
+        model_instance = self.get_model_instance(tenant_id, provider, model_type, model)
+        model_type_instance = model_instance.model_type_instance
+        match model_type:
+            case ModelType.LLM:
+                model_type_instance = cast(LargeLanguageModel, model_type_instance)
+            case ModelType.TEXT_EMBEDDING:
+                model_type_instance = cast(TextEmbeddingModel, model_type_instance)
+            case ModelType.RERANK:
+                model_type_instance = cast(RerankModel, model_type_instance)
+            case _:
+                raise ValueError(f"Model type {model_type} is not supported")
+        model_schema = model_type_instance.get_model_schema(model, model_instance.credentials)
+        if not model_schema:
+            return False
+        if model_schema.features and ModelFeature.VISION in model_schema.features:
+            return True
+        return False
 
 
 class LBModelManager:

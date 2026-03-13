@@ -1,8 +1,8 @@
-import { useStore } from '@tanstack/react-form'
 import type { FormType } from '../..'
+import { useStore } from '@tanstack/react-form'
+import { useTranslation } from 'react-i18next'
 import { useFormContext } from '../..'
 import Button from '../../../button'
-import { useTranslation } from 'react-i18next'
 
 export type CustomActionsProps = {
   form: FormType
@@ -30,12 +30,12 @@ const Actions = ({
 
   return (
     <Button
-      variant='primary'
+      variant="primary"
       disabled={isSubmitting || !canSubmit}
       loading={isSubmitting}
       onClick={() => form.handleSubmit()}
     >
-      {t('common.operation.submit')}
+      {t('operation.submit', { ns: 'common' })}
     </Button>
   )
 }

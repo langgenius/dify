@@ -1,10 +1,9 @@
+import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import {
-  type MouseEvent,
-  type MouseEventHandler,
-  type ReactElement,
   cloneElement,
   forwardRef,
   isValidElement,
+
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -158,14 +157,14 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     return (
       <div
         key={option.id}
-        className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
+        className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
         onClick={() => handleSelect(option)}
       >
-        <div className='flex min-w-0 flex-1 items-center'>
-          <div className='flex h-6 w-6 shrink-0 items-center justify-center'>
+        <div className="flex min-w-0 flex-1 items-center">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
             {option.icon}
           </div>
-          <span className='ml-2 truncate'>{option.name}</span>
+          <span className="ml-2 truncate">{option.name}</span>
         </div>
         {shortcutKey && (
           <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
@@ -214,7 +213,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{ mainAxis: 8, crossAxis: -4 }}
     >
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(!open)}>
@@ -222,16 +221,16 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[12]'>
-        <div className='w-[284px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
-          <div className='mb-2 px-3 pt-2 text-sm font-medium text-text-primary'>
-            {t('workflow.common.chooseStartNodeToRun')}
+      <PortalToFollowElemContent className="z-[12]">
+        <div className="w-[284px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+          <div className="mb-2 px-3 pt-2 text-sm font-medium text-text-primary">
+            {t('common.chooseStartNodeToRun', { ns: 'workflow' })}
           </div>
           <div>
             {hasUserInput && renderOption(options.userInput!)}
 
             {(hasTriggers || hasRunAll) && hasUserInput && (
-              <div className='mx-3 my-1 h-px bg-divider-subtle' />
+              <div className="mx-3 my-1 h-px bg-divider-subtle" />
             )}
 
             {hasRunAll && renderOption(options.runAll!)}

@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 
 type ItemProps = {
   name: string
@@ -17,7 +18,7 @@ const Item = ({
 
   return (
     <div
-      className='system-md-regular rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
+      className="system-md-regular rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
       onClick={handleClick}
     >
       {name}

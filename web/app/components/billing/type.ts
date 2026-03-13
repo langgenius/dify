@@ -108,16 +108,17 @@ export type CurrentPlanInfoBackend = {
   education: {
     enabled: boolean
     activated: boolean
-  },
+  }
   webapp_copyright_enabled: boolean
   workspace_members: {
     size: number
     limit: number
-  },
+  }
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: {
     publish_enabled: boolean
-  },
+  }
+  human_input_email_delivery_enabled: boolean
 }
 
 export type SubscriptionItem = {

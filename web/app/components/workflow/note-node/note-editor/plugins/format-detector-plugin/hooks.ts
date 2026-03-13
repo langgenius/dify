@@ -1,18 +1,18 @@
-import {
-  useCallback,
-  useEffect,
-} from 'react'
+import type { LinkNode } from '@lexical/link'
+import { $isLinkNode } from '@lexical/link'
+import { $isListItemNode } from '@lexical/list'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $getSelection,
   $isRangeSelection,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { LinkNode } from '@lexical/link'
-import { $isLinkNode } from '@lexical/link'
-import { $isListItemNode } from '@lexical/list'
-import { getSelectedNode } from '../../utils'
+import {
+  useCallback,
+  useEffect,
+} from 'react'
 import { useNoteEditorStore } from '../../store'
+import { getSelectedNode } from '../../utils'
 
 export const useFormatDetector = () => {
   const [editor] = useLexicalComposerContext()

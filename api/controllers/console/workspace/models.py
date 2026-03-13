@@ -1,15 +1,16 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
@@ -23,32 +24,19 @@ class ParserGetDefault(BaseModel):
     model_type: ModelType
 
 
+class Inner(BaseModel):
+    model_type: ModelType
+    model: str | None = None
+    provider: str | None = None
+
+
 class ParserPostDefault(BaseModel):
-    class Inner(BaseModel):
-        model_type: ModelType
-        model: str
-        provider: str | None = None
-
     model_settings: list[Inner]
-
-
-console_ns.schema_model(
-    ParserGetDefault.__name__, ParserGetDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPostDefault.__name__, ParserPostDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 class ParserDeleteModels(BaseModel):
     model: str
     model_type: ModelType
-
-
-console_ns.schema_model(
-    ParserDeleteModels.__name__, ParserDeleteModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 class LoadBalancingPayload(BaseModel):
@@ -119,38 +107,26 @@ class ParserParameter(BaseModel):
     model: str
 
 
-console_ns.schema_model(
-    ParserPostModels.__name__, ParserPostModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+register_schema_models(
+    console_ns,
+    ParserGetDefault,
+    ParserPostDefault,
+    ParserDeleteModels,
+    ParserPostModels,
+    ParserGetCredentials,
+    ParserCreateCredential,
+    ParserUpdateCredential,
+    ParserDeleteCredential,
+    ParserParameter,
+    Inner,
 )
 
-console_ns.schema_model(
-    ParserGetCredentials.__name__,
-    ParserGetCredentials.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserCreateCredential.__name__,
-    ParserCreateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserUpdateCredential.__name__,
-    ParserUpdateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserDeleteCredential.__name__,
-    ParserDeleteCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserParameter.__name__, ParserParameter.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_enum_models(console_ns, ModelType)
 
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetDefault.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserGetDefault.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -186,7 +162,7 @@ class DefaultModelApi(Resource):
                     tenant_id=tenant_id,
                     model_type=model_setting.model_type,
                     provider=model_setting.provider,
-                    model=model_setting.model,
+                    model=cast(str, model_setting.model),
                 )
             except Exception as ex:
                 logger.exception(
@@ -258,7 +234,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -310,9 +286,10 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id, provider_name=provider
             )
         else:
-            model_type = args.model_type
+            # Normalize model_type to the origin value stored in DB (e.g., "text-generation" for LLM)
+            normalized_model_type = args.model_type.to_origin_model_type()
             available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
-                tenant_id=tenant_id, provider_name=provider, model_type=model_type, model_name=args.model
+                tenant_id=tenant_id, provider_name=provider, model_type=normalized_model_type, model_name=args.model
             )
 
         return jsonable_encoder(

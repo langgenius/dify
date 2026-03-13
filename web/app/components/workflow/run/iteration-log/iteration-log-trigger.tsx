@@ -1,12 +1,12 @@
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightSLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import type {
   IterationDurationMap,
   NodeTracing,
 } from '@/types/workflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { RiArrowRightSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 type IterationLogTriggerProps = {
   nodeInfo: NodeTracing
@@ -21,7 +21,8 @@ const IterationLogTrigger = ({
   const { t } = useTranslation()
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
+    if (!allExecutions)
+      return []
 
     const parallelNodes = allExecutions.filter(exec =>
       exec.execution_metadata?.parallel_mode_run_id === key,
@@ -117,9 +118,10 @@ const IterationLogTrigger = ({
       // Find all failed iteration nodes
       allExecutions.forEach((exec) => {
         if (exec.execution_metadata?.iteration_id === nodeInfo.node_id
-            && exec.status === NodeRunningStatus.Failed
-            && exec.execution_metadata?.iteration_index !== undefined)
+          && exec.status === NodeRunningStatus.Failed
+          && exec.execution_metadata?.iteration_index !== undefined) {
           failedIterationIndices.add(exec.execution_metadata.iteration_index)
+        }
       })
     }
 
@@ -129,17 +131,20 @@ const IterationLogTrigger = ({
 
   return (
     <Button
-      className='flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover'
+      className="flex w-full cursor-pointer items-center gap-2 self-stretch rounded-lg border-none bg-components-button-tertiary-bg-hover px-3 py-2 hover:bg-components-button-tertiary-bg-hover"
       onClick={handleOnShowIterationDetail}
     >
-      <Iteration className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
-      <div className='system-sm-medium flex-1 text-left text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: displayIterationCount })}{errorCount > 0 && (
-        <>
-          {t('workflow.nodes.iteration.comma')}
-          {t('workflow.nodes.iteration.error', { count: errorCount })}
-        </>
-      )}</div>
-      <RiArrowRightSLine className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
+      <Iteration className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+      <div className="system-sm-medium flex-1 text-left text-components-button-tertiary-text">
+        {t('nodes.iteration.iteration', { ns: 'workflow', count: displayIterationCount })}
+        {errorCount > 0 && (
+          <>
+            {t('nodes.iteration.comma', { ns: 'workflow' })}
+            {t('nodes.iteration.error', { ns: 'workflow', count: errorCount })}
+          </>
+        )}
+      </div>
+      <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
   )
 }

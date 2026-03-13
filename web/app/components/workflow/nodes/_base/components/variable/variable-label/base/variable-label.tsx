@@ -1,17 +1,17 @@
-import { memo } from 'react'
-import { capitalize } from 'lodash-es'
+import type { VariablePayload } from '../types'
 import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
-import type { VariablePayload } from '../types'
+import { capitalize } from 'es-toolkit/string'
+import { memo } from 'react'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
-import VariableNodeLabel from './variable-node-label'
 import VariableIcon from './variable-icon'
 import VariableName from './variable-name'
-import cn from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
-import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
+import VariableNodeLabel from './variable-node-label'
 
 const VariableLabel = ({
   nodeType,
@@ -27,7 +27,7 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isHideNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
   return (
     <div
       className={cn(
@@ -36,8 +36,9 @@ const VariableLabel = ({
       )}
       onClick={onClick}
       ref={ref}
+      {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
-      { isHideNodeLabel && (
+      {isShowNodeLabel && (
         <VariableNodeLabel
           nodeType={nodeType}
           nodeTitle={nodeTitle}
@@ -46,8 +47,8 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className='h-3 w-3 shrink-0 text-text-secondary' />
-            <div className='system-xs-regular shrink-0 text-divider-deep'>/</div>
+            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
+            <div className="shrink-0 text-divider-deep system-xs-regular">/</div>
           </>
         )
       }
@@ -61,8 +62,8 @@ const VariableLabel = ({
         notShowFullPath={notShowFullPath}
       />
       {
-        variableType && (
-          <div className='system-xs-regular shrink-0 text-text-tertiary'>
+        !!variableType && (
+          <div className="shrink-0 text-text-tertiary system-xs-regular">
             {capitalize(variableType)}
           </div>
         )
@@ -73,7 +74,7 @@ const VariableLabel = ({
             popupContent={errorMsg}
             asChild
           >
-            <RiErrorWarningFill className='h-3 w-3 shrink-0 text-text-destructive' />
+            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
           </Tooltip>
         )
       }

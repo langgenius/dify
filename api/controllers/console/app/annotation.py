@@ -1,25 +1,105 @@
-from typing import Literal
+from typing import Any, Literal
 
-from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask import abort, make_response, request
+from flask_restx import Resource
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    annotation_import_concurrency_limit,
+    annotation_import_rate_limit,
     cloud_edition_billing_resource_check,
     edit_permission_required,
     setup_required,
 )
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
-    annotation_fields,
-    annotation_hit_history_fields,
-    build_annotation_model,
+    Annotation,
+    AnnotationExportList,
+    AnnotationHitHistory,
+    AnnotationHitHistoryList,
+    AnnotationList,
 )
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class AnnotationReplyPayload(BaseModel):
+    score_threshold: float = Field(..., description="Score threshold for annotation matching")
+    embedding_provider_name: str = Field(..., description="Embedding provider name")
+    embedding_model_name: str = Field(..., description="Embedding model name")
+
+
+class AnnotationSettingUpdatePayload(BaseModel):
+    score_threshold: float = Field(..., description="Score threshold")
+
+
+class AnnotationListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Page size")
+    keyword: str = Field(default="", description="Search keyword")
+
+
+class CreateAnnotationPayload(BaseModel):
+    message_id: str | None = Field(default=None, description="Message ID")
+    question: str | None = Field(default=None, description="Question text")
+    answer: str | None = Field(default=None, description="Answer text")
+    content: str | None = Field(default=None, description="Content text")
+    annotation_reply: dict[str, Any] | None = Field(default=None, description="Annotation reply data")
+
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class UpdateAnnotationPayload(BaseModel):
+    question: str | None = None
+    answer: str | None = None
+    content: str | None = None
+    annotation_reply: dict[str, Any] | None = None
+
+
+class AnnotationReplyStatusQuery(BaseModel):
+    action: Literal["enable", "disable"]
+
+
+class AnnotationFilePayload(BaseModel):
+    message_id: str = Field(..., description="Message ID")
+
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+def reg(model: type[BaseModel]) -> None:
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AnnotationReplyPayload)
+reg(AnnotationSettingUpdatePayload)
+reg(AnnotationListQuery)
+reg(CreateAnnotationPayload)
+reg(UpdateAnnotationPayload)
+reg(AnnotationReplyStatusQuery)
+reg(AnnotationFilePayload)
+register_schema_models(
+    console_ns,
+    Annotation,
+    AnnotationList,
+    AnnotationExportList,
+    AnnotationHitHistory,
+    AnnotationHitHistoryList,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
@@ -27,16 +107,7 @@ class AnnotationReplyActionApi(Resource):
     @console_ns.doc("annotation_reply_action")
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
-    @console_ns.expect(
-        console_ns.model(
-            "AnnotationReplyActionRequest",
-            {
-                "score_threshold": fields.Float(required=True, description="Score threshold for annotation matching"),
-                "embedding_provider_name": fields.String(required=True, description="Embedding provider name"),
-                "embedding_model_name": fields.String(required=True, description="Embedding model name"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
     @console_ns.response(200, "Action completed successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -46,17 +117,12 @@ class AnnotationReplyActionApi(Resource):
     @edit_permission_required
     def post(self, app_id, action: Literal["enable", "disable"]):
         app_id = str(app_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("score_threshold", required=True, type=float, location="json")
-            .add_argument("embedding_provider_name", required=True, type=str, location="json")
-            .add_argument("embedding_model_name", required=True, type=str, location="json")
-        )
-        args = parser.parse_args()
-        if action == "enable":
-            result = AppAnnotationService.enable_app_annotation(args, app_id)
-        elif action == "disable":
-            result = AppAnnotationService.disable_app_annotation(app_id)
+        args = AnnotationReplyPayload.model_validate(console_ns.payload)
+        match action:
+            case "enable":
+                result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
+            case "disable":
+                result = AppAnnotationService.disable_app_annotation(app_id)
         return result, 200
 
 
@@ -82,16 +148,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc("update_annotation_setting")
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AnnotationSettingUpdateRequest",
-            {
-                "score_threshold": fields.Float(required=True, description="Score threshold"),
-                "embedding_provider_name": fields.String(required=True, description="Embedding provider"),
-                "embedding_model_name": fields.String(required=True, description="Embedding model"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
     @console_ns.response(200, "Settings updated successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -102,10 +159,9 @@ class AppAnnotationSettingUpdateApi(Resource):
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
 
-        parser = reqparse.RequestParser().add_argument("score_threshold", required=True, type=float, location="json")
-        args = parser.parse_args()
+        args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
 
-        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
+        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args.model_dump())
         return result, 200
 
 
@@ -142,12 +198,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("list_annotations")
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size")
-        .add_argument("keyword", type=str, location="args", default="", help="Search keyword")
-    )
+    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
     @console_ns.response(200, "Annotations retrieved successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -155,57 +206,40 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default="", type=str)
+        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        page = args.page
+        limit = args.limit
+        keyword = args.keyword
 
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
-        response = {
-            "data": marshal(annotation_list, annotation_fields),
-            "has_more": len(annotation_list) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return response, 200
+        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
+        response = AnnotationList(
+            data=annotation_models,
+            has_more=len(annotation_list) == limit,
+            limit=limit,
+            total=total,
+            page=page,
+        )
+        return response.model_dump(mode="json"), 200
 
     @console_ns.doc("create_annotation")
     @console_ns.doc(description="Create a new annotation for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "CreateAnnotationRequest",
-            {
-                "message_id": fields.String(description="Message ID (optional)"),
-                "question": fields.String(description="Question text (required when message_id not provided)"),
-                "answer": fields.String(description="Answer text (use 'answer' or 'content')"),
-                "content": fields.String(description="Content text (use 'answer' or 'content')"),
-                "annotation_reply": fields.Raw(description="Annotation reply data"),
-            },
-        )
-    )
-    @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
+    @console_ns.expect(console_ns.models[CreateAnnotationPayload.__name__])
+    @console_ns.response(201, "Annotation created successfully", console_ns.models[Annotation.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
-    @marshal_with(annotation_fields)
     @edit_permission_required
     def post(self, app_id):
         app_id = str(app_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("message_id", required=False, type=uuid_value, location="json")
-            .add_argument("question", required=False, type=str, location="json")
-            .add_argument("answer", required=False, type=str, location="json")
-            .add_argument("content", required=False, type=str, location="json")
-            .add_argument("annotation_reply", required=False, type=dict, location="json")
-        )
-        args = parser.parse_args()
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
-        return annotation
+        args = CreateAnnotationPayload.model_validate(console_ns.payload)
+        data = args.model_dump(exclude_none=True)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, app_id)
+        return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
@@ -237,12 +271,12 @@ class AnnotationApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
 class AnnotationExportApi(Resource):
     @console_ns.doc("export_annotations")
-    @console_ns.doc(description="Export all annotations for an app")
+    @console_ns.doc(description="Export all annotations for an app with CSV injection protection")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
         200,
         "Annotations exported successfully",
-        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
+        console_ns.models[AnnotationExportList.__name__],
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -252,15 +286,15 @@ class AnnotationExportApi(Resource):
     def get(self, app_id):
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-        response = {"data": marshal(annotation_list, annotation_fields)}
-        return response, 200
+        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
+        response_data = AnnotationExportList(data=annotation_models).model_dump(mode="json")
 
+        # Create response with secure headers for CSV export
+        response = make_response(response_data, 200)
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+        response.headers["X-Content-Type-Options"] = "nosniff"
 
-parser = (
-    reqparse.RequestParser()
-    .add_argument("question", required=True, type=str, location="json")
-    .add_argument("answer", required=True, type=str, location="json")
-)
+        return response
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
@@ -268,22 +302,23 @@ class AnnotationUpdateDeleteApi(Resource):
     @console_ns.doc("update_delete_annotation")
     @console_ns.doc(description="Update or delete an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(console_ns))
+    @console_ns.response(200, "Annotation updated successfully", console_ns.models[Annotation.__name__])
     @console_ns.response(204, "Annotation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[UpdateAnnotationPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
-    @marshal_with(annotation_fields)
     def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        args = parser.parse_args()
-        annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
-        return annotation
+        args = UpdateAnnotationPayload.model_validate(console_ns.payload)
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            args.model_dump(exclude_none=True), app_id, annotation_id
+        )
+        return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
@@ -299,18 +334,25 @@ class AnnotationUpdateDeleteApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV file")
+    @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Batch import started successfully")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "No file uploaded or too many files")
+    @console_ns.response(413, "File too large")
+    @console_ns.response(429, "Too many requests or concurrent imports")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @annotation_import_rate_limit
+    @annotation_import_concurrency_limit
     @edit_permission_required
     def post(self, app_id):
+        from configs import dify_config
+
         app_id = str(app_id)
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -320,9 +362,27 @@ class AnnotationBatchImportApi(Resource):
 
         # get file from request
         file = request.files["file"]
+
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
+
+        # Check file size before processing
+        file.seek(0, 2)  # Seek to end of file
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+
+        max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
+        if file_size > max_size_bytes:
+            abort(
+                413,
+                f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
+                f"Please reduce the file size and try again.",
+            )
+
+        if file_size == 0:
+            raise ValueError("The uploaded file is empty")
+
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
 
@@ -366,14 +426,7 @@ class AnnotationHitHistoryListApi(Resource):
     @console_ns.response(
         200,
         "Hit histories retrieved successfully",
-        console_ns.model(
-            "AnnotationHitHistoryList",
-            {
-                "data": fields.List(
-                    fields.Nested(console_ns.model("AnnotationHitHistoryItem", annotation_hit_history_fields))
-                )
-            },
-        ),
+        console_ns.models[AnnotationHitHistoryList.__name__],
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -388,11 +441,14 @@ class AnnotationHitHistoryListApi(Resource):
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
             app_id, annotation_id, page, limit
         )
-        response = {
-            "data": marshal(annotation_hit_history_list, annotation_hit_history_fields),
-            "has_more": len(annotation_hit_history_list) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return response
+        history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
+            annotation_hit_history_list, from_attributes=True
+        )
+        response = AnnotationHitHistoryList(
+            data=history_models,
+            has_more=len(annotation_hit_history_list) == limit,
+            limit=limit,
+            total=total,
+            page=page,
+        )
+        return response.model_dump(mode="json")

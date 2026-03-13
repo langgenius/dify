@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Журналы действий",
+  "circularInvocationTip": "В текущем рабочем процессе существует циклический вызов инструментов/узлов.",
+  "detail": "ДЕТАЛИ",
+  "input": "ВВОД",
+  "meta.executor": "Исполнитель",
+  "meta.startTime": "Время начала",
+  "meta.status": "Статус",
+  "meta.steps": "Шаги выполнения",
+  "meta.time": "Прошедшее время",
+  "meta.title": "МЕТАДАННЫЕ",
+  "meta.tokens": "Всего токенов",
+  "meta.version": "Версия",
+  "result": "РЕЗУЛЬТАТ",
+  "resultEmpty.link": "панель деталей",
+  "resultEmpty.tipLeft": "пожалуйста, перейдите на ",
+  "resultEmpty.tipRight": " чтобы просмотреть его.",
+  "resultEmpty.title": "Этот запуск выводит только формат JSON,",
+  "resultPanel.status": "СТАТУС",
+  "resultPanel.time": "ПРОШЕДШЕЕ ВРЕМЯ",
+  "resultPanel.tokens": "ВСЕГО ТОКЕНОВ",
+  "tracing": "ТРАССИРОВКА"
+}

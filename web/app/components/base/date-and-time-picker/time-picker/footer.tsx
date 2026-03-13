@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { TimePickerFooterProps } from '../types'
-import Button from '../../button'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '../../button'
 
 const Footer: FC<TimePickerFooterProps> = ({
   handleSelectCurrentTime,
@@ -10,24 +11,24 @@ const Footer: FC<TimePickerFooterProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-between border-t-[0.5px] border-divider-regular p-2'>
+    <div className="flex items-center justify-between border-t-[0.5px] border-divider-regular p-2">
       {/* Now Button */}
       <Button
-        variant='secondary-accent'
-        size='small'
-        className='mr-1 flex-1'
+        variant="secondary-accent"
+        size="small"
+        className="mr-1 flex-1"
         onClick={handleSelectCurrentTime}
       >
-        {t('time.operation.now')}
+        {t('operation.now', { ns: 'time' })}
       </Button>
       {/* Confirm Button */}
       <Button
-        variant='primary'
-        size='small'
-        className='ml-1 flex-1'
+        variant="primary"
+        size="small"
+        className="ml-1 flex-1"
         onClick={handleConfirm.bind(null)}
       >
-        {t('time.operation.ok')}
+        {t('operation.ok', { ns: 'time' })}
       </Button>
     </div>
   )

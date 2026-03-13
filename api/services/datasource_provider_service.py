@@ -10,11 +10,11 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
+from dify_graph.model_runtime.entities.provider_entities import FormType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
@@ -29,8 +29,14 @@ def get_current_user():
     from models.account import Account
     from models.model import EndUser
 
-    if not isinstance(current_user._get_current_object(), (Account, EndUser)):  # type: ignore
-        raise TypeError(f"current_user must be Account or EndUser, got {type(current_user).__name__}")
+    try:
+        user_object = current_user._get_current_object()
+    except AttributeError:
+        # Handle case where current_user might not be a LocalProxy in test environments
+        user_object = current_user
+
+    if not isinstance(user_object, (Account, EndUser)):
+        raise TypeError(f"current_user must be Account or EndUser, got {type(user_object).__name__}")
     return current_user
 
 
@@ -818,6 +824,7 @@ class DatasourceProviderService:
                 "langgenius/firecrawl_datasource",
                 "langgenius/notion_datasource",
                 "langgenius/jina_datasource",
+                "watercrawl/watercrawl_datasource",
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(

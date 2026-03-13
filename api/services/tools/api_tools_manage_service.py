@@ -7,7 +7,6 @@ from httpx import get
 from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -21,6 +20,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -85,7 +85,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict | None = None) -> tuple[list[ApiToolBundle], str]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: dict | None = None
+    ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
 
@@ -103,7 +105,7 @@ class ApiToolManageService:
         provider_name: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
         custom_disclaimer: str,
@@ -112,9 +114,6 @@ class ApiToolManageService:
         """
         create api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
@@ -241,18 +240,15 @@ class ApiToolManageService:
         original_provider: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        _schema_type: ApiProviderSchemaType,
         schema: str,
-        privacy_policy: str,
+        privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
     ):
         """
         update api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
@@ -277,7 +273,7 @@ class ApiToolManageService:
         provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get("description", "")
-        provider.schema_type_str = ApiProviderSchemaType.OPENAPI
+        provider.schema_type_str = schema_type
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
@@ -356,7 +352,7 @@ class ApiToolManageService:
         tool_name: str,
         credentials: dict,
         parameters: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
     ):
         """

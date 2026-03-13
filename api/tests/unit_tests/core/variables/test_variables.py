@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.variables import (
+from dify_graph.variables import (
     ArrayFileVariable,
     ArrayVariable,
     FloatVariable,
@@ -11,7 +11,7 @@ from core.variables import (
     SegmentType,
     StringVariable,
 )
-from core.variables.variables import Variable
+from dify_graph.variables.variables import VariableBase
 
 
 def test_frozen_variables():
@@ -76,7 +76,7 @@ def test_object_variable_to_object():
 
 
 def test_variable_to_object():
-    var: Variable = StringVariable(name="text", value="text")
+    var: VariableBase = StringVariable(name="text", value="text")
     assert var.to_object() == "text"
     var = IntegerVariable(name="integer", value=42)
     assert var.to_object() == 42

@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from 'react'
-import { BlockEnum, type CommonNodeType } from '../types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
-import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { CommonNodeType } from '../types'
+import { useCallback, useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -15,9 +16,9 @@ import {
   useAllTriggerPlugins,
   useInvalidateAllTriggerPlugins,
 } from '@/service/use-triggers'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { useStore } from '../store'
 import { canFindTool } from '@/utils'
+import { useStore } from '../store'
+import { BlockEnum } from '../types'
 
 type InstallationState = {
   isChecking: boolean

@@ -1,153 +1,153 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "36",
-			"height": "36",
-			"viewBox": "0 0 36 36",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"clip-path": "url(#clip0_13429_43710)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "rect",
-						"attributes": {
-							"width": "36",
-							"height": "36",
-							"rx": "8",
-							"fill": "#FFF6ED"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"opacity": "0.7",
-							"d": "M22.25 28C22.25 29.7949 20.7949 31.25 19 31.25C17.2051 31.25 15.75 29.7949 15.75 28C15.75 26.2051 17.2051 24.75 19 24.75C20.7949 24.75 22.25 26.2051 22.25 28Z",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M19 12C21.2091 12 23 10.2091 23 8C23 5.79086 21.2091 4 19 4C16.7909 4 15 5.79086 15 8C15 10.2091 16.7909 12 19 12Z",
-							"fill": "#FB6514"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M15 22C17.2091 22 19 20.2091 19 18C19 15.7909 17.2091 14 15 14C12.7909 14 11 15.7909 11 18C11 20.2091 12.7909 22 15 22Z",
-							"fill": "#FB6514"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M36 23C38.7614 23 41 20.7614 41 18C41 15.2386 38.7614 13 36 13C33.2386 13 31 15.2386 31 18C31 20.7614 33.2386 23 36 23Z",
-							"fill": "#FB6514"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M0 18H10",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M20 18L30 18",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M0.00112438 15C0.00112438 15 -5.64364 15 0.851673 15C7.34699 15 7.84654 8 14 8",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M23.75 9.28125C26.5688 10.1847 27.699 13.2045 30.625 15.0312",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"opacity": "0.7",
-							"d": "M-0.000543833 21C-0.000543833 21 -5.57819 21 0.893635 21C7.36546 21 7.8688 28 14 28",
-							"stroke": "#FB6514",
-							"stroke-width": "1.5"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_13429_43710"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "36",
-									"height": "36",
-									"rx": "8",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "MultiPathRetrieval"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "36",
+      "height": "36",
+      "viewBox": "0 0 36 36",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "clip-path": "url(#clip0_13429_43710)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "rect",
+            "attributes": {
+              "width": "36",
+              "height": "36",
+              "rx": "8",
+              "fill": "#FFF6ED"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "opacity": "0.7",
+              "d": "M22.25 28C22.25 29.7949 20.7949 31.25 19 31.25C17.2051 31.25 15.75 29.7949 15.75 28C15.75 26.2051 17.2051 24.75 19 24.75C20.7949 24.75 22.25 26.2051 22.25 28Z",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M19 12C21.2091 12 23 10.2091 23 8C23 5.79086 21.2091 4 19 4C16.7909 4 15 5.79086 15 8C15 10.2091 16.7909 12 19 12Z",
+              "fill": "#FB6514"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M15 22C17.2091 22 19 20.2091 19 18C19 15.7909 17.2091 14 15 14C12.7909 14 11 15.7909 11 18C11 20.2091 12.7909 22 15 22Z",
+              "fill": "#FB6514"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M36 23C38.7614 23 41 20.7614 41 18C41 15.2386 38.7614 13 36 13C33.2386 13 31 15.2386 31 18C31 20.7614 33.2386 23 36 23Z",
+              "fill": "#FB6514"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M0 18H10",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M20 18L30 18",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M0.00112438 15C0.00112438 15 -5.64364 15 0.851673 15C7.34699 15 7.84654 8 14 8",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "d": "M23.75 9.28125C26.5688 10.1847 27.699 13.2045 30.625 15.0312",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "opacity": "0.7",
+              "d": "M-0.000543833 21C-0.000543833 21 -5.57819 21 0.893635 21C7.36546 21 7.8688 28 14 28",
+              "stroke": "#FB6514",
+              "stroke-width": "1.5"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_13429_43710"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "36",
+                  "height": "36",
+                  "rx": "8",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "MultiPathRetrieval"
 }

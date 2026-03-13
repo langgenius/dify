@@ -1,12 +1,13 @@
 import lamejs from 'lamejs'
-import MPEGMode from 'lamejs/src/js/MPEGMode'
-import Lame from 'lamejs/src/js/Lame'
 import BitStream from 'lamejs/src/js/BitStream'
+import Lame from 'lamejs/src/js/Lame'
+import MPEGMode from 'lamejs/src/js/MPEGMode'
 
+/* v8 ignore next - @preserve */
 if (globalThis) {
   (globalThis as any).MPEGMode = MPEGMode
-  ;(globalThis as any).Lame = Lame
-  ;(globalThis as any).BitStream = BitStream
+  ; (globalThis as any).Lame = Lame
+  ; (globalThis as any).BitStream = BitStream
 }
 
 export const convertToMp3 = (recorder: any) => {

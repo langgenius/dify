@@ -2,7 +2,10 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from pydantic import TypeAdapter, ValidationError
+from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 from models import Account, Tenant
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -32,7 +35,7 @@ class TestApiToolManageService:
                 "provider_controller": mock_provider_controller,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -53,18 +56,16 @@ class TestApiToolManageService:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         from models.account import TenantAccountJoin, TenantAccountRole
@@ -75,8 +76,8 @@ class TestApiToolManageService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -116,7 +117,7 @@ class TestApiToolManageService:
         """
 
     def test_parser_api_schema_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful parsing of API schema.
@@ -161,7 +162,7 @@ class TestApiToolManageService:
         assert api_key_value_field["default"] == ""
 
     def test_parser_api_schema_invalid_schema(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test parsing of invalid API schema.
@@ -181,7 +182,7 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_parser_api_schema_malformed_json(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test parsing of malformed JSON schema.
@@ -201,7 +202,7 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_convert_schema_to_tool_bundles_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of schema to tool bundles.
@@ -231,7 +232,7 @@ class TestApiToolManageService:
         assert tool_bundle.operation_id == "testOperation"
 
     def test_convert_schema_to_tool_bundles_with_extra_info(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful conversion of schema to tool bundles with extra info.
@@ -257,7 +258,7 @@ class TestApiToolManageService:
         assert isinstance(schema_type, str)
 
     def test_convert_schema_to_tool_bundles_invalid_schema(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test conversion of invalid schema to tool bundles.
@@ -277,7 +278,7 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_create_api_tool_provider_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful creation of API tool provider.
@@ -298,7 +299,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {"auth_type": "none", "api_key_header": "X-API-Key", "api_key_value": ""}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -322,10 +323,9 @@ class TestApiToolManageService:
         assert result == {"result": "success"}
 
         # Verify database state
-        from extensions.ext_database import db
 
         provider = (
-            db.session.query(ApiToolProvider)
+            db_session_with_containers.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )
@@ -345,7 +345,7 @@ class TestApiToolManageService:
         mock_external_service_dependencies["provider_controller"].load_bundled_tools.assert_called_once()
 
     def test_create_api_tool_provider_duplicate_name(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creation of API tool provider with duplicate name.
@@ -364,7 +364,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {"auth_type": "none"}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -402,7 +402,7 @@ class TestApiToolManageService:
         assert f"provider {provider_name} already exists" in str(exc_info.value)
 
     def test_create_api_tool_provider_invalid_schema_type(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creation of API tool provider with invalid schema type.
@@ -428,24 +428,13 @@ class TestApiToolManageService:
         labels = ["test"]
 
         # Act & Assert: Try to create provider with invalid schema type
-        with pytest.raises(ValueError) as exc_info:
-            ApiToolManageService.create_api_tool_provider(
-                user_id=account.id,
-                tenant_id=tenant.id,
-                provider_name=provider_name,
-                icon=icon,
-                credentials=credentials,
-                schema_type=schema_type,
-                schema=schema,
-                privacy_policy=privacy_policy,
-                custom_disclaimer=custom_disclaimer,
-                labels=labels,
-            )
+        with pytest.raises(ValidationError) as exc_info:
+            TypeAdapter(ApiProviderSchemaType).validate_python(schema_type)
 
-        assert "invalid schema type" in str(exc_info.value)
+        assert "validation error" in str(exc_info.value)
 
     def test_create_api_tool_provider_missing_auth_type(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test creation of API tool provider with missing auth type.
@@ -464,7 +453,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔧"}
         credentials = {}  # Missing auth_type
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -488,7 +477,7 @@ class TestApiToolManageService:
         assert "auth_type is required" in str(exc_info.value)
 
     def test_create_api_tool_provider_with_api_key_auth(
-        self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful creation of API tool provider with API key authentication.
@@ -507,7 +496,7 @@ class TestApiToolManageService:
         provider_name = fake.company()
         icon = {"type": "emoji", "value": "🔑"}
         credentials = {"auth_type": "api_key", "api_key_header": "X-API-Key", "api_key_value": fake.uuid4()}
-        schema_type = "openapi"
+        schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
         privacy_policy = "https://example.com/privacy"
         custom_disclaimer = "Custom disclaimer text"
@@ -531,10 +520,9 @@ class TestApiToolManageService:
         assert result == {"result": "success"}
 
         # Verify database state
-        from extensions.ext_database import db
 
         provider = (
-            db.session.query(ApiToolProvider)
+            db_session_with_containers.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )

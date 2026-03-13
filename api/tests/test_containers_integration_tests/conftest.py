@@ -10,8 +10,11 @@ more reliable and realistic test scenarios.
 import logging
 import os
 from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Protocol, TypeVar
 
+import psycopg2
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
@@ -29,6 +32,25 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+
+class _CloserProtocol(Protocol):
+    """_Closer is any type which implement the close() method."""
+
+    def close(self):
+        """close the current object, release any external resouece (file, transaction, connection etc.)
+        associated with it.
+        """
+        pass
+
+
+_Closer = TypeVar("_Closer", bound=_CloserProtocol)
+
+
+@contextmanager
+def _auto_close(closer: _Closer) -> Generator[_Closer, None, None]:
+    yield closer
+    closer.close()
 
 
 class DifyTestContainers:
@@ -97,50 +119,33 @@ class DifyTestContainers:
         wait_for_logs(self.postgres, "is ready to accept connections", timeout=30)
         logger.info("PostgreSQL container is ready and accepting connections")
 
-        # Install uuid-ossp extension for UUID generation
-        logger.info("Installing uuid-ossp extension...")
-        try:
-            import psycopg2
-
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-            cursor.close()
-            conn.close()
+        conn = psycopg2.connect(
+            host=db_host,
+            port=db_port,
+            user=self.postgres.username,
+            password=self.postgres.password,
+            database=self.postgres.dbname,
+        )
+        conn.autocommit = True
+        with _auto_close(conn):
+            with conn.cursor() as cursor:
+                # Install uuid-ossp extension for UUID generation
+                logger.info("Installing uuid-ossp extension...")
+                cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
             logger.info("uuid-ossp extension installed successfully")
-        except Exception as e:
-            logger.warning("Failed to install uuid-ossp extension: %s", e)
 
-        # Create plugin database for dify-plugin-daemon
-        logger.info("Creating plugin database...")
-        try:
-            conn = psycopg2.connect(
-                host=db_host,
-                port=db_port,
-                user=self.postgres.username,
-                password=self.postgres.password,
-                database=self.postgres.dbname,
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            cursor.execute("CREATE DATABASE dify_plugin;")
-            cursor.close()
-            conn.close()
+            # NOTE: We cannot use `with conn.cursor() as cursor:` as it will wrap the statement
+            # inside a transaction. However, the `CREATE DATABASE` statement cannot run inside a transaction block.
+            with _auto_close(conn.cursor()) as cursor:
+                # Create plugin database for dify-plugin-daemon
+                logger.info("Creating plugin database...")
+                cursor.execute("CREATE DATABASE dify_plugin;")
             logger.info("Plugin database created successfully")
-        except Exception as e:
-            logger.warning("Failed to create plugin database: %s", e)
 
         # Set up storage environment variables
-        os.environ["STORAGE_TYPE"] = "opendal"
-        os.environ["OPENDAL_SCHEME"] = "fs"
-        os.environ["OPENDAL_FS_ROOT"] = "storage"
+        os.environ.setdefault("STORAGE_TYPE", "opendal")
+        os.environ.setdefault("OPENDAL_SCHEME", "fs")
+        os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 
         # Start Redis container for caching and session management
         # Redis is used for storing session data, cache entries, and temporary data
@@ -258,23 +263,16 @@ class DifyTestContainers:
         containers = [self.redis, self.postgres, self.dify_sandbox, self.dify_plugin_daemon]
         for container in containers:
             if container:
-                try:
-                    container_name = container.image
-                    logger.info("Stopping container: %s", container_name)
-                    container.stop()
-                    logger.info("Successfully stopped container: %s", container_name)
-                except Exception as e:
-                    # Log error but don't fail the test cleanup
-                    logger.warning("Failed to stop container %s: %s", container, e)
+                container_name = container.image
+                logger.info("Stopping container: %s", container_name)
+                container.stop()
+                logger.info("Successfully stopped container: %s", container_name)
 
         # Stop and remove the network
         if self.network:
-            try:
-                logger.info("Removing Docker network...")
-                self.network.remove()
-                logger.info("Successfully removed Docker network")
-            except Exception as e:
-                logger.warning("Failed to remove Docker network: %s", e)
+            logger.info("Removing Docker network...")
+            self.network.remove()
+            logger.info("Successfully removed Docker network")
 
         self._containers_started = False
         logger.info("All test containers stopped and cleaned up successfully")
@@ -347,6 +345,13 @@ def _create_app_with_containers() -> Flask:
         Flask: Configured Flask application for containerized testing
     """
     logger.info("Creating Flask application with test container configuration...")
+
+    # Ensure Redis client reconnects to the containerized Redis (no auth)
+    from extensions import ext_redis
+
+    ext_redis.redis_client._client = None
+    os.environ["REDIS_USERNAME"] = ""
+    os.environ["REDIS_PASSWORD"] = ""
 
     # Re-create the config after environment variables have been set
     from configs import dify_config
@@ -486,3 +491,29 @@ def db_session_with_containers(flask_app_with_containers) -> Generator[Session, 
         finally:
             session.close()
             logger.debug("Database session closed")
+
+
+@pytest.fixture(scope="package", autouse=True)
+def mock_ssrf_proxy_requests():
+    """
+    Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
+    """
+
+    from unittest.mock import patch
+
+    import httpx
+
+    def _fake_request(method, url, **kwargs):
+        request = httpx.Request(method=method, url=url)
+        return httpx.Response(200, request=request, content=b"")
+
+    with (
+        patch("core.helper.ssrf_proxy.make_request", side_effect=_fake_request),
+        patch("core.helper.ssrf_proxy.get", side_effect=lambda url, **kw: _fake_request("GET", url, **kw)),
+        patch("core.helper.ssrf_proxy.post", side_effect=lambda url, **kw: _fake_request("POST", url, **kw)),
+        patch("core.helper.ssrf_proxy.put", side_effect=lambda url, **kw: _fake_request("PUT", url, **kw)),
+        patch("core.helper.ssrf_proxy.patch", side_effect=lambda url, **kw: _fake_request("PATCH", url, **kw)),
+        patch("core.helper.ssrf_proxy.delete", side_effect=lambda url, **kw: _fake_request("DELETE", url, **kw)),
+        patch("core.helper.ssrf_proxy.head", side_effect=lambda url, **kw: _fake_request("HEAD", url, **kw)),
+    ):
+        yield

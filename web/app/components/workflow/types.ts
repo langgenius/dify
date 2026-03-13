@@ -4,21 +4,26 @@ import type {
   Viewport,
   XYPosition,
 } from 'reactflow'
-import type { Resolution, TransferMethod } from '@/types/app'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
-import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { Resolution, TransferMethod } from '@/types/app'
+import type {
+  FileResponse,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  NodeTracing,
+  PanelProps,
+} from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -44,6 +49,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  HumanInput = 'human-input',
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
@@ -76,7 +82,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: { nodeId: string; nodeType: BlockEnum }[]
+  _children?: { nodeId: string, nodeType: BlockEnum }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -122,13 +128,13 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum,
-  _isTemp?: boolean,
+  targetType: BlockEnum
+  _isTemp?: boolean
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
-export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
+export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
@@ -192,7 +198,6 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
-  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
@@ -202,6 +207,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -224,7 +230,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
-  json_schema?: string // for jsonObject type
+  json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -337,7 +343,7 @@ export type NodeDefault<T = {}> = {
   }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
-  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
+  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
   getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
     schemaTypeDefinitions?: SchemaTypeDefinition[]
   }) => Var[]
@@ -351,6 +357,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export enum WorkflowVersion {
@@ -368,6 +375,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export type OnNodeAdd = (
@@ -427,6 +435,8 @@ export type WorkflowRunningData = {
     exceptions_count?: number
   }
   tracing?: NodeTracing[]
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type HistoryWorkflowData = {
@@ -470,6 +480,7 @@ export enum SupportUploadFileTypes {
 
 export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
+  allowed_upload_methods?: TransferMethod[]
   allowed_file_types: SupportUploadFileTypes[]
   allowed_file_extensions?: string[]
   max_length: number
@@ -495,7 +506,7 @@ export enum VersionHistoryContextMenuOptions {
 }
 
 export type ChildNodeTypeCount = {
-  [key: string]: number;
+  [key: string]: number
 }
 
 export const TRIGGER_NODE_TYPES = [

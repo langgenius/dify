@@ -13,9 +13,10 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from dify_graph.file import File
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
 
@@ -146,6 +147,7 @@ class ChatAppRunner(AppRunner):
 
         # get context from datasets
         context = None
+        context_files: list[File] = []
         if app_config.dataset and app_config.dataset.dataset_ids:
             hit_callback = DatasetIndexToolCallbackHandler(
                 queue_manager,
@@ -156,7 +158,7 @@ class ChatAppRunner(AppRunner):
             )
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context = dataset_retrieval.retrieve(
+            context, retrieved_files = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -171,7 +173,13 @@ class ChatAppRunner(AppRunner):
                 memory=memory,
                 message_id=message.id,
                 inputs=inputs,
+                vision_enabled=bool(
+                    application_generate_entity.app_config.app_model_config_dict.get("file_upload", {})
+                    .get("image", {})
+                    .get("enabled", False)
+                ),
             )
+            context_files = retrieved_files or []
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -186,6 +194,7 @@ class ChatAppRunner(AppRunner):
             context=context,
             memory=memory,
             image_detail_config=image_detail_config,
+            context_files=context_files,
         )
 
         # check hosting moderation
@@ -219,5 +228,10 @@ class ChatAppRunner(AppRunner):
 
         # handle invoke result
         self._handle_invoke_result(
-            invoke_result=invoke_result, queue_manager=queue_manager, stream=application_generate_entity.stream
+            invoke_result=invoke_result,
+            queue_manager=queue_manager,
+            stream=application_generate_entity.stream,
+            message_id=message.id,
+            user_id=application_generate_entity.user_id,
+            tenant_id=app_config.tenant_id,
         )

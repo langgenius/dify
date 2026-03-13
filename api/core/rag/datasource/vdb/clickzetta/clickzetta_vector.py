@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import json
 import logging
@@ -6,7 +8,7 @@ import re
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -76,7 +78,7 @@ class ClickzettaConnectionPool:
     Manages connection reuse across ClickzettaVector instances.
     """
 
-    _instance: Optional["ClickzettaConnectionPool"] = None
+    _instance: ClickzettaConnectionPool | None = None
     _lock = threading.Lock()
 
     def __init__(self):
@@ -89,7 +91,7 @@ class ClickzettaConnectionPool:
         self._start_cleanup_thread()
 
     @classmethod
-    def get_instance(cls) -> "ClickzettaConnectionPool":
+    def get_instance(cls) -> ClickzettaConnectionPool:
         """Get singleton instance of connection pool."""
         if cls._instance is None:
             with cls._lock:
@@ -104,7 +106,7 @@ class ClickzettaConnectionPool:
             f"{config.workspace}:{config.vcluster}:{config.schema_name}"
         )
 
-    def _create_connection(self, config: ClickzettaConfig) -> "Connection":
+    def _create_connection(self, config: ClickzettaConfig) -> Connection:
         """Create a new ClickZetta connection."""
         max_retries = 3
         retry_delay = 1.0
@@ -134,7 +136,7 @@ class ClickzettaConnectionPool:
 
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
 
-    def _configure_connection(self, connection: "Connection"):
+    def _configure_connection(self, connection: Connection):
         """Configure connection session settings."""
         try:
             with connection.cursor() as cursor:
@@ -181,7 +183,7 @@ class ClickzettaConnectionPool:
         except Exception:
             logger.exception("Failed to configure connection, continuing with defaults")
 
-    def _is_connection_valid(self, connection: "Connection") -> bool:
+    def _is_connection_valid(self, connection: Connection) -> bool:
         """Check if connection is still valid."""
         try:
             with connection.cursor() as cursor:
@@ -190,7 +192,7 @@ class ClickzettaConnectionPool:
         except Exception:
             return False
 
-    def get_connection(self, config: ClickzettaConfig) -> "Connection":
+    def get_connection(self, config: ClickzettaConfig) -> Connection:
         """Get a connection from the pool or create a new one."""
         config_key = self._get_config_key(config)
 
@@ -221,7 +223,7 @@ class ClickzettaConnectionPool:
             # No valid connection found, create new one
             return self._create_connection(config)
 
-    def return_connection(self, config: ClickzettaConfig, connection: "Connection"):
+    def return_connection(self, config: ClickzettaConfig, connection: Connection):
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
 
@@ -315,22 +317,22 @@ class ClickzettaVector(BaseVector):
         self._connection_pool = ClickzettaConnectionPool.get_instance()
         self._init_write_queue()
 
-    def _get_connection(self) -> "Connection":
+    def _get_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
-    def _return_connection(self, connection: "Connection"):
+    def _return_connection(self, connection: Connection):
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
 
     class ConnectionContext:
         """Context manager for borrowing and returning connections."""
 
-        def __init__(self, vector_instance: "ClickzettaVector"):
+        def __init__(self, vector_instance: ClickzettaVector):
             self.vector = vector_instance
             self.connection: Connection | None = None
 
-        def __enter__(self) -> "Connection":
+        def __enter__(self) -> Connection:
             self.connection = self.vector._get_connection()
             return self.connection
 
@@ -338,7 +340,7 @@ class ClickzettaVector(BaseVector):
             if self.connection:
                 self.vector._return_connection(self.connection)
 
-    def get_connection_context(self) -> "ClickzettaVector.ConnectionContext":
+    def get_connection_context(self) -> ClickzettaVector.ConnectionContext:
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
@@ -437,7 +439,7 @@ class ClickzettaVector(BaseVector):
         """Return the vector database type."""
         return "clickzetta"
 
-    def _ensure_connection(self) -> "Connection":
+    def _ensure_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._get_connection()
 
@@ -603,25 +605,36 @@ class ClickzettaVector(BaseVector):
                 logger.warning("Failed to create inverted index: %s", e)
                 # Continue without inverted index - full-text search will fall back to LIKE
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         """Add documents with embeddings to the collection."""
         if not documents:
-            return
+            return []
 
         batch_size = self._config.batch_size
         total_batches = (len(documents) + batch_size - 1) // batch_size
+        added_ids = []
 
         for i in range(0, len(documents), batch_size):
             batch_docs = documents[i : i + batch_size]
             batch_embeddings = embeddings[i : i + batch_size]
+            batch_doc_ids = []
+            for doc in batch_docs:
+                metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+                batch_doc_ids.append(self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4()))))
+            added_ids.extend(batch_doc_ids)
 
             # Execute batch insert through write queue
-            self._execute_write(self._insert_batch, batch_docs, batch_embeddings, i, batch_size, total_batches)
+            self._execute_write(
+                self._insert_batch, batch_docs, batch_embeddings, batch_doc_ids, i, batch_size, total_batches
+            )
+
+        return added_ids
 
     def _insert_batch(
         self,
         batch_docs: list[Document],
         batch_embeddings: list[list[float]],
+        batch_doc_ids: list[str],
         batch_index: int,
         batch_size: int,
         total_batches: int,
@@ -639,14 +652,9 @@ class ClickzettaVector(BaseVector):
         data_rows = []
         vector_dimension = len(batch_embeddings[0]) if batch_embeddings and batch_embeddings[0] else 768
 
-        for doc, embedding in zip(batch_docs, batch_embeddings):
+        for doc, embedding, doc_id in zip(batch_docs, batch_embeddings, batch_doc_ids):
             # Optimized: minimal checks for common case, fallback for edge cases
-            metadata = doc.metadata or {}
-
-            if not isinstance(metadata, dict):
-                metadata = {}
-
-            doc_id = self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4())))
+            metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
 
             # Fast path for JSON serialization
             try:
@@ -984,9 +992,11 @@ class ClickzettaVector(BaseVector):
 
         # No need for dataset_id filter since each dataset has its own table
 
-        # Use simple quote escaping for LIKE clause
-        escaped_query = query.replace("'", "''")
-        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%'")
+        # Escape special characters for LIKE clause to prevent SQL injection
+        from libs.helper import escape_like_pattern
+
+        escaped_query = escape_like_pattern(query).replace("'", "''")
+        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%' ESCAPE '\\\\'")
         where_clause = " AND ".join(filter_clauses)
 
         search_sql = f"""

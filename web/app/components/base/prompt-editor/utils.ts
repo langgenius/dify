@@ -1,4 +1,4 @@
-import { $isAtNodeEnd } from '@lexical/selection'
+import type { EntityMatch } from '@lexical/text'
 import type {
   ElementNode,
   Klass,
@@ -7,15 +7,15 @@ import type {
   RangeSelection,
   TextNode,
 } from 'lexical'
+import type { MenuTextMatch } from './types'
+import { $isAtNodeEnd } from '@lexical/selection'
 import {
   $createTextNode,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
 } from 'lexical'
-import type { EntityMatch } from '@lexical/text'
 import { CustomTextNode } from './plugins/custom-text/node'
-import type { MenuTextMatch } from './types'
 
 export function getSelectedNode(
   selection: RangeSelection,

@@ -1,15 +1,41 @@
+import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type { FlowType } from '@/types/common'
+import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { unionBy } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+
+import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { unionBy } from 'lodash-es'
-import { produce } from 'immer'
+import {
+  useStoreApi,
+} from 'reactflow'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import Toast from '@/app/components/base/toast'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-
-import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import Assigner from '@/app/components/workflow/nodes/assigner/default'
+import CodeDefault from '@/app/components/workflow/nodes/code/default'
+import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
+import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
+import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
+import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
+import LLMDefault from '@/app/components/workflow/nodes/llm/default'
+import LoopDefault from '@/app/components/workflow/nodes/loop/default'
+import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
+import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-classifier/default'
+import TemplateTransformDefault from '@/app/components/workflow/nodes/template-transform/default'
+import ToolDefault from '@/app/components/workflow/nodes/tool/default'
+import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   BlockEnum,
   InputVarType,
@@ -17,29 +43,19 @@ import {
   VarType,
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
-import type { TriggerNodeType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
-import Toast from '@/app/components/base/toast'
-import LLMDefault from '@/app/components/workflow/nodes/llm/default'
-import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
-import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
-import CodeDefault from '@/app/components/workflow/nodes/code/default'
-import TemplateTransformDefault from '@/app/components/workflow/nodes/template-transform/default'
-import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-classifier/default'
-import HTTPDefault from '@/app/components/workflow/nodes/http/default'
-import ToolDefault from '@/app/components/workflow/nodes/tool/default'
-import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
-import Assigner from '@/app/components/workflow/nodes/assigner/default'
-import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
-import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
-import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
-import LoopDefault from '@/app/components/workflow/nodes/loop/default'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
-import { noop } from 'lodash-es'
-import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { useInvalidLastRun } from '@/service/use-workflow'
+import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
+import useMatchSchemaType from '../components/variable/use-match-schema-type'
+
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
 const { checkValid: checkIfElseValid } = IfElseDefault
@@ -54,20 +70,7 @@ const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
-import {
-  useStoreApi,
-} from 'reactflow'
-import { useInvalidLastRun } from '@/service/use-workflow'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import type { FlowType } from '@/types/common'
-import useMatchSchemaType from '../components/variable/use-match-schema-type'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+const { checkValid: checkHumanInputValid } = HumanInputDefault
 
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
@@ -85,6 +88,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
+  [BlockEnum.HumanInput]: checkHumanInputValid,
 }
 
 type RequestError = {
@@ -312,20 +316,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [
-    isRunAfterSingleRun,
-    runningStatus,
-    flowId,
-    id,
-    store,
-    appendNodeInspectVars,
-    updateNodeInspectRunningState,
-    invalidLastRun,
-    isStartNode,
-    isTriggerNode,
-    invalidateSysVarValues,
-    invalidateConversationVarValues,
-  ])
+  }, [isRunAfterSingleRun, runningStatus, flowType, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, isTriggerNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -973,6 +964,7 @@ const useOneStepRun = <T>({
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
+              trackEvent('workflow_run_failed', { workflow_id: flowId, node_id: id, reason: res.error, node_type: data?.type })
             },
           },
         )

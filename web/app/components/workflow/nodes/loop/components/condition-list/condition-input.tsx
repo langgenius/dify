@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type ConditionInputProps = {
   disabled?: boolean
@@ -28,7 +28,7 @@ const ConditionInput = ({
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+      placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
       workflowVariableBlock={{
         show: true,
         variables: [],
@@ -39,7 +39,7 @@ const ConditionInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

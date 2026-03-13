@@ -1,10 +1,17 @@
 import math
 from collections import Counter, defaultdict
 
+import numpy as np
+
+from core.model_manager import ModelManager
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
+from core.rag.embedding.cached_embedding import CacheEmbedding
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from dify_graph.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -19,6 +26,7 @@ class WeightRerankRunner(BaseRerankRunner):
         score_threshold: float | None = None,
         top_n: int | None = None,
         user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
         Run rerank model
@@ -30,6 +38,23 @@ class WeightRerankRunner(BaseRerankRunner):
 
         :return:
         """
+        unique_documents = []
+        doc_ids = set()
+        for document in documents:
+            if (
+                document.provider == "dify"
+                and document.metadata is not None
+                and document.metadata["doc_id"] not in doc_ids
+            ):
+                # weight rerank only support text documents
+                if not document.metadata.get("doc_type") or document.metadata.get("doc_type") == DocType.TEXT:
+                    doc_ids.add(document.metadata["doc_id"])
+                    unique_documents.append(document)
+            else:
+                if document not in unique_documents:
+                    unique_documents.append(document)
+
+        documents = unique_documents
 
         query_scores = self._calculate_keyword_score(query, documents)
         query_vector_scores = self._get_documents_score(documents)

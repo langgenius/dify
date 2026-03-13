@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Radio from '.'
 
@@ -106,7 +106,9 @@ const RadioGroupDemo = () => {
         <Radio value="option3">Option 3</Radio>
       </Radio.Group>
       <div className="mt-4 text-sm text-gray-600">
-        Selected: <span className="font-semibold">{value}</span>
+        Selected:
+        {' '}
+        <span className="font-semibold">{value}</span>
       </div>
     </div>
   )
@@ -223,7 +225,12 @@ const SettingsPanelDemo = () => {
 
       <div className="mt-6 rounded-lg bg-blue-50 p-3">
         <div className="text-xs text-gray-600">
-          <strong>Current settings:</strong> Theme: {theme}, Language: {language}
+          <strong>Current settings:</strong>
+          {' '}
+          Theme:
+          {theme}
+          , Language:
+          {language}
         </div>
       </div>
     </div>
@@ -272,7 +279,9 @@ const PaymentMethodSelectorDemo = () => {
       </Radio.Group>
 
       <button className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Continue with {paymentMethod.replace('_', ' ')}
+        Continue with
+        {' '}
+        {paymentMethod.replace('_', ' ')}
       </button>
     </div>
   )
@@ -302,7 +311,10 @@ const ShippingOptionsDemo = () => {
               <div className="font-medium">Standard Shipping</div>
               <div className="text-xs text-gray-500">5-7 business days</div>
             </div>
-            <div className="font-semibold text-gray-700">${shippingCosts.standard}</div>
+            <div className="font-semibold text-gray-700">
+              $
+              {shippingCosts.standard}
+            </div>
           </div>
         </Radio>
         <Radio value="express">
@@ -311,7 +323,10 @@ const ShippingOptionsDemo = () => {
               <div className="font-medium">Express Shipping</div>
               <div className="text-xs text-gray-500">2-3 business days</div>
             </div>
-            <div className="font-semibold text-gray-700">${shippingCosts.express}</div>
+            <div className="font-semibold text-gray-700">
+              $
+              {shippingCosts.express}
+            </div>
           </div>
         </Radio>
         <Radio value="overnight">
@@ -320,7 +335,10 @@ const ShippingOptionsDemo = () => {
               <div className="font-medium">Overnight Shipping</div>
               <div className="text-xs text-gray-500">Next business day</div>
             </div>
-            <div className="font-semibold text-gray-700">${shippingCosts.overnight}</div>
+            <div className="font-semibold text-gray-700">
+              $
+              {shippingCosts.overnight}
+            </div>
           </div>
         </Radio>
       </Radio.Group>
@@ -329,7 +347,8 @@ const ShippingOptionsDemo = () => {
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Shipping cost:</span>
           <span className="text-lg font-semibold text-gray-900">
-            ${shippingCosts[shipping as keyof typeof shippingCosts]}
+            $
+            {shippingCosts[shipping as keyof typeof shippingCosts]}
           </span>
         </div>
       </div>
@@ -410,7 +429,9 @@ const PlaygroundDemo = () => {
         <Radio value="option4" disabled>Disabled option</Radio>
       </Radio.Group>
       <div className="mt-4 text-sm text-gray-600">
-        Selected: <span className="font-semibold">{value}</span>
+        Selected:
+        {' '}
+        <span className="font-semibold">{value}</span>
       </div>
     </div>
   )

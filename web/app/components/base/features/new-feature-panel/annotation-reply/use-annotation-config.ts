@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
-import { produce } from 'immer'
-import type { AnnotationReplyConfig } from '@/models/debug'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
+import type { AnnotationReplyConfig } from '@/models/debug'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useState } from 'react'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
-import { sleep } from '@/utils'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
+import { sleep } from '@/utils'
 
 type Params = {
   appId: string

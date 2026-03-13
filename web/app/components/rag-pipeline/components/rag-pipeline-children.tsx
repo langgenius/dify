@@ -1,22 +1,22 @@
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import {
   memo,
   useState,
 } from 'react'
-import { useStore } from '../../workflow/store'
-import PluginDependency from '../../workflow/plugin-dependency'
-import RagPipelinePanel from './panel'
-import RagPipelineHeader from './rag-pipeline-header'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import UpdateDSLModal from './update-dsl-modal'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import {
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import PublishToast from './publish-toast'
+import PluginDependency from '../../workflow/plugin-dependency'
+import { useStore } from '../../workflow/store'
 import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
+import RagPipelinePanel from './panel'
+import PublishToast from './publish-toast'
+import RagPipelineHeader from './rag-pipeline-header'
+import UpdateDSLModal from './update-dsl-modal'
 
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()

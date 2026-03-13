@@ -1,5 +1,5 @@
-import type { Dayjs } from 'dayjs'
 import type { Placement } from '@floating-ui/react'
+import type { Dayjs } from 'dayjs'
 
 export enum ViewType {
   date = 'date',

@@ -1,11 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Node } from 'reactflow'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
-import ZoomInOut from './zoom-in-out'
-import VariableTrigger from '../variable-inspect/trigger'
-import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
+import VariableInspectPanel from '../variable-inspect'
+import VariableTrigger from '../variable-inspect/trigger'
+import ZoomInOut from './zoom-in-out'
 
 export type OperatorProps = {
   handleUndo: () => void
@@ -51,19 +51,19 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   return (
     <div
       ref={bottomPanelRef}
-      className='absolute bottom-0 left-0 right-0 z-10 px-1'
+      className="absolute bottom-0 left-0 right-0 z-10 px-1"
       style={
         {
           width: bottomPanelWidth,
         }
       }
     >
-      <div className='flex justify-between px-1 pb-2'>
-        <div className='flex items-center gap-2'>
+      <div className="flex justify-between px-1 pb-2">
+        <div className="flex items-center gap-2">
           <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
         </div>
         <VariableTrigger />
-        <div className='relative'>
+        <div className="relative">
           <MiniMap
             pannable
             zoomable
@@ -71,11 +71,11 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               width: 102,
               height: 72,
             }}
-            maskColor='var(--color-workflow-minimap-bg)'
+            maskColor="var(--color-workflow-minimap-bg)"
             nodeClassName={getMiniMapNodeClassName}
             nodeStrokeWidth={3}
-            className='!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
-            !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
+            className="!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
+            !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5"
           />
           <ZoomInOut />
         </div>

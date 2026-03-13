@@ -3,9 +3,12 @@ from collections import defaultdict
 
 import pytest
 
-from core.file import File, FileTransferMethod, FileType
-from core.variables import FileSegment, StringSegment
-from core.variables.segments import (
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables import FileSegment, StringSegment
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -16,7 +19,7 @@ from core.variables.segments import (
     NoneSegment,
     ObjectSegment,
 )
-from core.variables.variables import (
+from dify_graph.variables.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -24,11 +27,8 @@ from core.variables.variables import (
     IntegerVariable,
     ObjectVariable,
     StringVariable,
-    VariableUnion,
+    Variable,
 )
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
 from factories.variable_factory import build_segment, segment_to_variable
 
 
@@ -160,7 +160,7 @@ class TestVariablePoolSerialization:
         )
 
         # Create environment variables with all types including ArrayFileVariable
-        env_vars: list[VariableUnion] = [
+        env_vars: list[Variable] = [
             StringVariable(
                 id="env_string_id",
                 name="env_string",
@@ -182,7 +182,7 @@ class TestVariablePoolSerialization:
         ]
 
         # Create conversation variables with complex data
-        conv_vars: list[VariableUnion] = [
+        conv_vars: list[Variable] = [
             StringVariable(
                 id="conv_string_id",
                 name="conv_string",

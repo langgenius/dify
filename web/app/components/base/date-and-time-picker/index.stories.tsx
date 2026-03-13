@@ -1,10 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
-import { useState } from 'react'
-import DatePicker from './date-picker'
-import dayjs from './utils/dayjs'
-import { getDateWithTimezone } from './utils/dayjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { DatePickerProps } from './types'
+import { useState } from 'react'
+import { fn } from 'storybook/test'
+import DatePicker from './date-picker'
+import dayjs, { getDateWithTimezone } from './utils/dayjs'
 
 const meta = {
   title: 'Base/Data Entry/DateAndTimePicker',
@@ -35,14 +34,17 @@ const DatePickerPlayground = (props: DatePickerProps) => {
 
   return (
     <div className="inline-flex flex-col items-start gap-3">
-      <DatePicker popupZIndexClassname="z-50"
+      <DatePicker
+        popupZIndexClassname="z-50"
         {...props}
         value={value}
         onChange={setValue}
         onClear={() => setValue(undefined)}
       />
       <div className="w-[252px] rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
-        Selected datetime: <span className="font-mono text-text-primary">{value ? value.format() : 'undefined'}</span>
+        Selected datetime:
+        {' '}
+        <span className="font-mono text-text-primary">{value ? value.format() : 'undefined'}</span>
       </div>
     </div>
   )

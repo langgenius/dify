@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import VideoPlayer from './VideoPlayer'
 
 type Props = {
@@ -7,10 +7,11 @@ type Props = {
 
 const VideoGallery: React.FC<Props> = ({ srcs }) => {
   const validSrcs = srcs.filter(src => src)
-  if (validSrcs.length === 0) return null
+  if (validSrcs.length === 0)
+    return null
 
   return (
-    <div className="my-3">
+    <div className="my-3" data-testid="video-gallery-container">
       <VideoPlayer srcs={validSrcs} />
     </div>
   )

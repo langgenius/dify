@@ -1,20 +1,20 @@
+import type { SimplePluginInfo } from '../markdown/streamdown-wrapper'
 /**
  * @fileoverview Img component for rendering <img> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
-import { getMarkdownImageURL } from './utils'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import { getMarkdownImageURL } from './utils'
 
 type ImgProps = {
   src: string
   pluginInfo?: SimplePluginInfo
 }
 
-export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
+export const PluginImg = memo<ImgProps>(({ src, pluginInfo }) => {
   const { pluginUniqueIdentifier, pluginId } = pluginInfo || {}
   const { data: assetData } = usePluginReadmeAsset({ plugin_unique_identifier: pluginUniqueIdentifier, file_name: src })
   const [blobUrl, setBlobUrl] = useState<string>()
@@ -40,9 +40,11 @@ export const PluginImg: React.FC<ImgProps> = ({ src, pluginInfo }) => {
     return getMarkdownImageURL(src, pluginId)
   }, [blobUrl, pluginId, src])
 
+  const srcs = useMemo(() => [imageUrl], [imageUrl])
+
   return (
     <div className="markdown-img-wrapper">
-      <ImageGallery srcs={[imageUrl]} />
+      <ImageGallery srcs={srcs} />
     </div>
   )
-}
+})

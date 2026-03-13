@@ -19,7 +19,10 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.tools.signature import sign_upload_file
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -49,6 +52,7 @@ class Dataset(Base):
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
+    DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
@@ -70,12 +74,14 @@ class Dataset(Base):
     keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode = mapped_column(sa.String(255), nullable=True, server_default=sa.text("'general'"))
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(sa.String(255), nullable=True)
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
 
     @property
     def total_documents(self):
@@ -416,6 +422,7 @@ class Document(Base):
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
     doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
     doc_language = mapped_column(String(255), nullable=True)
+    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -728,9 +735,7 @@ class DocumentSegment(Base):
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error = mapped_column(LongText, nullable=True)
@@ -866,6 +871,47 @@ class DocumentSegment(Base):
 
         return text
 
+    @property
+    def attachments(self) -> list[dict[str, Any]]:
+        # Use JOIN to fetch attachments in a single query instead of two separate queries
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(
+                SegmentAttachmentBinding.tenant_id == self.tenant_id,
+                SegmentAttachmentBinding.dataset_id == self.dataset_id,
+                SegmentAttachmentBinding.document_id == self.document_id,
+                SegmentAttachmentBinding.segment_id == self.id,
+            )
+        ).all()
+        if not attachments_with_bindings:
+            return []
+        attachment_list = []
+        for _, attachment in attachments_with_bindings:
+            upload_file_id = attachment.id
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            reference_url = dify_config.CONSOLE_API_URL or ""
+            base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
+            source_url = f"{base_url}?{params}"
+            attachment_list.append(
+                {
+                    "id": attachment.id,
+                    "name": attachment.name,
+                    "size": attachment.size,
+                    "extension": attachment.extension,
+                    "mime_type": attachment.mime_type,
+                    "source_url": source_url,
+                }
+            )
+        return attachment_list
+
 
 class ChildChunk(Base):
     __tablename__ = "child_chunks"
@@ -962,6 +1008,38 @@ class DatasetQuery(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
+
+    @property
+    def queries(self) -> list[dict[str, Any]]:
+        try:
+            queries = json.loads(self.content)
+            if isinstance(queries, list):
+                for query in queries:
+                    if query["content_type"] == QueryType.IMAGE_QUERY:
+                        file_info = db.session.query(UploadFile).filter_by(id=query["content"]).first()
+                        if file_info:
+                            query["file_info"] = {
+                                "id": file_info.id,
+                                "name": file_info.name,
+                                "size": file_info.size,
+                                "extension": file_info.extension,
+                                "mime_type": file_info.mime_type,
+                                "source_url": sign_upload_file(file_info.id, file_info.extension),
+                            }
+                    else:
+                        query["file_info"] = None
+
+                return queries
+            else:
+                return [queries]
+        except JSONDecodeError:
+            return [
+                {
+                    "content_type": QueryType.TEXT_QUERY,
+                    "content": self.content,
+                    "file_info": None,
+                }
+            ]
 
 
 class DatasetKeywordTable(TypeBase):
@@ -1075,7 +1153,7 @@ class DatasetCollectionBinding(TypeBase):
     )
 
 
-class TidbAuthBinding(Base):
+class TidbAuthBinding(TypeBase):
     __tablename__ = "tidb_auth_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
@@ -1084,7 +1162,13 @@ class TidbAuthBinding(Base):
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1092,7 +1176,9 @@ class TidbAuthBinding(Base):
     status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class Whitelist(TypeBase):
@@ -1458,6 +1544,7 @@ class PipelineRecommendedPlugin(TypeBase):
     )
     plugin_id: Mapped[str] = mapped_column(LongText, nullable=False)
     provider_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    type: Mapped[str] = mapped_column(sa.String(50), nullable=False, server_default=sa.text("'tool'"))
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -1470,3 +1557,58 @@ class PipelineRecommendedPlugin(TypeBase):
         onupdate=func.current_timestamp(),
         init=False,
     )
+
+
+class SegmentAttachmentBinding(Base):
+    __tablename__ = "segment_attachment_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="segment_attachment_binding_pkey"),
+        sa.Index(
+            "segment_attachment_binding_tenant_dataset_document_segment_idx",
+            "tenant_id",
+            "dataset_id",
+            "document_id",
+            "segment_id",
+        ),
+        sa.Index("segment_attachment_binding_attachment_idx", "attachment_id"),
+    )
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    attachment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DocumentSegmentSummary(Base):
+    __tablename__ = "document_segment_summaries"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
+        sa.Index("document_segment_summaries_dataset_id_idx", "dataset_id"),
+        sa.Index("document_segment_summaries_document_id_idx", "document_id"),
+        sa.Index("document_segment_summaries_chunk_id_idx", "chunk_id"),
+        sa.Index("document_segment_summaries_status_idx", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # corresponds to DocumentSegment.id or parent chunk id
+    chunk_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    summary_content: Mapped[str] = mapped_column(LongText, nullable=True)
+    summary_index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
+    summary_index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=sa.text("'generating'"))
+    error: Mapped[str] = mapped_column(LongText, nullable=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    disabled_by = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def __repr__(self):
+        return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"

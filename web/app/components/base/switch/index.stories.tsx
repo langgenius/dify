@@ -1,6 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useState } from 'react'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { useState, useTransition } from 'react'
 import Switch from '.'
+import { SwitchSkeleton } from './skeleton'
 
 const meta = {
   title: 'Base/Data Entry/Switch',
@@ -9,24 +10,31 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggle switch component with multiple sizes (xs, sm, md, lg, l). Built on Headless UI Switch with smooth animations.',
+        component: 'Toggle switch built on Base UI with CVA variants, Figma-aligned design tokens, loading spinner, and skeleton placeholder. Import `Switch` for the toggle and `SwitchSkeleton` from `./skeleton` for loading placeholders.',
       },
     },
   },
   tags: ['autodocs'],
+  args: {
+    value: false,
+  },
   argTypes: {
     size: {
       control: 'select',
-      options: ['xs', 'sm', 'md', 'lg', 'l'],
+      options: ['xs', 'sm', 'md', 'lg'],
       description: 'Switch size',
     },
-    defaultValue: {
+    value: {
       control: 'boolean',
-      description: 'Default checked state',
+      description: 'Checked state (controlled)',
     },
     disabled: {
       control: 'boolean',
       description: 'Disabled state',
+    },
+    loading: {
+      control: 'boolean',
+      description: 'Loading state with spinner (md/lg only)',
     },
   },
 } satisfies Meta<typeof Switch>
@@ -34,110 +42,143 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Interactive demo wrapper
 const SwitchDemo = (args: any) => {
-  const [enabled, setEnabled] = useState(args.defaultValue || false)
+  const [enabled, setEnabled] = useState(args.value ?? false)
 
   return (
-    <div style={{ width: '300px' }}>
-      <div className="flex items-center gap-3">
-        <Switch
-          {...args}
-          defaultValue={enabled}
-          onChange={(value) => {
-            setEnabled(value)
-            console.log('Switch toggled:', value)
-          }}
-        />
-        <span className="text-sm text-gray-700">
-          {enabled ? 'On' : 'Off'}
-        </span>
-      </div>
+    <div className="flex items-center justify-center gap-3">
+      <Switch
+        {...args}
+        value={enabled}
+        onChange={setEnabled}
+      />
+      <span className="text-sm text-gray-700">
+        {enabled ? 'On' : 'Off'}
+      </span>
     </div>
   )
 }
 
-// Default state (off)
 export const Default: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: false,
   },
 }
 
-// Default on
 export const DefaultOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: true,
+    value: true,
     disabled: false,
   },
 }
 
-// Disabled off
 export const DisabledOff: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: true,
   },
 }
 
-// Disabled on
 export const DisabledOn: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: true,
+    value: true,
     disabled: true,
   },
 }
 
-// Size variations
+const AllStatesDemo = () => {
+  const sizes = ['xs', 'sm', 'md', 'lg'] as const
+
+  return (
+    <div style={{ width: '600px' }} className="space-y-6">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-gray-500">
+            <th className="pb-3 font-medium">Size</th>
+            <th className="pb-3 font-medium">Default</th>
+            <th className="pb-3 font-medium">Disabled</th>
+            <th className="pb-3 font-medium">Loading</th>
+            <th className="pb-3 font-medium">Skeleton</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sizes.map(size => (
+            <tr key={size} className="border-t border-gray-100">
+              <td className="py-3 font-medium text-gray-900">{size}</td>
+              <td className="py-3">
+                <div className="flex gap-2">
+                  <Switch size={size} value={false} onChange={() => {}} />
+                  <Switch size={size} value={true} onChange={() => {}} />
+                </div>
+              </td>
+              <td className="py-3">
+                <div className="flex gap-2">
+                  <Switch size={size} value={false} disabled />
+                  <Switch size={size} value={true} disabled />
+                </div>
+              </td>
+              <td className="py-3">
+                <div className="flex gap-2">
+                  <Switch size={size} value={false} loading />
+                  <Switch size={size} value={true} loading />
+                </div>
+              </td>
+              <td className="py-3">
+                <SwitchSkeleton size={size} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export const AllStates: Story = {
+  render: () => <AllStatesDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Complete variant matrix: all sizes × all states, matching Figma design spec (node 2144:1210).',
+      },
+    },
+  },
+}
+
 const SizeComparisonDemo = () => {
   const [states, setStates] = useState({
     xs: false,
     sm: false,
     md: true,
     lg: true,
-    l: false,
   })
 
   return (
-    <div style={{ width: '400px' }} className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="xs" defaultValue={states.xs} onChange={v => setStates({ ...states, xs: v })} />
-          <span className="text-sm text-gray-700">Extra Small (xs)</span>
-        </div>
+    <div className="flex flex-col items-center space-y-4">
+      <div className="flex items-center gap-3">
+        <Switch size="xs" value={states.xs} onChange={v => setStates({ ...states, xs: v })} />
+        <span className="text-sm text-gray-700">Extra Small (xs) — 14×10</span>
       </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="sm" defaultValue={states.sm} onChange={v => setStates({ ...states, sm: v })} />
-          <span className="text-sm text-gray-700">Small (sm)</span>
-        </div>
+      <div className="flex items-center gap-3">
+        <Switch size="sm" value={states.sm} onChange={v => setStates({ ...states, sm: v })} />
+        <span className="text-sm text-gray-700">Small (sm) — 20×12</span>
       </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="md" defaultValue={states.md} onChange={v => setStates({ ...states, md: v })} />
-          <span className="text-sm text-gray-700">Medium (md)</span>
-        </div>
+      <div className="flex items-center gap-3">
+        <Switch size="md" value={states.md} onChange={v => setStates({ ...states, md: v })} />
+        <span className="text-sm text-gray-700">Regular (md) — 28×16</span>
       </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="l" defaultValue={states.l} onChange={v => setStates({ ...states, l: v })} />
-          <span className="text-sm text-gray-700">Large (l)</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch size="lg" defaultValue={states.lg} onChange={v => setStates({ ...states, lg: v })} />
-          <span className="text-sm text-gray-700">Extra Large (lg)</span>
-        </div>
+      <div className="flex items-center gap-3">
+        <Switch size="lg" value={states.lg} onChange={v => setStates({ ...states, lg: v })} />
+        <span className="text-sm text-gray-700">Large (lg) — 36×20</span>
       </div>
     </div>
   )
@@ -147,480 +188,168 @@ export const SizeComparison: Story = {
   render: () => <SizeComparisonDemo />,
 }
 
-// With labels
-const WithLabelsDemo = () => {
-  const [enabled, setEnabled] = useState(true)
+const LoadingDemo = () => {
+  const [loading, setLoading] = useState(true)
 
   return (
-    <div style={{ width: '400px' }}>
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-        <div>
-          <div className="text-sm font-medium text-gray-900">Email Notifications</div>
-          <div className="text-xs text-gray-500">Receive email updates about your account</div>
+    <div className="flex flex-col items-center space-y-4">
+      <button
+        className="rounded border px-2 py-1 text-xs"
+        onClick={() => setLoading(!loading)}
+      >
+        {loading ? 'Stop Loading' : 'Start Loading'}
+      </button>
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Switch size="lg" value={false} loading={loading} />
+          <span className="text-sm text-gray-700">Large unchecked</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch size="lg" value={true} loading={loading} />
+          <span className="text-sm text-gray-700">Large checked</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch size="md" value={false} loading={loading} />
+          <span className="text-sm text-gray-700">Regular unchecked</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch size="md" value={true} loading={loading} />
+          <span className="text-sm text-gray-700">Regular checked</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch size="sm" value={false} loading={loading} />
+          <span className="text-sm text-gray-700">Small (no spinner)</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch size="xs" value={false} loading={loading} />
+          <span className="text-sm text-gray-700">Extra Small (no spinner)</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export const Loading: Story = {
+  render: () => <LoadingDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Loading state disables interaction and shows a spinning icon (i-ri-loader-2-line) for md/lg sizes. Spinner position mirrors the knob: appears on the opposite side of the checked state.',
+      },
+    },
+  },
+}
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+const MutationLoadingDemo = () => {
+  const [enabled, setEnabled] = useState(false)
+  const [requestCount, setRequestCount] = useState(0)
+  const [isPending, startTransition] = useTransition()
+
+  const handleChange = (nextValue: boolean) => {
+    if (isPending)
+      return
+
+    startTransition(async () => {
+      setRequestCount(current => current + 1)
+      await wait(1200)
+      setEnabled(nextValue)
+    })
+  }
+
+  return (
+    <div className="w-[340px] space-y-4 rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-sm">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-text-primary">Mutation Loading Guard</p>
+        <p className="text-xs text-text-tertiary">
+          Click once to start a simulated mutate call. While the request is pending, the switch enters
+          {' '}
+          <code className="rounded bg-state-base-hover px-1 py-0.5 text-[11px]">loading</code>
+          {' '}
+          and rejects duplicate clicks.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-components-panel-border-subtle bg-background-default-dodge px-3 py-2 shadow-sm">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-text-primary">Enable Auto Retry</p>
+          <p className="text-xs text-text-tertiary">
+            {isPending ? 'Saving…' : enabled ? 'Saved as on' : 'Saved as off'}
+          </p>
         </div>
         <Switch
-          size="md"
-          defaultValue={enabled}
-          onChange={setEnabled}
+          size="lg"
+          value={enabled}
+          loading={isPending}
+          onChange={handleChange}
+          aria-label="Enable Auto Retry"
         />
       </div>
-    </div>
-  )
-}
 
-export const WithLabels: Story = {
-  render: () => <WithLabelsDemo />,
-}
-
-// Real-world example - Settings panel
-const SettingsPanelDemo = () => {
-  const [settings, setSettings] = useState({
-    notifications: true,
-    autoSave: true,
-    darkMode: false,
-    analytics: false,
-    emailUpdates: true,
-  })
-
-  const updateSetting = (key: string, value: boolean) => {
-    setSettings({ ...settings, [key]: value })
-  }
-
-  return (
-    <div style={{ width: '500px' }} className="rounded-lg border border-gray-200 bg-white p-6">
-      <h3 className="mb-4 text-lg font-semibold">Application Settings</h3>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">Push Notifications</div>
-            <div className="text-xs text-gray-500">Receive push notifications on your device</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={settings.notifications}
-            onChange={v => updateSetting('notifications', v)}
-          />
+      <div className="grid grid-cols-2 gap-2 text-xs text-text-tertiary">
+        <div className="rounded-lg bg-state-base-hover px-3 py-2">
+          <div className="font-medium text-text-secondary">Committed Value</div>
+          <div>{enabled ? 'On' : 'Off'}</div>
         </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">Auto-Save</div>
-            <div className="text-xs text-gray-500">Automatically save changes as you work</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={settings.autoSave}
-            onChange={v => updateSetting('autoSave', v)}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">Dark Mode</div>
-            <div className="text-xs text-gray-500">Use dark theme for the interface</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={settings.darkMode}
-            onChange={v => updateSetting('darkMode', v)}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">Analytics</div>
-            <div className="text-xs text-gray-500">Help us improve by sharing usage data</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={settings.analytics}
-            onChange={v => updateSetting('analytics', v)}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">Email Updates</div>
-            <div className="text-xs text-gray-500">Receive product updates via email</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={settings.emailUpdates}
-            onChange={v => updateSetting('emailUpdates', v)}
-          />
+        <div className="rounded-lg bg-state-base-hover px-3 py-2">
+          <div className="font-medium text-text-secondary">Mutate Count</div>
+          <div>{requestCount}</div>
         </div>
       </div>
     </div>
   )
 }
 
-export const SettingsPanel: Story = {
-  render: () => <SettingsPanelDemo />,
+export const MutationLoadingGuard: Story = {
+  render: () => <MutationLoadingDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Simulates a controlled switch backed by an async mutate call. The component keeps its previous committed value, sets `loading` during the request, and blocks duplicate clicks until the mutation resolves.',
+      },
+    },
+  },
 }
 
-// Real-world example - Privacy controls
-const PrivacyControlsDemo = () => {
-  const [privacy, setPrivacy] = useState({
-    profilePublic: false,
-    showEmail: false,
-    allowMessages: true,
-    shareActivity: false,
-  })
-
-  return (
-    <div style={{ width: '500px' }} className="rounded-lg border border-gray-200 bg-white p-6">
-      <h3 className="mb-2 text-lg font-semibold">Privacy Settings</h3>
-      <p className="mb-4 text-sm text-gray-600">Control who can see your information</p>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-900">Public Profile</div>
-            <div className="text-xs text-gray-500">Make your profile visible to everyone</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={privacy.profilePublic}
-            onChange={v => setPrivacy({ ...privacy, profilePublic: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-900">Show Email Address</div>
-            <div className="text-xs text-gray-500">Display your email on your profile</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={privacy.showEmail}
-            onChange={v => setPrivacy({ ...privacy, showEmail: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-900">Allow Direct Messages</div>
-            <div className="text-xs text-gray-500">Let others send you private messages</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={privacy.allowMessages}
-            onChange={v => setPrivacy({ ...privacy, allowMessages: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-900">Share Activity</div>
-            <div className="text-xs text-gray-500">Show your recent activity to connections</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={privacy.shareActivity}
-            onChange={v => setPrivacy({ ...privacy, shareActivity: v })}
-          />
-        </div>
-      </div>
+const SkeletonDemo = () => (
+  <div className="flex flex-col items-center space-y-4">
+    <div className="flex items-center gap-3">
+      <SwitchSkeleton size="xs" />
+      <span className="text-sm text-gray-700">Extra Small skeleton</span>
     </div>
-  )
-}
-
-export const PrivacyControls: Story = {
-  render: () => <PrivacyControlsDemo />,
-}
-
-// Real-world example - Feature toggles
-const FeatureTogglesDemo = () => {
-  const [features, setFeatures] = useState({
-    betaFeatures: false,
-    experimentalUI: false,
-    advancedMode: true,
-    developerTools: false,
-  })
-
-  return (
-    <div style={{ width: '500px' }} className="rounded-lg border border-gray-200 bg-white p-6">
-      <h3 className="mb-4 text-lg font-semibold">Feature Flags</h3>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🧪</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Beta Features</div>
-              <div className="text-xs text-gray-500">Access experimental functionality</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={features.betaFeatures}
-            onChange={v => setFeatures({ ...features, betaFeatures: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🎨</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Experimental UI</div>
-              <div className="text-xs text-gray-500">Try the new interface design</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={features.experimentalUI}
-            onChange={v => setFeatures({ ...features, experimentalUI: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⚡</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Advanced Mode</div>
-              <div className="text-xs text-gray-500">Show advanced configuration options</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={features.advancedMode}
-            onChange={v => setFeatures({ ...features, advancedMode: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🔧</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Developer Tools</div>
-              <div className="text-xs text-gray-500">Enable debugging and inspection tools</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={features.developerTools}
-            onChange={v => setFeatures({ ...features, developerTools: v })}
-          />
-        </div>
-      </div>
+    <div className="flex items-center gap-3">
+      <SwitchSkeleton size="sm" />
+      <span className="text-sm text-gray-700">Small skeleton</span>
     </div>
-  )
-}
-
-export const FeatureToggles: Story = {
-  render: () => <FeatureTogglesDemo />,
-}
-
-// Real-world example - Notification preferences
-const NotificationPreferencesDemo = () => {
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    sms: false,
-    desktop: true,
-  })
-
-  const allEnabled = Object.values(notifications).every(v => v)
-  const someEnabled = Object.values(notifications).some(v => v)
-
-  return (
-    <div style={{ width: '500px' }} className="rounded-lg border border-gray-200 bg-white p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Notification Channels</h3>
-        <div className="text-xs text-gray-500">
-          {allEnabled ? 'All enabled' : someEnabled ? 'Some enabled' : 'All disabled'}
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">📧</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Email</div>
-              <div className="text-xs text-gray-500">Receive notifications via email</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={notifications.email}
-            onChange={v => setNotifications({ ...notifications, email: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🔔</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Push Notifications</div>
-              <div className="text-xs text-gray-500">Mobile and browser push notifications</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={notifications.push}
-            onChange={v => setNotifications({ ...notifications, push: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">💬</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">SMS Messages</div>
-              <div className="text-xs text-gray-500">Receive text message notifications</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={notifications.sms}
-            onChange={v => setNotifications({ ...notifications, sms: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">💻</span>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Desktop Alerts</div>
-              <div className="text-xs text-gray-500">Show desktop notification popups</div>
-            </div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={notifications.desktop}
-            onChange={v => setNotifications({ ...notifications, desktop: v })}
-          />
-        </div>
-      </div>
+    <div className="flex items-center gap-3">
+      <SwitchSkeleton size="md" />
+      <span className="text-sm text-gray-700">Regular skeleton</span>
     </div>
-  )
-}
-
-export const NotificationPreferences: Story = {
-  render: () => <NotificationPreferencesDemo />,
-}
-
-// Real-world example - API access control
-const APIAccessControlDemo = () => {
-  const [access, setAccess] = useState({
-    readAccess: true,
-    writeAccess: true,
-    deleteAccess: false,
-    adminAccess: false,
-  })
-
-  return (
-    <div style={{ width: '500px' }} className="rounded-lg border border-gray-200 bg-white p-6">
-      <h3 className="mb-2 text-lg font-semibold">API Permissions</h3>
-      <p className="mb-4 text-sm text-gray-600">Configure access levels for API key</p>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-green-600">✓</span> Read Access
-            </div>
-            <div className="text-xs text-gray-500">View resources and data</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={access.readAccess}
-            onChange={v => setAccess({ ...access, readAccess: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-blue-600">✎</span> Write Access
-            </div>
-            <div className="text-xs text-gray-500">Create and update resources</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={access.writeAccess}
-            onChange={v => setAccess({ ...access, writeAccess: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-red-50 p-3">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-red-600">🗑</span> Delete Access
-            </div>
-            <div className="text-xs text-gray-500">Remove resources permanently</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={access.deleteAccess}
-            onChange={v => setAccess({ ...access, deleteAccess: v })}
-          />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-              <span className="text-purple-600">⚡</span> Admin Access
-            </div>
-            <div className="text-xs text-gray-500">Full administrative privileges</div>
-          </div>
-          <Switch
-            size="md"
-            defaultValue={access.adminAccess}
-            onChange={v => setAccess({ ...access, adminAccess: v })}
-          />
-        </div>
-      </div>
+    <div className="flex items-center gap-3">
+      <SwitchSkeleton size="lg" />
+      <span className="text-sm text-gray-700">Large skeleton</span>
     </div>
-  )
+  </div>
+)
+
+export const Skeleton: Story = {
+  render: () => <SkeletonDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: '`SwitchSkeleton` renders a non-interactive placeholder with `bg-text-quaternary opacity-20`. Imported separately from `./skeleton`.',
+      },
+    },
+  },
 }
 
-export const APIAccessControl: Story = {
-  render: () => <APIAccessControlDemo />,
-}
-
-// Compact list with switches
-const CompactListDemo = () => {
-  const [items, setItems] = useState([
-    { id: 1, name: 'Feature A', enabled: true },
-    { id: 2, name: 'Feature B', enabled: false },
-    { id: 3, name: 'Feature C', enabled: true },
-    { id: 4, name: 'Feature D', enabled: false },
-    { id: 5, name: 'Feature E', enabled: true },
-  ])
-
-  const toggleItem = (id: number) => {
-    setItems(items.map(item =>
-      item.id === id ? { ...item, enabled: !item.enabled } : item,
-    ))
-  }
-
-  return (
-    <div style={{ width: '400px' }} className="rounded-lg border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold">Quick Toggles</h3>
-      <div className="space-y-2">
-        {items.map(item => (
-          <div key={item.id} className="flex items-center justify-between py-2">
-            <span className="text-sm text-gray-700">{item.name}</span>
-            <Switch
-              size="sm"
-              defaultValue={item.enabled}
-              onChange={() => toggleItem(item.id)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export const CompactList: Story = {
-  render: () => <CompactListDemo />,
-}
-
-// Interactive playground
 export const Playground: Story = {
   render: args => <SwitchDemo {...args} />,
   args: {
     size: 'md',
-    defaultValue: false,
+    value: false,
     disabled: false,
+    loading: false,
   },
 }

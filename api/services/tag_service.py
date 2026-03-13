@@ -19,7 +19,10 @@ class TagService:
             .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
         if keyword:
-            query = query.where(sa.and_(Tag.name.ilike(f"%{keyword}%")))
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(keyword)
+            query = query.where(sa.and_(Tag.name.ilike(f"%{escaped_keyword}%", escape="\\")))
         query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
         results: list = query.order_by(Tag.created_at.desc()).all()
         return results

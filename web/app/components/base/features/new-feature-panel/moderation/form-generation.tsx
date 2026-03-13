@@ -1,10 +1,9 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import type { CodeBasedExtensionForm } from '@/models/common'
-import I18n from '@/context/i18n'
+import type { ModerationConfig } from '@/models/debug'
 import { PortalSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import type { ModerationConfig } from '@/models/debug'
+import { useLocale } from '@/context/i18n'
 
 type FormGenerationProps = {
   forms: CodeBasedExtensionForm[]
@@ -16,7 +15,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
   value,
   onChange,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
 
   const handleFormChange = (type: string, v: string) => {
     onChange({ ...value, [type]: v })
@@ -28,16 +27,16 @@ const FormGeneration: FC<FormGenerationProps> = ({
         forms.map((form, index) => (
           <div
             key={index}
-            className='py-2'
+            className="py-2"
           >
-            <div className='flex h-9 items-center text-sm font-medium text-text-primary'>
+            <div className="flex h-9 items-center text-sm font-medium text-text-primary">
               {locale === 'zh-Hans' ? form.label['zh-Hans'] : form.label['en-US']}
             </div>
             {
               form.type === 'text-input' && (
                 <input
                   value={value?.[form.variable] || ''}
-                  className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none'
+                  className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
                   placeholder={form.placeholder}
                   onChange={e => handleFormChange(form.variable, e.target.value)}
                 />
@@ -45,9 +44,9 @@ const FormGeneration: FC<FormGenerationProps> = ({
             }
             {
               form.type === 'paragraph' && (
-                <div className='relative'>
+                <div className="relative">
                   <Textarea
-                    className='resize-none'
+                    className="resize-none"
                     value={value?.[form.variable] || ''}
                     placeholder={form.placeholder}
                     onChange={e => handleFormChange(form.variable, e.target.value)}
@@ -66,7 +65,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                     }
                   })}
                   onSelect={item => handleFormChange(form.variable, item.value as string)}
-                  popupClassName='w-[576px] !z-[102]'
+                  popupClassName="w-[576px] !z-[102]"
                 />
               )
             }

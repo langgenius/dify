@@ -1,8 +1,8 @@
 import type { NodeDefault } from '../../types'
 import type { KnowledgeBaseNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 
 const metaData = genNodeMetaData({
   sort: 3.1,
@@ -50,21 +50,21 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
     if (!chunk_structure) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.knowledgeBase.chunkIsRequired'),
+        errorMessage: t('nodes.knowledgeBase.chunkIsRequired', { ns: 'workflow' }),
       }
     }
 
     if (index_chunk_variable_selector.length === 0) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.knowledgeBase.chunksVariableIsRequired'),
+        errorMessage: t('nodes.knowledgeBase.chunksVariableIsRequired', { ns: 'workflow' }),
       }
     }
 
     if (!indexing_technique) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.knowledgeBase.indexMethodIsRequired'),
+        errorMessage: t('nodes.knowledgeBase.indexMethodIsRequired', { ns: 'workflow' }),
       }
     }
 
@@ -72,13 +72,13 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       if (!embedding_model || !embedding_model_provider) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.knowledgeBase.embeddingModelIsRequired'),
+          errorMessage: t('nodes.knowledgeBase.embeddingModelIsRequired', { ns: 'workflow' }),
         }
       }
       else if (!currentEmbeddingModel) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.knowledgeBase.embeddingModelIsInvalid'),
+          errorMessage: t('nodes.knowledgeBase.embeddingModelIsInvalid', { ns: 'workflow' }),
         }
       }
     }
@@ -86,7 +86,7 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
     if (!retrieval_model || !search_method) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.knowledgeBase.retrievalSettingIsRequired'),
+        errorMessage: t('nodes.knowledgeBase.retrievalSettingIsRequired', { ns: 'workflow' }),
       }
     }
 
@@ -94,13 +94,13 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       if (!reranking_model || !reranking_model.reranking_provider_name || !reranking_model.reranking_model_name) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.knowledgeBase.rerankingModelIsRequired'),
+          errorMessage: t('nodes.knowledgeBase.rerankingModelIsRequired', { ns: 'workflow' }),
         }
       }
       else if (!currentRerankingModel) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.knowledgeBase.rerankingModelIsInvalid'),
+          errorMessage: t('nodes.knowledgeBase.rerankingModelIsInvalid', { ns: 'workflow' }),
         }
       }
     }

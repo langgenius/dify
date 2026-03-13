@@ -1,0 +1,19 @@
+{
+  "connect": "الاتصال بـ",
+  "continue": "متابعة",
+  "error.authAppInfoFetchFailed": "فشل جلب معلومات التطبيق للتفويض",
+  "error.authorizeFailed": "فشل التفويض",
+  "error.invalidParams": "معلمات غير صالحة",
+  "login": "تسجيل الدخول",
+  "scopes.avatar": "الصورة الرمزية",
+  "scopes.email": "البريد الإلكتروني",
+  "scopes.languagePreference": "تفضيل اللغة",
+  "scopes.name": "الاسم",
+  "scopes.timezone": "المنطقة الزمنية",
+  "switchAccount": "تبديل الحساب",
+  "tips.common": "نحن نحترم خصوصيتك وسنستخدم هذه المعلومات فقط لتحسين تجربتك مع أدوات المطورين لدينا.",
+  "tips.loggedIn": "يريد هذا التطبيق الوصول إلى المعلومات التالية من حساب Dify Cloud الخاص بك.",
+  "tips.needLogin": "يرجى تسجيل الدخول للتفويض",
+  "tips.notLoggedIn": "يريد هذا التطبيق الوصول إلى حساب Dify Cloud الخاص بك",
+  "unknownApp": "تطبيق غير معروف"
+}

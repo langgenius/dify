@@ -3,17 +3,23 @@
 import time
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
-from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from models.enums import UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_engine.entities.commands import (
+    AbortCommand,
+    CommandType,
+    PauseCommand,
+    UpdateVariablesCommand,
+    VariableUpdate,
+)
+from dify_graph.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.variables import IntegerVariable, StringVariable
 
 
 def test_abort_command():
@@ -32,20 +38,23 @@ def test_abort_command():
     # Create mock nodes with required attributes - using shared runtime state
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
             call_depth=0,
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     # Mock graph methods
@@ -61,6 +70,7 @@ def test_abort_command():
         graph=mock_graph,
         graph_runtime_state=shared_runtime_state,  # Use shared instance
         command_channel=command_channel,
+        config=GraphEngineConfig(),
     )
 
     # Send abort command before starting
@@ -92,7 +102,7 @@ def test_redis_channel_serialization():
     mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipeline)
     mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
 
-    from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+    from dify_graph.graph_engine.command_channels.redis_channel import RedisChannel
 
     # Create channel with a specific key
     channel = RedisChannel(mock_redis, channel_key="workflow:123:commands")
@@ -142,20 +152,23 @@ def test_pause_command():
 
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config={},
-            user_id="test_user",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
             call_depth=0,
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     mock_graph.get_outgoing_edges = MagicMock(return_value=[])
@@ -168,6 +181,7 @@ def test_pause_command():
         graph=mock_graph,
         graph_runtime_state=shared_runtime_state,
         command_channel=command_channel,
+        config=GraphEngineConfig(),
     )
 
     pause_command = PauseCommand(reason="User requested pause")
@@ -182,3 +196,72 @@ def test_pause_command():
 
     graph_execution = engine.graph_runtime_state.graph_execution
     assert graph_execution.pause_reasons == [SchedulingPause(message="User requested pause")]
+
+
+def test_update_variables_command_updates_pool():
+    """Test that GraphEngine updates variable pool via update variables command."""
+
+    shared_runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
+    shared_runtime_state.variable_pool.add(("node1", "foo"), "old value")
+
+    mock_graph = MagicMock(spec=Graph)
+    mock_graph.nodes = {}
+    mock_graph.edges = {}
+    mock_graph.root_node = MagicMock()
+    mock_graph.root_node.id = "start"
+
+    start_node = StartNode(
+        id="start",
+        config={"id": "start", "data": {"title": "start", "variables": []}},
+        graph_init_params=GraphInitParams(
+            workflow_id="test_workflow",
+            graph_config={},
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
+                }
+            },
+            call_depth=0,
+        ),
+        graph_runtime_state=shared_runtime_state,
+    )
+    mock_graph.nodes["start"] = start_node
+
+    mock_graph.get_outgoing_edges = MagicMock(return_value=[])
+    mock_graph.get_incoming_edges = MagicMock(return_value=[])
+
+    command_channel = InMemoryChannel()
+
+    engine = GraphEngine(
+        workflow_id="test_workflow",
+        graph=mock_graph,
+        graph_runtime_state=shared_runtime_state,
+        command_channel=command_channel,
+        config=GraphEngineConfig(),
+    )
+
+    update_command = UpdateVariablesCommand(
+        updates=[
+            VariableUpdate(
+                value=StringVariable(name="foo", value="new value", selector=["node1", "foo"]),
+            ),
+            VariableUpdate(
+                value=IntegerVariable(name="bar", value=123, selector=["node2", "bar"]),
+            ),
+        ]
+    )
+    command_channel.send_command(update_command)
+
+    list(engine.run())
+
+    updated_existing = shared_runtime_state.variable_pool.get(["node1", "foo"])
+    added_new = shared_runtime_state.variable_pool.get(["node2", "bar"])
+
+    assert updated_existing is not None
+    assert updated_existing.value == "new value"
+    assert added_new is not None
+    assert added_new.value == 123

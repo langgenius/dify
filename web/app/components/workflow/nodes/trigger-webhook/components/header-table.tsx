@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import type { WebhookHeader } from '../types'
+import type { ColumnConfig, GenericTableRow } from './generic-table'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
-import type { ColumnConfig, GenericTableRow } from './generic-table'
-import type { WebhookHeader } from '../types'
 
 type HeaderTableProps = {
   readonly?: boolean
@@ -23,14 +23,14 @@ const HeaderTable: FC<HeaderTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'name',
-      title: t('workflow.nodes.triggerWebhook.varName'),
+      title: t('nodes.triggerWebhook.varName', { ns: 'workflow' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t('workflow.nodes.triggerWebhook.varNamePlaceholder'),
+      placeholder: t('nodes.triggerWebhook.varNamePlaceholder', { ns: 'workflow' }),
     },
     {
       key: 'required',
-      title: t('workflow.nodes.triggerWebhook.required'),
+      title: t('nodes.triggerWebhook.required', { ns: 'workflow' }),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -68,7 +68,7 @@ const HeaderTable: FC<HeaderTableProps> = ({
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={t('workflow.nodes.triggerWebhook.noHeaders')}
+      placeholder={t('nodes.triggerWebhook.noHeaders', { ns: 'workflow' })}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

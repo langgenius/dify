@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import React from 'react'
-
-declare const require: any
+/// <reference types="vite/client" />
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import * as React from 'react'
 
 type IconComponent = React.ComponentType<Record<string, unknown>>
+type IconModule = { default: IconComponent }
 
 type IconEntry = {
   name: string
@@ -12,18 +12,16 @@ type IconEntry = {
   Component: IconComponent
 }
 
-const iconContext = require.context('./src', true, /\.tsx$/)
+const iconModules: Record<string, IconModule> = import.meta.glob('./src/**/*.tsx', { eager: true })
 
-const iconEntries: IconEntry[] = iconContext
-  .keys()
-  .filter((key: string) => !key.endsWith('.stories.tsx') && !key.endsWith('.spec.tsx'))
-  .map((key: string) => {
-    const mod = iconContext(key)
-    const Component = mod.default as IconComponent | undefined
+const iconEntries: IconEntry[] = Object.entries(iconModules)
+  .filter(([key]) => !key.endsWith('.stories.tsx') && !key.endsWith('.spec.tsx'))
+  .map(([key, mod]) => {
+    const Component = mod.default
     if (!Component)
       return null
 
-    const relativePath = key.replace(/^\.\//, '')
+    const relativePath = key.replace(/^\.\/src\//, '')
     const path = `app/components/base/icons/src/${relativePath}`
     const parts = relativePath.split('/')
     const fileName = parts.pop() || ''
@@ -185,7 +183,10 @@ const IconGalleryStory = () => {
       <header style={headerStyle}>
         <h1 style={{ margin: 0 }}>Icon Gallery</h1>
         <p style={{ margin: 0, color: '#5f5f66' }}>
-          Browse all icon components sourced from <code>app/components/base/icons/src</code>. Use the search bar
+          Browse all icon components sourced from
+          {' '}
+          <code>app/components/base/icons/src</code>
+          . Use the search bar
           to filter by name or path.
         </p>
         <div style={controlsStyle}>
@@ -195,13 +196,21 @@ const IconGalleryStory = () => {
             value={query}
             onChange={event => setQuery(event.target.value)}
           />
-          <span style={{ color: '#5f5f66' }}>{filtered.length} icons</span>
+          <span style={{ color: '#5f5f66' }}>
+            {filtered.length}
+            {' '}
+            icons
+          </span>
           <button
             type="button"
             onClick={() => setPreviewTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
             style={toggleButtonStyle}
           >
-            Toggle {previewTheme === 'light' ? 'dark' : 'light'} preview
+            Toggle
+            {' '}
+            {previewTheme === 'light' ? 'dark' : 'light'}
+            {' '}
+            preview
           </button>
         </div>
       </header>

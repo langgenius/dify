@@ -9,6 +9,7 @@ from models.model import App, AppModelConfig
 from services.account_service import AccountService, TenantService
 from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 from services.app_service import AppService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestAppDslService:
@@ -89,7 +90,7 @@ class TestAppDslService:
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
-                password=fake.password(length=12),
+                password=generate_valid_password(fake),
             )
             TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
             tenant = account.current_tenant
@@ -226,26 +227,27 @@ class TestAppDslService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create model config for the app
-        model_config = AppModelConfig()
-        model_config.id = fake.uuid4()
-        model_config.app_id = app.id
-        model_config.provider = "openai"
-        model_config.model_id = "gpt-3.5-turbo"
-        model_config.model = json.dumps(
-            {
-                "provider": "openai",
-                "name": "gpt-3.5-turbo",
-                "mode": "chat",
-                "completion_params": {
-                    "max_tokens": 1000,
-                    "temperature": 0.7,
-                },
-            }
+        model_config = AppModelConfig(
+            app_id=app.id,
+            provider="openai",
+            model_id="gpt-3.5-turbo",
+            model=json.dumps(
+                {
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {
+                        "max_tokens": 1000,
+                        "temperature": 0.7,
+                    },
+                }
+            ),
+            pre_prompt="You are a helpful assistant.",
+            prompt_type="simple",
+            created_by=account.id,
+            updated_by=account.id,
         )
-        model_config.pre_prompt = "You are a helpful assistant."
-        model_config.prompt_type = "simple"
-        model_config.created_by = account.id
-        model_config.updated_by = account.id
+        model_config.id = fake.uuid4()
 
         # Set the app_model_config_id to link the config
         app.app_model_config_id = model_config.id

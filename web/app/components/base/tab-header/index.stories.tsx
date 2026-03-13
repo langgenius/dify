@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { ITabHeaderProps } from '.'
 import { useState } from 'react'
 import TabHeader from '.'
-import type { ITabHeaderProps } from '.'
 
 const items: ITabHeaderProps['items'] = [
   { id: 'overview', name: 'Overview' },
@@ -23,7 +23,9 @@ const TabHeaderDemo = ({
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
         <span>Tabs</span>
         <code className="rounded-md bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
-          active="{activeTab}"
+          active="
+          {activeTab}
+          "
         </code>
       </div>
       <TabHeader

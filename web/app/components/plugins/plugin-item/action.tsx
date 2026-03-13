@@ -1,22 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { type MetaData, PluginSource } from '../types'
+import type { MetaData } from '../types'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import PluginInfo from '../plugin-page/plugin-info'
-import ActionButton from '../../base/action-button'
-import Tooltip from '../../base/tooltip'
-import Confirm from '../../base/confirm'
-import { uninstallPlugin } from '@/service/plugins'
-import { useGitHubReleases } from '../install-plugin/hooks'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
+import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import ActionButton from '../../base/action-button'
+import Confirm from '../../base/confirm'
+import Tooltip from '../../base/tooltip'
+import { useGitHubReleases } from '../install-plugin/hooks'
+import PluginInfo from '../plugin-page/plugin-info'
+import { PluginSource } from '../types'
 
-const i18nPrefix = 'plugin.action'
+const i18nPrefix = 'action'
 
 type Props = {
   author: string
@@ -60,7 +62,8 @@ const Action: FC<Props> = ({
     const owner = meta!.repo.split('/')[0] || author
     const repo = meta!.repo.split('/')[1] || pluginName
     const fetchedReleases = await fetchReleases(owner, repo)
-    if (fetchedReleases.length === 0) return
+    if (fetchedReleases.length === 0)
+      return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     Toast.notify(toastProps)
     if (needUpdate) {
@@ -92,7 +95,7 @@ const Action: FC<Props> = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    try{
+    try {
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
@@ -107,23 +110,22 @@ const Action: FC<Props> = ({
     }
   }, [installationId, onDelete])
   return (
-    <div className='flex space-x-1'>
+    <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}>
             <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className='h-4 w-4 text-text-tertiary' />
+              <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
-        )
-      }
+        )}
       {
         isShowInfo
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}>
             <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
+              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
         )
@@ -131,12 +133,12 @@ const Action: FC<Props> = ({
       {
         isShowDelete
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.delete`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}>
             <ActionButton
-              className='text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+              className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
               onClick={showDeleteConfirm}
             >
-              <RiDeleteBinLine className='h-4 w-4' />
+              <RiDeleteBinLine className="h-4 w-4" />
             </ActionButton>
           </Tooltip>
         )
@@ -152,14 +154,17 @@ const Action: FC<Props> = ({
       )}
       <Confirm
         isShow={isShowDeleteConfirm}
-        title={t(`${i18nPrefix}.delete`)}
-        content={
+        title={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+        content={(
           <div>
-            {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
+            {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
+            <span className="system-md-semibold">{pluginName}</span>
+            {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
+            <br />
             {/* // todo: add usedInApps */}
             {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
           </div>
-        }
+        )}
         onCancel={hideDeleteConfirm}
         onConfirm={handleDelete}
         isLoading={deleting}

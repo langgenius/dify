@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 import sqlalchemy as sa
-from flask import abort, jsonify
-from flask_restx import Resource, fields, reqparse
+from flask import abort, jsonify, request
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -10,9 +11,29 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
-from libs.helper import DatetimeString, convert_datetime_to_date
+from libs.helper import convert_datetime_to_date
 from libs.login import current_account_with_tenant, login_required
 from models import AppMode
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class StatisticTimeRangeQuery(BaseModel):
+    start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, value: str | None) -> str | None:
+        if value == "":
+            return None
+        return value
+
+
+console_ns.schema_model(
+    StatisticTimeRangeQuery.__name__,
+    StatisticTimeRangeQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")
@@ -20,11 +41,7 @@ class DailyMessageStatistic(Resource):
     @console_ns.doc("get_daily_message_statistics")
     @console_ns.doc(description="Get daily message statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Daily message statistics retrieved successfully",
@@ -37,12 +54,7 @@ class DailyMessageStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -57,7 +69,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -81,19 +93,12 @@ WHERE
         return jsonify({"data": response_data})
 
 
-parser = (
-    reqparse.RequestParser()
-    .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args", help="Start date (YYYY-MM-DD HH:MM)")
-    .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args", help="End date (YYYY-MM-DD HH:MM)")
-)
-
-
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-conversations")
 class DailyConversationStatistic(Resource):
     @console_ns.doc("get_daily_conversation_statistics")
     @console_ns.doc(description="Get daily conversation statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Daily conversation statistics retrieved successfully",
@@ -106,7 +111,7 @@ class DailyConversationStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -121,7 +126,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -149,7 +154,7 @@ class DailyTerminalsStatistic(Resource):
     @console_ns.doc("get_daily_terminals_statistics")
     @console_ns.doc(description="Get daily terminal/end-user statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Daily terminal statistics retrieved successfully",
@@ -162,7 +167,7 @@ class DailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -177,7 +182,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -206,7 +211,7 @@ class DailyTokenCostStatistic(Resource):
     @console_ns.doc("get_daily_token_cost_statistics")
     @console_ns.doc(description="Get daily token cost statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Daily token cost statistics retrieved successfully",
@@ -219,7 +224,7 @@ class DailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -235,7 +240,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -266,7 +271,7 @@ class AverageSessionInteractionStatistic(Resource):
     @console_ns.doc("get_average_session_interaction_statistics")
     @console_ns.doc(description="Get average session interaction statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Average session interaction statistics retrieved successfully",
@@ -279,7 +284,7 @@ class AverageSessionInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("c.created_at")
         sql_query = f"""SELECT
@@ -302,7 +307,7 @@ FROM
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -342,7 +347,7 @@ class UserSatisfactionRateStatistic(Resource):
     @console_ns.doc("get_user_satisfaction_rate_statistics")
     @console_ns.doc(description="Get user satisfaction rate statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "User satisfaction rate statistics retrieved successfully",
@@ -355,7 +360,7 @@ class UserSatisfactionRateStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
@@ -374,7 +379,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -408,7 +413,7 @@ class AverageResponseTimeStatistic(Resource):
     @console_ns.doc("get_average_response_time_statistics")
     @console_ns.doc(description="Get average response time statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Average response time statistics retrieved successfully",
@@ -421,7 +426,7 @@ class AverageResponseTimeStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -436,7 +441,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -465,7 +470,7 @@ class TokensPerSecondStatistic(Resource):
     @console_ns.doc("get_tokens_per_second_statistics")
     @console_ns.doc(description="Get tokens per second statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
     @console_ns.response(
         200,
         "Tokens per second statistics retrieved successfully",
@@ -477,7 +482,7 @@ class TokensPerSecondStatistic(Resource):
     @account_initialization_required
     def get(self, app_model):
         account, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -495,7 +500,7 @@ WHERE
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 

@@ -19,17 +19,17 @@ from core.entities.provider_entities import (
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from core.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormType,
     ProviderEntity,
 )
-from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from extensions.ext_database import db
+from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
+from models.engine import db
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -253,7 +253,7 @@ class ProviderConfiguration(BaseModel):
                 try:
                     credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=credentials[key])
                 except Exception:
-                    pass
+                    logger.exception("Failed to decrypt credential secret variable %s", key)
 
         return self.obfuscated_credentials(
             credentials=credentials,
@@ -765,7 +765,7 @@ class ProviderConfiguration(BaseModel):
                 try:
                     credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=credentials[key])
                 except Exception:
-                    pass
+                    logger.exception("Failed to decrypt model credential secret variable %s", key)
 
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name

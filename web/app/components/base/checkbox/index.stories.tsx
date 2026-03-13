@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Checkbox from '.'
 
 // Helper function for toggling items in an array
-const createToggleItem = <T extends { id: string; checked: boolean }>(
+const createToggleItem = <T extends { id: string, checked: boolean }>(
   items: T[],
   setItems: (items: T[]) => void,
 ) => (id: string) => {
@@ -349,7 +349,12 @@ const TaskListExampleDemo = () => {
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700">Today's Tasks</h3>
         <span className="text-xs text-gray-500">
-          {completedCount} of {tasks.length} completed
+          {completedCount}
+          {' '}
+          of
+          {tasks.length}
+          {' '}
+          completed
         </span>
       </div>
       <div className="flex flex-col gap-2">

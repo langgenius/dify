@@ -8,26 +8,46 @@ allowing tests to run without external dependencies.
 import time
 from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
+from unittest.mock import MagicMock
 
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.agent import AgentNode
-from core.workflow.nodes.code import CodeNode
-from core.workflow.nodes.document_extractor import DocumentExtractorNode
-from core.workflow.nodes.http_request import HttpRequestNode
-from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
-from core.workflow.nodes.llm import LLMNode
-from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
-from core.workflow.nodes.question_classifier import QuestionClassifierNode
-from core.workflow.nodes.template_transform import TemplateTransformNode
-from core.workflow.nodes.tool import ToolNode
+from core.model_manager import ModelInstance
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
+from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.agent import AgentNode
+from dify_graph.nodes.code import CodeNode
+from dify_graph.nodes.document_extractor import DocumentExtractorNode
+from dify_graph.nodes.http_request import HttpRequestNode
+from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
+from dify_graph.nodes.llm import LLMNode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
+from dify_graph.nodes.protocols import HttpClientProtocol, ToolFileManagerProtocol
+from dify_graph.nodes.question_classifier import QuestionClassifierNode
+from dify_graph.nodes.template_transform import TemplateTransformNode
+from dify_graph.nodes.template_transform.template_renderer import (
+    Jinja2TemplateRenderer,
+    TemplateRenderError,
+)
+from dify_graph.nodes.tool import ToolNode
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
+
+
+class _TestJinja2Renderer(Jinja2TemplateRenderer):
+    """Simple Jinja2 renderer for tests (avoids code executor)."""
+
+    def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
+        from jinja2 import Template as _Jinja2Template
+
+        try:
+            return _Jinja2Template(template).render(**variables)
+        except Exception as exc:  # pragma: no cover - pass through as contract error
+            raise TemplateRenderError(str(exc)) from exc
 
 
 class MockNodeMixin:
@@ -40,12 +60,31 @@ class MockNodeMixin:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
+        **kwargs: Any,
     ):
+        if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
+            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
+            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
+            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+            # LLM-like nodes now require an http_client; provide a mock by default for tests.
+            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+
+        # Ensure TemplateTransformNode receives a renderer now required by constructor
+        if isinstance(self, TemplateTransformNode):
+            kwargs.setdefault("template_renderer", _TestJinja2Renderer())
+
+        # Provide default tool_file_manager_factory for ToolNode subclasses
+        from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
+
+        if isinstance(self, _ToolNode):
+            kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
+
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            **kwargs,
         )
         self.mock_config = mock_config
 
@@ -92,7 +131,7 @@ class MockLLMNode(MockNodeMixin, LLMNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock LLM node."""
@@ -189,7 +228,7 @@ class MockAgentNode(MockNodeMixin, AgentNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock agent node."""
@@ -241,7 +280,7 @@ class MockToolNode(MockNodeMixin, ToolNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock tool node."""
@@ -294,7 +333,7 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock knowledge retrieval node."""
@@ -351,7 +390,7 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock HTTP request node."""
@@ -404,7 +443,7 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock question classifier node."""
@@ -452,7 +491,7 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock parameter extractor node."""
@@ -502,7 +541,7 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock document extractor node."""
@@ -547,8 +586,8 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
 
-from core.workflow.nodes.iteration import IterationNode
-from core.workflow.nodes.loop import LoopNode
+from dify_graph.nodes.iteration import IterationNode
+from dify_graph.nodes.loop import LoopNode
 
 
 class MockIterationNode(MockNodeMixin, IterationNode):
@@ -557,29 +596,25 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.graph import Graph
+        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+        from dify_graph.graph_engine.command_channels import InMemoryChannel
+        from dify_graph.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -611,7 +646,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         )
 
         if not iteration_graph:
-            from core.workflow.nodes.iteration.exc import IterationGraphNotFoundError
+            from dify_graph.nodes.iteration.exc import IterationGraphNotFoundError
 
             raise IterationGraphNotFoundError("iteration graph not found")
 
@@ -621,6 +656,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
             graph=iteration_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine
@@ -632,29 +668,25 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams
-        from core.workflow.graph import Graph
-        from core.workflow.graph_engine import GraphEngine
-        from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.runtime import GraphRuntimeState
+        from dify_graph.entities import GraphInitParams
+        from dify_graph.graph import Graph
+        from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+        from dify_graph.graph_engine.command_channels import InMemoryChannel
+        from dify_graph.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
             workflow_id=self.workflow_id,
             graph_config=self.graph_config,
-            user_id=self.user_id,
-            user_from=self.user_from.value,
-            invoke_from=self.invoke_from.value,
+            run_context=self.run_context,
             call_depth=self.workflow_call_depth,
         )
 
@@ -683,6 +715,7 @@ class MockLoopNode(MockNodeMixin, LoopNode):
             graph=loop_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            config=GraphEngineConfig(),
         )
 
         return graph_engine
@@ -694,7 +727,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock template transform node."""
@@ -780,7 +813,7 @@ class MockCodeNode(MockNodeMixin, CodeNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock code node."""

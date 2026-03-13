@@ -5,7 +5,7 @@ This module provides integration tests for email registration tasks
 using TestContainers to ensure real database and service interactions.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
@@ -21,16 +21,14 @@ class TestMailRegisterTask:
     def mock_mail_dependencies(self):
         """Mock setup for mail service dependencies."""
         with (
-            patch("tasks.mail_register_task.mail") as mock_mail,
-            patch("tasks.mail_register_task.get_email_i18n_service") as mock_get_email_service,
+            patch("tasks.mail_register_task.mail", autospec=True) as mock_mail,
+            patch("tasks.mail_register_task.get_email_i18n_service", autospec=True) as mock_get_email_service,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
 
             # Setup mock email i18n service
-            mock_email_service = MagicMock()
-            mock_get_email_service.return_value = mock_email_service
-
+            mock_email_service = mock_get_email_service.return_value
             yield {
                 "mail": mock_mail,
                 "email_service": mock_email_service,
@@ -76,7 +74,7 @@ class TestMailRegisterTask:
         to_email = fake.email()
         code = fake.numerify("######")
 
-        with patch("tasks.mail_register_task.logger") as mock_logger:
+        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
             send_email_register_mail_task(language="en-US", to=to_email, code=code)
             mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)
 
@@ -89,7 +87,7 @@ class TestMailRegisterTask:
         to_email = fake.email()
         account_name = fake.name()
 
-        with patch("tasks.mail_register_task.dify_config") as mock_config:
+        with patch("tasks.mail_register_task.dify_config", autospec=True) as mock_config:
             mock_config.CONSOLE_WEB_URL = "https://console.dify.ai"
 
             send_email_register_mail_task_when_account_exist(language=language, to=to_email, account_name=account_name)
@@ -129,6 +127,6 @@ class TestMailRegisterTask:
         to_email = fake.email()
         account_name = fake.name()
 
-        with patch("tasks.mail_register_task.logger") as mock_logger:
+        with patch("tasks.mail_register_task.logger", autospec=True) as mock_logger:
             send_email_register_mail_task_when_account_exist(language="en-US", to=to_email, account_name=account_name)
             mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", to_email)

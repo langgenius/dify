@@ -86,7 +86,7 @@ class FeedbackService:
         export_data = []
         for feedback, message, conversation, app, account in results:
             # Get the user query from the message
-            user_query = message.query or message.inputs.get("query", "") if message.inputs else ""
+            user_query = message.query or (message.inputs.get("query", "") if message.inputs else "")
 
             # Format the feedback data
             feedback_record = {

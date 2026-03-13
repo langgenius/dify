@@ -39,6 +39,14 @@ dataset_retrieval_model_fields = {
     "score_threshold_enabled": fields.Boolean,
     "score_threshold": fields.Float,
 }
+
+dataset_summary_index_fields = {
+    "enable": fields.Boolean,
+    "model_name": fields.String,
+    "model_provider_name": fields.String,
+    "summary_prompt": fields.String,
+}
+
 external_retrieval_model_fields = {
     "top_k": fields.Integer,
     "score_threshold": fields.Float,
@@ -83,6 +91,7 @@ dataset_detail_fields = {
     "embedding_model_provider": fields.String,
     "embedding_available": fields.Boolean,
     "retrieval_model_dict": fields.Nested(dataset_retrieval_model_fields),
+    "summary_index_setting": fields.Nested(dataset_summary_index_fields),
     "tags": fields.List(fields.Nested(tag_fields)),
     "doc_form": fields.String,
     "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
@@ -97,11 +106,27 @@ dataset_detail_fields = {
     "total_documents": fields.Integer,
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
+    "is_multimodal": fields.Boolean,
+}
+
+file_info_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "size": fields.Integer,
+    "extension": fields.String,
+    "mime_type": fields.String,
+    "source_url": fields.String,
+}
+
+content_fields = {
+    "content_type": fields.String,
+    "content": fields.String,
+    "file_info": fields.Nested(file_info_fields, allow_null=True),
 }
 
 dataset_query_detail_fields = {
     "id": fields.String,
-    "content": fields.String,
+    "queries": fields.Nested(content_fields),
     "source": fields.String,
     "source_app_id": fields.String,
     "created_by_role": fields.String,

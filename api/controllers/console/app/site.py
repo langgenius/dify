@@ -1,4 +1,7 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from typing import Literal
+
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
@@ -16,37 +19,42 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import Site
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class AppSiteUpdatePayload(BaseModel):
+    title: str | None = Field(default=None)
+    icon_type: str | None = Field(default=None)
+    icon: str | None = Field(default=None)
+    icon_background: str | None = Field(default=None)
+    description: str | None = Field(default=None)
+    default_language: str | None = Field(default=None)
+    chat_color_theme: str | None = Field(default=None)
+    chat_color_theme_inverted: bool | None = Field(default=None)
+    customize_domain: str | None = Field(default=None)
+    copyright: str | None = Field(default=None)
+    privacy_policy: str | None = Field(default=None)
+    custom_disclaimer: str | None = Field(default=None)
+    customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
+    prompt_public: bool | None = Field(default=None)
+    show_workflow_steps: bool | None = Field(default=None)
+    use_icon_as_answer_icon: bool | None = Field(default=None)
+
+    @field_validator("default_language")
+    @classmethod
+    def validate_language(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return supported_language(value)
+
+
+console_ns.schema_model(
+    AppSiteUpdatePayload.__name__,
+    AppSiteUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
 # Register model for flask_restx to avoid dict type issues in Swagger
 app_site_model = console_ns.model("AppSite", app_site_fields)
-
-
-def parse_app_site_args():
-    parser = (
-        reqparse.RequestParser()
-        .add_argument("title", type=str, required=False, location="json")
-        .add_argument("icon_type", type=str, required=False, location="json")
-        .add_argument("icon", type=str, required=False, location="json")
-        .add_argument("icon_background", type=str, required=False, location="json")
-        .add_argument("description", type=str, required=False, location="json")
-        .add_argument("default_language", type=supported_language, required=False, location="json")
-        .add_argument("chat_color_theme", type=str, required=False, location="json")
-        .add_argument("chat_color_theme_inverted", type=bool, required=False, location="json")
-        .add_argument("customize_domain", type=str, required=False, location="json")
-        .add_argument("copyright", type=str, required=False, location="json")
-        .add_argument("privacy_policy", type=str, required=False, location="json")
-        .add_argument("custom_disclaimer", type=str, required=False, location="json")
-        .add_argument(
-            "customize_token_strategy",
-            type=str,
-            choices=["must", "allow", "not_allow"],
-            required=False,
-            location="json",
-        )
-        .add_argument("prompt_public", type=bool, required=False, location="json")
-        .add_argument("show_workflow_steps", type=bool, required=False, location="json")
-        .add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
-    )
-    return parser.parse_args()
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")
@@ -54,31 +62,7 @@ class AppSite(Resource):
     @console_ns.doc("update_app_site")
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AppSiteRequest",
-            {
-                "title": fields.String(description="Site title"),
-                "icon_type": fields.String(description="Icon type"),
-                "icon": fields.String(description="Icon"),
-                "icon_background": fields.String(description="Icon background color"),
-                "description": fields.String(description="Site description"),
-                "default_language": fields.String(description="Default language"),
-                "chat_color_theme": fields.String(description="Chat color theme"),
-                "chat_color_theme_inverted": fields.Boolean(description="Inverted chat color theme"),
-                "customize_domain": fields.String(description="Custom domain"),
-                "copyright": fields.String(description="Copyright text"),
-                "privacy_policy": fields.String(description="Privacy policy"),
-                "custom_disclaimer": fields.String(description="Custom disclaimer"),
-                "customize_token_strategy": fields.String(
-                    enum=["must", "allow", "not_allow"], description="Token strategy"
-                ),
-                "prompt_public": fields.Boolean(description="Make prompt public"),
-                "show_workflow_steps": fields.Boolean(description="Show workflow steps"),
-                "use_icon_as_answer_icon": fields.Boolean(description="Use icon as answer icon"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
     @console_ns.response(200, "Site configuration updated successfully", app_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
@@ -89,7 +73,7 @@ class AppSite(Resource):
     @get_app_model
     @marshal_with(app_site_model)
     def post(self, app_model):
-        args = parse_app_site_args()
+        args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
         if not site:
@@ -113,7 +97,7 @@ class AppSite(Resource):
             "show_workflow_steps",
             "use_icon_as_answer_icon",
         ]:
-            value = args.get(attr_name)
+            value = getattr(args, attr_name)
             if value is not None:
                 setattr(site, attr_name, value)
 

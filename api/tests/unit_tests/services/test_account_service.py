@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account
+from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -619,8 +619,13 @@ class TestTenantService:
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
-                # Execute test
-                TenantService.create_owner_tenant_if_not_exist(mock_account)
+                # Mock the db import in CreditPoolService to avoid database connection
+                with patch("services.credit_pool_service.db") as mock_credit_pool_db:
+                    mock_credit_pool_db.session.add = MagicMock()
+                    mock_credit_pool_db.session.commit = MagicMock()
+
+                    # Execute test
+                    TenantService.create_owner_tenant_if_not_exist(mock_account)
 
         # Verify tenant was created with correct parameters
         mock_db_dependencies["db"].session.add.assert_called()
@@ -692,6 +697,132 @@ class TestTenantService:
         assert added_tenant_account_join.role == "normal"
 
         self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    # ==================== Member Removal Tests ====================
+
+    def test_remove_pending_member_deletes_orphaned_account(self):
+        """Test that removing a pending member with no other workspaces deletes the account."""
+        # Arrange
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
+        mock_pending_member = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="pending-user-789", email="pending@example.com", status=AccountStatus.PENDING
+        )
+
+        mock_ta = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="pending-user-789", role="normal"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+                tenant_id="tenant-456", account_id="operator-123", role="owner"
+            )
+
+            query_mock_permission = MagicMock()
+            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
+
+            query_mock_ta = MagicMock()
+            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
+
+            query_mock_count = MagicMock()
+            query_mock_count.filter_by.return_value.count.return_value = 0
+
+            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
+
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+                mock_sync.return_value = True
+
+                # Act
+                TenantService.remove_member_from_tenant(mock_tenant, mock_pending_member, mock_operator)
+
+                # Assert: enterprise sync still receives the correct member ID
+                mock_sync.assert_called_once_with(
+                    workspace_id="tenant-456",
+                    member_id="pending-user-789",
+                    source="workspace_member_removed",
+                )
+
+            # Assert: both join record and account should be deleted
+            mock_db.session.delete.assert_any_call(mock_ta)
+            mock_db.session.delete.assert_any_call(mock_pending_member)
+            assert mock_db.session.delete.call_count == 2
+
+    def test_remove_pending_member_keeps_account_with_other_workspaces(self):
+        """Test that removing a pending member who belongs to other workspaces preserves the account."""
+        # Arrange
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
+        mock_pending_member = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="pending-user-789", email="pending@example.com", status=AccountStatus.PENDING
+        )
+
+        mock_ta = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="pending-user-789", role="normal"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+                tenant_id="tenant-456", account_id="operator-123", role="owner"
+            )
+
+            query_mock_permission = MagicMock()
+            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
+
+            query_mock_ta = MagicMock()
+            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
+
+            # Remaining join count = 1 (still in another workspace)
+            query_mock_count = MagicMock()
+            query_mock_count.filter_by.return_value.count.return_value = 1
+
+            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
+
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+                mock_sync.return_value = True
+
+                # Act
+                TenantService.remove_member_from_tenant(mock_tenant, mock_pending_member, mock_operator)
+
+            # Assert: only the join record should be deleted, not the account
+            mock_db.session.delete.assert_called_once_with(mock_ta)
+
+    def test_remove_active_member_preserves_account(self):
+        """Test that removing an active member never deletes the account, even with no other workspaces."""
+        # Arrange
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
+        mock_active_member = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="active-user-789", email="active@example.com", status=AccountStatus.ACTIVE
+        )
+
+        mock_ta = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="active-user-789", role="normal"
+        )
+
+        with patch("services.account_service.db") as mock_db:
+            mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+                tenant_id="tenant-456", account_id="operator-123", role="owner"
+            )
+
+            query_mock_permission = MagicMock()
+            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
+
+            query_mock_ta = MagicMock()
+            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
+
+            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta]
+
+            with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+                mock_sync.return_value = True
+
+                # Act
+                TenantService.remove_member_from_tenant(mock_tenant, mock_active_member, mock_operator)
+
+            # Assert: only the join record should be deleted
+            mock_db.session.delete.assert_called_once_with(mock_ta)
 
     # ==================== Tenant Switching Tests ====================
 
@@ -933,6 +1064,99 @@ class TestRegisterService:
 
     # ==================== Registration Tests ====================
 
+    def test_create_account_and_tenant_calls_default_workspace_join_when_enterprise_enabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should be invoked when ENTERPRISE_ENABLED is True."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            result = AccountService.create_account_and_tenant(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+            )
+
+            assert result == mock_account
+            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+
+    def test_create_account_and_tenant_does_not_call_default_workspace_join_when_enterprise_disabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            AccountService.create_account_and_tenant(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+            )
+
+            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_join_default_workspace.assert_not_called()
+
+    def test_create_account_and_tenant_still_calls_default_workspace_join_when_workspace_creation_fails(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Default workspace join should still be attempted when personal workspace creation fails."""
+        from services.errors.workspace import WorkSpaceNotAllowedCreateError
+
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_workspace,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+            mock_create_workspace.side_effect = WorkSpaceNotAllowedCreateError()
+
+            with pytest.raises(WorkSpaceNotAllowedCreateError):
+                AccountService.create_account_and_tenant(
+                    email="test@example.com",
+                    name="Test User",
+                    interface_language="en-US",
+                    password=None,
+                )
+
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+
     def test_register_success(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test successful account registration."""
         # Setup mocks
@@ -983,6 +1207,143 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
                 mock_event.send.assert_called_once_with(mock_tenant)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_register_calls_default_workspace_join_when_enterprise_enabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should be invoked after successful register commit."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            result = RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+                create_workspace_required=False,
+            )
+
+            assert result == mock_account
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+
+    def test_register_does_not_call_default_workspace_join_when_enterprise_disabled(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
+
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+
+            RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+                create_workspace_required=False,
+            )
+
+            mock_join_default_workspace.assert_not_called()
+
+    def test_register_still_calls_default_workspace_join_when_personal_workspace_creation_fails(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Default workspace join should run even when personal workspace creation raises."""
+        from services.errors.workspace import WorkSpaceNotAllowedCreateError
+
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+            mock_create_tenant.side_effect = WorkSpaceNotAllowedCreateError()
+
+            with pytest.raises(AccountRegisterError, match="Workspace is not allowed to create."):
+                RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                )
+
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_db_dependencies["db"].session.commit.assert_not_called()
+
+    def test_register_still_calls_default_workspace_join_when_workspace_limit_exceeded(
+        self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
+    ):
+        """Default workspace join should run before propagating workspace-limit registration failure."""
+        from services.errors.workspace import WorkspacesLimitExceededError
+
+        monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="11111111-1111-1111-1111-111111111111"
+        )
+
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+            patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
+        ):
+            mock_create_account.return_value = mock_account
+            mock_create_tenant.side_effect = WorkspacesLimitExceededError()
+
+            with pytest.raises(AccountRegisterError, match="Registration failed:"):
+                RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                )
+
+            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_db_dependencies["db"].session.commit.assert_not_called()
 
     def test_register_with_oauth(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test account registration with OAuth integration."""
@@ -1142,9 +1503,13 @@ class TestRegisterService:
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
 
-        with patch("services.account_service.Session") as mock_session_class:
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = None
 
             # Mock RegisterService.register
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1177,9 +1542,59 @@ class TestRegisterService:
                         email="newuser@example.com",
                         name="newuser",
                         language="en-US",
-                        status="pending",
+                        status=AccountStatus.PENDING,
                         is_setup=True,
                     )
+                    mock_lookup.assert_called_once_with("newuser@example.com", session=mock_session)
+
+    def test_invite_new_member_normalizes_new_account_email(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """Ensure inviting with mixed-case email normalizes before registering."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        mixed_email = "Invitee@Example.com"
+
+        mock_session = MagicMock()
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = None
+
+            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
+                account_id="new-user-789", email="invitee@example.com", name="invitee", status="pending"
+            )
+            with patch("services.account_service.RegisterService.register") as mock_register:
+                mock_register.return_value = mock_new_account
+                with (
+                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
+                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                ):
+                    mock_generate_token.return_value = "invite-token-abc"
+
+                    RegisterService.invite_new_member(
+                        tenant=mock_tenant,
+                        email=mixed_email,
+                        language="en-US",
+                        role="normal",
+                        inviter=mock_inviter,
+                    )
+
+                    mock_register.assert_called_once_with(
+                        email="invitee@example.com",
+                        name="invitee",
+                        language="en-US",
+                        status=AccountStatus.PENDING,
+                        is_setup=True,
+                    )
+                    mock_lookup.assert_called_once_with(mixed_email, session=mock_session)
+                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
                     mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
                     mock_generate_token.assert_called_once_with(mock_tenant, mock_new_account)
@@ -1202,9 +1617,13 @@ class TestRegisterService:
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
 
-        with patch("services.account_service.Session") as mock_session_class:
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = mock_existing_account
 
             # Mock the db.session.query for TenantAccountJoin
             mock_db_query = MagicMock()
@@ -1233,6 +1652,7 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "normal")
                 mock_generate_token.assert_called_once_with(mock_tenant, mock_existing_account)
                 mock_task_dependencies.delay.assert_called_once()
+                mock_lookup.assert_called_once_with("existing@example.com", session=mock_session)
 
     def test_invite_new_member_already_in_tenant(self, mock_db_dependencies, mock_redis_dependencies):
         """Test inviting a member who is already in the tenant."""
@@ -1246,7 +1666,6 @@ class TestRegisterService:
 
         # Mock database queries
         query_results = {
-            ("Account", "email", "existing@example.com"): mock_existing_account,
             (
                 "TenantAccountJoin",
                 "tenant_id",
@@ -1256,7 +1675,11 @@ class TestRegisterService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         # Mock TenantService methods
-        with patch("services.account_service.TenantService.check_member_permission") as mock_check_permission:
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+        ):
+            mock_lookup.return_value = mock_existing_account
             # Execute test and verify exception
             self._assert_exception_raised(
                 AccountAlreadyInTenantError,
@@ -1267,6 +1690,7 @@ class TestRegisterService:
                 role="normal",
                 inviter=mock_inviter,
             )
+            mock_lookup.assert_called_once()
 
     def test_invite_new_member_no_inviter(self):
         """Test inviting a member without providing an inviter."""
@@ -1491,6 +1915,30 @@ class TestRegisterService:
 
         # Verify results
         assert result is None
+
+    def test_get_invitation_with_case_fallback_returns_initial_match(self):
+        """Fallback helper should return the initial invitation when present."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch(
+            "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
+        ) as mock_get:
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        mock_get.assert_called_once_with("tenant-456", "User@Test.com", "token-123")
+
+    def test_get_invitation_with_case_fallback_retries_with_lowercase(self):
+        """Fallback helper should retry with lowercase email when needed."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
+            mock_get.side_effect = [None, invitation]
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        assert mock_get.call_args_list == [
+            (("tenant-456", "User@Test.com", "token-123"),),
+            (("tenant-456", "user@test.com", "token-123"),),
+        ]
 
     # ==================== Helper Method Tests ====================
 

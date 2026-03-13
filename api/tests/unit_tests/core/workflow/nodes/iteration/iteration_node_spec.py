@@ -1,6 +1,7 @@
-from core.workflow.enums import NodeType
-from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from core.workflow.nodes.iteration.exc import (
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.enums import NodeType
+from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from dify_graph.nodes.iteration.exc import (
     InvalidIteratorValueError,
     IterationGraphNotFoundError,
     IterationIndexNotFoundError,
@@ -8,7 +9,7 @@ from core.workflow.nodes.iteration.exc import (
     IteratorVariableNotFoundError,
     StartNodeIdNotFoundError,
 )
-from core.workflow.nodes.iteration.iteration_node import IterationNode
+from dify_graph.nodes.iteration.iteration_node import IterationNode
 
 
 class TestIterationNodeExceptions:
@@ -240,8 +241,8 @@ class TestIterationNodeInitialization:
 
         assert node._get_description() == "This is a description"
 
-    def test_get_base_node_data(self):
-        """Test get_base_node_data returns node data."""
+    def test_node_data_property(self):
+        """Test node_data property returns node data."""
         node = IterationNode.__new__(IterationNode)
         node._node_data = IterationNodeData(
             title="Base Test",
@@ -249,7 +250,7 @@ class TestIterationNodeInitialization:
             output_selector=["y"],
         )
 
-        result = node.get_base_node_data()
+        result = node.node_data
 
         assert result == node._node_data
 
@@ -388,3 +389,50 @@ class TestIterationNodeErrorStrategies:
         result = node._get_default_value_dict()
 
         assert isinstance(result, dict)
+
+
+def test_extract_variable_selector_to_variable_mapping_validates_child_node_configs(monkeypatch) -> None:
+    seen_configs: list[object] = []
+    original_validate_python = NodeConfigDictAdapter.validate_python
+
+    def record_validate_python(value: object):
+        seen_configs.append(value)
+        return original_validate_python(value)
+
+    monkeypatch.setattr(NodeConfigDictAdapter, "validate_python", record_validate_python)
+
+    child_node_config = {
+        "id": "answer-node",
+        "data": {
+            "type": "answer",
+            "title": "Answer",
+            "answer": "",
+            "iteration_id": "iteration-node",
+        },
+    }
+
+    IterationNode._extract_variable_selector_to_variable_mapping(
+        graph_config={
+            "nodes": [
+                {
+                    "id": "iteration-node",
+                    "data": {
+                        "type": "iteration",
+                        "title": "Iteration",
+                        "iterator_selector": ["start", "items"],
+                        "output_selector": ["iteration", "result"],
+                    },
+                },
+                child_node_config,
+            ],
+            "edges": [],
+        },
+        node_id="iteration-node",
+        node_data=IterationNodeData(
+            title="Iteration",
+            iterator_selector=["start", "items"],
+            output_selector=["iteration", "result"],
+        ),
+    )
+
+    assert seen_configs == [child_node_config]

@@ -7,8 +7,11 @@ from typing import Any, Union
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.file import file_manager
-from core.model_runtime.entities import (
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
     LLMResultChunk,
@@ -21,10 +24,8 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -177,7 +178,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 )
 
                 yield LLMResultChunk(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=result.prompt_messages,
                     system_fingerprint=result.system_fingerprint,
                     delta=LLMResultChunkDelta(
@@ -187,7 +188,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content="", tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -199,8 +200,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                     for tool_call in tool_calls
                 ]
-            else:
-                assistant_message.content = response
 
             self._current_thoughts.append(assistant_message)
 
@@ -221,6 +220,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
             final_answer += response + "\n"
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and tool_calls:
+                raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # call tools
             tool_responses = []
@@ -305,7 +308,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),

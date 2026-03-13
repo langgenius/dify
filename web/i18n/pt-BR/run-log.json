@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Logs de ação",
+  "circularInvocationTip": "Há uma invocação circular de ferramentas/nós no fluxo de trabalho atual.",
+  "detail": "DETALHE",
+  "input": "ENTRADA",
+  "meta.executor": "Executor",
+  "meta.startTime": "Hora de Início",
+  "meta.status": "Status",
+  "meta.steps": "Passos de Execução",
+  "meta.time": "Tempo Decorrido",
+  "meta.title": "METADADOS",
+  "meta.tokens": "Total de Tokens",
+  "meta.version": "Versão",
+  "result": "RESULTADO",
+  "resultEmpty.link": "painel de detalhes",
+  "resultEmpty.tipLeft": "por favor vá para ",
+  "resultEmpty.tipRight": " veja.",
+  "resultEmpty.title": "Esta execução apenas produz o formato JSON,",
+  "resultPanel.status": "STATUS",
+  "resultPanel.time": "TEMPO DECORRIDO",
+  "resultPanel.tokens": "TOTAL DE TOKENS",
+  "tracing": "RASTREIO"
+}

@@ -12,13 +12,43 @@ jobs:
     if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Use uv to ensure we have the same ruff version in CI and locally.
-      - uses: astral-sh/setup-uv@v6
+      - name: Check Docker Compose inputs
+        id: docker-compose-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            docker/generate_docker_compose
+            docker/.env.example
+            docker/docker-compose-template.yaml
+            docker/docker-compose.yaml
+      - name: Check web inputs
+        id: web-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            web/**
+      - name: Check api inputs
+        id: api-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            api/**
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
-      - run: |
+
+      - uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+
+      - name: Generate Docker Compose
+        if: steps.docker-compose-changes.outputs.any_changed == 'true'
+        run: |
+          cd docker
+          ./generate_docker_compose
+
+      - if: steps.api-changes.outputs.any_changed == 'true'
+        run: |
           cd api
           uv sync --dev
           # fmt first to avoid line too long
@@ -29,16 +59,19 @@ jobs:
           uv run ruff format ..
 
       - name: count migration progress
+        if: steps.api-changes.outputs.any_changed == 'true'
         run: |
           cd api
           ./cnt_base.sh
 
       - name: ast-grep
+        if: steps.api-changes.outputs.any_changed == 'true'
         run: |
-          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
-          uvx --from ast-grep-cli sg --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all
-          uvx --from ast-grep-cli sg -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all
-          uvx --from ast-grep-cli sg -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all
+          # ast-grep exits 1 if no matches are found; allow idempotent runs.
+          uvx --from ast-grep-cli ast-grep --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all || true
           # Convert Optional[T] to T | None (ignoring quoted types)
           cat > /tmp/optional-rule.yml << 'EOF'
           id: convert-optional-to-union
@@ -56,35 +89,26 @@ jobs:
                     pattern: $T
           fix: $T | None
           EOF
-          uvx --from ast-grep-cli sg scan --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
+          uvx --from ast-grep-cli ast-grep scan . --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
           # Fix forward references that were incorrectly converted (Python doesn't support "Type" | None syntax)
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
+      # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx mdformat .
+          uvx --python 3.13 mdformat . --exclude ".agents/skills/**"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup web environment
+        if: steps.web-changes.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup-web
         with:
-          package_json_file: web/package.json
-          run_install: false
+          node-version: "24"
 
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/package.json
-
-      - name: Web dependencies
-        working-directory: ./web
-        run: pnpm install --frozen-lockfile
-
-      - name: oxlint
-        working-directory: ./web
+      - name: ESLint autofix
+        if: steps.web-changes.outputs.any_changed == 'true'
         run: |
-          pnpx oxlint --fix
+          cd web
+          pnpm eslint --concurrency=2 --prune-suppressions --quiet || true
 
-      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
+      - uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3

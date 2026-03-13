@@ -1,7 +1,7 @@
-import { create } from 'zustand'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { AccessMode } from '@/models/access-control'
 import type { App } from '@/types/app'
+import { create } from 'zustand'
+import { AccessMode } from '@/models/access-control'
 
 type AccessControlStore = {
   appId: App['id']

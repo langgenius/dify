@@ -21,7 +21,7 @@ from models.model import App, EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowNotFoundError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow_service import WorkflowService
@@ -141,7 +141,7 @@ class AsyncWorkflowService:
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            raise InvokeRateLimitError(
+            raise WorkflowQuotaLimitError(
                 f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
             ) from e
 
@@ -155,11 +155,11 @@ class AsyncWorkflowService:
 
         task: AsyncResult[Any] | None = None
         if queue_name == QueuePriority.PROFESSIONAL:
-            task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
+            task = execute_workflow_professional.delay(task_data_dict)
         elif queue_name == QueuePriority.TEAM:
-            task = execute_workflow_team.delay(task_data_dict)  # type: ignore
+            task = execute_workflow_team.delay(task_data_dict)
         else:  # SANDBOX
-            task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
+            task = execute_workflow_sandbox.delay(task_data_dict)
 
         # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
@@ -170,7 +170,7 @@ class AsyncWorkflowService:
 
         return AsyncTriggerResponse(
             workflow_trigger_log_id=trigger_log.id,
-            task_id=task.id,  # type: ignore
+            task_id=task.id,
             status="queued",
             queue=queue_name,
         )

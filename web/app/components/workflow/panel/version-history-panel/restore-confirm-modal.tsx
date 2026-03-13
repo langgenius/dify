@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import Modal from '@/app/components/base/modal'
+import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
@@ -19,24 +20,26 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  return <Modal className='p-0' isShow={isOpen} onClose={onClose}>
-    <div className='flex flex-col gap-y-2 p-6 pb-4 '>
-      <div className='title-2xl-semi-bold text-text-primary'>
-        {`${t('workflow.common.restore')} ${versionInfo.marked_name || t('workflow.versionHistory.defaultName')}`}
+  return (
+    <Modal className="p-0" isShow={isOpen} onClose={onClose}>
+      <div className="flex flex-col gap-y-2 p-6 pb-4 ">
+        <div className="title-2xl-semi-bold text-text-primary">
+          {`${t('common.restore', { ns: 'workflow' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
+        </div>
+        <p className="system-md-regular text-text-secondary">
+          {t('versionHistory.restorationTip', { ns: 'workflow' })}
+        </p>
       </div>
-      <p className='system-md-regular text-text-secondary'>
-        {t('workflow.versionHistory.restorationTip')}
-      </p>
-    </div>
-    <div className='flex items-center justify-end gap-x-2 p-6'>
-      <Button onClick={onClose}>
-        {t('common.operation.cancel')}
-      </Button>
-      <Button variant='primary' onClick={onRestore.bind(null, versionInfo)}>
-        {t('workflow.common.restore')}
-      </Button>
-    </div>
-  </Modal>
+      <div className="flex items-center justify-end gap-x-2 p-6">
+        <Button onClick={onClose}>
+          {t('operation.cancel', { ns: 'common' })}
+        </Button>
+        <Button variant="primary" onClick={onRestore.bind(null, versionInfo)}>
+          {t('common.restore', { ns: 'workflow' })}
+        </Button>
+      </div>
+    </Modal>
+  )
 }
 
 export default RestoreConfirmModal

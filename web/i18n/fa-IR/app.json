@@ -1,0 +1,283 @@
+{
+  "accessControl": "کنترل دسترسی به وب اپلیکیشن",
+  "accessControlDialog.accessItems.anyone": "هر کسی که لینک را داشته باشد",
+  "accessControlDialog.accessItems.external": "کاربران خارجی تأیید شده",
+  "accessControlDialog.accessItems.organization": "فقط اعضای داخل سازمان",
+  "accessControlDialog.accessItems.specific": "گروه‌ها یا اعضای خاص",
+  "accessControlDialog.accessLabel": "چه کسی به آن دسترسی دارد",
+  "accessControlDialog.description": "مجوزهای دسترسی به برنامه وب را تنظیم کنید",
+  "accessControlDialog.groups_one": "{{count}} گروه",
+  "accessControlDialog.groups_other": "{{count}} گروه",
+  "accessControlDialog.members_one": "{{count}} عضو",
+  "accessControlDialog.members_other": "{{count}} عضو",
+  "accessControlDialog.noGroupsOrMembers": "هیچ گروه یا عضوی انتخاب نشده است",
+  "accessControlDialog.operateGroupAndMember.allMembers": "تمام اعضا",
+  "accessControlDialog.operateGroupAndMember.expand": "گسترش",
+  "accessControlDialog.operateGroupAndMember.noResult": "نتیجه‌ای نیست",
+  "accessControlDialog.operateGroupAndMember.searchPlaceholder": "گروه‌ها و اعضا را جستجو کنید",
+  "accessControlDialog.title": "کنترل دسترسی به وب اپلیکیشن",
+  "accessControlDialog.updateSuccess": "به‌روز رسانی با موفقیت انجام شد",
+  "accessControlDialog.webAppSSONotEnabledTip": "لطفاً با مدیر شرکت تماس بگیرید تا روش احراز هویت برنامه وب را پیکربندی کند.",
+  "accessItemsDescription.anyone": "هر کسی می‌تواند به وب‌اپلیکیشن دسترسی پیدا کند",
+  "accessItemsDescription.external": "تنها کاربران خارجی تأیید شده می‌توانند به برنامه وب دسترسی پیدا کنند.",
+  "accessItemsDescription.organization": "هر کسی در سازمان می‌تواند به اپلیکیشن وب دسترسی پیدا کند.",
+  "accessItemsDescription.specific": "فقط گروه‌ها یا اعضای خاصی می‌توانند به اپلیکیشن وب دسترسی پیدا کنند.",
+  "answerIcon.description": "آیا از نماد web app برای جایگزینی 🤖 در برنامه مشترک استفاده کنیم یا خیر",
+  "answerIcon.descriptionInExplore": "آیا از نماد web app برای جایگزینی 🤖 در Explore استفاده کنیم یا خیر",
+  "answerIcon.title": "از نماد web app برای جایگزینی 🤖 استفاده کنید",
+  "appDeleteFailed": "حذف برنامه ناموفق بود",
+  "appDeleted": "برنامه حذف شد",
+  "appNamePlaceholder": "به برنامه خود یک نام بدهید",
+  "appSelector.label": "برنامه",
+  "appSelector.noParams": "بدون پارامتر مورد نیاز است",
+  "appSelector.params": "پارامترهای برنامه",
+  "appSelector.placeholder": "برنامه ای را انتخاب کنید...",
+  "communityIntro": "در کانال‌های مختلف با اعضای تیم، مشارکت‌کنندگان و توسعه‌دهندگان بحث کنید.",
+  "createApp": "ایجاد برنامه",
+  "createFromConfigFile": "ایجاد از فایل DSL",
+  "deleteAppConfirmContent": "حذف برنامه غیرقابل برگشت است. کاربران دیگر قادر به دسترسی به برنامه شما نخواهند بود و تمام تنظیمات و گزارشات درخواست‌ها به صورت دائم حذف خواهند شد.",
+  "deleteAppConfirmTitle": "آیا این برنامه حذف شود؟",
+  "dslUploader.browse": "مرور",
+  "dslUploader.button": "فایل را بکشید و رها کنید، یا",
+  "duplicate": "تکرار",
+  "duplicateTitle": "تکرار برنامه",
+  "editApp": "ویرایش اطلاعات",
+  "editAppTitle": "ویرایش اطلاعات برنامه",
+  "editDone": "اطلاعات برنامه به‌روزرسانی شد",
+  "editFailed": "به‌روزرسانی اطلاعات برنامه ناموفق بود",
+  "export": "صادر کردن DSL",
+  "exportFailed": "صادر کردن DSL ناموفق بود.",
+  "gotoAnything.actions.accountDesc": "به صفحه حساب کاربری بروید",
+  "gotoAnything.actions.communityDesc": "جامعه دیسکورد باز",
+  "gotoAnything.actions.docDesc": "مستندات کمک را باز کنید",
+  "gotoAnything.actions.feedbackDesc": "بحث‌های باز بازخورد جامعه",
+  "gotoAnything.actions.languageCategoryDesc": "زبان رابط را تغییر دهید",
+  "gotoAnything.actions.languageCategoryTitle": "زبان",
+  "gotoAnything.actions.languageChangeDesc": "زبان رابط کاربری را تغییر دهید",
+  "gotoAnything.actions.runDesc": "دستورات سریع اجرا کنید (موضوع، زبان، ...)",
+  "gotoAnything.actions.runTitle": "دستورات",
+  "gotoAnything.actions.searchApplications": "جستجوی برنامه ها",
+  "gotoAnything.actions.searchApplicationsDesc": "جستجو و پیمایش به برنامه های خود",
+  "gotoAnything.actions.searchKnowledgeBases": "جستجو در پایگاه های دانش",
+  "gotoAnything.actions.searchKnowledgeBasesDesc": "پایگاه های دانش خود را جستجو کرده و به آن ناوبری کنید",
+  "gotoAnything.actions.searchPlugins": "جستجوی افزونه ها",
+  "gotoAnything.actions.searchPluginsDesc": "افزونه های خود را جستجو کرده و به آنها پیمایش کنید",
+  "gotoAnything.actions.searchWorkflowNodes": "جستجوی گره های گردش کار",
+  "gotoAnything.actions.searchWorkflowNodesDesc": "گره ها را در گردش کار فعلی بر اساس نام یا نوع پیدا کنید و به آنها بروید",
+  "gotoAnything.actions.searchWorkflowNodesHelp": "این ویژگی فقط هنگام مشاهده گردش کار کار می کند. ابتدا به گردش کار بروید.",
+  "gotoAnything.actions.slashDesc": "دستورات را مانند /theme، /lang اجرا کنید",
+  "gotoAnything.actions.slashTitle": "دستورات",
+  "gotoAnything.actions.themeCategoryDesc": "تغییر تم برنامه",
+  "gotoAnything.actions.themeCategoryTitle": "تم",
+  "gotoAnything.actions.themeDark": "تم تاریک",
+  "gotoAnything.actions.themeDarkDesc": "از ظاهر تیره استفاده کنید",
+  "gotoAnything.actions.themeLight": "تم روشن",
+  "gotoAnything.actions.themeLightDesc": "از ظاهر روشن استفاده کنید",
+  "gotoAnything.actions.themeSystem": "تم سیستم",
+  "gotoAnything.actions.themeSystemDesc": "به ظاهر سیستم‌عامل خود پایبند باشید",
+  "gotoAnything.actions.zenDesc": "Toggle canvas focus mode",
+  "gotoAnything.actions.zenTitle": "Zen Mode",
+  "gotoAnything.clearToSearchAll": "پاک کردن @ برای جستجوی همه",
+  "gotoAnything.commandHint": "@ را برای مرور بر اساس دسته بندی تایپ کنید",
+  "gotoAnything.emptyState.noAppsFound": "هیچ برنامه ای یافت نشد",
+  "gotoAnything.emptyState.noKnowledgeBasesFound": "هیچ پایگاه دانش یافت نشد",
+  "gotoAnything.emptyState.noPluginsFound": "هیچ افزونه ای یافت نشد",
+  "gotoAnything.emptyState.noWorkflowNodesFound": "هیچ گره گردش کاری یافت نشد",
+  "gotoAnything.emptyState.tryDifferentTerm": "یک عبارت جستجوی متفاوت را امتحان کنید",
+  "gotoAnything.emptyState.trySpecificSearch": "{{shortcuts}} را برای جستجوهای خاص امتحان کنید",
+  "gotoAnything.groups.apps": "برنامه‌ها",
+  "gotoAnything.groups.commands": "دستورات",
+  "gotoAnything.groups.knowledgeBases": "پایگاه های دانش",
+  "gotoAnything.groups.plugins": "پلاگین",
+  "gotoAnything.groups.workflowNodes": "گره های گردش کار",
+  "gotoAnything.inScope": "در {{scope}}s",
+  "gotoAnything.noMatchingCommands": "هیچ دستوری منطبق یافت نشد",
+  "gotoAnything.noResults": "هیچ نتیجه ای یافت نشد",
+  "gotoAnything.pressEscToClose": "برای بستن ESC را فشار دهید",
+  "gotoAnything.resultCount": "{{count}} نتیجه",
+  "gotoAnything.resultCount_other": "{{count}} نتیجه",
+  "gotoAnything.searchFailed": "جستجو انجام نشد",
+  "gotoAnything.searchHint": "شروع به تایپ کنید تا فورا همه چیز را جستجو کنید",
+  "gotoAnything.searchPlaceholder": "جستجو یا تایپ @ برای دستورات...",
+  "gotoAnything.searchTemporarilyUnavailable": "جستجو به طور موقت در دسترس نیست",
+  "gotoAnything.searchTitle": "هر چیزی را جستجو کنید",
+  "gotoAnything.searching": "جستجو...",
+  "gotoAnything.selectSearchType": "انتخاب کنید چه چیزی را جستجو کنید",
+  "gotoAnything.selectToNavigate": "انتخاب کنید تا برای حرکت",
+  "gotoAnything.servicesUnavailableMessage": "برخی از سرویس های جستجو ممکن است با مشکل مواجه شوند. یک لحظه دیگر دوباره امتحان کنید.",
+  "gotoAnything.slashHint": "برای مشاهده تمام دستورات موجود / را تایپ کنید",
+  "gotoAnything.someServicesUnavailable": "برخی از سرویس های جستجو دردسترس نیستند",
+  "gotoAnything.startTyping": "برای جستجو شروع به تایپ کنید",
+  "gotoAnything.tips": "برای حرکت به بالا و پایین کلیدهای ↑ و ↓ را فشار دهید",
+  "gotoAnything.tryDifferentSearch": "عبارت جستجوی دیگری را امتحان کنید",
+  "gotoAnything.useAtForSpecific": "از @ برای انواع خاص استفاده کنید",
+  "iconPicker.cancel": "لغو",
+  "iconPicker.emoji": "ایموجی",
+  "iconPicker.image": "تصویر",
+  "iconPicker.ok": "باشه",
+  "importDSL": "وارد کردن فایل DSL",
+  "importFromDSL": "وارد کردن از DSL",
+  "importFromDSLFile": "از فایل DSL",
+  "importFromDSLUrl": "از URL",
+  "importFromDSLUrlPlaceholder": "لینک DSL را اینجا بچسبانید",
+  "join": "پیوستن به جامعه",
+  "maxActiveRequests": "بیشترین درخواست‌های همزمان",
+  "maxActiveRequestsPlaceholder": "برای نامحدود، 0 را وارد کنید",
+  "maxActiveRequestsTip": "حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)",
+  "mermaid.classic": "کلاسیک",
+  "mermaid.handDrawn": "دست کشیده شده",
+  "newApp.Cancel": "لغو",
+  "newApp.Confirm": "تایید",
+  "newApp.Create": "ایجاد",
+  "newApp.advancedShortDescription": "گردش‌کار پیشرفته برای گفتگوهای چند مرحله‌ای",
+  "newApp.advancedUserDescription": "گردش‌کار با ویژگی‌های حافظه اضافی و رابط چت‌بات",
+  "newApp.agentAssistant": "دستیار نماینده جدید",
+  "newApp.agentShortDescription": "عامل هوشمند با استدلال و استفاده از ابزار مستقل",
+  "newApp.agentUserDescription": "یک عامل هوشمند که قادر به استدلال تکراری و استفاده از ابزار مستقل برای دستیابی به اهداف وظیفه است.",
+  "newApp.appCreateDSLErrorPart1": "تفاوت قابل توجهی در نسخه های DSL مشاهده شده است. اجبار به واردات ممکن است باعث اختلال در عملکرد برنامه شود.",
+  "newApp.appCreateDSLErrorPart2": "آیا می خواهید ادامه دهید؟",
+  "newApp.appCreateDSLErrorPart3": "نسخه DSL برنامه فعلی:",
+  "newApp.appCreateDSLErrorPart4": "نسخه DSL پشتیبانی شده توسط سیستم:",
+  "newApp.appCreateDSLErrorTitle": "ناسازگاری نسخه",
+  "newApp.appCreateDSLWarning": "احتیاط: تفاوت نسخه DSL ممکن است بر ویژگی های خاصی تأثیر بگذارد",
+  "newApp.appCreateFailed": "ایجاد برنامه ناموفق بود",
+  "newApp.appCreated": "برنامه ایجاد شد",
+  "newApp.appDescriptionPlaceholder": "توضیحات برنامه را وارد کنید",
+  "newApp.appNamePlaceholder": "به برنامه خود یک نام بدهید",
+  "newApp.appTemplateNotSelected": "لطفاً یک قالب انتخاب کنید",
+  "newApp.appTypeRequired": "لطفاً نوع برنامه را انتخاب کنید",
+  "newApp.captionDescription": "توضیحات",
+  "newApp.captionName": "آیکون و نام برنامه",
+  "newApp.caution": "احتیاط",
+  "newApp.chatApp": "دستیار",
+  "newApp.chatAppIntro": "می‌خواهم یک برنامه مبتنی بر چت بسازم. این برنامه از قالب پرسش و پاسخ استفاده می‌کند و امکان چندین دور مکالمه مداوم را فراهم می‌کند.",
+  "newApp.chatbotShortDescription": "چت بات مبتنی بر LLM با راه اندازی ساده",
+  "newApp.chatbotUserDescription": "به سرعت یک چت بات مبتنی بر LLM با پیکربندی ساده بسازید. بعدا می توانید به Chatflow بروید.",
+  "newApp.chooseAppType": "انتخاب نوع برنامه",
+  "newApp.completeApp": "تولید کننده متن",
+  "newApp.completeAppIntro": "می‌خواهم برنامه‌ای بسازم که متن با کیفیت بالا بر اساس درخواست‌ها تولید کند، مانند تولید مقالات، خلاصه‌ها، ترجمه‌ها و بیشتر.",
+  "newApp.completionShortDescription": "دستیار هوش مصنوعی برای تسک های تولید متن",
+  "newApp.completionUserDescription": "به سرعت یک دستیار هوش مصنوعی برای وظایف تولید متن با پیکربندی ساده بسازید.",
+  "newApp.dropDSLToCreateApp": "فایل DSL را اینجا رها کنید تا برنامه ساخته شود",
+  "newApp.forAdvanced": "برای کاربران پیشرفته",
+  "newApp.forBeginners": "انواع برنامه‌های پایه‌تر",
+  "newApp.foundResult": "{{count}} نتیجه",
+  "newApp.foundResults": "{{count}} نتیجه",
+  "newApp.hideTemplates": "بازگشت به انتخاب حالت",
+  "newApp.import": "واردات",
+  "newApp.learnMore": "بیشتر بدانید",
+  "newApp.nameNotEmpty": "نام نمی‌تواند خالی باشد",
+  "newApp.noAppsFound": "هیچ برنامه ای یافت نشد",
+  "newApp.noIdeaTip": "ایده ای ندارید؟ قالب های ما را بررسی کنید",
+  "newApp.noTemplateFound": "هیچ الگویی یافت نشد",
+  "newApp.noTemplateFoundTip": "سعی کنید با استفاده از کلمات کلیدی مختلف جستجو کنید.",
+  "newApp.optional": "اختیاری",
+  "newApp.previewDemo": "پیش‌نمایش دمو",
+  "newApp.showTemplates": "می‌خواهم از یک قالب انتخاب کنم",
+  "newApp.startFromBlank": "ایجاد از خالی",
+  "newApp.startFromTemplate": "ایجاد از قالب",
+  "newApp.useTemplate": "استفاده از این قالب",
+  "newApp.workflowShortDescription": "جریان عاملی برای اتوماسیون‌های هوشمند",
+  "newApp.workflowUserDescription": "ساخت بصری گردش‌کارهای خودکار هوش مصنوعی با سادگی کشیدن و رها کردن",
+  "newApp.workflowWarning": "در حال حاضر در نسخه بتا",
+  "newAppFromTemplate.byCategories": "بر اساس دسته بندی ها",
+  "newAppFromTemplate.searchAllTemplate": "همه قالب ها را جستجو کنید...",
+  "newAppFromTemplate.sidebar.Agent": "عامل",
+  "newAppFromTemplate.sidebar.Assistant": "دستیار",
+  "newAppFromTemplate.sidebar.HR": "ساعت",
+  "newAppFromTemplate.sidebar.Programming": "برنامه نویسی",
+  "newAppFromTemplate.sidebar.Recommended": "توصیه",
+  "newAppFromTemplate.sidebar.Workflow": "گردش",
+  "newAppFromTemplate.sidebar.Writing": "نوشتن",
+  "noAccessPermission": "دسترسی به برنامه وب مجاز نیست",
+  "noUserInputNode": "ورودی کاربر پیدا نشد",
+  "notPublishedYet": "اپ هنوز منتشر نشده است",
+  "openInExplore": "باز کردن در کاوش",
+  "publishApp.notSet": "تنظیم نشده است",
+  "publishApp.notSetDesc": "در حال حاضر هیچ‌کس نمی‌تواند به برنامه وب دسترسی پیدا کند. لطفاً مجوزها را تنظیم کنید.",
+  "publishApp.title": "چه کسی می‌تواند به برنامه وب دسترسی داشته باشد؟",
+  "removeOriginal": "حذف برنامه اصلی",
+  "roadmap": "نقشه راه ما را ببینید",
+  "showMyCreatedAppsOnly": "فقط برنامه‌های ایجاد شده توسط من را نشان بده",
+  "structOutput.LLMResponse": "پاسخ مدل زبان بزرگ",
+  "structOutput.configure": "تنظیمات",
+  "structOutput.modelNotSupported": "مدل پشتیبانی نمی شود",
+  "structOutput.modelNotSupportedTip": "مدل فعلی این ویژگی را پشتیبانی نمی‌کند و به‌طور خودکار به تزریق درخواست تنزل پیدا می‌کند.",
+  "structOutput.moreFillTip": "نمایش حداکثر ۱۰ سطح تو در تو",
+  "structOutput.notConfiguredTip": "خروجی ساختاری هنوز تنظیم نشده است",
+  "structOutput.required": "ضروری",
+  "structOutput.structured": "ساختار یافته",
+  "structOutput.structuredTip": "خروجی‌های ساختاری یک ویژگی است که تضمین می‌کند مدل همیشه پاسخ‌هایی تولید می‌کند که به طرح JSON ارائه شده شما پایبند باشد.",
+  "switch": "تغییر به سازماندهی گردش کار",
+  "switchLabel": "نسخه برنامه که ایجاد می‌شود",
+  "switchStart": "شروع تغییر",
+  "switchTip": "اجازه نمی‌دهد",
+  "switchTipEnd": " تغییر به سازماندهی اساسی بازگردد.",
+  "switchTipStart": "یک نسخه جدید از برنامه برای شما ایجاد خواهد شد و نسخه جدید به سازماندهی گردش کار تغییر خواهد کرد. نسخه جدید ",
+  "theme.switchDark": "تغییر به حالت تاریک",
+  "theme.switchLight": "تغییر به حالت روشن",
+  "tracing.aliyun.description": "پلتفرم مشاهده‌پذیری کاملاً مدیریت‌شده و بدون نیاز به نگهداری که توسط Alibaba Cloud ارائه شده، امکان نظارت، ردیابی و ارزیابی برنامه‌های Dify را به‌صورت آماده و با تنظیمات اولیه فراهم می‌کند.",
+  "tracing.aliyun.title": "نظارت بر ابر",
+  "tracing.arize.description": "قابلیت مشاهده LLM در سطح سازمانی، ارزیابی آنلاین و آفلاین، نظارت و آزمایش — با پشتیبانی از OpenTelemetry. طراحی‌شده مخصوص برنامه‌های مبتنی بر LLM و عامل‌ها.",
+  "tracing.arize.title": "Arize",
+  "tracing.collapse": "بستن",
+  "tracing.config": "پیکربندی",
+  "tracing.configProvider.clientId": "شناسه مشتری OAuth",
+  "tracing.configProvider.clientSecret": "رمز مخفی مشتری OAuth",
+  "tracing.configProvider.databricksHost": "نشانی اینترنتی محیط کاری دیتابریکس",
+  "tracing.configProvider.experimentId": "شناسه آزمایش",
+  "tracing.configProvider.password": "رمز عبور",
+  "tracing.configProvider.personalAccessToken": "نشانه دسترسی شخصی (قدیمی)",
+  "tracing.configProvider.placeholder": "کلید {{key}} خود را وارد کنید",
+  "tracing.configProvider.project": "پروژه",
+  "tracing.configProvider.publicKey": "کلید عمومی",
+  "tracing.configProvider.removeConfirmContent": "پیکربندی فعلی در حال استفاده است، حذف آن ویژگی ردیابی را غیرفعال خواهد کرد.",
+  "tracing.configProvider.removeConfirmTitle": "حذف پیکربندی {{key}}؟",
+  "tracing.configProvider.secretKey": "کلید محرمانه",
+  "tracing.configProvider.title": "پیکربندی",
+  "tracing.configProvider.trackingUri": "آدرس URI ردیابی",
+  "tracing.configProvider.username": "نام کاربری",
+  "tracing.configProvider.viewDocsLink": "مشاهده مستندات {{key}}",
+  "tracing.configProviderTitle.configured": "پیکربندی شده",
+  "tracing.configProviderTitle.moreProvider": "ارائه‌دهندگان بیشتر",
+  "tracing.configProviderTitle.notConfigured": "برای فعال‌سازی ردیابی ارائه‌دهنده را پیکربندی کنید",
+  "tracing.databricks.description": "Databricks MLflow کاملاً مدیریت‌شده با حکمرانی و امنیت قوی برای ذخیره‌سازی داده‌های ردیابی ارائه می‌دهد.",
+  "tracing.databricks.title": "Databricks",
+  "tracing.description": "پیکربندی ارائه‌دهنده شخص ثالث LLMOps و ردیابی عملکرد برنامه.",
+  "tracing.disabled": "غیرفعال",
+  "tracing.disabledTip": "لطفاً ابتدا ارائه‌دهنده را پیکربندی کنید",
+  "tracing.enabled": "در حال خدمت",
+  "tracing.expand": "باز کردن",
+  "tracing.inUse": "در حال استفاده",
+  "tracing.langfuse.description": "ردیابی، ارزیابی، مدیریت درخواست‌ها و معیارها برای رفع اشکال و بهبود برنامه LLM شما.",
+  "tracing.langfuse.title": "Langfuse",
+  "tracing.langsmith.description": "یک پلتفرم همه‌کاره برای هر مرحله از چرخه عمر برنامه‌های مبتنی بر LLM.",
+  "tracing.langsmith.title": "LangSmith",
+  "tracing.mlflow.description": "پلتفرم LLMOps متن‌باز برای ردیابی آزمایش‌ها، مشاهده‌پذیری و ارزیابی، برای ساخت برنامه‌های AI/LLM با اطمینان.",
+  "tracing.mlflow.title": "MLflow",
+  "tracing.opik.description": "Opik یک پلت فرم منبع باز برای ارزیابی، آزمایش و نظارت بر برنامه های LLM است.",
+  "tracing.opik.title": "اوپیک",
+  "tracing.phoenix.description": "پلتفرم متن‌باز و مبتنی بر OpenTelemetry برای مشاهده‌پذیری، ارزیابی، مهندسی پرامپت و آزمایش برای جریان‌های کاری و عامل‌های LLM شما.",
+  "tracing.phoenix.title": "Phoenix",
+  "tracing.tencent.description": "نظارت بر عملکرد برنامه‌های Tencent تحلیل‌های جامع و ردیابی چندبعدی برای برنامه‌های LLM ارائه می‌دهد.",
+  "tracing.tencent.title": "تنست ای‌پی‌ام",
+  "tracing.title": "ردیابی عملکرد برنامه",
+  "tracing.tracing": "ردیابی",
+  "tracing.tracingDescription": "ثبت کامل متن اجرای برنامه، از جمله تماس‌های LLM، متن، درخواست‌های HTTP و بیشتر، به یک پلتفرم ردیابی شخص ثالث.",
+  "tracing.view": "مشاهده",
+  "tracing.weave.description": "ویو یک پلتفرم متن باز برای ارزیابی، آزمایش و نظارت بر برنامه‌های LLM است.",
+  "tracing.weave.title": "بافندگی",
+  "typeSelector.advanced": "چت‌فلو",
+  "typeSelector.agent": "نماینده",
+  "typeSelector.all": "همه انواع",
+  "typeSelector.chatbot": "چت‌بات",
+  "typeSelector.completion": "تکمیل",
+  "typeSelector.workflow": "گردش کار",
+  "types.advanced": "چت‌فلو",
+  "types.agent": "نماینده",
+  "types.all": "همه",
+  "types.basic": "اساسی",
+  "types.chatbot": "چت‌بات",
+  "types.completion": "تکمیل",
+  "types.workflow": "گردش کار"
+}

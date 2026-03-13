@@ -3,9 +3,9 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ProviderModel
-from core.model_runtime.entities.provider_entities import ProviderEntity
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import ModelType, ProviderModel
+from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class ModelStatus(StrEnum):
@@ -29,7 +29,7 @@ class SimpleModelProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     supported_model_types: list[ModelType]
 
     def __init__(self, provider_entity: ProviderEntity):
@@ -42,7 +42,7 @@ class SimpleModelProviderEntity(BaseModel):
             provider=provider_entity.provider,
             label=provider_entity.label,
             icon_small=provider_entity.icon_small,
-            icon_large=provider_entity.icon_large,
+            icon_small_dark=provider_entity.icon_small_dark,
             supported_model_types=provider_entity.supported_model_types,
         )
 
@@ -92,7 +92,6 @@ class DefaultModelProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
     supported_model_types: Sequence[ModelType] = []
 
 

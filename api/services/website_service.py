@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import json
 from dataclasses import dataclass
@@ -78,7 +80,7 @@ class WebsiteCrawlApiRequest:
         return CrawlRequest(url=self.url, provider=self.provider, options=options)
 
     @classmethod
-    def from_args(cls, args: dict) -> "WebsiteCrawlApiRequest":
+    def from_args(cls, args: dict) -> WebsiteCrawlApiRequest:
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
         url = args.get("url")
@@ -102,7 +104,7 @@ class WebsiteCrawlStatusApiRequest:
     job_id: str
 
     @classmethod
-    def from_args(cls, args: dict, job_id: str) -> "WebsiteCrawlStatusApiRequest":
+    def from_args(cls, args: dict, job_id: str) -> WebsiteCrawlStatusApiRequest:
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
         if not provider:
@@ -122,7 +124,7 @@ class WebsiteService:
         if provider == "firecrawl":
             plugin_id = "langgenius/firecrawl_datasource"
         elif provider == "watercrawl":
-            plugin_id = "langgenius/watercrawl_datasource"
+            plugin_id = "watercrawl/watercrawl_datasource"
         elif provider == "jinareader":
             plugin_id = "langgenius/jina_datasource"
         else:

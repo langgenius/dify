@@ -6,6 +6,20 @@ files=$(git diff --cached --name-only)
 
 api_modified=false
 web_modified=false
+skip_web_checks=false
+
+git_path() {
+    git rev-parse --git-path "$1"
+}
+
+if [ -f "$(git_path MERGE_HEAD)" ] || \
+   [ -f "$(git_path CHERRY_PICK_HEAD)" ] || \
+   [ -f "$(git_path REVERT_HEAD)" ] || \
+   [ -f "$(git_path SQUASH_MSG)" ] || \
+   [ -d "$(git_path rebase-merge)" ] || \
+   [ -d "$(git_path rebase-apply)" ]; then
+    skip_web_checks=true
+fi
 
 for file in $files
 do
@@ -43,6 +57,11 @@ if $api_modified; then
 fi
 
 if $web_modified; then
+    if $skip_web_checks; then
+        echo "Git operation in progress, skipping web checks"
+        exit 0
+    fi
+
     echo "Running ESLint on web module"
 
     if git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'; then
@@ -61,13 +80,13 @@ if $web_modified; then
     lint-staged
 
     if $web_ts_modified; then
-        echo "Running TypeScript type-check"
-        if ! pnpm run type-check; then
-            echo "Type check failed. Please run 'pnpm run type-check' to fix the errors."
+        echo "Running TypeScript type-check:tsgo"
+        if ! pnpm run type-check:tsgo; then
+            echo "Type check failed. Please run 'pnpm run type-check:tsgo' to fix the errors."
             exit 1
         fi
     else
-        echo "No staged TypeScript changes detected, skipping type-check"
+        echo "No staged TypeScript changes detected, skipping type-check:tsgo"
     fi
 
     echo "Running unit tests check"

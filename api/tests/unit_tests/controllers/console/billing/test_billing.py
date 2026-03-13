@@ -125,7 +125,7 @@ class TestPartnerTenants:
                 resource = PartnerTenants()
 
                 # Act & Assert
-                # reqparse will raise BadRequest for missing required field
+                # Validation should raise BadRequest for missing required field
                 with pytest.raises(BadRequest):
                     resource.put(partner_key_encoded)
 

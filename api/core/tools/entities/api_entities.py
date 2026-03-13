@@ -5,11 +5,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 
 
 class ToolApiEntity(BaseModel):
@@ -54,6 +54,8 @@ class ToolProviderApiEntity(BaseModel):
     configuration: MCPConfiguration | None = Field(
         default=None, description="The timeout and sse_read_timeout of the MCP tool"
     )
+    # Workflow
+    workflow_app_id: str | None = Field(default=None, description="The app id of the workflow tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -87,6 +89,8 @@ class ToolProviderApiEntity(BaseModel):
             optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
             optional_fields.update(self.optional_field("original_headers", self.original_headers))
+        elif self.type == ToolProviderType.WORKFLOW:
+            optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
         return {
             "id": self.id,
             "author": self.author,

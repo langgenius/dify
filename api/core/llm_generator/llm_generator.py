@@ -6,6 +6,8 @@ from typing import Protocol, cast
 
 import json_repair
 
+from core.app.app_config.entities import ModelConfig
+from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
@@ -15,19 +17,21 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    SUGGESTED_QUESTIONS_MAX_TOKENS,
+    SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -69,16 +73,23 @@ class LLMGenerator:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
-        answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
+        answer = response.message.get_text_content()
+        if answer == "":
             return ""
         try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
+            result_dict = json.loads(answer)
         except json.JSONDecodeError:
-            logger.exception("Failed to generate name after answer, use query instead")
+            result_dict = json_repair.loads(answer)
+
+        if not isinstance(result_dict, dict):
             answer = query
+        else:
+            output = result_dict.get("Your Output")
+            if isinstance(output, str) and output.strip():
+                answer = output.strip()
+            else:
+                answer = query
+
         name = answer.strip()
 
         if len(name) > 75:
@@ -124,7 +135,10 @@ class LLMGenerator:
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters={"max_tokens": 256, "temperature": 0},
+                model_parameters={
+                    "max_tokens": SUGGESTED_QUESTIONS_MAX_TOKENS,
+                    "temperature": SUGGESTED_QUESTIONS_TEMPERATURE,
+                },
                 stream=False,
             )
 
@@ -139,19 +153,19 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool):
+    def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload):
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
         error_step = ""
         rule_config = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
-        model_parameters = model_config.get("completion_params", {})
-        if no_variable:
+        model_parameters = args.model_config_data.completion_params
+        if args.no_variable:
             prompt_template = PromptTemplateParser(WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE)
 
             prompt_generate = prompt_template.format(
                 inputs={
-                    "TASK_DESCRIPTION": instruction,
+                    "TASK_DESCRIPTION": args.instruction,
                 },
                 remove_template_variables=False,
             )
@@ -163,8 +177,8 @@ class LLMGenerator:
             model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
-                provider=model_config.get("provider", ""),
-                model=model_config.get("name", ""),
+                provider=args.model_config_data.provider,
+                model=args.model_config_data.name,
             )
 
             try:
@@ -172,14 +186,15 @@ class LLMGenerator:
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 )
 
-                rule_config["prompt"] = cast(str, response.message.content)
+                rule_config["prompt"] = response.message.get_text_content()
 
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate rule config"
             except Exception as e:
-                logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
-                rule_config["error"] = str(e)
+                logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
+                error = str(e)
+                error_step = "generate rule config"
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
@@ -197,7 +212,7 @@ class LLMGenerator:
         # format the prompt_generate_prompt
         prompt_generate_prompt = prompt_template.format(
             inputs={
-                "TASK_DESCRIPTION": instruction,
+                "TASK_DESCRIPTION": args.instruction,
             },
             remove_template_variables=False,
         )
@@ -208,8 +223,8 @@ class LLMGenerator:
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
         try:
@@ -225,13 +240,11 @@ class LLMGenerator:
 
                 return rule_config
 
-            rule_config["prompt"] = cast(str, prompt_content.message.content)
+            rule_config["prompt"] = prompt_content.message.get_text_content()
 
-            if not isinstance(prompt_content.message.content, str):
-                raise NotImplementedError("prompt content is not a string")
             parameter_generate_prompt = parameter_template.format(
                 inputs={
-                    "INPUT_TEXT": prompt_content.message.content,
+                    "INPUT_TEXT": prompt_content.message.get_text_content(),
                 },
                 remove_template_variables=False,
             )
@@ -240,8 +253,8 @@ class LLMGenerator:
             # the second step to generate the task_parameter and task_statement
             statement_generate_prompt = statement_template.format(
                 inputs={
-                    "TASK_DESCRIPTION": instruction,
-                    "INPUT_TEXT": prompt_content.message.content,
+                    "TASK_DESCRIPTION": args.instruction,
+                    "INPUT_TEXT": prompt_content.message.get_text_content(),
                 },
                 remove_template_variables=False,
             )
@@ -251,7 +264,7 @@ class LLMGenerator:
                 parameter_content: LLMResult = model_instance.invoke_llm(
                     prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
                 )
-                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
+                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', parameter_content.message.get_text_content())
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate variables"
@@ -260,30 +273,35 @@ class LLMGenerator:
                 statement_content: LLMResult = model_instance.invoke_llm(
                     prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
                 )
-                rule_config["opening_statement"] = cast(str, statement_content.message.content)
+                rule_config["opening_statement"] = statement_content.message.get_text_content()
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate conversation opener"
 
         except Exception as e:
-            logger.exception("Failed to generate rule config, model: %s", model_config.get("name"))
-            rule_config["error"] = str(e)
+            logger.exception("Failed to generate rule config, model: %s", args.model_config_data.name)
+            error = str(e)
+            error_step = "handle unexpected exception"
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
 
     @classmethod
-    def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
-        if code_language == "python":
+    def generate_code(
+        cls,
+        tenant_id: str,
+        args: RuleCodeGeneratePayload,
+    ):
+        if args.code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
             prompt_template = PromptTemplateParser(JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE)
 
         prompt = prompt_template.format(
             inputs={
-                "INSTRUCTION": instruction,
-                "CODE_LANGUAGE": code_language,
+                "INSTRUCTION": args.instruction,
+                "CODE_LANGUAGE": args.code_language,
             },
             remove_template_variables=False,
         )
@@ -292,28 +310,28 @@ class LLMGenerator:
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
         prompt_messages = [UserPromptMessage(content=prompt)]
-        model_parameters = model_config.get("completion_params", {})
+        model_parameters = args.model_config_data.completion_params
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_code = cast(str, response.message.content)
-            return {"code": generated_code, "language": code_language, "error": ""}
+            generated_code = response.message.get_text_content()
+            return {"code": generated_code, "language": args.code_language, "error": ""}
 
         except InvokeError as e:
             error = str(e)
-            return {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
+            return {"code": "", "language": args.code_language, "error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
             logger.exception(
-                "Failed to invoke LLM model, model: %s, language: %s", model_config.get("name"), code_language
+                "Failed to invoke LLM model, model: %s, language: %s", args.model_config_data.name, args.code_language
             )
-            return {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
+            return {"code": "", "language": args.code_language, "error": f"An unexpected error occurred: {str(e)}"}
 
     @classmethod
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
@@ -339,34 +357,31 @@ class LLMGenerator:
             raise TypeError("Expected LLMResult when stream=False")
         response = result
 
-        answer = cast(str, response.message.content)
+        answer = response.message.get_text_content()
         return answer.strip()
 
     @classmethod
-    def generate_structured_output(cls, tenant_id: str, instruction: str, model_config: dict):
+    def generate_structured_output(cls, tenant_id: str, args: RuleStructuredOutputPayload):
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
         )
 
         prompt_messages = [
             SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
-            UserPromptMessage(content=instruction),
+            UserPromptMessage(content=args.instruction),
         ]
-        model_parameters = model_config.get("model_parameters", {})
+        model_parameters = args.model_config_data.completion_params
 
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            raw_content = response.message.content
-
-            if not isinstance(raw_content, str):
-                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+            raw_content = response.message.get_text_content()
 
             try:
                 parsed_content = json.loads(raw_content)
@@ -383,12 +398,17 @@ class LLMGenerator:
             error = str(e)
             return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
         except Exception as e:
-            logger.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
+            logger.exception("Failed to invoke LLM model, model: %s", args.model_config_data.name)
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
 
     @staticmethod
     def instruction_modify_legacy(
-        tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
+        tenant_id: str,
+        flow_id: str,
+        current: str,
+        instruction: str,
+        model_config: ModelConfig,
+        ideal_output: str | None,
     ):
         last_run: Message | None = (
             db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
@@ -427,7 +447,7 @@ class LLMGenerator:
         node_id: str,
         current: str,
         instruction: str,
-        model_config: dict,
+        model_config: ModelConfig,
         ideal_output: str | None,
         workflow_service: WorkflowServiceInterface,
     ):
@@ -498,7 +518,7 @@ class LLMGenerator:
     @staticmethod
     def __instruction_modify_common(
         tenant_id: str,
-        model_config: dict,
+        model_config: ModelConfig,
         last_run: dict | None,
         current: str | None,
         error_message: str | None,
@@ -519,8 +539,8 @@ class LLMGenerator:
         model_instance = ModelManager().get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            provider=model_config.provider,
+            model=model_config.name,
         )
         match node_type:
             case "llm" | "agent":
@@ -549,16 +569,19 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_raw = cast(str, response.message.content)
+            generated_raw = response.message.get_text_content()
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
-
+            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+            json_str = generated_raw[first_brace : last_brace + 1]
+            data = json_repair.loads(json_str)
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+            return data
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logger.exception(
-                "Failed to invoke LLM model, model: %s", json.dumps(model_config.get("name")), exc_info=True
-            )
+            logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
             return {"error": f"An unexpected error occurred: {str(e)}"}

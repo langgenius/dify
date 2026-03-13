@@ -26,7 +26,6 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
     @classmethod
     def get_app_config(cls, app_model: App, workflow: Workflow) -> AdvancedChatAppConfig:
         features_dict = workflow.features_dict
-
         app_mode = AppMode.value_of(app_model.mode)
         app_config = AdvancedChatAppConfig(
             tenant_id=app_model.tenant_id,

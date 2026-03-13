@@ -1,20 +1,19 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import type { PluginTriggerNodeType, PluginTriggerVarInputs } from './types'
+import type { Event } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { produce } from 'immer'
-import type { PluginTriggerNodeType } from './types'
-import type { PluginTriggerVarInputs } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import {
-  useAllTriggerPlugins,
-  useTriggerSubscriptions,
-} from '@/service/use-triggers'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import type { InputVar } from '@/app/components/workflow/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { Event } from '@/app/components/tools/types'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import {
+  useAllTriggerPlugins,
+  useTriggerSubscriptions,
+} from '@/service/use-triggers'
 import { VarKindType } from '../_base/types'
 
 const normalizeEventParameters = (
@@ -121,7 +120,8 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Dynamic trigger parameters (from specific trigger.parameters)
   const triggerSpecificParameterSchema = useMemo(() => {
-    if (!currentEvent) return []
+    if (!currentEvent)
+      return []
     return toolParametersToFormSchemas(currentEvent.parameters)
   }, [currentEvent])
 

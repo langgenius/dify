@@ -8,8 +8,18 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org) >= v22.11.x
-- [pnpm](https://pnpm.io) v10.x
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
+
+> [!TIP]
+> It is recommended to install and enable Corepack to manage package manager versions automatically:
+>
+> ```bash
+> npm install -g corepack
+> corepack enable
+> ```
+>
+> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
 
 First, install the dependencies:
 
@@ -23,7 +33,7 @@ Then, configure the environment variables. Create a file named `.env.local` in t
 cp .env.example .env.local
 ```
 
-```
+```txt
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 # The deployment edition, SELF_HOSTED
@@ -79,8 +89,6 @@ If you want to customize the host and port:
 pnpm run start --port=3001 --host=0.0.0.0
 ```
 
-If you want to customize the number of instances launched by PM2, you can configure `PM2_INSTANCES` in `docker-compose.yaml` or `Dockerfile`.
-
 ## Storybook
 
 This project uses [Storybook](https://storybook.js.org/) for UI component development.
@@ -97,16 +105,18 @@ Open [http://localhost:6006](http://localhost:6006) with your browser to see the
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
+
 ## Test
 
-We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
 ```bash
-pnpm run test
+pnpm test
 ```
 
 ### Example Code
@@ -128,7 +138,7 @@ This will help you determine the testing strategy. See [web/testing/testing.md](
 
 ## Documentation
 
-Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
+Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 

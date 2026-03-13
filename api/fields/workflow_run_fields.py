@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -19,8 +19,21 @@ workflow_run_for_log_fields = {
 }
 
 
-def build_workflow_run_for_log_model(api_or_ns: Api | Namespace):
+def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
+
+
+workflow_run_for_archived_log_fields = {
+    "id": fields.String,
+    "status": fields.String,
+    "triggered_from": fields.String,
+    "elapsed_time": fields.Float,
+    "total_tokens": fields.Integer,
+}
+
+
+def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
+    return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
 
 
 workflow_run_for_list_fields = {

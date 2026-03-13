@@ -1,3 +1,4 @@
+import { renderHook } from '@testing-library/react'
 /**
  * Test suite for React context creation utilities
  *
@@ -8,8 +9,7 @@
  * - createCtx: Standard React context using useContext/createContext
  * - createSelectorCtx: Context with selector support using use-context-selector library
  */
-import React from 'react'
-import { renderHook } from '@testing-library/react'
+import * as React from 'react'
 import { createCtx, createSelectorCtx } from './context'
 
 describe('Context Utilities', () => {
@@ -61,7 +61,7 @@ describe('Context Utilities', () => {
       })
 
       // Suppress console.error for this test
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -106,8 +106,8 @@ describe('Context Utilities', () => {
      */
     it('should handle complex context values', () => {
       type ComplexContext = {
-        user: { id: string; name: string }
-        settings: { theme: string; locale: string }
+        user: { id: string, name: string }
+        settings: { theme: string, locale: string }
         actions: Array<() => void>
       }
 
@@ -206,7 +206,7 @@ describe('Context Utilities', () => {
         name: 'SelectorTest',
       })
 
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -241,7 +241,7 @@ describe('Context Utilities', () => {
       type TestContextValue = { value: string }
       const [, useTestContext] = createCtx<TestContextValue>()
 
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())

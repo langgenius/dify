@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useEffect, useRef } from 'react'
-import TagManagementModal from '.'
-import { ToastProvider } from '@/app/components/base/toast'
-import { useStore as useTagStore } from './store'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Tag } from './constant'
+import { useEffect, useRef } from 'react'
+import { ToastProvider } from '@/app/components/base/toast'
+import TagManagementModal from '.'
+import { useStore as useTagStore } from './store'
 
 const INITIAL_TAGS: Tag[] = [
   { id: 'tag-product', name: 'Product', type: 'app', binding_count: 12 },
@@ -48,7 +48,7 @@ const TagManagementPlayground = ({
           })
         }
         if (method === 'POST') {
-          const body = await request.clone().json() as { name: string; type: string }
+          const body = await request.clone().json() as { name: string, type: string }
           const newTag: Tag = {
             id: `tag-${Date.now()}`,
             name: body.name,

@@ -1,11 +1,12 @@
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
 import formatParallelNode from '../parallel'
 
 export function addChildrenToLoopNode(loopNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
   childrenNodes.forEach((item) => {
-    if (!item.execution_metadata) return
+    if (!item.execution_metadata)
+      return
     const { parallel_mode_run_id, loop_index = 0 } = item.execution_metadata
     const runIndex: number = (parallel_mode_run_id || loop_index) as number
     if (!details[runIndex])

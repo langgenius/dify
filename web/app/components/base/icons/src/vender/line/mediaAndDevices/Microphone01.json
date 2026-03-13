@@ -1,39 +1,39 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "microphone-01"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon",
-							"d": "M12.6666 6.66732V8.00065C12.6666 10.578 10.5772 12.6673 7.99992 12.6673M3.33325 6.66732V8.00065C3.33325 10.578 5.42259 12.6673 7.99992 12.6673M7.99992 12.6673V14.6673M5.33325 14.6673H10.6666M7.99992 10.0007C6.89535 10.0007 5.99992 9.10522 5.99992 8.00065V3.33398C5.99992 2.22941 6.89535 1.33398 7.99992 1.33398C9.10449 1.33398 9.99992 2.22941 9.99992 3.33398V8.00065C9.99992 9.10522 9.10449 10.0007 7.99992 10.0007Z",
-							"stroke": "currentColor",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "Microphone01"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "microphone-01"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon",
+              "d": "M12.6666 6.66732V8.00065C12.6666 10.578 10.5772 12.6673 7.99992 12.6673M3.33325 6.66732V8.00065C3.33325 10.578 5.42259 12.6673 7.99992 12.6673M7.99992 12.6673V14.6673M5.33325 14.6673H10.6666M7.99992 10.0007C6.89535 10.0007 5.99992 9.10522 5.99992 8.00065V3.33398C5.99992 2.22941 6.89535 1.33398 7.99992 1.33398C9.10449 1.33398 9.99992 2.22941 9.99992 3.33398V8.00065C9.99992 9.10522 9.10449 10.0007 7.99992 10.0007Z",
+              "stroke": "currentColor",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Microphone01"
 }

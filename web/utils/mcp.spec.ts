@@ -13,39 +13,39 @@ describe('mcp', () => {
     /**
      * The link emoji (🔗) is used as a special marker for MCP icons
      */
-    test('returns true for emoji object with 🔗 content', () => {
+    it('returns true for emoji object with 🔗 content', () => {
       const src = { content: '🔗', background: '#fff' }
       expect(shouldUseMcpIcon(src)).toBe(true)
     })
 
-    test('returns false for emoji object with different content', () => {
+    it('returns false for emoji object with different content', () => {
       const src = { content: '🎉', background: '#fff' }
       expect(shouldUseMcpIcon(src)).toBe(false)
     })
 
-    test('returns false for string URL', () => {
+    it('returns false for string URL', () => {
       const src = 'https://example.com/icon.png'
       expect(shouldUseMcpIcon(src)).toBe(false)
     })
 
-    test('returns false for null', () => {
+    it('returns false for null', () => {
       expect(shouldUseMcpIcon(null)).toBe(false)
     })
 
-    test('returns false for undefined', () => {
+    it('returns false for undefined', () => {
       expect(shouldUseMcpIcon(undefined)).toBe(false)
     })
 
-    test('returns false for empty object', () => {
+    it('returns false for empty object', () => {
       expect(shouldUseMcpIcon({})).toBe(false)
     })
 
-    test('returns false for object without content property', () => {
+    it('returns false for object without content property', () => {
       const src = { background: '#fff' }
       expect(shouldUseMcpIcon(src)).toBe(false)
     })
 
-    test('returns false for object with null content', () => {
+    it('returns false for object with null content', () => {
       const src = { content: null, background: '#fff' }
       expect(shouldUseMcpIcon(src)).toBe(false)
     })
@@ -61,27 +61,27 @@ describe('mcp', () => {
      * - Icon type is 'emoji'
      * - Icon content is the link emoji (🔗)
      */
-    test('returns true when iconType is emoji and icon is 🔗', () => {
+    it('returns true when iconType is emoji and icon is 🔗', () => {
       expect(shouldUseMcpIconForAppIcon('emoji', '🔗')).toBe(true)
     })
 
-    test('returns false when iconType is emoji but icon is different', () => {
+    it('returns false when iconType is emoji but icon is different', () => {
       expect(shouldUseMcpIconForAppIcon('emoji', '🎉')).toBe(false)
     })
 
-    test('returns false when iconType is image', () => {
+    it('returns false when iconType is image', () => {
       expect(shouldUseMcpIconForAppIcon('image', '🔗')).toBe(false)
     })
 
-    test('returns false when iconType is image and icon is different', () => {
+    it('returns false when iconType is image and icon is different', () => {
       expect(shouldUseMcpIconForAppIcon('image', 'file-id-123')).toBe(false)
     })
 
-    test('returns false for empty strings', () => {
+    it('returns false for empty strings', () => {
       expect(shouldUseMcpIconForAppIcon('', '')).toBe(false)
     })
 
-    test('returns false when iconType is empty but icon is 🔗', () => {
+    it('returns false when iconType is empty but icon is 🔗', () => {
       expect(shouldUseMcpIconForAppIcon('', '🔗')).toBe(false)
     })
   })

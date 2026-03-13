@@ -1,11 +1,20 @@
-from typing import cast
+from datetime import UTC, datetime, timedelta
+from typing import Literal, cast
 
-from flask_restx import Resource, fields, marshal_with, reqparse
-from flask_restx.inputs import int_range
+from flask import request
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.web.error import NotFoundError
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.enums import WorkflowExecutionStatus
+from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
 from fields.workflow_run_fields import (
@@ -18,14 +27,29 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
-from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
+from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunService
+
+
+def _build_backstage_input_url(form_token: str | None) -> str | None:
+    if not form_token:
+        return None
+    base_url = dify_config.APP_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{form_token}"
+
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
+EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -92,70 +116,60 @@ workflow_run_node_execution_list_model = console_ns.model(
     "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
 )
 
+workflow_run_export_fields = console_ns.model(
+    "WorkflowRunExport",
+    {
+        "status": fields.String(description="Export status: success/failed"),
+        "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
+        "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
+    },
+)
 
-def _parse_workflow_run_list_args():
-    """
-    Parse common arguments for workflow run list endpoints.
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-    Returns:
-        Parsed arguments containing last_id, limit, status, and triggered_from filters
-    """
-    parser = (
-        reqparse.RequestParser()
-        .add_argument("last_id", type=uuid_value, location="args")
-        .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        .add_argument(
-            "status",
-            type=str,
-            choices=WORKFLOW_RUN_STATUS_CHOICES,
-            location="args",
-            required=False,
-        )
-        .add_argument(
-            "triggered_from",
-            type=str,
-            choices=["debugging", "app-run"],
-            location="args",
-            required=False,
-            help="Filter by trigger source: debugging or app-run",
-        )
+
+class WorkflowRunListQuery(BaseModel):
+    last_id: str | None = Field(default=None, description="Last run ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
     )
-    return parser.parse_args()
-
-
-def _parse_workflow_run_count_args():
-    """
-    Parse common arguments for workflow run count endpoints.
-
-    Returns:
-        Parsed arguments containing status, time_range, and triggered_from filters
-    """
-    parser = (
-        reqparse.RequestParser()
-        .add_argument(
-            "status",
-            type=str,
-            choices=WORKFLOW_RUN_STATUS_CHOICES,
-            location="args",
-            required=False,
-        )
-        .add_argument(
-            "time_range",
-            type=time_duration,
-            location="args",
-            required=False,
-            help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
-        )
-        .add_argument(
-            "triggered_from",
-            type=str,
-            choices=["debugging", "app-run"],
-            location="args",
-            required=False,
-            help="Filter by trigger source: debugging or app-run",
-        )
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run"
     )
-    return parser.parse_args()
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class WorkflowRunCountQuery(BaseModel):
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run"
+    )
+
+    @field_validator("time_range")
+    @classmethod
+    def validate_time_range(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return time_duration(value)
+
+
+console_ns.schema_model(
+    WorkflowRunListQuery.__name__, WorkflowRunListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    WorkflowRunCountQuery.__name__,
+    WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
@@ -170,6 +184,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc(
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
+    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
     @setup_required
     @login_required
@@ -180,12 +195,13 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args = _parse_workflow_run_list_args()
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -195,6 +211,56 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         )
 
         return result
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
+class WorkflowRunExportApi(Resource):
+    @console_ns.doc("get_workflow_run_export_url")
+    @console_ns.doc(description="Generate a download URL for an archived workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Export URL generated", workflow_run_export_fields)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model()
+    def get(self, app_model: App, run_id: str):
+        tenant_id = str(app_model.tenant_id)
+        app_id = str(app_model.id)
+        run_id_str = str(run_id)
+
+        run_created_at = db.session.scalar(
+            select(WorkflowArchiveLog.run_created_at)
+            .where(
+                WorkflowArchiveLog.tenant_id == tenant_id,
+                WorkflowArchiveLog.app_id == app_id,
+                WorkflowArchiveLog.workflow_run_id == run_id_str,
+            )
+            .limit(1)
+        )
+        if not run_created_at:
+            return {"code": "archive_log_not_found", "message": "workflow run archive not found"}, 404
+
+        prefix = (
+            f"{tenant_id}/app_id={app_id}/year={run_created_at.strftime('%Y')}/"
+            f"month={run_created_at.strftime('%m')}/workflow_run_id={run_id_str}"
+        )
+        archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
+
+        try:
+            archive_storage = get_archive_storage()
+        except ArchiveStorageNotConfiguredError as e:
+            return {"code": "archive_storage_not_configured", "message": str(e)}, 500
+
+        presigned_url = archive_storage.generate_presigned_url(
+            archive_key,
+            expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+        )
+        expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
+        return {
+            "status": "success",
+            "presigned_url": presigned_url,
+            "presigned_url_expires_at": expires_at.isoformat(),
+        }, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -217,6 +283,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -226,12 +293,13 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args = _parse_workflow_run_count_args()
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -259,6 +327,7 @@ class WorkflowRunListApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_model)
+    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -268,12 +337,13 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args = _parse_workflow_run_list_args()
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -305,6 +375,7 @@ class WorkflowRunCountApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -314,12 +385,13 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args = _parse_workflow_run_count_args()
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -385,3 +457,68 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
+
+
+@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
+class ConsoleWorkflowPauseDetailsApi(Resource):
+    """Console API for getting workflow pause details."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, workflow_run_id: str):
+        """
+        Get workflow pause details.
+
+        GET /console/api/workflow/<workflow_run_id>/pause-details
+
+        Returns information about why and where the workflow is paused.
+        """
+
+        # Query WorkflowRun to determine if workflow is suspended
+        session_maker = sessionmaker(bind=db.engine)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
+
+        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
+        if not workflow_run:
+            raise NotFoundError("Workflow run not found")
+
+        if workflow_run.tenant_id != current_user.current_tenant_id:
+            raise NotFoundError("Workflow run not found")
+
+        # Check if workflow is suspended
+        is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
+        if not is_paused:
+            return {
+                "paused_at": None,
+                "paused_nodes": [],
+            }, 200
+
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+
+        # Build response
+        paused_at = pause_entity.paused_at if pause_entity else None
+        paused_nodes = []
+        response = {
+            "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
+            "paused_nodes": paused_nodes,
+        }
+
+        for reason in pause_reasons:
+            if isinstance(reason, HumanInputRequired):
+                paused_nodes.append(
+                    {
+                        "node_id": reason.node_id,
+                        "node_title": reason.node_title,
+                        "pause_type": {
+                            "type": "human_input",
+                            "form_id": reason.form_id,
+                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                        },
+                    }
+                )
+            else:
+                raise AssertionError("unimplemented.")
+
+        return response, 200

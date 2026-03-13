@@ -1,6 +1,8 @@
+from typing import Any, cast
+
 from flask_restx import Resource
 
-from controllers.common.fields import build_parameters_model
+from controllers.common.fields import Parameters
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
@@ -23,7 +25,6 @@ class AppParameterApi(Resource):
         }
     )
     @validate_app_token
-    @service_api_ns.marshal_with(build_parameters_model(service_api_ns))
     def get(self, app_model: App):
         """Retrieve app parameters.
 
@@ -34,18 +35,19 @@ class AppParameterApi(Resource):
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict = workflow.features_dict
+            features_dict: dict[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
                 raise AppUnavailableError()
 
-            features_dict = app_model_config.to_dict()
+            features_dict = cast(dict[str, Any], app_model_config.to_dict())
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
 @service_api_ns.route("/meta")

@@ -2,11 +2,12 @@ from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
-from core.file import FileTransferMethod, FileType, FileUploadConfig
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.file import FileUploadConfig
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
 
@@ -89,48 +90,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity | None = None
 
 
-class VariableEntityType(StrEnum):
-    TEXT_INPUT = "text-input"
-    SELECT = "select"
-    PARAGRAPH = "paragraph"
-    NUMBER = "number"
-    EXTERNAL_DATA_TOOL = "external_data_tool"
-    FILE = "file"
-    FILE_LIST = "file-list"
-    CHECKBOX = "checkbox"
-
-
-class VariableEntity(BaseModel):
-    """
-    Variable Entity.
-    """
-
-    # `variable` records the name of the variable in user inputs.
-    variable: str
-    label: str
-    description: str = ""
-    type: VariableEntityType
-    required: bool = False
-    hide: bool = False
-    default: Any = None
-    max_length: int | None = None
-    options: Sequence[str] = Field(default_factory=list)
-    allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
-    allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
-    allowed_file_upload_methods: Sequence[FileTransferMethod] | None = Field(default_factory=list)
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def convert_none_description(cls, v: Any) -> str:
-        return v or ""
-
-    @field_validator("options", mode="before")
-    @classmethod
-    def convert_none_options(cls, v: Any) -> Sequence[str]:
-        return v or []
-
-
-class RagPipelineVariableEntity(VariableEntity):
+class RagPipelineVariableEntity(WorkflowVariableEntity):
     """
     Rag Pipeline Variable Entity.
     """
@@ -300,7 +260,7 @@ class AppConfig(BaseModel):
     app_id: str
     app_mode: AppMode
     additional_features: AppAdditionalFeatures | None = None
-    variables: list[VariableEntity] = []
+    variables: list[WorkflowVariableEntity] = []
     sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
 
 
@@ -321,7 +281,7 @@ class EasyUIBasedAppConfig(AppConfig):
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
     app_model_config_id: str
-    app_model_config_dict: dict
+    app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
     dataset: DatasetEntity | None = None

@@ -1,8 +1,9 @@
 'use client'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import cn from '@/utils/classnames'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
 type Props = {
@@ -35,24 +36,29 @@ const ImageGallery: FC<Props> = ({
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
-    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
+    <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')} data-testid="image-gallery">
       {srcs.map((src, index) => (
-        !src ? null : <img
-          key={index}
-          className={s.item}
-          style={imgStyle}
-          src={src}
-          alt=''
-          onClick={() => setImagePreviewUrl(src)}
-          onError={e => e.currentTarget.remove()}
-        />
+        !src
+          ? null
+          : (
+              <img
+                key={index}
+                className={s.item}
+                style={imgStyle}
+                src={src}
+                alt=""
+                data-testid="gallery-image" // Added for testing
+                onClick={() => setImagePreviewUrl(src)}
+                onError={e => e.currentTarget.remove()}
+              />
+            )
       ))}
       {
         imagePreviewUrl && (
           <ImagePreview
             url={imagePreviewUrl}
             onCancel={() => setImagePreviewUrl('')}
-            title={''}
+            title=""
           />
         )
       }
@@ -73,9 +79,9 @@ export const ImageGalleryTest = () => {
     return srcs
   })()
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {imgGallerySrcs.map((_, index) => (
-        <div key={index} className='rounded-lg bg-[#D1E9FF80] p-4 pb-2'>
+        <div key={index} className="rounded-lg bg-[#D1E9FF80] p-4 pb-2">
           <ImageGallery srcs={imgGallerySrcs.slice(0, index + 1)} />
         </div>
       ))}

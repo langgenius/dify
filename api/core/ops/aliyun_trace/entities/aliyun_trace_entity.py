@@ -4,7 +4,7 @@ from typing import Any
 
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk.trace import Event
-from opentelemetry.trace import Status, StatusCode
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +34,4 @@ class SpanData(BaseModel):
     status: Status = Field(default=Status(StatusCode.UNSET), description="The status of the span.")
     start_time: int | None = Field(..., description="The start time of the span in nanoseconds.")
     end_time: int | None = Field(..., description="The end time of the span in nanoseconds.")
+    span_kind: SpanKind = Field(default=SpanKind.INTERNAL, description="The OpenTelemetry SpanKind for this span.")

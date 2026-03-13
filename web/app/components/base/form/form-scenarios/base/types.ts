@@ -1,6 +1,6 @@
-import type { TransferMethod } from '@/types/app'
 import type { Option } from '../../../select/pure'
 import type { CustomActionsProps } from '../../components/form/actions'
+import type { TransferMethod } from '@/types/app'
 
 export enum BaseFieldType {
   textInput = 'text-input',
@@ -50,8 +50,8 @@ export type BaseConfiguration = {
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
 } & NumberConfiguration
-  & Partial<SelectConfiguration>
-  & Partial<FileConfiguration>
+& Partial<SelectConfiguration>
+& Partial<FileConfiguration>
 
 export type BaseFormProps = {
   initialData?: Record<string, any>
