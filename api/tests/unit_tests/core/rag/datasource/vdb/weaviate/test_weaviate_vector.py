@@ -60,9 +60,7 @@ class TestWeaviateVector(unittest.TestCase):
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.redis_client")
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.dify_config")
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
-    def test_create_collection_includes_doc_type_property(
-        self, mock_weaviate_module, mock_dify_config, mock_redis
-    ):
+    def test_create_collection_includes_doc_type_property(self, mock_weaviate_module, mock_dify_config, mock_redis):
         """Test that _create_collection defines doc_type in the schema properties."""
         # Mock Redis
         mock_lock = MagicMock()
@@ -141,9 +139,7 @@ class TestWeaviateVector(unittest.TestCase):
         # Verify add_property was called and includes doc_type
         add_calls = mock_col.config.add_property.call_args_list
         added_names = [call.args[0].name for call in add_calls]
-        assert "doc_type" in added_names, (
-            f"doc_type should be added to existing collection, added: {added_names}"
-        )
+        assert "doc_type" in added_names, f"doc_type should be added to existing collection, added: {added_names}"
 
     @patch("core.rag.datasource.vdb.weaviate.weaviate_vector.weaviate")
     def test_ensure_properties_skips_existing_doc_type(self, mock_weaviate_module):
@@ -219,9 +215,7 @@ class TestWeaviateVector(unittest.TestCase):
         # Verify doc_type is in return_properties
         call_kwargs = mock_col.query.near_vector.call_args
         return_props = call_kwargs.kwargs.get("return_properties")
-        assert "doc_type" in return_props, (
-            f"doc_type should be in return_properties, got: {return_props}"
-        )
+        assert "doc_type" in return_props, f"doc_type should be in return_properties, got: {return_props}"
 
         # Verify doc_type is in result metadata
         assert len(docs) == 1
@@ -309,9 +303,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_batch.add_object.assert_called_once()
         call_kwargs = mock_batch.add_object.call_args
         stored_props = call_kwargs.kwargs.get("properties")
-        assert stored_props.get("doc_type") == "image", (
-            f"doc_type should be stored in properties, got: {stored_props}"
-        )
+        assert stored_props.get("doc_type") == "image", f"doc_type should be stored in properties, got: {stored_props}"
 
 
 class TestVectorDefaultAttributes(unittest.TestCase):
@@ -331,9 +323,7 @@ class TestVectorDefaultAttributes(unittest.TestCase):
 
         vector = Vector(dataset=mock_dataset)
 
-        assert "doc_type" in vector._attributes, (
-            f"doc_type should be in default attributes, got: {vector._attributes}"
-        )
+        assert "doc_type" in vector._attributes, f"doc_type should be in default attributes, got: {vector._attributes}"
 
 
 if __name__ == "__main__":
