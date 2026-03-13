@@ -86,6 +86,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
         mock_document_service_dependencies["get_document"].return_value = doc
 
         redis_mock.reset_mock()
+        redis_mock.get.reset_mock()
+        redis_mock.setex.reset_mock()
         redis_mock.get.return_value = None
 
         invalid_action = "invalid_action"
