@@ -2589,11 +2589,6 @@
       "count": 1
     }
   },
-  "app/components/base/segmented-control/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/select/custom.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
