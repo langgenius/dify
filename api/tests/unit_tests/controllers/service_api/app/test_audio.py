@@ -16,6 +16,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.errors import ProviderNotSupportTextToSpeechError
 from controllers.service_api.app.audio import AudioApi, TextApi, TextToAudioPayload
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -36,6 +37,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -154,6 +156,11 @@ class TestServiceErrorTypes:
     def test_provider_not_support_speech_to_text_service_error(self):
         """Test ProviderNotSupportSpeechToTextServiceError exists."""
         error = ProviderNotSupportSpeechToTextServiceError()
+        assert error is not None
+
+    def test_provider_not_support_text_to_speech_service_error(self):
+        """Test ProviderNotSupportTextToSpeechServiceError exists."""
+        error = ProviderNotSupportTextToSpeechServiceError()
         assert error is not None
 
 
@@ -283,10 +290,19 @@ class TestTextApi:
 
         assert response == {"audio": "ok"}
 
-    def test_error_mapping(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
-        )
+    @pytest.mark.parametrize(
+        ("exc", "expected"),
+        [
+            (AppModelConfigBrokenError(), AppUnavailableError),
+            (ProviderNotSupportTextToSpeechServiceError(), ProviderNotSupportTextToSpeechError),
+            (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
+            (QuotaExceededError(), ProviderQuotaExceededError),
+            (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
+            (InvokeError("invoke"), CompletionRequestError),
+        ],
+    )
+    def test_error_mapping(self, app, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
+        monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(exc))
 
         api = TextApi()
         handler = _unwrap(api.post)
@@ -294,5 +310,5 @@ class TestTextApi:
         end_user = SimpleNamespace(external_user_id="ext")
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
-            with pytest.raises(ProviderQuotaExceededError):
+            with pytest.raises(expected):
                 handler(api, app_model=app_model, end_user=end_user)

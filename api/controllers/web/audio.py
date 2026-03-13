@@ -6,6 +6,8 @@ from pydantic import BaseModel, field_validator
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.errors import ProviderNotSupportTextToSpeechError
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -28,10 +30,9 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from ..common.schema import register_schema_models
 
 
 class TextToAudioPayload(BaseModel):
@@ -137,14 +138,8 @@ class TextApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
+        except ProviderNotSupportTextToSpeechServiceError:
+            raise ProviderNotSupportTextToSpeechError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
