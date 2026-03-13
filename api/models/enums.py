@@ -33,7 +33,6 @@ class MessageStatus(StrEnum):
     NORMAL = "normal"
     PAUSED = "paused"
     ERROR = "error"
-    SUCCESS = "success"
 
 
 class ExecutionOffLoadType(StrEnum):
