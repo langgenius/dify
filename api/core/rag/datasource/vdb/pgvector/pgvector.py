@@ -31,26 +31,29 @@ class PGVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     pg_bigm: bool = False
+    schema_name: str
 
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict):
-        if not values["host"]:
+        if not values.get("host"):
             raise ValueError("config PGVECTOR_HOST is required")
-        if not values["port"]:
+        if not values.get("port"):
             raise ValueError("config PGVECTOR_PORT is required")
-        if not values["user"]:
+        if not values.get("user"):
             raise ValueError("config PGVECTOR_USER is required")
-        if not values["password"]:
+        if not values.get("password"):
             raise ValueError("config PGVECTOR_PASSWORD is required")
-        if not values["database"]:
+        if not values.get("database"):
             raise ValueError("config PGVECTOR_DATABASE is required")
-        if not values["min_connection"]:
+        if not values.get("min_connection"):
             raise ValueError("config PGVECTOR_MIN_CONNECTION is required")
-        if not values["max_connection"]:
+        if not values.get("max_connection"):
             raise ValueError("config PGVECTOR_MAX_CONNECTION is required")
         if values["min_connection"] > values["max_connection"]:
             raise ValueError("config PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION")
+        if not values.get("schema_name"):
+            raise ValueError("config PGVECTOR_SCHEMA is required")
         return values
 
 
@@ -75,11 +78,16 @@ USING gin (text gin_bigm_ops);
 
 
 class PGVector(BaseVector):
+    # Cache for initialized schemas to avoid redundant queries
+    _schemas_initialized: set[str] = set()
+
     def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
+        self.schema_name = config.schema_name
         self.table_name = f"embedding_{collection_name}"
-        self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
+        self.full_table_name = f"{self.schema_name}.{self.table_name}"
+        self.index_hash = hashlib.md5(self.full_table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
 
     def get_type(self) -> str:
@@ -107,6 +115,26 @@ class PGVector(BaseVector):
             conn.commit()
             self.pool.putconn(conn)
 
+    def _ensure_schema_exists(self):
+        """Ensure the schema exists in the database.
+
+        This method is idempotent and uses a class-level cache to avoid
+        redundant database queries for already-verified schemas.
+        """
+        if self.schema_name in PGVector._schemas_initialized:
+            return
+
+        with self._get_cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM information_schema.schemata WHERE schema_name = %s",
+                (self.schema_name,),
+            )
+            if not cur.fetchone():
+                cur.execute(f'CREATE SCHEMA "{self.schema_name}"')
+                logger.info("Created schema: %s", self.schema_name)
+
+        PGVector._schemas_initialized.add(self.schema_name)
+
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
@@ -129,18 +157,18 @@ class PGVector(BaseVector):
                 )
         with self._get_cursor() as cur:
             psycopg2.extras.execute_values(
-                cur, f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES %s", values
+                cur, f"INSERT INTO {self.full_table_name} (id, text, meta, embedding) VALUES %s", values
             )
         return pks
 
     def text_exists(self, id: str) -> bool:
         with self._get_cursor() as cur:
-            cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
+            cur.execute(f"SELECT id FROM {self.full_table_name} WHERE id = %s", (id,))
             return cur.fetchone() is not None
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         with self._get_cursor() as cur:
-            cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+            cur.execute(f"SELECT meta, text FROM {self.full_table_name} WHERE id IN %s", (tuple(ids),))
             docs = []
             for record in cur:
                 docs.append(Document(page_content=record[1], metadata=record[0]))
@@ -154,17 +182,17 @@ class PGVector(BaseVector):
             return
         with self._get_cursor() as cur:
             try:
-                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
+                cur.execute(f"DELETE FROM {self.full_table_name} WHERE id IN %s", (tuple(ids),))
             except psycopg2.errors.UndefinedTable:
                 # table not exists
-                logger.warning("Table %s not found, skipping delete operation.", self.table_name)
+                logger.warning("Table %s not found, skipping delete operation.", self.full_table_name)
                 return
             except Exception as e:
                 raise e
 
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
-            cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
+            cur.execute(f"DELETE FROM {self.full_table_name} WHERE meta->>%s = %s", (key, value))
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
@@ -184,7 +212,7 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.full_table_name}"
                 f" {where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
@@ -213,7 +241,7 @@ class PGVector(BaseVector):
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
                 cur.execute(
                     f"""SELECT meta, text, bigm_similarity(unistr(%s), coalesce(text, '')) AS score
-                    FROM {self.table_name}
+                    FROM {self.full_table_name}
                     WHERE text =%% unistr(%s)
                     {where_clause}
                     ORDER BY score DESC
@@ -224,7 +252,7 @@ class PGVector(BaseVector):
             else:
                 cur.execute(
                     f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
-                    FROM {self.table_name}
+                    FROM {self.full_table_name}
                     WHERE to_tsvector(text) @@ plainto_tsquery(%s)
                     {where_clause}
                     ORDER BY score DESC
@@ -244,7 +272,7 @@ class PGVector(BaseVector):
 
     def delete(self):
         with self._get_cursor() as cur:
-            cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            cur.execute(f"DROP TABLE IF EXISTS {self.full_table_name}")
 
     def _create_collection(self, dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"
@@ -254,18 +282,23 @@ class PGVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
 
+            # Ensure schema exists before creating table
+            self._ensure_schema_exists()
+
             with self._get_cursor() as cur:
                 cur.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
                 if not cur.fetchone():
                     cur.execute("CREATE EXTENSION vector")
 
-                cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
+                cur.execute(SQL_CREATE_TABLE.format(table_name=self.full_table_name, dimension=dimension))
                 # PG hnsw index only support 2000 dimension or less
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
-                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
+                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.full_table_name, index_hash=self.index_hash))
                 if self.pg_bigm:
-                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name, index_hash=self.index_hash))
+                    cur.execute(
+                        SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.full_table_name, index_hash=self.index_hash)
+                    )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
@@ -290,5 +323,6 @@ class PGVectorFactory(AbstractVectorFactory):
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
                 pg_bigm=dify_config.PGVECTOR_PG_BIGM,
+                schema_name=dify_config.PGVECTOR_SCHEMA,
             ),
         )
