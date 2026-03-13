@@ -208,9 +208,12 @@ export const useEdgesInteractions = () => {
       })
     })
     setEdges(newEdges)
+    const currentEdgeMenu = workflowStore.getState().edgeMenu
+    if (currentEdgeMenu && !newEdges.some(edge => edge.id === currentEdgeMenu.edgeId))
+      workflowStore.setState({ edgeMenu: undefined })
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeSourceHandleChange)
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleEdgeContextMenu = useCallback<EdgeMouseHandler>((e, edge) => {
     if (getNodesReadOnly())
@@ -218,13 +221,27 @@ export const useEdgesInteractions = () => {
 
     e.preventDefault()
 
-    const { edges, setEdges } = store.getState()
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
     const newEdges = produce(edges, (draft) => {
       draft.forEach((item) => {
         item.selected = item.id === edge.id
+        if (item.data._isBundled)
+          item.data._isBundled = false
       })
     })
     setEdges(newEdges)
+    const nodes = getNodes()
+    if (nodes.some(node => node.data.selected || node.selected || node.data._isBundled)) {
+      const newNodes = produce(nodes, (draft: Node[]) => {
+        draft.forEach((node) => {
+          node.data.selected = false
+          if (node.data._isBundled)
+            node.data._isBundled = false
+          node.selected = false
+        })
+      })
+      setNodes(newNodes)
+    }
 
     workflowStore.setState({
       nodeMenu: undefined,

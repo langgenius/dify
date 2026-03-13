@@ -104,4 +104,19 @@ describe('EdgeContextmenu', () => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
   })
+
+  it('should not render the menu when the referenced edge no longer exists', () => {
+    renderWorkflowComponent(<EdgeContextmenu />, {
+      initialStoreState: {
+        edgeMenu: {
+          clientX: 320,
+          clientY: 180,
+          edgeId: 'missing-edge',
+        },
+      },
+      hooksStoreProps,
+    })
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
 })

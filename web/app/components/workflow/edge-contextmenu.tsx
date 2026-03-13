@@ -3,6 +3,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useEdges } from 'reactflow'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,9 +17,11 @@ const EdgeContextmenu = () => {
   const edgeMenu = useStore(s => s.edgeMenu)
   const { handleEdgeDelete } = useEdgesInteractions()
   const { handleEdgeContextmenuCancel } = usePanelInteractions()
+  const edges = useEdges()
+  const currentEdgeExists = !edgeMenu || edges.some(edge => edge.id === edgeMenu.edgeId)
 
   const anchor = useMemo(() => {
-    if (!edgeMenu)
+    if (!edgeMenu || !currentEdgeExists)
       return null
 
     return {
@@ -29,9 +32,9 @@ const EdgeContextmenu = () => {
         y: edgeMenu.clientY,
       }),
     }
-  }, [edgeMenu])
+  }, [currentEdgeExists, edgeMenu])
 
-  if (!edgeMenu || !anchor)
+  if (!edgeMenu || !currentEdgeExists || !anchor)
     return null
 
   return (

@@ -2101,7 +2101,9 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
+    workflowStore.setState({ edgeMenu: undefined })
   }, [
+    workflowStore,
     store,
     undo,
     workflowHistoryStore,
@@ -2122,9 +2124,11 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
+    workflowStore.setState({ edgeMenu: undefined })
   }, [
     redo,
     store,
+    workflowStore,
     workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
