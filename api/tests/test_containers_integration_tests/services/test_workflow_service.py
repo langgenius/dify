@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="active",
+            status="normal",
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
