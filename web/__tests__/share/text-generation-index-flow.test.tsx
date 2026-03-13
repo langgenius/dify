@@ -27,8 +27,20 @@ vi.mock('@/i18n-config/client', () => ({
 }))
 
 vi.mock('@/app/components/share/text-generation/run-once', () => ({
-  default: ({ onSend, runControl }: { onSend: () => void, runControl?: { isStopping: boolean } | null }) => (
+  default: ({
+    inputs,
+    onInputsChange,
+    onSend,
+    runControl,
+  }: {
+    inputs: Record<string, unknown>
+    onInputsChange: (inputs: Record<string, unknown>) => void
+    onSend: () => void
+    runControl?: { isStopping: boolean } | null
+  }) => (
     <div data-testid="run-once-mock">
+      <span data-testid="run-once-input-name">{String(inputs.name ?? '')}</span>
+      <button onClick={() => onInputsChange({ ...inputs, name: 'Gamma' })}>change-inputs</button>
       <button onClick={onSend}>run-once</button>
       <span>{runControl ? 'stop-ready' : 'idle'}</span>
     </div>
@@ -181,6 +193,12 @@ describe('TextGeneration', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('run-once-input-name')).toHaveTextContent('')
+
+    fireEvent.click(screen.getByRole('button', { name: 'change-inputs' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('run-once-input-name')).toHaveTextContent('Gamma')
     })
 
     fireEvent.click(screen.getByTestId('tab-header-item-batch'))

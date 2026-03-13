@@ -54,9 +54,10 @@ export const useTextGenerationBatch = ({
       return false
     }
 
+    const promptVariables = promptConfig?.prompt_variables ?? []
     const headerData = data[0]
     let isMapVarName = true
-    promptConfig?.prompt_variables.forEach((item, index) => {
+    promptVariables.forEach((item, index) => {
       if (!isMapVarName)
         return
 
@@ -108,27 +109,27 @@ export const useTextGenerationBatch = ({
     let tooLongVarName = ''
     let maxLength = 0
 
-    payloadData.forEach((item, index) => {
-      if (errorRowIndex !== 0)
-        return
+    for (const [index, item] of payloadData.entries()) {
+      for (const [varIndex, varItem] of promptVariables.entries()) {
+        const value = item[varIndex] ?? ''
 
-      promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
-        if (errorRowIndex !== 0)
-          return
-
-        if (varItem.type === 'string' && varItem.max_length && item[varIndex].length > varItem.max_length) {
+        if (varItem.type === 'string' && varItem.max_length && value.length > varItem.max_length) {
           tooLongVarName = varItem.name
           maxLength = varItem.max_length
           errorRowIndex = index + 1
-          return
+          break
         }
 
-        if (varItem.required && item[varIndex].trim() === '') {
+        if (varItem.required && value.trim() === '') {
           requiredVarName = varItem.name
           errorRowIndex = index + 1
+          break
         }
-      })
-    })
+      }
+
+      if (errorRowIndex !== 0)
+        break
+    }
 
     if (errorRowIndex !== 0) {
       if (requiredVarName) {
@@ -168,14 +169,11 @@ export const useTextGenerationBatch = ({
     }
 
     const payloadData = data.filter(item => !item.every(value => value === '')).slice(1)
-    const varLength = promptConfig?.prompt_variables.length || 0
+    const promptVariables = promptConfig?.prompt_variables ?? []
     const nextTaskList: Task[] = payloadData.map((item, index) => {
       const inputs: Record<string, string | boolean | undefined> = {}
-      item.slice(0, varLength).forEach((input, varIndex) => {
-        const variable = promptConfig?.prompt_variables[varIndex]
-        if (!variable)
-          return
-
+      promptVariables.forEach((variable, varIndex) => {
+        const input = item[varIndex]
         inputs[variable.key] = input
         if (!input)
           inputs[variable.key] = variable.type === 'string' || variable.type === 'paragraph' ? '' : undefined

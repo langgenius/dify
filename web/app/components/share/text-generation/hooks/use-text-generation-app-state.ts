@@ -94,8 +94,6 @@ export const useTextGenerationAppState = ({
         return
 
       const { app_id: nextAppId, site, custom_config } = appData
-      if (cancelled)
-        return
 
       setAppId(nextAppId)
       setSiteInfo(site as SiteInfo)
