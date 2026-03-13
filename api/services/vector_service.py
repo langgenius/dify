@@ -210,7 +210,7 @@ class VectorService:
         dataset: Dataset,
     ):
         documents = []
-        delete_node_ids = []
+        delete_node_ids: list[str] = []
         for new_child_chunk in new_child_chunks:
             new_child_document = Document(
                 page_content=new_child_chunk.content,
@@ -223,6 +223,7 @@ class VectorService:
             )
             documents.append(new_child_document)
         for update_child_chunk in update_child_chunks:
+            assert update_child_chunk.index_node_id is not None
             child_document = Document(
                 page_content=update_child_chunk.content,
                 metadata={
@@ -235,6 +236,7 @@ class VectorService:
             documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert delete_child_chunk.index_node_id is not None
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == "high_quality":
             # update vector index
@@ -247,6 +249,7 @@ class VectorService:
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
+        assert child_chunk.index_node_id is not None
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
