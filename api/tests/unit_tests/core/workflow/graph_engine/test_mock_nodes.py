@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
 from core.model_manager import ModelInstance
+from core.workflow.nodes.agent import AgentNode
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from dify_graph.nodes.agent import AgentNode
 from dify_graph.nodes.code import CodeNode
 from dify_graph.nodes.document_extractor import DocumentExtractorNode
 from dify_graph.nodes.http_request import HttpRequestNode
