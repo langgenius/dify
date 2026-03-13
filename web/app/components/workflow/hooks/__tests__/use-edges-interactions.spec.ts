@@ -142,6 +142,23 @@ describe('useEdgesInteractions', () => {
     expect(rfState.setEdges).not.toHaveBeenCalled()
   })
 
+  it('handleEdgeDeleteById should remove the requested edge even when another edge is selected', () => {
+    ;(rfState.edges[0] as Record<string, unknown>).selected = true
+    const { result, store } = renderEdgesInteractions()
+    store.setState({
+      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e2' },
+    })
+
+    result.current.handleEdgeDeleteById('e2')
+
+    const updated = rfState.setEdges.mock.calls[0][0]
+    expect(updated).toHaveLength(1)
+    expect(updated[0].id).toBe('e1')
+    expect(updated[0].selected).toBe(true)
+    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
+  })
+
   it('handleEdgeDeleteByDeleteBranch should remove edges for the given branch', () => {
     const { result, store } = renderEdgesInteractions()
     store.setState({
@@ -184,6 +201,12 @@ describe('useEdgesInteractions', () => {
       ;(rfState.edges[0] as Record<string, unknown>).selected = true
       const { result } = renderEdgesInteractions()
       result.current.handleEdgeDelete()
+      expect(rfState.setEdges).not.toHaveBeenCalled()
+    })
+
+    it('handleEdgeDeleteById should do nothing', () => {
+      const { result } = renderEdgesInteractions()
+      result.current.handleEdgeDeleteById('e1')
       expect(rfState.setEdges).not.toHaveBeenCalled()
     })
 

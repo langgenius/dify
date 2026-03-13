@@ -16,7 +16,7 @@ import { useStore } from './store'
 const EdgeContextmenu = () => {
   const { t } = useTranslation()
   const edgeMenu = useStore(s => s.edgeMenu)
-  const { handleEdgeDelete } = useEdgesInteractions()
+  const { handleEdgeDeleteById } = useEdgesInteractions()
   const { handleEdgeContextmenuCancel } = usePanelInteractions()
   const edges = useEdges()
   const currentEdgeExists = !edgeMenu || edges.some(edge => edge.id === edgeMenu.edgeId)
@@ -49,7 +49,7 @@ const EdgeContextmenu = () => {
       >
         <ContextMenuItem
           className="justify-between gap-4 px-3 text-text-secondary data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive"
-          onClick={handleEdgeDelete}
+          onClick={() => handleEdgeDeleteById(edgeMenu.edgeId)}
         >
           <span>{t('common:operation.delete')}</span>
           <ShortcutsName keys={['del']} />

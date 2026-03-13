@@ -80,15 +80,17 @@ describe('EdgeContextmenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should delete the selected edge and close the menu when the action is clicked', async () => {
+  it('should delete the menu edge and close the menu when another edge is selected', async () => {
     const user = userEvent.setup()
+    ;(rfState.edges[0] as Record<string, unknown>).selected = true
+    ;(rfState.edges[1] as Record<string, unknown>).selected = false
 
     const { store } = renderWorkflowComponent(<EdgeContextmenu />, {
       initialStoreState: {
         edgeMenu: {
           clientX: 320,
           clientY: 180,
-          edgeId: 'e1',
+          edgeId: 'e2',
         },
       },
       hooksStoreProps,
@@ -101,7 +103,8 @@ describe('EdgeContextmenu', () => {
 
     const updatedEdges = rfState.setEdges.mock.calls.at(-1)?.[0]
     expect(updatedEdges).toHaveLength(1)
-    expect(updatedEdges[0].id).toBe('e2')
+    expect(updatedEdges[0].id).toBe('e1')
+    expect(updatedEdges[0].selected).toBe(true)
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
 
     await waitFor(() => {
