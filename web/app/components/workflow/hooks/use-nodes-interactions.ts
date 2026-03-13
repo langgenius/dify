@@ -1824,14 +1824,6 @@ export const useNodesInteractions = () => {
     const clipboardData = await readWorkflowClipboard(appDslVersion)
     const hasSystemClipboard = clipboardData.nodes.length > 0
     const shouldRunCompatibilityCheck = hasSystemClipboard && clipboardData.isVersionMismatch
-    if (hasSystemClipboard && clipboardData.isVersionMismatch) {
-      Toast.notify({
-        type: 'warning',
-        message: t('common.clipboardVersionCompatibilityWarning', {
-          ns: 'workflow',
-        }),
-      })
-    }
 
     const clipboardElements = hasSystemClipboard
       ? clipboardData.nodes
@@ -1880,12 +1872,36 @@ export const useNodesInteractions = () => {
       )
     }
 
+    const compatibleClipboardNodeIds = new Set(
+      compatibleClipboardElements.map(node => node.id),
+    )
+    const filteredNodeCount = shouldRunCompatibilityCheck
+      ? validatedClipboardElements.length - compatibleClipboardElements.length
+      : 0
+    const filteredEdgeCount = shouldRunCompatibilityCheck
+      ? validatedClipboardEdges.filter(edge =>
+        !compatibleClipboardNodeIds.has(edge.source)
+        || !compatibleClipboardNodeIds.has(edge.target),
+      ).length
+      : 0
+
+    if (
+      shouldRunCompatibilityCheck
+      && (filteredNodeCount > 0 || filteredEdgeCount > 0)
+    ) {
+      Toast.notify({
+        type: 'warning',
+        message: t('common.clipboardVersionCompatibilityWarning', {
+          ns: 'workflow',
+        }),
+      })
+    }
+
     if (!compatibleClipboardElements.length)
       return
 
-    const clipboardNodeIds = new Set(compatibleClipboardElements.map(node => node.id))
     const rootClipboardNodes = compatibleClipboardElements.filter(
-      node => !node.parentId || !clipboardNodeIds.has(node.parentId),
+      node => !node.parentId || !compatibleClipboardNodeIds.has(node.parentId),
     )
     const positionReferenceNodes = rootClipboardNodes.length
       ? rootClipboardNodes
