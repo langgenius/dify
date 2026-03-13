@@ -150,7 +150,13 @@ describe('useSelectionInteractions', () => {
   })
 
   it('handleSelectionContextMenu should set menu only when clicking on selection rect', () => {
-    const { result, store } = renderWorkflowHook(() => useSelectionInteractions())
+    const { result, store } = renderWorkflowHook(() => useSelectionInteractions(), {
+      initialStoreState: {
+        nodeMenu: { top: 10, left: 20, nodeId: 'n1' },
+        panelMenu: { top: 30, left: 40 },
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
+      },
+    })
 
     const wrongTarget = document.createElement('div')
     wrongTarget.classList.add('some-other-class')
@@ -176,6 +182,9 @@ describe('useSelectionInteractions', () => {
       top: 150,
       left: 200,
     })
+    expect(store.getState().nodeMenu).toBeUndefined()
+    expect(store.getState().panelMenu).toBeUndefined()
+    expect(store.getState().edgeMenu).toBeUndefined()
   })
 
   it('handleSelectionContextmenuCancel should clear selectionMenu', () => {
