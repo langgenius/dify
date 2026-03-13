@@ -203,7 +203,7 @@ tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 # [ Evaluation ] dependency group
 # Required for evaluation frameworks
 ############################################################
-evaluation = ["ragas>=0.2.0"]
+evaluation = ["ragas>=0.2.0", "deepeval>=2.0.0"]
 
 ############################################################
 # [ VDB ] dependency group
