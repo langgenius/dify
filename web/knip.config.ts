@@ -20,6 +20,8 @@ const config: KnipConfig = {
     '@iconify-json/*',
 
     '@storybook/addon-onboarding',
+
+    '@voidzero-dev/vite-plus-core',
   ],
   rules: {
     files: 'warn',

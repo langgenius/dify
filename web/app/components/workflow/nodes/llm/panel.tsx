@@ -15,8 +15,9 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import { useStore } from '@/app/components/workflow/store'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -32,7 +33,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const hasChecklistWarning = useStore(s => s.checklistItems.some(item => item.id === id))
+  const modelProviders = useProviderContextSelector(s => s.modelProviders)
   const {
     readOnly,
     inputs,
@@ -69,6 +70,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   } = useConfig(id, data)
 
   const model = inputs.model
+  const installedPluginIds = new Set(modelProviders.map(provider => extractPluginId(provider.provider)))
+  const hasModelWarning = !model?.provider
+    || !model?.name
+    || (Boolean(model.provider) && !installedPluginIds.has(extractPluginId(model.provider)))
 
   const handleModelChange = useCallback((model: {
     provider: string
@@ -104,7 +109,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
-          warningDot={hasChecklistWarning}
+          warningDot={hasModelWarning}
         >
           <ModelParameterModal
             popupClassName="!w-[387px]"

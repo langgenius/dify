@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
 import { cn } from '@/utils/classnames'
@@ -10,12 +11,14 @@ type InSiteMessageButtonType = 'primary' | 'default'
 
 export type InSiteMessageActionItem = {
   action: InSiteMessageAction
+  action_name: string // for tracing and analytics
   data?: unknown
   text: string
   type: InSiteMessageButtonType
 }
 
 type InSiteMessageProps = {
+  notificationId: string
   actions: InSiteMessageActionItem[]
   className?: string
   headerBgUrl?: string
@@ -52,6 +55,7 @@ function normalizeLinkData(data: unknown): { href: string, rel?: string, target?
 const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
 
 function InSiteMessage({
+  notificationId,
   actions,
   className,
   headerBgUrl = DEFAULT_HEADER_BG_URL,
@@ -70,7 +74,17 @@ function InSiteMessage({
     }
   }, [headerBgUrl])
 
+  useEffect(() => {
+    trackEvent('in_site_message_show', {
+      notification_id: notificationId,
+    })
+  }, [notificationId])
+
   const handleAction = (item: InSiteMessageActionItem) => {
+    trackEvent('in_site_message_action', {
+      notification_id: notificationId,
+      action: item.action_name,
+    })
     onAction?.(item)
 
     if (item.action === 'close') {
