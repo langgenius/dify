@@ -182,14 +182,14 @@ class BaseEvaluationInstance(ABC):
             # Check if the entire value is a single expression.
             full_match = VARIABLE_REGEX.fullmatch(value_source)
             if full_match:
-                workflow_inputs[field_name] = _resolve_variable_selector(
+                workflow_inputs[field_name] = resolve_variable_selector(
                     full_match.group(1), node_run_result_mapping,
                 )
             elif VARIABLE_REGEX.search(value_source):
                 # Mixed template: interpolate all expressions as strings.
                 workflow_inputs[field_name] = VARIABLE_REGEX.sub(
                     lambda m: str(
-                        _resolve_variable_selector(m.group(1), node_run_result_mapping)
+                        resolve_variable_selector(m.group(1), node_run_result_mapping)
                     ),
                     value_source,
                 )
@@ -203,12 +203,7 @@ class BaseEvaluationInstance(ABC):
     def _extract_workflow_metrics(
         response: Mapping[str, object],
     ) -> list[EvaluationMetric]:
-        """Extract evaluation metrics from workflow output variables.
-
-        Each output variable is treated as a metric. The variable name
-        becomes the metric name, and its value is stored as-is regardless
-        of type (numeric, string, dict, etc.).
-        """
+        """Extract evaluation metrics from workflow output variables."""
         metrics: list[EvaluationMetric] = []
 
         data = response.get("data")
@@ -231,15 +226,14 @@ class BaseEvaluationInstance(ABC):
         return metrics
 
 
-def _resolve_variable_selector(
+def resolve_variable_selector(
     selector_raw: str,
     node_run_result_mapping: dict[str, NodeRunResult],
 ) -> object:
-    """Resolve a ``#node_id.output_key#`` selector against node run results.
-    Returns the resolved value in its original type, or an empty string
-    if the node or any key along the path is not found.
     """
-    # "#node_id.output_key#" → "node_id.output_key"
+    Resolve a ``#node_id.output_key#`` selector against node run results.
+    """
+    #
     cleaned = selector_raw.strip("#")
     parts = cleaned.split(".")
 

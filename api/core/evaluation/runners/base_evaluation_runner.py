@@ -67,7 +67,7 @@ class BaseEvaluationRunner(ABC):
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
         if not evaluation_run:
             raise ValueError(f"EvaluationRun {evaluation_run_id} not found")
-        
+
         if not default_metric and not customized_metrics:
             raise ValueError("Either default_metric or customized_metrics must be provided")
 
@@ -144,7 +144,17 @@ class BaseEvaluationRunner(ABC):
         node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None = None,
     ) -> list[EvaluationItemResult]:
         """Apply judgment conditions to each result's metrics.
+
+        Left side (``metric_name``): looked up from evaluate-phase metrics only.
+        Right side: when ``value_source="variable"``, ``condition.value``
+        contains an expression (e.g. ``{{#node_id.output_key#}}``).  The
+        expression is parsed and resolved against the corresponding
+        ``node_run_result_mapping`` to obtain the actual comparison value.
         """
+        from core.evaluation.base_evaluation_instance import resolve_variable_selector
+        from core.evaluation.entities.judgment_entity import JudgmentValueSource
+        from core.workflow.nodes.base.variable_template_parser import REGEX as VARIABLE_REGEX
+
         judged_results: list[EvaluationItemResult] = []
 
         for idx, result in enumerate(results):
@@ -155,14 +165,28 @@ class BaseEvaluationRunner(ABC):
             # Left side: only metrics
             metric_values: dict[str, object] = {m.name: m.value for m in result.metrics}
 
-            # Right side variable pool: metrics + intermediate node run results
-            variable_values: dict[str, object] = dict(metric_values)
-            if node_run_result_mapping_list and idx < len(node_run_result_mapping_list):
-                node_run_result_mapping = node_run_result_mapping_list[idx]
-                for node_id, node_result in node_run_result_mapping.items():
-                    if node_result.outputs:
-                        for output_key, output_value in node_result.outputs.items():
-                            variable_values[f"{node_id}.{output_key}"] = output_value
+            # Right side: pre-resolve variable expressions against node run results.
+            # Each condition.value expression (e.g. "{{#llm1.text#}}") is resolved
+            # and stored in variable_values keyed by the raw expression string, so
+            # that JudgmentProcessor._resolve_comparison_value can look it up.
+            variable_values: dict[str, object] = {}
+            node_run_result_mapping = (
+                node_run_result_mapping_list[idx]
+                if node_run_result_mapping_list and idx < len(node_run_result_mapping_list)
+                else {}
+            )
+            for condition in judgment_config.conditions:
+                if (
+                    condition.value_source == JudgmentValueSource.VARIABLE
+                    and isinstance(condition.value, str)
+                    and node_run_result_mapping
+                ):
+                    match = VARIABLE_REGEX.fullmatch(condition.value)
+                    if match:
+                        resolved = resolve_variable_selector(
+                            match.group(1), node_run_result_mapping
+                        )
+                        variable_values[condition.value] = resolved
 
             judgment_result = JudgmentProcessor.evaluate(
                 metric_values, judgment_config, variable_values=variable_values
