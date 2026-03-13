@@ -5,8 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from dify_graph.entities import AgentNodeStrategyInit
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey
@@ -314,7 +314,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_iteration_id: str | None = None
     in_loop_id: str | None = None
     start_at: datetime
-    agent_strategy: AgentNodeStrategyInit | None = None
+    agent_strategy: AgentStrategyInfo | None = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType

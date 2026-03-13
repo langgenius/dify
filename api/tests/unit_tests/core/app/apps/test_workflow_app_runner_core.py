@@ -105,10 +105,10 @@ class TestWorkflowBasedAppRunner:
 
         from core.app.apps import workflow_app_runner
 
-        monkeypatch.setitem(
-            workflow_app_runner.NODE_TYPE_CLASSES_MAPPING,
-            NodeType.START,
-            {"1": _NodeCls},
+        monkeypatch.setattr(
+            workflow_app_runner,
+            "resolve_workflow_node_class",
+            lambda **_kwargs: _NodeCls,
         )
         monkeypatch.setattr(
             "core.app.apps.workflow_app_runner.load_into_variable_pool",
