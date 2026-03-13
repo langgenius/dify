@@ -165,6 +165,21 @@ describe('AppDetailNav', () => {
       )
       expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
     })
+
+    it('should render custom header and navigation when provided', () => {
+      render(
+        <AppDetailNav
+          navigation={navigation}
+          renderHeader={mode => <div data-testid="custom-header" data-mode={mode} />}
+          renderNavigation={mode => <div data-testid="custom-navigation" data-mode={mode} />}
+        />,
+      )
+
+      expect(screen.getByTestId('custom-header')).toHaveAttribute('data-mode', 'expand')
+      expect(screen.getByTestId('custom-navigation')).toHaveAttribute('data-mode', 'expand')
+      expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('nav-link-Overview')).not.toBeInTheDocument()
+    })
   })
 
   describe('Workflow canvas mode', () => {

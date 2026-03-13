@@ -278,9 +278,10 @@ describe('List', () => {
     it('should render the snippets create card and fake snippet card', () => {
       renderList({ pageType: 'snippets' })
 
-      expect(screen.getByText('app.createSnippet')).toBeInTheDocument()
-      expect(screen.getByText('app.studio.fakeSnippet.name')).toBeInTheDocument()
-      expect(screen.getByText('app.studio.fakeSnippet.description')).toBeInTheDocument()
+      expect(screen.getByText('snippet.create')).toBeInTheDocument()
+      expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
+      expect(screen.getByText('Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Tone Rewriter/i })).toHaveAttribute('href', '/snippets/snippet-1')
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('app-card-app-1')).not.toBeInTheDocument()
     })
@@ -291,7 +292,7 @@ describe('List', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'missing snippet' } })
 
-      expect(screen.queryByText('app.studio.fakeSnippet.name')).not.toBeInTheDocument()
+      expect(screen.queryByText('Tone Rewriter')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
     })
 

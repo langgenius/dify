@@ -25,6 +25,7 @@ import type plugin from '../i18n/en-US/plugin.json'
 import type register from '../i18n/en-US/register.json'
 import type runLog from '../i18n/en-US/run-log.json'
 import type share from '../i18n/en-US/share.json'
+import type snippet from '../i18n/en-US/snippet.json'
 import type time from '../i18n/en-US/time.json'
 import type tools from '../i18n/en-US/tools.json'
 import type workflow from '../i18n/en-US/workflow.json'
@@ -58,6 +59,7 @@ export type Resources = {
   register: typeof register
   runLog: typeof runLog
   share: typeof share
+  snippet: typeof snippet
   time: typeof time
   tools: typeof tools
   workflow: typeof workflow
@@ -91,6 +93,7 @@ export const namespaces = [
   'register',
   'runLog',
   'share',
+  'snippet',
   'time',
   'tools',
   'workflow',

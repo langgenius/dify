@@ -1,0 +1,16 @@
+{
+  "create": "创建 Snippet",
+  "inputFieldButton": "输入字段",
+  "notFoundDescription": "未找到对应的 snippet 静态数据。",
+  "notFoundTitle": "未找到 Snippet",
+  "panelDescription": "定义允许 snippet 从其他节点接收数据的输入字段。",
+  "panelPrimaryGroup": "核心输入",
+  "panelSecondaryGroup": "可选输入",
+  "panelTitle": "输入字段",
+  "publishButton": "发布",
+  "publishMenuCurrentDraft": "当前草稿未发布",
+  "sectionEvaluation": "评测",
+  "sectionOrchestrate": "编排",
+  "testRunButton": "测试运行",
+  "variableInspect": "变量查看"
+}

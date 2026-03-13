@@ -1,0 +1,16 @@
+{
+  "create": "CREATE SNIPPET",
+  "inputFieldButton": "Input Field",
+  "notFoundDescription": "The requested snippet mock was not found.",
+  "notFoundTitle": "Snippet not found",
+  "panelDescription": "Defines the input fields that allow the snippet to receive data from other nodes.",
+  "panelPrimaryGroup": "Core inputs",
+  "panelSecondaryGroup": "Optional inputs",
+  "panelTitle": "Input Field",
+  "publishButton": "Publish",
+  "publishMenuCurrentDraft": "Current draft unpublished",
+  "sectionEvaluation": "Evaluation",
+  "sectionOrchestrate": "Orchestrate",
+  "testRunButton": "Test run",
+  "variableInspect": "Variable Inspect"
+}

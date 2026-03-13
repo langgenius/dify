@@ -27,12 +27,16 @@ export type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
+  renderHeader?: (modeState: string) => React.ReactNode
+  renderNavigation?: (modeState: string) => React.ReactNode
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
   iconType = 'app',
+  renderHeader,
+  renderNavigation,
 }: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -104,10 +108,11 @@ const AppDetailNav = ({
           expand ? 'p-2' : 'p-1',
         )}
       >
-        {iconType === 'app' && (
+        {renderHeader?.(appSidebarExpand)}
+        {!renderHeader && iconType === 'app' && (
           <AppInfo expand={expand} />
         )}
-        {iconType !== 'app' && (
+        {!renderHeader && iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
@@ -136,7 +141,8 @@ const AppDetailNav = ({
           expand ? 'px-3 py-2' : 'p-3',
         )}
       >
-        {navigation.map((item, index) => {
+        {renderNavigation?.(appSidebarExpand)}
+        {!renderNavigation && navigation.map((item, index) => {
           return (
             <NavLink
               key={index}
