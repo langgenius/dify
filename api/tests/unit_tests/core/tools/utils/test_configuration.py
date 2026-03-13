@@ -147,7 +147,7 @@ def test_decrypt_tool_parameters_cache_miss() -> None:
             assert "secret" in decrypted
             assert decrypted["secret"] == "dec"
             assert decrypted["plain"] == "x"
-        
+
         # Cache should be called (assertion outside inner patch but inside outer)
         cache_mock.set.assert_called_once()
 
