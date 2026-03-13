@@ -1,5 +1,3 @@
-import type { ProxyOptions } from 'vite'
-
 const DEFAULT_PROXY_TARGET = 'https://cloud.dify.ai'
 
 const SECURE_COOKIE_PREFIX_PATTERN = /^__(Host|Secure)-/
@@ -23,7 +21,7 @@ const shouldUseHostPrefix = (cookieName: string) => {
   return HOST_PREFIX_COOKIE_NAMES.has(normalizedCookieName) || isPassportCookie(normalizedCookieName)
 }
 
-const toCloudCookieName = (cookieName: string) => {
+const toUpstreamCookieName = (cookieName: string) => {
   if (cookieName.startsWith('__Host-'))
     return cookieName
 
@@ -38,7 +36,7 @@ const toCloudCookieName = (cookieName: string) => {
 
 const toLocalCookieName = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
 
-export const rewriteCookieHeaderForCloud = (cookieHeader?: string) => {
+export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
   if (!cookieHeader)
     return cookieHeader
 
@@ -52,7 +50,7 @@ export const rewriteCookieHeaderForCloud = (cookieHeader?: string) => {
 
       const cookieName = cookie.slice(0, separatorIndex).trim()
       const cookieValue = cookie.slice(separatorIndex + 1)
-      return `${toCloudCookieName(cookieName)}=${cookieValue}`
+      return `${toUpstreamCookieName(cookieName)}=${cookieValue}`
     })
     .join('; ')
 }
@@ -97,48 +95,4 @@ export const rewriteSetCookieHeadersForLocal = (setCookieHeaders?: string | stri
   return normalizedHeaders.map(rewriteSetCookieValueForLocal)
 }
 
-const createCookieAwareProxy = (target = DEFAULT_PROXY_TARGET): ProxyOptions => ({
-  target,
-  changeOrigin: true,
-  secure: true,
-  configure(proxy) {
-    proxy.on('proxyReq', (proxyReq, request) => {
-      const cookieHeader = rewriteCookieHeaderForCloud(request.headers.cookie)
-      if (cookieHeader)
-        proxyReq.setHeader('cookie', cookieHeader)
-    })
-
-    proxy.on('proxyRes', (proxyRes) => {
-      const rewrittenSetCookieHeaders = rewriteSetCookieHeadersForLocal(proxyRes.headers['set-cookie'])
-      if (rewrittenSetCookieHeaders)
-        proxyRes.headers['set-cookie'] = rewrittenSetCookieHeaders
-    })
-  },
-})
-
-const isRelativePathPrefix = (prefix?: string) => {
-  if (!prefix)
-    return false
-
-  return prefix.startsWith('/') && !prefix.startsWith('//')
-}
-
-export const createDevProxyConfig = (options?: {
-  consoleApiTarget?: string
-  publicApiTarget?: string
-  consoleApiPrefix?: string
-  publicApiPrefix?: string
-}) => {
-  const consoleApiTarget = options?.consoleApiTarget || DEFAULT_PROXY_TARGET
-  const publicApiTarget = options?.publicApiTarget || consoleApiTarget
-
-  const proxyConfig: Record<string, ProxyOptions> = {}
-
-  if (isRelativePathPrefix(options?.consoleApiPrefix))
-    proxyConfig['/console/api'] = createCookieAwareProxy(consoleApiTarget)
-
-  if (isRelativePathPrefix(options?.publicApiPrefix))
-    proxyConfig['/api'] = createCookieAwareProxy(publicApiTarget)
-
-  return proxyConfig
-}
+export { DEFAULT_PROXY_TARGET }
