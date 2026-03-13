@@ -2,6 +2,13 @@ name: Web Tests
 
 on:
   workflow_call:
+    inputs:
+      base_sha:
+        required: false
+        type: string
+      head_sha:
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -14,6 +21,8 @@ jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-latest
+    env:
+      VITEST_COVERAGE_SCOPE: app-components
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +59,8 @@ jobs:
     if: ${{ !cancelled() }}
     needs: [test]
     runs-on: ubuntu-latest
+    env:
+      VITEST_COVERAGE_SCOPE: app-components
     defaults:
       run:
         shell: bash
@@ -59,6 +70,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup web environment
@@ -73,6 +85,13 @@ jobs:
 
       - name: Merge reports
         run: pnpm vitest --merge-reports --coverage --silent=passed-only
+
+      - name: Check app/components diff coverage
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          STRICT_COMPONENT_TEST_TOUCH: 'true'
+        run: node ./scripts/check-components-diff-coverage.mjs
 
       - name: Coverage Summary
         if: always()
