@@ -68,7 +68,14 @@ class AppAnnotationService:
             if not question:
                 raise ValueError("'question' is required when 'message_id' is not provided")
 
-            annotation = MessageAnnotation(app_id=app.id, content=answer, question=question, account_id=current_user.id)
+            annotation = MessageAnnotation(
+                app_id=app.id,
+                conversation_id=None,
+                message_id=None,
+                content=answer,
+                question=question,
+                account_id=current_user.id,
+            )
         db.session.add(annotation)
         db.session.commit()
 

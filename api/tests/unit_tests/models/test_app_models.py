@@ -730,6 +730,8 @@ class TestMessageAnnotation:
         annotation = MessageAnnotation(
             app_id=app_id,
             question="What is AI?",
+            conversation_id=None,
+            message_id=None,
             content="AI stands for Artificial Intelligence.",
             account_id=account_id,
         )
@@ -747,6 +749,8 @@ class TestMessageAnnotation:
         annotation = MessageAnnotation(
             app_id=str(uuid4()),
             question="Test question",
+            conversation_id=None,
+            message_id=None,
             content="Test content",
             account_id=str(uuid4()),
         )
@@ -1100,6 +1104,8 @@ class TestModelIntegration:
             app_id=app_id,
             question="What is AI?",
             content="AI stands for Artificial Intelligence.",
+            conversation_id=None,
+            message_id=message_id,
             account_id=account_id,
         )
         annotation.id = annotation_id
