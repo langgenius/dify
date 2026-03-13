@@ -1,3 +1,4 @@
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -47,44 +48,44 @@ class TestToolTransformService:
             provider = ApiToolProvider(
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                credentials={"auth_type": "api_key_header", "api_key": "test_key"},
-                provider_type="api",
+                icon=json.dumps({"background": "#FF6B6B", "content": "🔧"}),
+                tenant_id=fake.uuid4(),
+                user_id=fake.uuid4(),
+                credentials_str=json.dumps({"auth_type": "api_key_header", "api_key": "test_key"}),
+                schema=json.dumps({}),
+                schema_type_str="openapi",
+                tools_str=json.dumps([]),
             )
         elif provider_type == "builtin":
             provider = BuiltinToolProvider(
                 name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon="🔧",
-                icon_dark="🔧",
-                tenant_id="test_tenant_id",
+                tenant_id=fake.uuid4(),
+                user_id=fake.uuid4(),
                 provider="test_provider",
-                credential_type="api_key",
-                credentials={"api_key": "test_key"},
+                encrypted_credentials=json.dumps({"api_key": "test_key"}),
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
                 name=fake.company(),
+                label="Test Workflow",
                 description=fake.text(max_nb_chars=100),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
-                icon_dark='{"background": "#252525", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                workflow_id="test_workflow_id",
+                icon=json.dumps({"background": "#FF6B6B", "content": "🔧"}),
+                tenant_id=fake.uuid4(),
+                user_id=fake.uuid4(),
+                app_id=fake.uuid4(),
+                version="1.0.0",
+                parameter_configuration=json.dumps([]),
             )
         elif provider_type == "mcp":
             provider = MCPToolProvider(
-                name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                provider_icon='{"background": "#FF6B6B", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
+                name=fake.company()[:40],  # max 40 chars
+                icon=json.dumps({"background": "#FF6B6B", "content": "🔧"}),
+                tenant_id=fake.uuid4(),
+                user_id=fake.uuid4(),
                 server_url="https://mcp.example.com",
+                server_url_hash=fake.sha256()[:64],
                 server_identifier="test_server",
-                tools='[{"name": "test_tool", "description": "Test tool"}]',
+                tools=json.dumps([{"name": "test_tool", "description": "Test tool"}]),
                 authed=True,
             )
         else:
