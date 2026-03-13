@@ -11,7 +11,6 @@ Orchestrates the evaluation lifecycle in four phases:
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -19,12 +18,10 @@ from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetrics,
     DefaultMetric,
-    EvaluationItemInput,
     EvaluationItemResult,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.judgment.processor import JudgmentProcessor
-from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
@@ -79,7 +76,7 @@ class BaseEvaluationRunner(ABC):
         evaluation_run.started_at = naive_utc_now()
         self.session.commit()
 
-        results: list[EvaluationItemResult] = []
+        results_by_index: dict[int, EvaluationItemResult] = {}
 
         # Phase 1: run evaluation
         if default_metric and node_run_result_list:
@@ -93,22 +90,30 @@ class BaseEvaluationRunner(ABC):
                     model_name=model_name,
                     tenant_id=tenant_id,
                 )
-                # Merge evaluated metrics back into results
-                evaluated_by_index = {r.index: r for r in evaluated_results}
-                for i, result in enumerate(results):
-                    if result.index in evaluated_by_index:
-                        results[i] = evaluated_by_index[result.index]
+                for r in evaluated_results:
+                    results_by_index[r.index] = r
             except Exception:
                 logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
         if customized_metrics and node_run_result_mapping_list:
             try:
-                evaluated_results = self._evaluate_customized(
+                customized_results = self.evaluation_instance.evaluate_with_customized_workflow(
                     node_run_result_mapping_list=node_run_result_mapping_list,
                     customized_metrics=customized_metrics,
                     tenant_id=tenant_id,
                 )
+                for r in customized_results:
+                    existing = results_by_index.get(r.index)
+                    if existing:
+                        # Merge: combine metrics from both sources into one result
+                        results_by_index[r.index] = existing.model_copy(
+                            update={"metrics": existing.metrics + r.metrics}
+                        )
+                    else:
+                        results_by_index[r.index] = r
             except Exception:
-                logger.exception("Failed to compute metrics for evaluation run %s", evaluation_run_id)
+                logger.exception("Failed to compute customized metrics for evaluation run %s", evaluation_run_id)
+
+        results = list(results_by_index.values())
 
         # Phase 4: Persist individual items
         for result in results:
@@ -132,79 +137,32 @@ class BaseEvaluationRunner(ABC):
 
         return results
 
-    def _evaluate_customized(
-        self,
-        node_run_result_mapping_list: list[dict[str, NodeRunResult]],
-        customized_metrics: CustomizedMetrics,
-        tenant_id: str,
-    ) -> list[EvaluationItemResult]:
-        """Delegate to the instance's customized workflow evaluator.
-
-        Unlike the framework path (which merges ``actual_output`` into
-        ``context``), here we pass ``results`` directly — the instance's
-        ``evaluate_with_customized_workflow()`` reads ``actual_output``
-        from each ``EvaluationItemResult``.
-        """
-        evaluated_results = self.evaluation_instance.evaluate_with_customized_workflow(
-            node_run_result_mapping_list=node_run_result_mapping_list,
-            customized_metrics=customized_metrics,
-            tenant_id=tenant_id,
-        )
-
-        # Merge metrics back preserving actual_output and metadata from Phase 1
-        eval_by_index = {r.index: r for r in evaluated}
-        final_results: list[EvaluationItemResult] = []
-        for result in results:
-            if result.index in eval_by_index:
-                eval_result = eval_by_index[result.index]
-                final_results.append(
-                    EvaluationItemResult(
-                        index=result.index,
-                        actual_output=result.actual_output,
-                        metrics=eval_result.metrics,
-                        metadata={**result.metadata, **eval_result.metadata},
-                        error=eval_result.error,
-                    )
-                )
-            else:
-                final_results.append(result)
-        return final_results
-
     @staticmethod
     def _apply_judgment(
         results: list[EvaluationItemResult],
-        items: list[EvaluationItemInput],
         judgment_config: JudgmentConfig,
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None = None,
     ) -> list[EvaluationItemResult]:
         """Apply judgment conditions to each result's metrics.
-
-        Builds a metric_name → value mapping from each result's metrics,
-        and a variable_values dict from the evaluation target's runtime data
-        (inputs, actual_output, expected_output) for variable-type conditions.
-        Results with errors are skipped.
         """
-        items_by_index = {item.index: item for item in items}
         judged_results: list[EvaluationItemResult] = []
 
-        for result in results:
+        for idx, result in enumerate(results):
             if result.error is not None or not result.metrics:
                 judged_results.append(result)
                 continue
 
-            metric_values: dict[str, object] = {m.name: m.score for m in result.metrics}
+            # Left side: only metrics
+            metric_values: dict[str, object] = {m.name: m.value for m in result.metrics}
 
-            # Build variable pool from the evaluation target's runtime data.
-            # These variables can be referenced in conditions with value_source="variable".
-            item_input = items_by_index.get(result.index)
-            variable_values: dict[str, object] = {}
-            if item_input:
-                variable_values.update(item_input.inputs)
-                if item_input.expected_output is not None:
-                    variable_values["expected_output"] = item_input.expected_output
-                if item_input.context:
-                    variable_values["context"] = "; ".join(item_input.context)
-            if result.actual_output is not None:
-                variable_values["actual_output"] = result.actual_output
+            # Right side variable pool: metrics + intermediate node run results
+            variable_values: dict[str, object] = dict(metric_values)
+            if node_run_result_mapping_list and idx < len(node_run_result_mapping_list):
+                node_run_result_mapping = node_run_result_mapping_list[idx]
+                for node_id, node_result in node_run_result_mapping.items():
+                    if node_result.outputs:
+                        for output_key, output_value in node_result.outputs.items():
+                            variable_values[f"{node_id}.{output_key}"] = output_value
 
             judgment_result = JudgmentProcessor.evaluate(
                 metric_values, judgment_config, variable_values=variable_values

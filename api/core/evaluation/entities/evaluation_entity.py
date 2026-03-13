@@ -39,6 +39,8 @@ class EvaluationItemResult(BaseModel):
     index: int
     actual_output: str | None = None
     metrics: list[EvaluationMetric] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    judgment: JudgmentResult | None = None
     error: str | None = None
 
     @property
