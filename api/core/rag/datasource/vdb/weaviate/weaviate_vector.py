@@ -176,8 +176,11 @@ class WeaviateVector(BaseVector):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             cache_key = f"vector_indexing_{self._collection_name}"
+            collection_exists: bool | None = None
+
             if redis_client.get(cache_key):
-                if self._client.collections.exists(self._collection_name):
+                collection_exists = self._client.collections.exists(self._collection_name)
+                if collection_exists:
                     return
                 redis_client.delete(cache_key)
                 logger.warning(
@@ -186,7 +189,10 @@ class WeaviateVector(BaseVector):
                 )
 
             try:
-                if not self._client.collections.exists(self._collection_name):
+                if collection_exists is None:
+                    collection_exists = self._client.collections.exists(self._collection_name)
+
+                if not collection_exists:
                     tokenization = (
                         wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
                         if dify_config.WEAVIATE_TOKENIZATION
