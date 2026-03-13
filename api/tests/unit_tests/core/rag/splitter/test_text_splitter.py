@@ -933,8 +933,9 @@ class TestFixedRecursiveCharacterTextSplitter:
 
         result = splitter.split_text(text)
 
-        assert len(result) > 0
+        assert len(result) > 1, "Chinese period separator should split text into multiple chunks"
         assert all(isinstance(chunk, str) for chunk in result)
+        assert result == ["这是第一句", "这是第二句", "这是第三句", ""]
 
     def test_space_separator_handling(self):
         """Test special handling of space separator."""
