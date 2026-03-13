@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dify_graph.entities.base_node_data import RetryConfig
 from dify_graph.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.domain.graph_execution import GraphExecution
@@ -12,7 +13,6 @@ from dify_graph.graph_engine.ready_queue.in_memory import InMemoryReadyQueue
 from dify_graph.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
 from dify_graph.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
 from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.base.entities import RetryConfig
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 
