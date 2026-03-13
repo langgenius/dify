@@ -51,4 +51,64 @@ describe('secret input utilities', () => {
       apiKey: 'secret',
     })
   })
+
+  it('should not mask when secret name is not in the values object', () => {
+    expect(transformFormSchemasSecretInput(['missing'], {
+      apiKey: 'secret',
+    })).toEqual({
+      apiKey: 'secret',
+    })
+  })
+
+  it('should not mask falsy values like 0 or null', () => {
+    expect(transformFormSchemasSecretInput(['zeroVal', 'nullVal'], {
+      zeroVal: 0,
+      nullVal: null,
+    })).toEqual({
+      zeroVal: 0,
+      nullVal: null,
+    })
+  })
+
+  it('should return empty object when form values are undefined', () => {
+    const formSchemas = [
+      { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
+    ]
+    const form = {
+      store: { state: { values: undefined } },
+      getFieldMeta: () => ({ isPristine: true }),
+    }
+
+    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi)).toEqual({})
+  })
+
+  it('should handle fieldMeta being undefined', () => {
+    const formSchemas = [
+      { name: 'apiKey', type: FormTypeEnum.secretInput, label: 'API Key', required: true },
+    ]
+    const form = {
+      store: { state: { values: { apiKey: 'secret' } } },
+      getFieldMeta: () => undefined,
+    }
+
+    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi)).toEqual({
+      apiKey: 'secret',
+    })
+  })
+
+  it('should skip non-secretInput schema types entirely', () => {
+    const formSchemas = [
+      { name: 'name', type: FormTypeEnum.textInput, label: 'Name', required: true },
+      { name: 'desc', type: FormTypeEnum.textInput, label: 'Desc', required: false },
+    ]
+    const form = {
+      store: { state: { values: { name: 'Alice', desc: 'Test' } } },
+      getFieldMeta: () => ({ isPristine: true }),
+    }
+
+    expect(getTransformedValuesWhenSecretInputPristine(formSchemas, form as unknown as AnyFormApi)).toEqual({
+      name: 'Alice',
+      desc: 'Test',
+    })
+  })
 })

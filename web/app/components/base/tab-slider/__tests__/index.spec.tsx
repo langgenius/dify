@@ -104,4 +104,44 @@ describe('TabSlider Component', () => {
     expect(slider.style.transform).toBe('translateX(120px)')
     expect(slider.style.width).toBe('80px')
   })
+
+  it('does not call onChange when clicking the already active tab', () => {
+    render(<TabSlider value="all" options={mockOptions} onChange={onChangeMock} />)
+    const activeTab = screen.getByTestId('tab-item-all')
+    fireEvent.click(activeTab)
+    expect(onChangeMock).not.toHaveBeenCalled()
+  })
+
+  it('handles invalid value gracefully', () => {
+    const { container, rerender } = render(<TabSlider value="invalid" options={mockOptions} onChange={onChangeMock} />)
+    const activeTabs = container.querySelectorAll('.text-text-primary')
+    expect(activeTabs.length).toBe(0)
+
+    // Changing to a valid value should work
+    rerender(<TabSlider value="all" options={mockOptions} onChange={onChangeMock} />)
+    expect(screen.getByTestId('tab-item-all')).toHaveClass('text-text-primary')
+  })
+
+  it('supports string itemClassName', () => {
+    render(
+      <TabSlider
+        value="all"
+        options={mockOptions}
+        onChange={onChangeMock}
+        itemClassName="custom-static-class"
+      />,
+    )
+    expect(screen.getByTestId('tab-item-all')).toHaveClass('custom-static-class')
+    expect(screen.getByTestId('tab-item-settings')).toHaveClass('custom-static-class')
+  })
+
+  it('handles missing pluginList data gracefully', () => {
+    vi.mocked(useInstalledPluginList).mockReturnValue({
+      data: undefined as unknown as { total: number },
+      isLoading: false,
+    } as ReturnType<typeof useInstalledPluginList>)
+
+    render(<TabSlider value="plugins" options={mockOptions} onChange={onChangeMock} />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument() // Badge shouldn't render
+  })
 })

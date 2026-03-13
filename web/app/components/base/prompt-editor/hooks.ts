@@ -84,7 +84,6 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
 
   useEffect(() => {
     const ele = ref.current
-
     if (ele)
       ele.addEventListener('click', handleSelect)
 

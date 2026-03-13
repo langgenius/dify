@@ -224,6 +224,35 @@ describe('ChatImageUploader', () => {
       expect(queryFileInput()).toBeInTheDocument()
     })
 
+    it('should close popover when local upload calls closePopover in mixed mode', async () => {
+      const user = userEvent.setup()
+      const settings = createSettings({
+        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      })
+
+      mocks.handleLocalFileUpload.mockImplementation((file) => {
+        mocks.hookArgs?.onUpload({
+          type: TransferMethod.local_file,
+          _id: 'mixed-local-upload-id',
+          fileId: '',
+          progress: 0,
+          url: 'data:image/png;base64,mixed',
+          file,
+        } as ImageFile)
+      })
+
+      render(<ChatImageUploader settings={settings} onUpload={defaultOnUpload} />)
+
+      await user.click(screen.getByRole('button'))
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+
+      const localInput = getFileInput()
+      const file = new File(['hello'], 'mixed.png', { type: 'image/png' })
+      await user.upload(localInput, file)
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
     it('should toggle local-upload hover style in mixed transfer mode', async () => {
       const user = userEvent.setup()
       const settings = createSettings({
