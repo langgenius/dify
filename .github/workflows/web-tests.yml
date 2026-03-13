@@ -43,7 +43,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: pnpm vitest run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -84,7 +84,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge reports
-        run: pnpm vitest --merge-reports --reporter=json --reporter=agent --coverage
+        run: vp test --merge-reports --reporter=json --reporter=agent --coverage
 
       - name: Check app/components diff coverage
         env:
@@ -447,4 +447,4 @@ jobs:
       - name: Web build check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run build
+        run: vp run build

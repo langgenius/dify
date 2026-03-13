@@ -1,11 +1,9 @@
-/// <reference types="vitest/config" />
-
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
+import { defineConfig } from 'vite-plus'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
