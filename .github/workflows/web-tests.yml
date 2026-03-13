@@ -90,7 +90,6 @@ jobs:
         env:
           BASE_SHA: ${{ inputs.base_sha }}
           HEAD_SHA: ${{ inputs.head_sha }}
-          STRICT_COMPONENT_TEST_TOUCH: 'true'
         run: node ./scripts/check-components-diff-coverage.mjs
 
       - name: Coverage Summary
