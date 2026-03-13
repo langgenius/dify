@@ -109,23 +109,32 @@ def test_encrypt_tool_parameters():
     assert encrypted["plain"] == "x"
 
 
-def test_decrypt_tool_parameters_cache_hit_and_miss():
+def test_decrypt_tool_parameters_cache_hit() -> None:
     manager = _build_manager()
 
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         cache = cache_cls.return_value
         cache.get.return_value = {"secret": "cached"}
-        assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
+
+        result = manager.decrypt_tool_parameters({"secret": "enc"})
+
+        assert result == {"secret": "cached"}
         cache.set.assert_not_called()
+
+
+def test_decrypt_tool_parameters_cache_miss() -> None:
+    manager = _build_manager()
 
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         cache = cache_cls.return_value
         cache.get.return_value = None
+
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
 
-    assert decrypted["secret"] == "dec"
-    cache.set.assert_called_once()
+        assert decrypted["secret"] == "dec"
+        assert decrypted["plain"] == "x"
+        cache.set.assert_called_once()
 
 
 def test_delete_tool_parameters_cache():
@@ -144,5 +153,5 @@ def test_configuration_manager_decrypt_suppresses_errors():
         cache.get.return_value = None
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
-    # decryption failure is suppressed, original value is retained.
-    assert decrypted["secret"] == "enc"
+        # decryption failure is suppressed, original value is retained.
+        assert decrypted["secret"] == "enc"
