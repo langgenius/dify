@@ -154,7 +154,7 @@ describe('useSelectionInteractions', () => {
       initialStoreState: {
         nodeMenu: { top: 10, left: 20, nodeId: 'n1' },
         panelMenu: { top: 30, left: 40 },
-        edgeMenu: { x: 320, y: 180, edgeId: 'e1' },
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
       },
     })
 

@@ -25,8 +25,8 @@ const EdgeContextmenu = () => {
       getBoundingClientRect: () => DOMRect.fromRect({
         width: 0,
         height: 0,
-        x: edgeMenu.x,
-        y: edgeMenu.y,
+        x: edgeMenu.clientX,
+        y: edgeMenu.clientY,
       }),
     }
   }, [edgeMenu])

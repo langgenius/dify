@@ -30,7 +30,7 @@ describe('usePanelInteractions', () => {
       initialStoreState: {
         nodeMenu: { top: 20, left: 40, nodeId: 'n1' },
         selectionMenu: { top: 30, left: 50 },
-        edgeMenu: { x: 320, y: 180, edgeId: 'e1' },
+        edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
       },
     })
     const preventDefault = vi.fn()
@@ -87,7 +87,7 @@ describe('usePanelInteractions', () => {
 
   it('handleEdgeContextmenuCancel should clear edgeMenu', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { edgeMenu: { x: 300, y: 200, edgeId: 'e1' } },
+      initialStoreState: { edgeMenu: { clientX: 300, clientY: 200, edgeId: 'e1' } },
     })
 
     result.current.handleEdgeContextmenuCancel()

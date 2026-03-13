@@ -231,8 +231,8 @@ export const useEdgesInteractions = () => {
       panelMenu: undefined,
       selectionMenu: undefined,
       edgeMenu: {
-        x: e.clientX,
-        y: e.clientY,
+        clientX: e.clientX,
+        clientY: e.clientY,
         edgeId: edge.id,
       },
     })

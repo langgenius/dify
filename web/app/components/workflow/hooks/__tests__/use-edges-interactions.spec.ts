@@ -100,8 +100,8 @@ describe('useEdgesInteractions', () => {
     expect(updated.find((e: { id: string }) => e.id === 'e2').selected).toBe(true)
 
     expect(store.getState().edgeMenu).toEqual({
-      x: 320,
-      y: 180,
+      clientX: 320,
+      clientY: 180,
       edgeId: 'e2',
     })
     expect(store.getState().nodeMenu).toBeUndefined()
@@ -113,7 +113,7 @@ describe('useEdgesInteractions', () => {
     ;(rfState.edges[0] as Record<string, unknown>).selected = true
     const { result, store } = renderEdgesInteractions()
     store.setState({
-      edgeMenu: { x: 320, y: 180, edgeId: 'e1' },
+      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
     })
 
     result.current.handleEdgeDelete()
@@ -134,7 +134,7 @@ describe('useEdgesInteractions', () => {
   it('handleEdgeDeleteByDeleteBranch should remove edges for the given branch', () => {
     const { result, store } = renderEdgesInteractions()
     store.setState({
-      edgeMenu: { x: 320, y: 180, edgeId: 'e1' },
+      edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
     })
     result.current.handleEdgeDeleteByDeleteBranch('n1', 'branch-a')
 

@@ -81,8 +81,8 @@ describe('EdgeContextmenu', () => {
     const { store } = renderWorkflowComponent(<EdgeContextmenu />, {
       initialStoreState: {
         edgeMenu: {
-          x: 320,
-          y: 180,
+          clientX: 320,
+          clientY: 180,
           edgeId: 'e1',
         },
       },
