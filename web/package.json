@@ -50,7 +50,6 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vitest run",
-    "test:ci": "vitest run --coverage --silent=passed-only",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",

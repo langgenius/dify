@@ -34,7 +34,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: pnpm vitest run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: pnpm vitest run --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
