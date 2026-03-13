@@ -25,6 +25,7 @@ from core.evaluation.runners.workflow_evaluation_runner import WorkflowEvaluatio
 from core.workflow.node_events.base import NodeRunResult
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from models.enums import CreatorUserRole
 from models.evaluation import EvaluationRun, EvaluationRunStatus
 from models.model import UploadFile
 from services.evaluation_service import EvaluationService
@@ -116,6 +117,7 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
 
     logger.info("Evaluation run %s completed successfully", run_data.evaluation_run_id)
 
+
 def _execute_evaluation_runner(
     session: Any, 
     run_data: EvaluationRunData, 
@@ -125,6 +127,7 @@ def _execute_evaluation_runner(
     """Execute the evaluation runner."""
     default_metrics = run_data.default_metrics
     customized_metrics = run_data.customized_metrics
+    results: list[EvaluationItemResult] = []
     for default_metric in default_metrics:
         for node_info in default_metric.node_info_list:
             node_run_result_list: list[NodeRunResult] = []
@@ -134,7 +137,7 @@ def _execute_evaluation_runner(
                     node_run_result_list.append(node_run_result)
             if node_run_result_list:
                 runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance, session)
-                runner.run(
+                results.extend(runner.run(
                     evaluation_run_id=run_data.evaluation_run_id,
                     tenant_id=run_data.tenant_id,
                     target_id=run_data.target_id,
@@ -144,10 +147,10 @@ def _execute_evaluation_runner(
                     model_provider=run_data.evaluation_model_provider,
                     model_name=run_data.evaluation_model,
                     node_run_result_list=node_run_result_list,
-                )
+                ))
     if customized_metrics:
         runner = _create_runner(EvaluationCategory.WORKFLOW, evaluation_instance, session)
-        runner.run(
+        results.extend(runner.run(
             evaluation_run_id=run_data.evaluation_run_id,
             tenant_id=run_data.tenant_id,
             target_id=run_data.target_id,
@@ -156,7 +159,9 @@ def _execute_evaluation_runner(
             customized_metrics=customized_metrics,
             node_run_result_list=None,
             node_run_result_mapping_list=node_run_result_mapping_list,
-        )
+        ))
+    return results
+    
 
 def _create_runner(
     category: EvaluationCategory,
@@ -201,7 +206,7 @@ def _compute_metrics_summary(results: list[EvaluationItemResult]) -> dict[str, A
         for metric in result.metrics:
             if metric.name not in metric_scores:
                 metric_scores[metric.name] = []
-            metric_scores[metric.name].append(metric.score)
+            metric_scores[metric.name].append(float(metric.value))
 
     summary: dict[str, Any] = {}
     for name, scores in metric_scores.items():
@@ -231,6 +236,8 @@ def _generate_result_xlsx(
     """Generate result XLSX with input data, actual output, and metric scores."""
     wb = Workbook()
     ws = wb.active
+    if ws is None:
+        ws = wb.create_sheet("Evaluation Results")
     ws.title = "Evaluation Results"
 
     header_font = Font(bold=True, color="FFFFFF")
@@ -306,7 +313,7 @@ def _generate_result_xlsx(
         col += 1
 
         # Metric scores
-        metric_scores = {m.name: m.score for m in result.metrics} if result else {}
+        metric_scores = {m.name: m.value for m in result.metrics} if result else {}
         for metric_name in all_metric_names:
             score = metric_scores.get(metric_name)
             ws.cell(row=row_idx, column=col, value=score if score is not None else "").border = thin_border
@@ -351,7 +358,7 @@ def _store_result_file(
             size=len(xlsx_content),
             extension="xlsx",
             mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by="system",
             created_at=naive_utc_now(),
             used=False,

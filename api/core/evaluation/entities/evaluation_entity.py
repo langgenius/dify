@@ -41,14 +41,6 @@ class EvaluationItemResult(BaseModel):
     metrics: list[EvaluationMetric] = Field(default_factory=list)
     error: str | None = None
 
-    @property
-    def overall_score(self) -> float | None:
-        if not self.metrics:
-            return None
-        scores = [m.score for m in self.metrics]
-        return sum(scores) / len(scores)
-
-
 class NodeInfo(BaseModel):
     node_id: str
     type: str

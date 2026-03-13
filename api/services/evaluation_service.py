@@ -15,7 +15,6 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationConfigData,
     EvaluationDatasetInput,
-    EvaluationItemInput,
     EvaluationRunData,
     EvaluationRunRequest,
 )
@@ -156,6 +155,8 @@ class EvaluationService:
         """
         wb = Workbook()
         ws = wb.active
+        if ws is None:
+            ws = wb.create_sheet("Evaluation Dataset")
 
         sheet_name = "Evaluation Dataset"
         ws.title = sheet_name
@@ -174,7 +175,7 @@ class EvaluationService:
         headers = ["index"]
 
         for field in input_fields:
-            field_label = field.get("label") or field.get("variable")
+            field_label = str(field.get("label") or field.get("variable") or "")
             headers.append(field_label)
 
         # Write header row
@@ -279,9 +280,6 @@ class EvaluationService:
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
 
-        # Derive evaluation_category from default_metrics node types
-        evaluation_category = cls._resolve_evaluation_category(run_request.default_metrics)
-
         # Save as latest EvaluationConfiguration
         config = cls.save_evaluation_config(
             session=session,
@@ -333,12 +331,10 @@ class EvaluationService:
             target_id=target_id,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
-            default_metrics=[m.model_dump() for m in run_request.default_metrics],
-            customized_metrics=(
-                run_request.customized_metrics.model_dump() if run_request.customized_metrics else None
-            ),
+            default_metrics=run_request.default_metrics,
+            customized_metrics=run_request.customized_metrics,
             judgment_config=run_request.judgment_config,
-            items=items,
+            input_list=items,
         )
 
         # Dispatch Celery task
@@ -648,7 +644,7 @@ class EvaluationService:
     # ---- Dataset Parsing ----
 
     @classmethod
-    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationItemInput]:
+    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from XLSX bytes."""
         wb = load_workbook(io.BytesIO(xlsx_content), read_only=True)
         ws = wb.active
@@ -672,7 +668,7 @@ class EvaluationService:
 
             index_val = values[0] if values else row_idx
             try:
-                index = int(index_val)
+                index = int(str(index_val))
             except (TypeError, ValueError):
                 index = row_idx
 
@@ -681,17 +677,14 @@ class EvaluationService:
                 val = values[col_idx + 1] if col_idx + 1 < len(values) else None
                 inputs[header] = str(val) if val is not None else ""
 
-            # Check for expected_output column
+            # Extract expected_output column into dedicated field
             expected_output = inputs.pop("expected_output", None)
-            context_str = inputs.pop("context", None)
-            context = context_str.split(";") if context_str else None
 
             items.append(
-                EvaluationItemInput(
+                EvaluationDatasetInput(
                     index=index,
                     inputs=inputs,
                     expected_output=expected_output,
-                    context=context,
                 )
             )
 
