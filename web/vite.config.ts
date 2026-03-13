@@ -21,8 +21,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: isTest
       ? [
-          // TODO: remove tsconfigPaths from test config after vitest supports it natively
-          // tsconfigPaths(),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
