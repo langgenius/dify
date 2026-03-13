@@ -1,13 +1,26 @@
 import type { EdgeChange, ReactFlowProps } from 'reactflow'
 import type { Edge, Node } from '../types'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { FlowType } from '@/types/common'
+import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
 import { renderWorkflowComponent } from './workflow-test-env'
 
 const reactFlowState = vi.hoisted(() => ({
   lastProps: null as ReactFlowProps | null,
+}))
+
+type WorkflowUpdateEvent = {
+  type: string
+  payload: {
+    nodes: Node[]
+    edges: Edge[]
+  }
+}
+
+const eventEmitterState = vi.hoisted(() => ({
+  subscription: null as null | ((payload: WorkflowUpdateEvent) => void),
 }))
 
 const workflowHookMocks = vi.hoisted(() => ({
@@ -99,6 +112,16 @@ vi.mock('reactflow', async () => {
         'aria-label': 'Emit edge context menu',
         'onClick': () => props.onEdgeContextMenu?.(createMouseEvent(), baseEdges[0]),
       }),
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit node context menu',
+        'onClick': () => props.onNodeContextMenu?.(createMouseEvent(), baseNodes[0]),
+      }),
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit pane context menu',
+        'onClick': () => props.onPaneContextMenu?.(createMouseEvent()),
+      }),
       props.children,
     )
   }
@@ -115,7 +138,11 @@ vi.mock('reactflow', async () => {
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
-    eventEmitter: undefined,
+    eventEmitter: {
+      useSubscription: (handler: (payload: WorkflowUpdateEvent) => void) => {
+        eventEmitterState.subscription = handler
+      },
+    },
   }),
 }))
 
@@ -288,6 +315,7 @@ describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     reactFlowState.lastProps = null
+    eventEmitterState.subscription = null
   })
 
   it('should forward React Flow edge events to workflow handlers when emitted by the canvas', () => {
@@ -297,6 +325,8 @@ describe('Workflow edge event wiring', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Emit edge mouse leave' }))
     fireEvent.click(screen.getByRole('button', { name: 'Emit edges change' }))
     fireEvent.click(screen.getByRole('button', { name: 'Emit edge context menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Emit node context menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Emit pane context menu' }))
 
     expect(workflowHookMocks.handleEdgeEnter).toHaveBeenCalledWith(expect.objectContaining({
       clientX: 24,
@@ -311,11 +341,56 @@ describe('Workflow edge event wiring', () => {
       clientX: 24,
       clientY: 48,
     }), baseEdges[0])
+    expect(workflowHookMocks.handleNodeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
+      clientX: 24,
+      clientY: 48,
+    }), baseNodes[0])
+    expect(workflowHookMocks.handlePaneContextMenu).toHaveBeenCalledWith(expect.objectContaining({
+      clientX: 24,
+      clientY: 48,
+    }))
   })
 
   it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', () => {
     renderSubject()
 
     expect(reactFlowState.lastProps?.deleteKeyCode).toBeNull()
+  })
+
+  it('should clear edgeMenu when workflow data updates remove the current edge', () => {
+    const { store } = renderWorkflowComponent(
+      <Workflow
+        nodes={baseNodes}
+        edges={baseEdges}
+      />,
+      {
+        initialStoreState: {
+          edgeMenu: {
+            clientX: 320,
+            clientY: 180,
+            edgeId: 'edge-1',
+          },
+        },
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'flow-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {},
+          },
+        },
+      },
+    )
+
+    act(() => {
+      eventEmitterState.subscription?.({
+        type: WORKFLOW_DATA_UPDATE,
+        payload: {
+          nodes: baseNodes,
+          edges: [],
+        },
+      })
+    })
+
+    expect(store.getState().edgeMenu).toBeUndefined()
   })
 })
