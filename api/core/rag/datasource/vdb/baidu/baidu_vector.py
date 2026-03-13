@@ -13,6 +13,7 @@ from pymochow.exception import ServerError  # type: ignore
 from pymochow.model.database import Database
 from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
 from pymochow.model.schema import (
+    AutoBuildRowCountIncrement,
     Field,
     FilteringIndex,
     HNSWParams,
@@ -23,7 +24,6 @@ from pymochow.model.schema import (
     InvertedIndexParseMode,
     Schema,
     VectorIndex,
-    AutoBuildRowCountIncrement,
 )  # type: ignore
 from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams, Partition, Row  # type: ignore
 
@@ -352,7 +352,7 @@ class BaiduVector(BaseVector):
             table.rebuild_index(self.vector_index)
             timeout = 3600  # 1 hour timeout
             self._wait_for_index_ready(table, timeout)
-    
+
     def _wait_for_index_ready(self, table, timeout: int = 3600):
         start_time = time.time()
         while True:
@@ -388,6 +388,6 @@ class BaiduVectorFactory(AbstractVectorFactory):
                 inverted_index_parser_mode=dify_config.BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE,
                 auto_build_row_count_increment=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT,
                 auto_build_row_count_increment_ratio=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO,
-                rebuild_index_timeout_in_seconds=dify_config.BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS
+                rebuild_index_timeout_in_seconds=dify_config.BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS,
             ),
         )
