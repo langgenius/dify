@@ -125,7 +125,7 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_firecrawl(monkeypa
 @pytest.mark.parametrize(
     ("provider", "plugin_id"),
     [
-        ("watercrawl", "langgenius/watercrawl_datasource"),
+        ("watercrawl", "watercrawl/watercrawl_datasource"),
         ("jinareader", "langgenius/jina_datasource"),
     ],
 )

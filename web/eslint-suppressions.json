@@ -2657,11 +2657,6 @@
       "count": 1
     }
   },
-  "app/components/base/segmented-control/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/select/custom.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -6851,9 +6846,6 @@
   },
   "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     },
     "ts/no-explicit-any": {

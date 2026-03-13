@@ -15,11 +15,16 @@ const {
   mockNotificationDismiss: vi.fn(),
 }))
 
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.isCloudEdition
-  },
-}))
+vi.mock(import('@/config'), async (importOriginal) => {
+  const actual = await importOriginal()
+
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() {
+      return mockConfig.isCloudEdition
+    },
+  }
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
