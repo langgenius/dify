@@ -13,7 +13,7 @@ const SHARED_TEST_PREFIX = 'web/__tests__/'
 const STRICT_TEST_FILE_TOUCH = process.env.STRICT_COMPONENT_TEST_TOUCH === 'true'
 const EXCLUDED_MODULES_LABEL = [...EXCLUDED_COMPONENT_MODULES].sort().join(', ')
 
-const repoRoot = execGit(['rev-parse', '--show-toplevel']).trim()
+const repoRoot = repoRootFromCwd()
 const webRoot = path.join(repoRoot, 'web')
 const baseSha = process.env.BASE_SHA?.trim()
 const headSha = process.env.HEAD_SHA?.trim() || 'HEAD'
@@ -527,7 +527,7 @@ function appendSummary(lines) {
 
 function execGit(args) {
   return execFileSync('git', args, {
-    cwd: repoRootFromCwd(),
+    cwd: repoRoot,
     encoding: 'utf8',
   })
 }

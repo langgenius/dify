@@ -8,11 +8,14 @@ import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
 const coverageScope = process.env.VITEST_COVERAGE_SCOPE
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
+const excludedAppComponentsCoveragePaths = [...EXCLUDED_COMPONENT_MODULES]
+  .map(moduleName => `app/components/${moduleName}/**`)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -94,8 +97,7 @@ export default defineConfig(({ mode }) => {
                 'app/components/**/__tests__/**',
                 'app/components/**/__mocks__/**',
                 'app/components/**/*.stories.{ts,tsx}',
-                'app/components/devtools/**',
-                'app/components/provider/**',
+                ...excludedAppComponentsCoveragePaths,
               ],
             }
           : {}),
