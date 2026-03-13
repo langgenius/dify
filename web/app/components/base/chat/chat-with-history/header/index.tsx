@@ -61,6 +61,7 @@ const Header = () => {
     setShowConfirm(null)
   }, [])
   const handleDelete = useCallback(() => {
+    /* v8 ignore next -- defensive guard; onConfirm is only reachable when showConfirm is truthy. @preserve */
     if (showConfirm)
       handleDeleteConversation(showConfirm.id, { onSuccess: handleCancelConfirm })
   }, [showConfirm, handleDeleteConversation, handleCancelConfirm])
@@ -68,6 +69,7 @@ const Header = () => {
     setShowRename(null)
   }, [])
   const handleRename = useCallback((newName: string) => {
+    /* v8 ignore next -- defensive guard; onSave is only reachable when showRename is truthy. @preserve */
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
