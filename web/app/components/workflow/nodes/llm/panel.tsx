@@ -25,6 +25,7 @@ import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
 import useConfig from './use-config'
+import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
@@ -33,7 +34,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const modelProviders = useProviderContextSelector(s => s.modelProviders)
   const {
     readOnly,
     inputs,
@@ -70,10 +70,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   } = useConfig(id, data)
 
   const model = inputs.model
-  const installedPluginIds = new Set(modelProviders.map(provider => extractPluginId(provider.provider)))
-  const hasModelWarning = !model?.provider
-    || !model?.name
-    || (Boolean(model.provider) && !installedPluginIds.has(extractPluginId(model.provider)))
+  const isModelProviderInstalled = useProviderContextSelector((state) => {
+    const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
+    if (modelIssue === LLMModelIssueCode.providerRequired)
+      return true
+
+    const modelProviderPluginId = extractPluginId(model.provider)
+    return state.modelProviders.some(provider => extractPluginId(provider.provider) === modelProviderPluginId)
+  })
+  const hasModelWarning = getLLMModelIssue({
+    modelProvider: model?.provider,
+    isModelProviderInstalled,
+  }) !== null
 
   const handleModelChange = useCallback((model: {
     provider: string

@@ -53,6 +53,7 @@ import {
 } from '../hooks'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
+import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
   useStore,
   useWorkflowStore,
@@ -223,7 +224,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         else {
           if (node.data.type === BlockEnum.LLM) {
             const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
-            if (modelProvider && !installedPluginIds.has(extractPluginId(modelProvider)))
+            const modelIssue = getLLMModelIssue({
+              modelProvider,
+              isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
+            })
+            if (modelIssue === LLMModelIssueCode.providerPluginUnavailable)
               errorMessages.push(t('errorMsg.configureModel', { ns: 'workflow' }))
           }
 
@@ -469,7 +474,11 @@ export const useChecklistBeforePublish = () => {
 
       if (node.data.type === BlockEnum.LLM) {
         const modelProvider = (node.data as CommonNodeType<{ model?: ModelConfig }>).model?.provider
-        if (modelProvider && !installedPluginIds.has(extractPluginId(modelProvider))) {
+        const modelIssue = getLLMModelIssue({
+          modelProvider,
+          isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
+        })
+        if (modelIssue === LLMModelIssueCode.providerPluginUnavailable) {
           notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.configureModel', { ns: 'workflow' })}` })
           return false
         }
