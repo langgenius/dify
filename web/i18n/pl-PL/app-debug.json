@@ -177,6 +177,8 @@
   "feature.tools.tips": "Narzędzia zapewniają standardową metodę wywołania API, przyjmując dane wejściowe użytkownika lub zmienne jako parametry żądania do zapytania o dane zewnętrzne jako kontekst.",
   "feature.tools.title": "Narzędzia",
   "feature.tools.toolsInUse": "{{count}} narzędzi w użyciu",
+  "feature.videoUpload.description": "Włączenie wideo pozwoli modelowi przetwarzać pliki wideo w celu transkrypcji i analizy.",
+  "feature.videoUpload.title": "Wideo",
   "formattingChangedText": "Modyfikacja formatowania zresetuje obszar debugowania, czy jesteś pewien?",
   "formattingChangedTitle": "Zmiana formatowania",
   "generate.apply": "Zastosować",

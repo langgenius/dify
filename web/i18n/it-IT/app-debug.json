@@ -177,6 +177,8 @@
   "feature.tools.tips": "Gli strumenti forniscono un metodo di chiamata API standard, prendendo input dell'utente o variabili come parametri di richiesta per interrogare dati esterni come contesto.",
   "feature.tools.title": "Strumenti",
   "feature.tools.toolsInUse": "{{count}} strumenti in uso",
+  "feature.videoUpload.description": "Attivare il video permetterà al modello di elaborare file video per la trascrizione e l'analisi.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Modificare il formato resetterà l'area di debug, sei sicuro?",
   "formattingChangedTitle": "Formato modificato",
   "generate.apply": "Applicare",

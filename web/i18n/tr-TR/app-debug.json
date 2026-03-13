@@ -177,6 +177,8 @@
   "feature.tools.tips": "Araçlar, kullanıcı girişi veya değişkenleri istek parametreleri olarak alarak dış verileri bağlam olarak sorgulamak için standart bir API çağrı yöntemi sağlar.",
   "feature.tools.title": "Araçlar",
   "feature.tools.toolsInUse": "{{count}} araç kullanımda",
+  "feature.videoUpload.description": "Video'yu etkinleştirmek, modelin video dosyalarını transkripsiyon ve analiz için işlemesine izin verir.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Biçimlendirmeyi değiştirmek hata ayıklama alanını sıfırlayacaktır, emin misiniz?",
   "formattingChangedTitle": "Biçimlendirme değiştirildi",
   "generate.apply": "Uygula",

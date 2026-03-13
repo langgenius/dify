@@ -1,0 +1,28 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "fill-rule": "evenodd",
+          "clip-rule": "evenodd",
+          "d": "M4 5C4 3.34315 5.34315 2 7 2H13C14.6569 2 16 3.34315 16 5V9H17C18.6569 9 20 10.3431 20 12V19C20 20.6569 18.6569 22 17 22H7C5.34315 22 4 20.6569 4 19V5ZM14 5C14 4.44772 13.5523 4 13 4H7C6.44772 4 6 4.44772 6 5V19C6 19.5523 6.44772 20 7 20H17C17.5523 20 18 19.5523 18 19V12C18 11.4477 17.5523 11 17 11H16V14H14V5Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Video"
+}
