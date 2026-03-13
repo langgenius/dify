@@ -1275,9 +1275,6 @@
     },
     "regexp/no-unused-capturing-group": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 21
     }
   },
   "app/components/app/overview/trigger-card.tsx": {
