@@ -14,10 +14,20 @@ import CreateAppModal from '../explore/create-app-modal'
 import TryApp from '../explore/try-app'
 import List from './list'
 
-const Apps = () => {
+export type StudioPageType = 'apps' | 'snippets'
+
+type AppsProps = {
+  pageType?: StudioPageType
+}
+
+const Apps = ({
+  pageType = 'apps',
+}: AppsProps) => {
   const { t } = useTranslation()
 
-  useDocumentTitle(t('menus.apps', { ns: 'common' }))
+  useDocumentTitle(pageType === 'apps'
+    ? t('menus.apps', { ns: 'common' })
+    : t('tabs.snippets', { ns: 'workflow' }))
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
@@ -101,7 +111,7 @@ const Apps = () => {
     }}
     >
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-        <List controlRefreshList={controlRefreshList} />
+        <List controlRefreshList={controlRefreshList} pageType={pageType} />
         {isShowTryAppPanel && (
           <TryApp
             appId={currentTryAppParams?.appId || ''}

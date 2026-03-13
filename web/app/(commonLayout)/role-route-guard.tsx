@@ -6,7 +6,7 @@ import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 
-const datasetOperatorRedirectRoutes = ['/apps', '/app', '/explore', '/tools'] as const
+const datasetOperatorRedirectRoutes = ['/apps', '/app', '/snippets', '/explore', '/tools'] as const
 
 const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
 
