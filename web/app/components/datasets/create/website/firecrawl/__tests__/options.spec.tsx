@@ -1,6 +1,5 @@
 import type { CrawlOptions } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Options from '../options'
 
 // Test Data Factory
@@ -104,38 +103,28 @@ describe('Options', () => {
   describe('Props Display', () => {
     it('should display crawl_sub_pages checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+      render(<Options payload={payload} onChange={mockOnChange} />)
 
-      const checkboxes = getCheckboxes(container)
       // First checkbox should have check icon when checked
-      expect(checkboxes[0].querySelector('svg')).toBeInTheDocument()
+      expect(screen.queryByTestId('check-icon-crawl-sub-page')).toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: false })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
-
-      const checkboxes = getCheckboxes(container)
-      // First checkbox should not have check icon when unchecked
-      expect(checkboxes[0].querySelector('svg')).not.toBeInTheDocument()
+      render(<Options payload={payload} onChange={mockOnChange} />)
+      expect(screen.queryByTestId('check-icon-crawl-sub-page')).not.toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
-
-      const checkboxes = getCheckboxes(container)
-      // Second checkbox should have check icon when checked
-      expect(checkboxes[1].querySelector('svg')).toBeInTheDocument()
+      render(<Options payload={payload} onChange={mockOnChange} />)
+      expect(screen.getByTestId('check-icon-only-main-content')).toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ only_main_content: false })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
-
-      const checkboxes = getCheckboxes(container)
-      // Second checkbox should not have check icon when unchecked
-      expect(checkboxes[1].querySelector('svg')).not.toBeInTheDocument()
+      render(<Options payload={payload} onChange={mockOnChange} />)
+      expect(screen.queryByTestId('check-icon-only-main-content')).not.toBeInTheDocument()
     })
 
     it('should display limit value in input', () => {

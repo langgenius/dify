@@ -15,12 +15,19 @@ const config: KnipConfig = {
   ignoreBinaries: [
     'only-allow',
   ],
-  ignoreDependencies: [],
+  ignoreDependencies: [
+    '@iconify-json/*',
+
+    '@storybook/addon-onboarding',
+
+    '@tsslint/compat-eslint',
+    '@tsslint/config',
+  ],
   rules: {
     files: 'warn',
-    dependencies: 'warn',
-    devDependencies: 'warn',
-    optionalPeerDependencies: 'warn',
+    dependencies: 'error',
+    devDependencies: 'error',
+    optionalPeerDependencies: 'error',
     unlisted: 'warn',
     unresolved: 'warn',
     exports: 'warn',

@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import tempfile
+import zipfile
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -20,11 +21,12 @@ from docx.oxml.text.paragraph import CT_P
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from core.helper import ssrf_proxy
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, file_manager
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.variables import ArrayFileSegment
 from dify_graph.variables.segments import ArrayStringSegment, FileSegment
 
@@ -53,11 +55,12 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
         unstructured_api_config: UnstructuredApiConfig | None = None,
+        http_client: HttpClientProtocol,
     ) -> None:
         super().__init__(
             id=id,
@@ -66,6 +69,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self._unstructured_api_config = unstructured_api_config or UnstructuredApiConfig()
+        self._http_client = http_client
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
@@ -80,12 +84,24 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
 
         value = variable.value
         inputs = {"variable_selector": variable_selector}
+        if isinstance(value, list):
+            value = list(filter(lambda x: x, value))
         process_data = {"documents": value if isinstance(value, list) else [value]}
+
+        if not value:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={"text": ArrayStringSegment(value=[])},
+            )
 
         try:
             if isinstance(value, list):
                 extracted_text_list = [
-                    _extract_text_from_file(file, unstructured_api_config=self._unstructured_api_config)
+                    _extract_text_from_file(
+                        self._http_client, file, unstructured_api_config=self._unstructured_api_config
+                    )
                     for file in value
                 ]
                 return NodeRunResult(
@@ -95,7 +111,9 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
                     outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
-                extracted_text = _extract_text_from_file(value, unstructured_api_config=self._unstructured_api_config)
+                extracted_text = _extract_text_from_file(
+                    self._http_client, value, unstructured_api_config=self._unstructured_api_config
+                )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
@@ -105,6 +123,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
             else:
                 raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
         except DocumentExtractorError as e:
+            logger.warning(e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
@@ -118,12 +137,10 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: DocumentExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = DocumentExtractorNodeData.model_validate(node_data)
-
-        return {node_id + ".files": typed_node_data.variable_selector}
+        _ = graph_config  # Explicitly mark as unused
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(
@@ -379,6 +396,32 @@ def parser_docx_part(block, doc: Document, content_items, i):
         content_items.append((i, "table", Table(block, doc)))
 
 
+def _normalize_docx_zip(file_content: bytes) -> bytes:
+    """
+    Some DOCX files (e.g. exported by Evernote on Windows) are malformed:
+    ZIP entry names use backslash (\\) as path separator instead of the forward
+    slash (/) required by both the ZIP spec and OOXML.  On Linux/Mac the entry
+    "word\\document.xml" is never found when python-docx looks for
+    "word/document.xml", which triggers a KeyError about a missing relationship.
+
+    This function rewrites the ZIP in-memory, normalizing all entry names to
+    use forward slashes without touching any actual document content.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as zin:
+            out_buf = io.BytesIO()
+            with zipfile.ZipFile(out_buf, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    # Normalize backslash path separators to forward slash
+                    item.filename = item.filename.replace("\\", "/")
+                    zout.writestr(item, data)
+            return out_buf.getvalue()
+    except zipfile.BadZipFile:
+        # Not a valid zip — return as-is and let python-docx report the real error
+        return file_content
+
+
 def _extract_text_from_docx(file_content: bytes) -> str:
     """
     Extract text from a DOCX file.
@@ -386,7 +429,15 @@ def _extract_text_from_docx(file_content: bytes) -> str:
     """
     try:
         doc_file = io.BytesIO(file_content)
-        doc = docx.Document(doc_file)
+        try:
+            doc = docx.Document(doc_file)
+        except Exception as e:
+            logger.warning("Failed to parse DOCX, attempting to normalize ZIP entry paths: %s", e)
+            # Some DOCX files exported by tools like Evernote on Windows use
+            # backslash path separators in ZIP entries and/or single-quoted XML
+            # attributes, both of which break python-docx on Linux. Normalize and retry.
+            file_content = _normalize_docx_zip(file_content)
+            doc = docx.Document(io.BytesIO(file_content))
         text = []
 
         # Keep track of paragraph and table positions
@@ -439,13 +490,13 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOCX: {str(e)}") from e
 
 
-def _download_file_content(file: File) -> bytes:
+def _download_file_content(http_client: HttpClientProtocol, file: File) -> bytes:
     """Download the content of a file based on its transfer method."""
     try:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             if file.remote_url is None:
                 raise FileDownloadError("Missing URL for remote file")
-            response = ssrf_proxy.get(file.remote_url)
+            response = http_client.get(file.remote_url)
             response.raise_for_status()
             return response.content
         else:
@@ -454,8 +505,10 @@ def _download_file_content(file: File) -> bytes:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
 
-def _extract_text_from_file(file: File, *, unstructured_api_config: UnstructuredApiConfig) -> str:
-    file_content = _download_file_content(file)
+def _extract_text_from_file(
+    http_client: HttpClientProtocol, file: File, *, unstructured_api_config: UnstructuredApiConfig
+) -> str:
+    file_content = _download_file_content(http_client, file)
     if file.extension:
         extracted_text = _extract_text_by_file_extension(
             file_content=file_content,

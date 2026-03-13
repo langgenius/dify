@@ -16,7 +16,7 @@ import { BubbleTextMod } from '@/app/components/base/icons/src/vender/solid/comm
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -119,7 +119,7 @@ const CustomWebAppBrand = () => {
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary system-md-medium">
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
-          size="l"
+          size="lg"
           value={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
           onChange={handleSwitch}

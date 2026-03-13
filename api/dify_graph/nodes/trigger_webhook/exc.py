@@ -1,4 +1,4 @@
-from dify_graph.nodes.base.exc import BaseNodeError
+from dify_graph.entities.exc import BaseNodeError
 
 
 class WebhookNodeError(BaseNodeError):

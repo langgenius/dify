@@ -20,17 +20,21 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
 }) => {
   const [editor] = useLexicalComposerContext()
 
-  const ref = useRef<any>(null)
+  const ref = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    return mergeRegister(
+    const clearHideMenuTimeout = () => {
+      if (ref.current) {
+        clearTimeout(ref.current)
+        ref.current = null
+      }
+    }
+
+    const unregister = mergeRegister(
       editor.registerCommand(
         CLEAR_HIDE_MENU_TIMEOUT,
         () => {
-          if (ref.current) {
-            clearTimeout(ref.current)
-            ref.current = null
-          }
+          clearHideMenuTimeout()
           return true
         },
         COMMAND_PRIORITY_EDITOR,
@@ -41,6 +45,7 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
           // Check if the clicked target element is var-search-input
           const target = event?.relatedTarget as HTMLElement
           if (!target?.classList?.contains('var-search-input')) {
+            clearHideMenuTimeout()
             ref.current = setTimeout(() => {
               editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
             }, 200)
@@ -61,6 +66,11 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
+
+    return () => {
+      clearHideMenuTimeout()
+      unregister()
+    }
   }, [editor, onBlur, onFocus])
 
   return null
