@@ -21,7 +21,7 @@ from .exc import InvalidVariableTypeError
 def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
     model_schema = cast(LargeLanguageModel, model_instance.model_type_instance).get_model_schema(
         model_instance.model_name,
-        model_instance.credentials,
+        dict(model_instance.credentials),
     )
     if not model_schema:
         raise ValueError(f"Model schema not found for {model_instance.model_name}")

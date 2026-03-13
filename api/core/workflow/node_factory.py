@@ -46,6 +46,7 @@ from dify_graph.nodes.document_extractor import UnstructuredApiConfig
 from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from dify_graph.nodes.llm.protocols import TemplateRenderer
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.template_transform.template_renderer import (
@@ -100,6 +101,16 @@ class DefaultWorkflowCodeExecutor:
         return isinstance(error, CodeExecutionError)
 
 
+class DefaultLLMTemplateRenderer(TemplateRenderer):
+    def render_jinja2(self, *, template: str, inputs: Mapping[str, Any]) -> str:
+        result = CodeExecutor.execute_workflow_code_template(
+            language=CodeLanguage.JINJA2,
+            code=template,
+            inputs=inputs,
+        )
+        return str(result.get("result", ""))
+
+
 @final
 class DifyNodeFactory(NodeFactory):
     """
@@ -126,6 +137,7 @@ class DifyNodeFactory(NodeFactory):
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
         self._template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
+        self._llm_template_renderer: TemplateRenderer = DefaultLLMTemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
         self._http_request_tool_file_manager_factory = ToolFileManager
@@ -274,6 +286,8 @@ class DifyNodeFactory(NodeFactory):
                 model_instance=model_instance,
             ),
         }
+        if validated_node_data.type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER}:
+            node_init_kwargs["template_renderer"] = self._llm_template_renderer
         if include_http_client:
             node_init_kwargs["http_client"] = self._http_request_http_client
         return node_init_kwargs
