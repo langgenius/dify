@@ -39,10 +39,13 @@ const EdgeContextmenu = () => {
       open={!!edgeMenu}
       onOpenChange={open => !open && handleEdgeContextmenuCancel()}
     >
-      <ContextMenuContent positionerProps={{ anchor }}>
+      <ContextMenuContent
+        positionerProps={{ anchor }}
+        popupClassName="rounded-lg"
+      >
         <ContextMenuItem
           destructive
-          className="justify-between gap-4"
+          className="justify-between gap-4 px-3"
           onClick={handleEdgeDelete}
         >
           <span>{t('common:operation.delete')}</span>
