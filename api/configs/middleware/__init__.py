@@ -25,6 +25,7 @@ from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
 from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
+from .vdb.doris_config import DorisVectorConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.iris_config import IrisVectorConfig
@@ -108,8 +109,8 @@ class KeywordStoreConfig(BaseSettings):
 
 class DatabaseConfig(BaseSettings):
     # Database type selector
-    DB_TYPE: Literal["postgresql", "mysql", "oceanbase", "seekdb"] = Field(
-        description="Database type to use. OceanBase is MySQL-compatible.",
+    DB_TYPE: Literal["postgresql", "mysql", "oceanbase", "seekdb", "doris"] = Field(
+        description="Database type to use. OceanBase and Doris are MySQL-compatible.",
         default="postgresql",
     )
 
@@ -151,7 +152,11 @@ class DatabaseConfig(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI_SCHEME(self) -> str:
-        return "postgresql" if self.DB_TYPE == "postgresql" else "mysql+pymysql"
+        if self.DB_TYPE == "postgresql":
+            return "postgresql"
+        else:
+            # mysql, oceanbase, seekdb, doris all use MySQL protocol
+            return "mysql+pymysql"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -347,6 +352,7 @@ class MiddlewareConfig(
     AnalyticdbConfig,
     ChromaConfig,
     ClickzettaConfig,
+    DorisVectorConfig,
     HuaweiCloudConfig,
     IrisVectorConfig,
     MilvusConfig,
