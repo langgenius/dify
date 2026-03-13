@@ -31,6 +31,7 @@ class PGVectorConfig(BaseModel):
     min_connection: int
     max_connection: int
     pg_bigm: bool = False
+    hnsw_ef_search: int = 100
 
     @model_validator(mode="before")
     @classmethod
@@ -81,6 +82,7 @@ class PGVector(BaseVector):
         self.table_name = f"embedding_{collection_name}"
         self.index_hash = hashlib.md5(self.table_name.encode()).hexdigest()[:8]
         self.pg_bigm = config.pg_bigm
+        self.hnsw_ef_search = config.hnsw_ef_search
 
     def get_type(self) -> str:
         return VectorType.PGVECTOR
@@ -183,6 +185,8 @@ class PGVector(BaseVector):
             where_clause = f" WHERE meta->>'document_id' in ({document_ids}) "
 
         with self._get_cursor() as cur:
+            # Set hnsw.ef_search to improve recall when using filters with LIMIT
+            cur.execute("SET LOCAL hnsw.ef_search = %s", (self.hnsw_ef_search,))
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
                 f" {where_clause}"
@@ -290,5 +294,6 @@ class PGVectorFactory(AbstractVectorFactory):
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
                 pg_bigm=dify_config.PGVECTOR_PG_BIGM,
+                hnsw_ef_search=dify_config.PGVECTOR_HNSW_EF_SEARCH,
             ),
         )
