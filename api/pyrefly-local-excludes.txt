@@ -1,4 +1,3 @@
-configs/middleware/cache/redis_pubsub_config.py
 controllers/console/app/annotation.py
 controllers/console/app/app.py
 controllers/console/app/app_import.py
@@ -138,7 +137,6 @@ dify_graph/nodes/trigger_webhook/node.py
 dify_graph/nodes/variable_aggregator/variable_aggregator_node.py
 dify_graph/nodes/variable_assigner/v1/node.py
 dify_graph/nodes/variable_assigner/v2/node.py
-extensions/ext_fastopenapi.py
 extensions/logstore/repositories/logstore_api_workflow_run_repository.py
 extensions/otel/instrumentation.py
 extensions/otel/runtime.py
@@ -155,12 +153,7 @@ extensions/storage/oracle_oci_storage.py
 extensions/storage/supabase_storage.py
 extensions/storage/tencent_cos_storage.py
 extensions/storage/volcengine_tos_storage.py
-libs/external_api.py
 libs/gmpy2_pkcs10aep_cipher.py
-libs/module_loading.py
-repositories/sqlalchemy_api_workflow_node_execution_repository.py
-repositories/sqlalchemy_api_workflow_run_repository.py
-repositories/sqlalchemy_execution_extra_content_repository.py
 schedule/queue_monitor_task.py
 services/account_service.py
 services/audio_service.py
