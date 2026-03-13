@@ -50,9 +50,9 @@
     "start:vinext": "vinext start",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest --watch",
+    "test": "vp test",
+    "test:coverage": "vp test --coverage",
+    "test:watch": "vp test --watch",
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "uglify-embed": "node ./bin/uglify-embed"
@@ -213,6 +213,7 @@
     "@vitejs/plugin-react": "6.0.0",
     "@vitejs/plugin-rsc": "0.5.21",
     "@vitest/coverage-v8": "4.1.0",
+    "@voidzero-dev/vite-plus-core": "0.1.11",
     "agentation": "2.3.2",
     "autoprefixer": "10.4.27",
     "code-inspector-plugin": "1.4.4",
@@ -243,6 +244,7 @@
     "vinext": "https://pkg.pr.new/vinext@18fe3ea",
     "vite": "8.0.0",
     "vite-plugin-inspect": "11.3.3",
+    "vite-plus": "0.1.11",
     "vitest": "4.1.0",
     "vitest-canvas-mock": "1.1.3"
   },
@@ -293,6 +295,8 @@
       "svgo@>=3.0.0,<3.3.3": "3.3.3",
       "tar@<=7.5.10": "7.5.11",
       "typed-array-buffer": "npm:@nolyfill/typed-array-buffer@^1.0.44",
+      "vite": "npm:@voidzero-dev/vite-plus-core@0.1.11",
+      "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.11",
       "which-typed-array": "npm:@nolyfill/which-typed-array@^1.0.44"
     },
     "ignoredBuiltDependencies": [
