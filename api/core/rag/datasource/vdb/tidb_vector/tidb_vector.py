@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any
 
 import sqlalchemy
@@ -46,6 +47,9 @@ class TiDBVectorConfig(BaseModel):
 
 
 class TiDBVector(BaseVector):
+    _VALID_IDENTIFIER = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+    _VALID_METADATA_KEY = re.compile(r"^[a-zA-Z0-9_.]+$")
+
     def get_type(self) -> str:
         return VectorType.TIDB_VECTOR
 
@@ -70,8 +74,21 @@ class TiDBVector(BaseVector):
             extend_existing=True,
         )
 
+    @staticmethod
+    def _validate_identifier(name: str) -> str:
+        if not TiDBVector._VALID_IDENTIFIER.match(name):
+            raise ValueError(f"Invalid identifier: {name}")
+        return name
+
+    @staticmethod
+    def _validate_metadata_key(key: str) -> str:
+        if not TiDBVector._VALID_METADATA_KEY.match(key):
+            raise ValueError(f"Invalid metadata key: {key}")
+        return key
+
     def __init__(self, collection_name: str, config: TiDBVectorConfig, distance_func: str = "cosine"):
         super().__init__(collection_name)
+        self._validate_identifier(collection_name)
         self._client_config = config
         self._url = (
             f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
@@ -96,11 +113,13 @@ class TiDBVector(BaseVector):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
+            collection_name = self._validate_identifier(self._collection_name)
             tidb_dist_func = self._get_distance_func()
+            dimension = int(dimension)
             with Session(self._engine) as session:
                 session.begin()
                 create_statement = sql_text(f"""
-                    CREATE TABLE IF NOT EXISTS {self._collection_name} (
+                    CREATE TABLE IF NOT EXISTS `{collection_name}` (
                         id CHAR(36) PRIMARY KEY,
                         text TEXT NOT NULL,
                         meta JSON NOT NULL,
@@ -145,12 +164,17 @@ class TiDBVector(BaseVector):
         return bool(result)
 
     def delete_by_ids(self, ids: list[str]):
+        if not ids:
+            return
+        collection_name = self._validate_identifier(self._collection_name)
         with Session(self._engine) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
+            bind_names = [f":id_{i}" for i in range(len(ids))]
+            bind_clause = ", ".join(bind_names)
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
+                f"""SELECT id FROM `{collection_name}` WHERE meta->>'$.doc_id' in ({bind_clause}); """
             )
-            result = session.execute(select_statement).fetchall()
+            params = {f"id_{i}": doc_id for i, doc_id in enumerate(ids)}
+            result = session.execute(select_statement, params).fetchall()
         if result:
             ids = [item[0] for item in result]
             self._delete_by_ids(ids)
@@ -169,11 +193,13 @@ class TiDBVector(BaseVector):
             return False
 
     def get_ids_by_metadata_field(self, key: str, value: str):
+        collection_name = self._validate_identifier(self._collection_name)
+        key = self._validate_metadata_key(key)
         with Session(self._engine) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = '{value}'; """
+                f"""SELECT id FROM `{collection_name}` WHERE meta->>'$.{key}' = :value; """
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -197,11 +223,20 @@ class TiDBVector(BaseVector):
 
         docs = []
         tidb_dist_func = self._get_distance_func()
+        collection_name = self._validate_identifier(self._collection_name)
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        params: dict[str, Any] = {
+            "query_vector_str": query_vector_str,
+            "distance": distance,
+            "top_k": top_k,
+        }
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
+            bind_names = [f":doc_id_{i}" for i in range(len(document_ids_filter))]
+            bind_clause = ", ".join(bind_names)
+            where_clause = f" WHERE meta->>'$.document_id' in ({bind_clause}) "
+            for i, doc_id in enumerate(document_ids_filter):
+                params[f"doc_id_{i}"] = doc_id
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -211,7 +246,7 @@ class TiDBVector(BaseVector):
                     meta,
                     text,
                     {tidb_dist_func}(vector, :query_vector_str) AS distance
-                  FROM {self._collection_name}
+                  FROM `{collection_name}`
                   {where_clause}
                   ORDER BY distance ASC
                   LIMIT :top_k
@@ -220,11 +255,7 @@ class TiDBVector(BaseVector):
                 """)
             res = session.execute(
                 select_statement,
-                params={
-                    "query_vector_str": query_vector_str,
-                    "distance": distance,
-                    "top_k": top_k,
-                },
+                params=params,
             )
             results = [(row[0], row[1], row[2]) for row in res]
             for meta, text, distance in results:
@@ -238,8 +269,9 @@ class TiDBVector(BaseVector):
         return []
 
     def delete(self):
+        collection_name = self._validate_identifier(self._collection_name)
         with Session(self._engine) as session:
-            session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
+            session.execute(sql_text(f"""DROP TABLE IF EXISTS `{collection_name}`;"""))
             session.commit()
 
     def _get_distance_func(self) -> str:
