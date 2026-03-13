@@ -1,11 +1,4 @@
 name: Setup Web Environment
-description: Setup Vite+, Node.js, and install web dependencies.
-
-inputs:
-  node-version:
-    description: Node.js version to use
-    required: false
-    default: "22"
 
 runs:
   using: composite
