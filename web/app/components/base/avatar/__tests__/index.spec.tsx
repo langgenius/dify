@@ -3,12 +3,10 @@ import { Avatar } from '../index'
 
 describe('Avatar', () => {
   describe('Rendering', () => {
-    it('should render img element when avatar URL is provided', () => {
+    it('should keep the fallback visible when avatar URL is provided before image load', () => {
       render(<Avatar name="John Doe" avatar="https://example.com/avatar.jpg" />)
 
-      const img = screen.getByRole('img', { name: 'John Doe' })
-      expect(img).toBeInTheDocument()
-      expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+      expect(screen.getByText('J')).toBeInTheDocument()
     })
 
     it('should render fallback with uppercase initial when avatar is null', () => {
@@ -18,10 +16,9 @@ describe('Avatar', () => {
       expect(screen.getByText('A')).toBeInTheDocument()
     })
 
-    it('should render both image and fallback when avatar is provided', () => {
+    it('should render the fallback when avatar is provided', () => {
       render(<Avatar name="John" avatar="https://example.com/avatar.jpg" />)
 
-      expect(screen.getByRole('img')).toBeInTheDocument()
       expect(screen.getByText('J')).toBeInTheDocument()
     })
   })
@@ -90,7 +87,7 @@ describe('Avatar', () => {
   })
 
   describe('onLoadingStatusChange', () => {
-    it('should render image when avatar and onLoadingStatusChange are provided', () => {
+    it('should render the fallback when avatar and onLoadingStatusChange are provided', () => {
       render(
         <Avatar
           name="John"
@@ -99,7 +96,7 @@ describe('Avatar', () => {
         />,
       )
 
-      expect(screen.getByRole('img')).toBeInTheDocument()
+      expect(screen.getByText('J')).toBeInTheDocument()
     })
 
     it('should not render image when avatar is null even with onLoadingStatusChange', () => {
