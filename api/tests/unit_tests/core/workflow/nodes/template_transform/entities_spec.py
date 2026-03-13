@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.enums import ErrorStrategy
-from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
+from dify_graph.enums import ErrorStrategy
+from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
 
 
 class TestTemplateTransformNodeData:

@@ -7,9 +7,11 @@ import pytest
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from models.workflow import Workflow
 
 
@@ -105,3 +107,57 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["invoke_from"] == InvokeFrom.DEBUGGER
     assert entry_kwargs["variable_pool"] is variable_pool
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
+
+
+def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
+    runner = WorkflowBasedAppRunner(
+        queue_manager=MagicMock(spec=AppQueueManager),
+        variable_loader=MagicMock(),
+        app_id="app",
+    )
+
+    workflow = MagicMock(spec=Workflow)
+    workflow.id = "workflow"
+    workflow.tenant_id = "tenant"
+    workflow.graph_dict = {
+        "nodes": [
+            {
+                "id": "loop-node",
+                "data": {
+                    "type": "loop",
+                    "title": "Loop",
+                    "loop_count": 1,
+                    "break_conditions": [],
+                    "logical_operator": "and",
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    _, _, graph_runtime_state = _make_graph_state()
+    seen_configs: list[object] = []
+    original_validate_python = NodeConfigDictAdapter.validate_python
+
+    def record_validate_python(value: object):
+        seen_configs.append(value)
+        return original_validate_python(value)
+
+    monkeypatch.setattr(NodeConfigDictAdapter, "validate_python", record_validate_python)
+
+    with (
+        patch("core.app.apps.workflow_app_runner.DifyNodeFactory"),
+        patch("core.app.apps.workflow_app_runner.Graph.init", return_value=MagicMock()),
+        patch("core.app.apps.workflow_app_runner.load_into_variable_pool"),
+        patch("core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
+    ):
+        runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="loop-node",
+            user_inputs={},
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="loop_id",
+            node_type_label="loop",
+        )
+
+    assert seen_configs == [workflow.graph_dict["nodes"][0]]

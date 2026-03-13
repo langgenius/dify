@@ -1,12 +1,15 @@
 import dataclasses
 
+import orjson
+import pytest
 from pydantic import BaseModel
 
 from core.helper import encrypter
-from core.workflow.file import File, FileTransferMethod, FileType
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variables.segments import (
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.runtime import VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -22,8 +25,13 @@ from core.workflow.variables.segments import (
     StringSegment,
     get_segment_discriminator,
 )
-from core.workflow.variables.types import SegmentType
-from core.workflow.variables.variables import (
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.utils import (
+    dumps_with_segments,
+    segment_orjson_default,
+    to_selector,
+)
+from dify_graph.variables.variables import (
     ArrayAnyVariable,
     ArrayFileVariable,
     ArrayNumberVariable,
@@ -379,3 +387,125 @@ class TestSegmentDumpAndLoad:
         assert get_segment_discriminator("not_a_dict") is None
         assert get_segment_discriminator(42) is None
         assert get_segment_discriminator(object) is None
+
+
+class TestSegmentAdditionalProperties:
+    def test_base_segment_text_log_markdown_size_and_to_object(self):
+        """Ensure StringSegment exposes text, log, markdown, size and to_object."""
+        segment = StringSegment(value="hello")
+
+        assert segment.text == "hello"
+        assert segment.log == "hello"
+        assert segment.markdown == "hello"
+        assert segment.size > 0
+        assert segment.to_object() == "hello"
+
+    def test_none_segment_empty_outputs(self):
+        """Ensure NoneSegment renders empty text, log and markdown."""
+        segment = NoneSegment()
+
+        assert segment.text == ""
+        assert segment.log == ""
+        assert segment.markdown == ""
+
+    def test_object_segment_json_outputs(self):
+        """Ensure ObjectSegment renders JSON output for text, log and markdown."""
+        segment = ObjectSegment(value={"key": "值", "n": 1})
+
+        assert segment.text == '{"key": "值", "n": 1}'
+        assert segment.log == '{\n  "key": "值",\n  "n": 1\n}'
+        assert segment.markdown == '{\n  "key": "值",\n  "n": 1\n}'
+
+    def test_array_segment_text_and_markdown(self):
+        """Ensure ArrayAnySegment handles empty/non-empty text and markdown rendering."""
+        empty_segment = ArrayAnySegment(value=[])
+        non_empty_segment = ArrayAnySegment(value=[1, "two"])
+
+        assert empty_segment.text == ""
+        assert non_empty_segment.text == "[1, 'two']"
+        assert non_empty_segment.markdown == "- 1\n- two"
+
+    def test_file_segment_properties(self):
+        """Ensure FileSegment markdown, text and log fields match expected behavior."""
+        file = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="doc.txt")
+        segment = FileSegment(value=file)
+
+        assert segment.markdown == "[doc.txt](https://example.com/file.txt)"
+        assert segment.log == ""
+        assert segment.text == ""
+
+    def test_array_string_segment_text_branches(self):
+        """Ensure ArrayStringSegment text handling for empty and non-empty values."""
+        empty_segment = ArrayStringSegment(value=[])
+        non_empty_segment = ArrayStringSegment(value=["hello", "世界"])
+
+        assert empty_segment.text == ""
+        assert non_empty_segment.text == '["hello", "世界"]'
+
+    def test_array_file_segment_markdown_and_empty_text_log(self):
+        """Ensure ArrayFileSegment markdown renders links and text/log stay empty."""
+        file1 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="a.txt")
+        file2 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="b.txt")
+        segment = ArrayFileSegment(value=[file1, file2])
+
+        assert segment.markdown == "[a.txt](https://example.com/file.txt)\n[b.txt](https://example.com/file.txt)"
+        assert segment.log == ""
+        assert segment.text == ""
+
+
+class TestSegmentGroupAdditional:
+    def test_segment_group_markdown_and_to_object(self):
+        group = SegmentGroup(value=[StringSegment(value="A"), NoneSegment(), StringSegment(value="B")])
+
+        assert group.markdown == "AB"
+        assert group.to_object() == ["A", None, "B"]
+
+
+class TestSegmentUtils:
+    def test_to_selector_without_paths(self):
+        assert to_selector("node-1", "output") == ["node-1", "output"]
+
+    def test_to_selector_with_paths(self):
+        assert to_selector("node-1", "output", ("a", "b")) == ["node-1", "output", "a", "b"]
+
+    def test_array_file_segment_serialization(self):
+        file1 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="a.txt")
+        file2 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="b.txt")
+
+        result = segment_orjson_default(ArrayFileSegment(value=[file1, file2]))
+
+        assert len(result) == 2
+        assert result[0]["filename"] == "a.txt"
+        assert result[1]["filename"] == "b.txt"
+
+    def test_file_segment_serialization(self):
+        file = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="single.txt")
+
+        result = segment_orjson_default(FileSegment(value=file))
+
+        assert result["filename"] == "single.txt"
+        assert result["remote_url"] == "https://example.com/file.txt"
+
+    def test_segment_group_and_segment_serialization(self):
+        group = SegmentGroup(value=[StringSegment(value="a"), StringSegment(value="b")])
+
+        assert segment_orjson_default(group) == ["a", "b"]
+        assert segment_orjson_default(StringSegment(value="value")) == "value"
+
+    def test_segment_orjson_default_unsupported_type(self):
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            segment_orjson_default(object())
+
+    def test_dumps_with_segments(self):
+        data = {
+            "segment": StringSegment(value="hello"),
+            "group": SegmentGroup(value=[StringSegment(value="x"), StringSegment(value="y")]),
+            1: "numeric-key",
+        }
+
+        dumped = dumps_with_segments(data)
+        loaded = orjson.loads(dumped)
+
+        assert loaded["segment"] == "hello"
+        assert loaded["group"] == ["x", "y"]
+        assert loaded["1"] == "numeric-key"

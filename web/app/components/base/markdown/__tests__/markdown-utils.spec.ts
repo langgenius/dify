@@ -1,6 +1,3 @@
-// app/components/base/markdown/preprocess.spec.ts
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 /**
  * Helper to (re)load the module with a mocked config value.
  * We need to reset modules because the tested module imports
@@ -31,6 +28,12 @@ describe('preprocessLaTeX', () => {
     const input = 'This is math: \\[x^2 + 1\\]'
     const out = mod.preprocessLaTeX(input)
     expect(out).toContain('$$x^2 + 1$$')
+  })
+
+  it('converts multiline \\[ ... \\] blocks into $$ ... $$', () => {
+    const input = 'Block:\n\\[\na+b=c\n\\]'
+    const out = mod.preprocessLaTeX(input)
+    expect(out).toContain('$$\na+b=c\n$$')
   })
 
   it('converts \\( ... \\) into $$ ... $$', () => {
@@ -93,6 +96,14 @@ describe('preprocessThinkTag', () => {
     // ensure ENDTHINKFLAG is present twice
     const endCount = (out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length
     expect(endCount).toBe(2)
+  })
+
+  it('normalizes repeated think tags to a single details pair', () => {
+    const input = '<think><think>deep</think></think>'
+    const out = mod.preprocessThinkTag(input)
+
+    expect((out.match(/<details data-think=true>/g) || []).length).toBe(1)
+    expect((out.match(/\[ENDTHINKFLAG\]<\/details>/g) || []).length).toBe(1)
   })
 })
 

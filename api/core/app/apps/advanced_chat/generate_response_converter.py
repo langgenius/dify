@@ -114,7 +114,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 metadata = sub_stream_response_dict.get("metadata", {})
                 sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
                 response_chunk.update(sub_stream_response_dict)
-            if isinstance(sub_stream_response, ErrorStreamResponse):
+            elif isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
