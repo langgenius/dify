@@ -80,7 +80,7 @@ class AwsS3Storage(BaseStorage):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
+        except Exception:
             return False
 
     def delete(self, filename: str):

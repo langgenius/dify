@@ -34,7 +34,7 @@ def reset_password(email, new_password, password_confirm):
 
         try:
             valid_password(new_password)
-        except:
+        except Exception:
             click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
             return
 
@@ -74,7 +74,7 @@ def reset_email(email, new_email, email_confirm):
 
         try:
             email_validate(normalized_new_email)
-        except:
+        except Exception:
             click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
             return
 
