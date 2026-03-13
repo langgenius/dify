@@ -71,6 +71,10 @@ export const useTabs = ({
       name: t('tabs.start', { ns: 'workflow' }),
       show: shouldShowStartTab,
       disabled: shouldDisableStartTab,
+    }, {
+      key: TabsEnum.Snippets,
+      name: t('tabs.snippets', { ns: 'workflow' }),
+      show: true,
     }]
 
     return tabConfigs.filter(tab => tab.show)
@@ -100,6 +104,7 @@ export const useTabs = ({
       preferredOrder.push(TabsEnum.Sources)
     if (!noStart)
       preferredOrder.push(TabsEnum.Start)
+    preferredOrder.push(TabsEnum.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
