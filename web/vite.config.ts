@@ -15,7 +15,7 @@ const isCI = !!process.env.CI
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, projectRoot, '')
+  const env = loadEnv(mode, projectRoot, 'VITE_')
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
