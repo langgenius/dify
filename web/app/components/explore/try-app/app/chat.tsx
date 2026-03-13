@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useCallback, useMemo } from 'react'
 import type {
   EmbeddedChatbotContextValue,
 } from '@/app/components/base/chat/embedded-chatbot/context'
@@ -52,17 +53,21 @@ const TryApp: FC<Props> = ({
     setTrue: hideTryNotice,
   }] = useBoolean(false)
 
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     removeConversationIdInfo(appId)
     chatData.handleNewConversation()
-  }
+  }, [appId, removeConversationIdInfo, chatData])
+
+  const contextValue = useMemo(() => ({
+    ...chatData,
+    handleNewConversation,
+    disableFeedback: true,
+    isMobile,
+    themeBuilder,
+  }), [chatData, handleNewConversation, isMobile, themeBuilder])
+
   return (
-    <EmbeddedChatbotContext.Provider value={{
-      ...chatData,
-      disableFeedback: true,
-      isMobile,
-      themeBuilder,
-    } as EmbeddedChatbotContextValue}
+    <EmbeddedChatbotContext.Provider value={contextValue as EmbeddedChatbotContextValue}
     >
       <div className={cn('flex h-full flex-col rounded-2xl bg-background-section-burn', className)}>
         <div className="flex shrink-0 justify-between p-3">

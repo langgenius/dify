@@ -127,21 +127,36 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [userProfile, currentWorkspace])
 
+  const contextValue = useMemo(() => ({
+    userProfile,
+    mutateUserProfile,
+    langGeniusVersionInfo,
+    useSelector,
+    currentWorkspace,
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+    isCurrentWorkspaceEditor,
+    isCurrentWorkspaceDatasetOperator,
+    mutateCurrentWorkspace,
+    isLoadingCurrentWorkspace,
+    isValidatingCurrentWorkspace,
+  }), [
+    userProfile,
+    mutateUserProfile,
+    langGeniusVersionInfo,
+    useSelector,
+    currentWorkspace,
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+    isCurrentWorkspaceEditor,
+    isCurrentWorkspaceDatasetOperator,
+    mutateCurrentWorkspace,
+    isLoadingCurrentWorkspace,
+    isValidatingCurrentWorkspace,
+  ])
+
   return (
-    <AppContext.Provider value={{
-      userProfile,
-      mutateUserProfile,
-      langGeniusVersionInfo,
-      useSelector,
-      currentWorkspace,
-      isCurrentWorkspaceManager,
-      isCurrentWorkspaceOwner,
-      isCurrentWorkspaceEditor,
-      isCurrentWorkspaceDatasetOperator,
-      mutateCurrentWorkspace,
-      isLoadingCurrentWorkspace,
-      isValidatingCurrentWorkspace,
-    }}
+    <AppContext.Provider value={contextValue}
     >
       <div className="flex h-full flex-col overflow-y-auto">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}

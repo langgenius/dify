@@ -24,6 +24,7 @@ export default antfu(
         'react/no-context-provider': 'off',
         'react/no-forward-ref': 'off',
         'react/no-use-context': 'off',
+        '@eslint-react/no-unstable-context-value': 'error',
 
         // prefer react-hooks-extra/no-direct-set-state-in-use-effect
         'react-hooks/set-state-in-effect': 'off',

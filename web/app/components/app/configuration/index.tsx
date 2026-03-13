@@ -155,11 +155,11 @@ const Configuration: FC = () => {
     },
   })
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
-  const setAnnotationConfig = (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => {
+  const setAnnotationConfig = useCallback((config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => {
     doSetAnnotationConfig(config)
     if (!notSetFormatChanged)
       formattingChangedDispatcher()
-  }
+  }, [formattingChangedDispatcher])
 
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
@@ -169,16 +169,6 @@ const Configuration: FC = () => {
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<FormValue>({})
   const [_, setTempStop, getTempStop] = useGetState<string[]>([])
-  const setCompletionParams = (value: FormValue) => {
-    const params = { ...value }
-
-    // eslint-disable-next-line ts/no-use-before-define
-    if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
-      params.stop = getTempStop()
-      setTempStop([])
-    }
-    doSetCompletionParams(params)
-  }
 
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
     provider: 'langgenius/openai/openai',
@@ -211,6 +201,23 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
+
+  const modelModeType = modelConfig.mode
+  const modeModeTypeRef = useRef(modelModeType)
+  useEffect(() => {
+    modeModeTypeRef.current = modelModeType
+  }, [modelModeType])
+
+  const setCompletionParams = useCallback((value: FormValue) => {
+    const params = { ...value }
+
+    if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
+      params.stop = getTempStop()
+      setTempStop([])
+    }
+    doSetCompletionParams(params)
+  }, [getTempStop, setTempStop])
+
   const isAgent = mode === AppModeEnum.AGENT_CHAT
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
@@ -235,15 +242,9 @@ const Configuration: FC = () => {
     datasetConfigsRef.current = newDatasetConfigs
   }, [])
 
-  const setModelConfig = (newModelConfig: ModelConfig) => {
+  const setModelConfig = useCallback((newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
-  }
-
-  const modelModeType = modelConfig.mode
-  const modeModeTypeRef = useRef(modelModeType)
-  useEffect(() => {
-    modeModeTypeRef.current = modelModeType
-  }, [modelModeType])
+  }, [])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
@@ -395,32 +396,6 @@ const Configuration: FC = () => {
   const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
-  const setPromptMode = async (mode: PromptMode) => {
-    if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line ts/no-use-before-define
-      await migrateToDefaultPrompt()
-      setCanReturnToSimpleMode(true)
-    }
-
-    doSetPromptMode(mode)
-  }
-  const [visionConfig, doSetVisionConfig] = useState({
-    enabled: false,
-    number_limits: 2,
-    detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
-  })
-
-  const handleSetVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
-    doSetVisionConfig({
-      enabled: config.enabled || false,
-      number_limits: config.number_limits || 2,
-      detail: config.detail || Resolution.low,
-      transfer_methods: config.transfer_methods || [TransferMethod.local_file],
-    })
-    if (!notNoticeFormattingChanged)
-      formattingChangedDispatcher()
-  }
 
   const {
     chatPromptConfig,
@@ -446,6 +421,34 @@ const Configuration: FC = () => {
     setCompletionParams,
     setStop: setTempStop,
   })
+
+  const setPromptMode = useCallback(async (mode: PromptMode) => {
+    if (mode === PromptMode.advanced) {
+      await migrateToDefaultPrompt()
+      setCanReturnToSimpleMode(true)
+    }
+
+    doSetPromptMode(mode)
+  }, [migrateToDefaultPrompt])
+
+  const [visionConfig, doSetVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+
+  const handleSetVisionConfig = useCallback((config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
+    doSetVisionConfig({
+      enabled: config.enabled || false,
+      number_limits: config.number_limits || 2,
+      detail: config.detail || Resolution.low,
+      transfer_methods: config.transfer_methods || [TransferMethod.local_file],
+    })
+    if (!notNoticeFormattingChanged)
+      formattingChangedDispatcher()
+  }, [formattingChangedDispatcher])
+
   const setModel = async ({
     modelId,
     provider,
@@ -874,14 +877,7 @@ const Configuration: FC = () => {
     setAppSidebarExpand('collapse')
   }
 
-  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
-      </div>
-    )
-  }
-  const value = {
+  const value = useMemo(() => ({
     appId,
     isAPIKeySet,
     isTrailFinished: false,
@@ -955,7 +951,88 @@ const Configuration: FC = () => {
     isShowAudioConfig,
     rerankSettingModalOpen,
     setRerankSettingModalOpen,
+  }), [
+    appId,
+    isAPIKeySet,
+    mode,
+    modelModeType,
+    promptMode,
+    isAdvancedMode,
+    isAgent,
+    isOpenAI,
+    isFunctionCall,
+    collectionList,
+    setPromptMode,
+    canReturnToSimpleMode,
+    setCanReturnToSimpleMode,
+    chatPromptConfig,
+    completionPromptConfig,
+    currentAdvancedPrompt,
+    setCurrentAdvancedPrompt,
+    showHistoryModal,
+    setConversationHistoriesRole,
+    hasSetBlockStatus,
+    conversationId,
+    introduction,
+    setIntroduction,
+    suggestedQuestions,
+    setSuggestedQuestions,
+    setConversationId,
+    controlClearChatMessage,
+    setControlClearChatMessage,
+    prevPromptConfig,
+    setPrevPromptConfig,
+    moreLikeThisConfig,
+    setMoreLikeThisConfig,
+    suggestedQuestionsAfterAnswerConfig,
+    setSuggestedQuestionsAfterAnswerConfig,
+    speechToTextConfig,
+    setSpeechToTextConfig,
+    textToSpeechConfig,
+    setTextToSpeechConfig,
+    citationConfig,
+    setCitationConfig,
+    annotationConfig,
+    setAnnotationConfig,
+    moderationConfig,
+    setModerationConfig,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
+    formattingChanged,
+    setFormattingChanged,
+    inputs,
+    setInputs,
+    query,
+    setQuery,
+    completionParams,
+    setCompletionParams,
+    modelConfig,
+    setModelConfig,
+    showSelectDataSet,
+    dataSets,
+    setDataSets,
+    datasetConfigs,
+    datasetConfigsRef,
+    setDatasetConfigs,
+    hasSetContextVar,
+    isShowVisionConfig,
+    visionConfig,
+    handleSetVisionConfig,
+    isAllowVideoUpload,
+    isShowDocumentConfig,
+    isShowAudioConfig,
+    rerankSettingModalOpen,
+    setRerankSettingModalOpen,
+  ])
+
+  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading type="area" />
+      </div>
+    )
   }
+
   return (
     <ConfigContext.Provider value={value}>
       <FeaturesProvider features={featuresData}>
