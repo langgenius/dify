@@ -285,6 +285,7 @@ class AppDslService:
                     dependencies_list
                 )
 
+            is_new_app = app is None
             # Create or update app
             app = self._create_or_update_app(
                 app=app,
@@ -300,6 +301,9 @@ class AppDslService:
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_workflow_variables(app_id=app.id)
+            self._session.commit()
+            if is_new_app:
+                app_was_created.send(app, account=account)
             return Import(
                 id=import_id,
                 status=status,
@@ -309,6 +313,7 @@ class AppDslService:
             )
 
         except yaml.YAMLError as e:
+            self._session.rollback()
             return Import(
                 id=import_id,
                 status=ImportStatus.FAILED,
@@ -317,6 +322,7 @@ class AppDslService:
 
         except Exception as e:
             logger.exception("Failed to import app")
+            self._session.rollback()
             return Import(
                 id=import_id,
                 status=ImportStatus.FAILED,
@@ -352,6 +358,7 @@ class AppDslService:
                 stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
                 app = self._session.scalar(stmt)
 
+            is_new_app = app is None
             # Create or update app
             app = self._create_or_update_app(
                 app=app,
@@ -363,6 +370,10 @@ class AppDslService:
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
             )
+
+            self._session.commit()
+            if is_new_app:
+                app_was_created.send(app, account=account)
 
             # Delete import info from Redis
             redis_client.delete(redis_key)
@@ -377,6 +388,7 @@ class AppDslService:
             )
 
         except Exception as e:
+            self._session.rollback()
             logger.exception("Error confirming import")
             return Import(
                 id=import_id,
@@ -465,8 +477,6 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
-            app_was_created.send(app, account=account)
 
         # save dependencies
         if dependencies:
