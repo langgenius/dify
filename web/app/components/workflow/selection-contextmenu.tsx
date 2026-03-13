@@ -6,7 +6,7 @@ import {
   RiAlignRight,
   RiAlignTop,
 } from '@remixicon/react'
-import { useClickAway } from 'ahooks'
+import { useClickAway, useKeyPress } from 'ahooks'
 import { produce } from 'immer'
 import {
   memo,
@@ -14,13 +14,17 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import CreateSnippetDialog from './create-snippet-dialog'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import ShortcutsName from './shortcuts-name'
 import { useStore, useWorkflowStore } from './store'
+import { BlockEnum, TRIGGER_NODE_TYPES } from './types'
 
 enum AlignType {
   Left = 'left',
@@ -39,6 +43,8 @@ const SelectionContextmenu = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionContextmenuCancel } = useSelectionInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
+  const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
+  const [selectedNodeIdsSnapshot, setSelectedNodeIdsSnapshot] = useState<string[]>([])
 
   // Access React Flow methods
   const store = useStoreApi()
@@ -67,7 +73,7 @@ const SelectionContextmenu = () => {
 
       const menuWidth = 240
 
-      const estimatedMenuHeight = 380
+      const estimatedMenuHeight = 420
 
       if (left + menuWidth > containerWidth)
         left = left - menuWidth
@@ -90,6 +96,32 @@ const SelectionContextmenu = () => {
     if (selectionMenu && selectedNodes.length <= 1)
       handleSelectionContextmenuCancel()
   }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
+
+  const isAddToSnippetDisabled = useMemo(() => {
+    return selectedNodes.some(node =>
+      node.data.type === BlockEnum.Start || TRIGGER_NODE_TYPES.includes(node.data.type as typeof TRIGGER_NODE_TYPES[number]))
+  }, [selectedNodes])
+
+  const handleOpenCreateSnippetDialog = useCallback(() => {
+    if (isAddToSnippetDisabled)
+      return
+
+    setSelectedNodeIdsSnapshot(selectedNodes.map(node => node.id))
+    setIsCreateSnippetDialogOpen(true)
+    handleSelectionContextmenuCancel()
+  }, [handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes])
+
+  const handleCloseCreateSnippetDialog = useCallback(() => {
+    setIsCreateSnippetDialogOpen(false)
+    setSelectedNodeIdsSnapshot([])
+  }, [])
+
+  useKeyPress(['meta.g', 'ctrl.g'], () => {
+    if (!selectionMenu || isAddToSnippetDisabled)
+      return
+
+    handleOpenCreateSnippetDialog()
+  })
 
   // Handle align nodes logic
   const handleAlignNode = useCallback((currentNode: any, nodeToAlign: any, alignType: AlignType, minX: number, maxX: number, minY: number, maxY: number) => {
@@ -369,88 +401,114 @@ const SelectionContextmenu = () => {
     }
   }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel, handleAlignNode, handleDistributeNodes])
 
-  if (!selectionMenu)
+  if (!selectionMenu && !isCreateSnippetDialogOpen)
     return null
 
   return (
-    <div
-      className="absolute z-[9]"
-      style={{
-        left: menuPosition.left,
-        top: menuPosition.top,
-      }}
-      ref={ref}
-    >
-      <div ref={menuRef} className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
-        <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
-            {t('operator.vertical', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Top)}
-          >
-            <RiAlignTop className="h-4 w-4" />
-            {t('operator.alignTop', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Middle)}
-          >
-            <RiAlignCenter className="h-4 w-4 rotate-90" />
-            {t('operator.alignMiddle', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Bottom)}
-          >
-            <RiAlignBottom className="h-4 w-4" />
-            {t('operator.alignBottom', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.DistributeVertical)}
-          >
-            <RiAlignJustify className="h-4 w-4 rotate-90" />
-            {t('operator.distributeVertical', { ns: 'workflow' })}
+    <>
+      {selectionMenu && (
+        <div
+          className="absolute z-[9]"
+          style={{
+            left: menuPosition.left,
+            top: menuPosition.top,
+          }}
+          ref={ref}
+        >
+          <div ref={menuRef} className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+            <div className="p-1">
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-30 data-[disabled=true]:hover:bg-transparent"
+                data-disabled={isAddToSnippetDisabled}
+                aria-disabled={isAddToSnippetDisabled}
+                onClick={handleOpenCreateSnippetDialog}
+              >
+                <span>{t('snippet.addToSnippet', { ns: 'workflow' })}</span>
+                {!isAddToSnippetDisabled && (
+                  <ShortcutsName className="ml-auto" keys={['ctrl', 'g']} textColor="secondary" />
+                )}
+              </div>
+            </div>
+            <div className="h-px bg-divider-regular"></div>
+            <div className="p-1">
+              <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+                {t('operator.vertical', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Top)}
+              >
+                <RiAlignTop className="h-4 w-4" />
+                {t('operator.alignTop', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Middle)}
+              >
+                <RiAlignCenter className="h-4 w-4 rotate-90" />
+                {t('operator.alignMiddle', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Bottom)}
+              >
+                <RiAlignBottom className="h-4 w-4" />
+                {t('operator.alignBottom', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.DistributeVertical)}
+              >
+                <RiAlignJustify className="h-4 w-4 rotate-90" />
+                {t('operator.distributeVertical', { ns: 'workflow' })}
+              </div>
+            </div>
+            <div className="h-px bg-divider-regular"></div>
+            <div className="p-1">
+              <div className="system-xs-medium px-2 py-2 text-text-tertiary">
+                {t('operator.horizontal', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Left)}
+              >
+                <RiAlignLeft className="h-4 w-4" />
+                {t('operator.alignLeft', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Center)}
+              >
+                <RiAlignCenter className="h-4 w-4" />
+                {t('operator.alignCenter', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.Right)}
+              >
+                <RiAlignRight className="h-4 w-4" />
+                {t('operator.alignRight', { ns: 'workflow' })}
+              </div>
+              <div
+                className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => handleAlignNodes(AlignType.DistributeHorizontal)}
+              >
+                <RiAlignJustify className="h-4 w-4" />
+                {t('operator.distributeHorizontal', { ns: 'workflow' })}
+              </div>
+            </div>
           </div>
         </div>
-        <div className="h-px bg-divider-regular"></div>
-        <div className="p-1">
-          <div className="system-xs-medium px-2 py-2 text-text-tertiary">
-            {t('operator.horizontal', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Left)}
-          >
-            <RiAlignLeft className="h-4 w-4" />
-            {t('operator.alignLeft', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Center)}
-          >
-            <RiAlignCenter className="h-4 w-4" />
-            {t('operator.alignCenter', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.Right)}
-          >
-            <RiAlignRight className="h-4 w-4" />
-            {t('operator.alignRight', { ns: 'workflow' })}
-          </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleAlignNodes(AlignType.DistributeHorizontal)}
-          >
-            <RiAlignJustify className="h-4 w-4" />
-            {t('operator.distributeHorizontal', { ns: 'workflow' })}
-          </div>
-        </div>
-      </div>
-    </div>
+      )}
+      <CreateSnippetDialog
+        isOpen={isCreateSnippetDialogOpen}
+        selectedNodeIds={selectedNodeIdsSnapshot}
+        onClose={handleCloseCreateSnippetDialog}
+        onConfirm={(payload) => {
+          void payload
+        }}
+      />
+    </>
   )
 }
 
