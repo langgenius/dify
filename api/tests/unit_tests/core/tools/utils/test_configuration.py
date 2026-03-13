@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
@@ -91,6 +91,7 @@ def _build_manager() -> ToolParameterConfigurationManager:
 
 
 def test_merge_and_mask_parameters():
+    """Test masking keeps non-secret values intact and obfuscates secrets."""
     manager = _build_manager()
 
     masked = manager.mask_tool_parameters({"secret": "abcdefghi", "plain": "x", "runtime_only": "y"})
@@ -100,6 +101,7 @@ def test_merge_and_mask_parameters():
 
 
 def test_encrypt_tool_parameters():
+    """Test secret parameters are encrypted while plain values pass through."""
     manager = _build_manager()
 
     with patch("core.tools.utils.configuration.encrypter.encrypt_token", return_value="enc"):
@@ -110,48 +112,75 @@ def test_encrypt_tool_parameters():
 
 
 def test_decrypt_tool_parameters_cache_hit() -> None:
-    manager = _build_manager()
-
+    """Test that cache hit returns cached value without decryption."""
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = {"secret": "cached"}
-
+        # Setup mock cache
+        cache_mock = MagicMock()
+        cache_mock.get.return_value = {"secret": "cached"}
+        cache_cls.return_value = cache_mock
+        
+        # Create manager INSIDE patch context
+        manager = _build_manager()
+        
+        # Act
         result = manager.decrypt_tool_parameters({"secret": "enc"})
 
+        # Assert
         assert result == {"secret": "cached"}
-        cache.set.assert_not_called()
+        cache_mock.set.assert_not_called()
 
 
 def test_decrypt_tool_parameters_cache_miss() -> None:
-    manager = _build_manager()
-
+    """Test that cache miss triggers decryption and caching."""
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
-
+        # Setup mock cache
+        cache_mock = MagicMock()
+        cache_mock.get.return_value = None
+        cache_cls.return_value = cache_mock
+        
+        # Create manager INSIDE patch context
+        manager = _build_manager()
+        
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
 
-        assert decrypted["secret"] == "dec"
-        assert decrypted["plain"] == "x"
-        cache.set.assert_called_once()
+            assert "secret" in decrypted
+            assert decrypted["secret"] == "dec"
+            assert decrypted["plain"] == "x"
+        
+        # Cache should be called (assertion outside inner patch but inside outer)
+        cache_mock.set.assert_called_once()
 
 
 def test_delete_tool_parameters_cache():
-    manager = _build_manager()
-
+    """Test that cache deletion calls the cache delete method."""
+    """Test that cache deletion calls the cache delete method."""
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
+        cache_mock = MagicMock()
+        cache_cls.return_value = cache_mock
+        
+        # Create manager INSIDE patch context
+        manager = _build_manager()
+        
         manager.delete_tool_parameters_cache()
-
-    cache_cls.return_value.delete.assert_called_once()
+        
+        # Verify delete was called
+        cache_mock.delete.assert_called_once()
 
 
 def test_configuration_manager_decrypt_suppresses_errors():
-    manager = _build_manager()
+    """Test that decryption errors are suppressed and original value is retained."""
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
+        # Setup mock cache to return None (cache miss)
+        cache_mock = MagicMock()
+        cache_mock.get.return_value = None
+        cache_cls.return_value = cache_mock
+        
+        # Create manager INSIDE patch context
+        manager = _build_manager()
+        
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
-        # decryption failure is suppressed, original value is retained.
-        assert decrypted["secret"] == "enc"
+
+            assert "secret" in decrypted
+            assert decrypted["secret"] == "enc"
