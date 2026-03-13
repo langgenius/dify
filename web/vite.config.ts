@@ -8,7 +8,7 @@ import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { COMPONENT_TYPE_COVERAGE_EXCLUDE_GLOBS } from './scripts/component-coverage-filters.mjs'
+import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
 import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
@@ -23,6 +23,9 @@ export default defineConfig(({ mode }) => {
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
   const isAppComponentsCoverage = coverageScope === 'app-components'
+  const excludedComponentCoverageFiles = isAppComponentsCoverage
+    ? collectComponentCoverageExcludedFiles(path.join(projectRoot, 'app/components'), { pathPrefix: 'app/components' })
+    : []
 
   return {
     plugins: isTest
@@ -98,7 +101,7 @@ export default defineConfig(({ mode }) => {
                 'app/components/**/__tests__/**',
                 'app/components/**/__mocks__/**',
                 'app/components/**/*.stories.{ts,tsx}',
-                ...COMPONENT_TYPE_COVERAGE_EXCLUDE_GLOBS,
+                ...excludedComponentCoverageFiles,
                 ...excludedAppComponentsCoveragePaths,
               ],
             }

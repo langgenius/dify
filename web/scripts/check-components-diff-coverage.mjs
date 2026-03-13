@@ -2,8 +2,8 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL,
-  isTypeCoverageExcludedComponentFile,
+  collectComponentCoverageExcludedFiles,
+  COMPONENT_COVERAGE_EXCLUDE_LABEL,
 } from './component-coverage-filters.mjs'
 import {
   COMPONENTS_GLOBAL_THRESHOLDS,
@@ -19,6 +19,9 @@ const EXCLUDED_MODULES_LABEL = [...EXCLUDED_COMPONENT_MODULES].sort().join(', ')
 
 const repoRoot = repoRootFromCwd()
 const webRoot = path.join(repoRoot, 'web')
+const excludedComponentCoverageFiles = new Set(
+  collectComponentCoverageExcludedFiles(path.join(webRoot, 'app/components'), { pathPrefix: 'web/app/components' }),
+)
 const baseSha = process.env.BASE_SHA?.trim()
 const headSha = process.env.HEAD_SHA?.trim() || 'HEAD'
 const coverageFinalPath = path.join(webRoot, 'coverage', 'coverage-final.json')
@@ -178,7 +181,7 @@ function buildSummary({
     `Compared \`${baseSha.slice(0, 12)}\` -> \`${headSha.slice(0, 12)}\``,
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
-    `Excluded file kinds: \`${COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL}\``,
+    `Excluded file kinds: \`${COMPONENT_COVERAGE_EXCLUDE_LABEL}\``,
     '',
     '| Check | Result | Details |',
     '|---|---:|---|',
@@ -284,7 +287,7 @@ function buildSkipSummary(changedExcludedSourceFiles) {
     '### app/components Diff Coverage',
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
-    `Excluded file kinds: \`${COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL}\``,
+    `Excluded file kinds: \`${COMPONENT_COVERAGE_EXCLUDE_LABEL}\``,
     '',
   ]
 
@@ -354,7 +357,7 @@ function isExcludedComponentSourceFile(filePath) {
   return isAnyComponentSourceFile(filePath)
     && (
       EXCLUDED_COMPONENT_MODULES.has(getModuleName(filePath))
-      || isTypeCoverageExcludedComponentFile(filePath)
+      || excludedComponentCoverageFiles.has(filePath)
     )
 }
 
