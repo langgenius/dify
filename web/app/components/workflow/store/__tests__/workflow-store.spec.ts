@@ -97,6 +97,7 @@ describe('createWorkflowStore', () => {
       ['showDebugAndPreviewPanel', 'setShowDebugAndPreviewPanel', true],
       ['panelMenu', 'setPanelMenu', { top: 10, left: 20 }],
       ['selectionMenu', 'setSelectionMenu', { top: 50, left: 60 }],
+      ['edgeMenu', 'setEdgeMenu', { x: 320, y: 180, edgeId: 'e1' }],
       ['showVariableInspectPanel', 'setShowVariableInspectPanel', true],
       ['initShowLastRunTab', 'setInitShowLastRunTab', true],
     ])('should update %s', (stateKey, setter, value) => {

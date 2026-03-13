@@ -2,7 +2,6 @@ import type { Node } from './types'
 import { useClickAway } from 'ahooks'
 import {
   memo,
-  useEffect,
   useRef,
 } from 'react'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -13,13 +12,9 @@ import { useStore } from './store'
 const NodeContextmenu = () => {
   const ref = useRef(null)
   const nodes = useNodes()
-  const { handleNodeContextmenuCancel, handlePaneContextmenuCancel } = usePanelInteractions()
+  const { handleNodeContextmenuCancel } = usePanelInteractions()
   const nodeMenu = useStore(s => s.nodeMenu)
   const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
-  useEffect(() => {
-    if (nodeMenu)
-      handlePaneContextmenuCancel()
-  }, [nodeMenu, handlePaneContextmenuCancel])
 
   useClickAway(() => {
     handleNodeContextmenuCancel()
