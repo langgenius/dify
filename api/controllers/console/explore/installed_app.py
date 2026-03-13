@@ -139,7 +139,7 @@ class InstalledAppsListApi(Resource):
 
         _, current_tenant_id = current_account_with_tenant()
 
-        app = db.session.scalars(select(App).where(App.id == payload.app_id).limit(1)).first()
+        app = db.session.scalar(select(App).where(App.id == payload.app_id))
 
         if app is None:
             raise NotFound("App entity not found")
