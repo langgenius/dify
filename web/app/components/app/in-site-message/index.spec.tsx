@@ -1,6 +1,12 @@
+import type { ComponentProps } from 'react'
 import type { InSiteMessageActionItem } from './index'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InSiteMessage from './index'
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
+}))
 
 describe('InSiteMessage', () => {
   const originalLocation = window.location
@@ -18,7 +24,7 @@ describe('InSiteMessage', () => {
     vi.unstubAllGlobals()
   })
 
-  const renderComponent = (actions: InSiteMessageActionItem[], props?: Partial<React.ComponentProps<typeof InSiteMessage>>) => {
+  const renderComponent = (actions: InSiteMessageActionItem[], props?: Partial<ComponentProps<typeof InSiteMessage>>) => {
     return render(
       <InSiteMessage
         notificationId="test-notification-id"
