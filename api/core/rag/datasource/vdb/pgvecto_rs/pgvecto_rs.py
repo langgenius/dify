@@ -135,9 +135,7 @@ class PGVectoRS(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self._client) as session:
-            select_statement = sql_text(
-                f"SELECT id FROM {self._collection_name} WHERE meta->>:key = :value"
-            )
+            select_statement = sql_text(f"SELECT id FROM {self._collection_name} WHERE meta->>:key = :value")
             result = session.execute(select_statement, {"key": key, "value": value}).fetchall()
         if result:
             return [item[0] for item in result]
