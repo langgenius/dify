@@ -147,13 +147,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       setConversationIdInfo((prev) => {
-        let prevValue = prev?.[appId || '']
-        if (typeof prevValue === 'string')
-          prevValue = {}
+        const prevAppConversations = prev?.[appId || '']
+        const base = typeof prevAppConversations === 'object' && prevAppConversations
+          ? prevAppConversations
+          : {}
         return {
           ...prev,
           [appId || '']: {
-            ...prevValue,
+            ...base,
             [userId || 'DEFAULT']: changeConversationId,
           },
         }
