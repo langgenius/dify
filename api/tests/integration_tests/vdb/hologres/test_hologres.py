@@ -28,7 +28,9 @@ class HologresVectorTest(AbstractVectorTest):
                 schema_name=os.environ.get("HOLOGRES_SCHEMA", "public"),
                 tokenizer=cast(TokenizerType, os.environ.get("HOLOGRES_TOKENIZER", "jieba")),
                 distance_method=cast(DistanceType, os.environ.get("HOLOGRES_DISTANCE_METHOD", "Cosine")),
-                base_quantization_type=cast(BaseQuantizationType, os.environ.get("HOLOGRES_BASE_QUANTIZATION_TYPE", "rabitq")),
+                base_quantization_type=cast(
+                    BaseQuantizationType, os.environ.get("HOLOGRES_BASE_QUANTIZATION_TYPE", "rabitq")
+                ),
                 max_degree=int(os.environ.get("HOLOGRES_MAX_DEGREE", "64")),
                 ef_construction=int(os.environ.get("HOLOGRES_EF_CONSTRUCTION", "400")),
             ),
