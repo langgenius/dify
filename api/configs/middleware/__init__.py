@@ -31,6 +31,7 @@ from .vdb.iris_config import IrisVectorConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
+from .vdb.mongodb_config import MongoDBConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
 from .vdb.opengauss_config import OpenGaussConfig
@@ -74,9 +75,9 @@ class StorageConfig(BaseSettings):
     )
 
     STORAGE_LOCAL_PATH: str = Field(
-        description="Path for local storage when STORAGE_TYPE is set to 'local'.",
+        description="Path for local storage when STORAGE_TYPE is set to 'local'. "
+        "Deprecated: Use 'opendal' storage type with filesystem backend configuration instead.",
         default="storage",
-        deprecated=True,
     )
 
 
@@ -351,6 +352,7 @@ class MiddlewareConfig(
     IrisVectorConfig,
     MilvusConfig,
     AlibabaCloudMySQLConfig,
+    MongoDBConfig,
     MyScaleConfig,
     OpenSearchConfig,
     OracleConfig,
