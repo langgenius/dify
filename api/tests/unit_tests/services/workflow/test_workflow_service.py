@@ -311,7 +311,9 @@ class TestWorkflowService:
         mock_workflow.conversation_variables = []
 
         # Mock node config
-        mock_workflow.get_node_config_by_id.return_value = {"id": "node-1", "data": {"type": "llm"}}
+        mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": NodeType.LLM.value}}
+        )
         mock_workflow.get_enclosing_node_type_and_id.return_value = None
 
         # Mock class methods
@@ -376,7 +378,9 @@ class TestWorkflowService:
         mock_workflow.tenant_id = "tenant-1"
         mock_workflow.environment_variables = []
         mock_workflow.conversation_variables = []
-        mock_workflow.get_node_config_by_id.return_value = {"id": "node-1", "data": {"type": "llm"}}
+        mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": NodeType.LLM.value}}
+        )
         mock_workflow.get_enclosing_node_type_and_id.return_value = None
 
         monkeypatch.setattr(workflow_service_module, "WorkflowDraftVariableService", MagicMock())
