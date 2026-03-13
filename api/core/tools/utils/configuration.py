@@ -114,9 +114,11 @@ class ToolParameterConfigurationManager:
         """
         decrypt tool parameters with tenant id
 
-        return a deep copy of parameters with decrypted values
+        return a deep copy of parameters with decrypted values.
+        Cached parameters are only used when their keys match current form parameters.
         """
-
+        # Load parameter definitions first so cache validation can be scoped to known parameters.
+        current_parameters = self._merge_parameters()
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
             provider=f"{self.provider_type.value}.{self.provider_name}",
@@ -126,10 +128,14 @@ class ToolParameterConfigurationManager:
         )
         cached_parameters = cache.get()
         if cached_parameters:
-            return cached_parameters
-
-        # override parameters
-        current_parameters = self._merge_parameters()
+            if isinstance(cached_parameters, dict):
+                allowed_keys = {
+                    parameter.name
+                    for parameter in current_parameters
+                    if parameter.form == ToolParameter.ToolParameterForm.FORM
+                }
+                if set(cached_parameters.keys()).issubset(allowed_keys):
+                    return cached_parameters
         has_secret_input = False
 
         for parameter in current_parameters:

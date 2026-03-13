@@ -118,10 +118,10 @@ def test_decrypt_tool_parameters_cache_hit() -> None:
         cache_mock = MagicMock()
         cache_mock.get.return_value = {"secret": "cached"}
         cache_cls.return_value = cache_mock
-        
+
         # Create manager INSIDE patch context
         manager = _build_manager()
-        
+
         # Act
         result = manager.decrypt_tool_parameters({"secret": "enc"})
 
@@ -137,10 +137,10 @@ def test_decrypt_tool_parameters_cache_miss() -> None:
         cache_mock = MagicMock()
         cache_mock.get.return_value = None
         cache_cls.return_value = cache_mock
-        
+
         # Create manager INSIDE patch context
         manager = _build_manager()
-        
+
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
 
@@ -158,12 +158,12 @@ def test_delete_tool_parameters_cache():
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         cache_mock = MagicMock()
         cache_cls.return_value = cache_mock
-        
+
         # Create manager INSIDE patch context
         manager = _build_manager()
-        
+
         manager.delete_tool_parameters_cache()
-        
+
         # Verify delete was called
         cache_mock.delete.assert_called_once()
 
@@ -175,10 +175,10 @@ def test_configuration_manager_decrypt_suppresses_errors():
         cache_mock = MagicMock()
         cache_mock.get.return_value = None
         cache_cls.return_value = cache_mock
-        
+
         # Create manager INSIDE patch context
         manager = _build_manager()
-        
+
         with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
             decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
 
