@@ -24,9 +24,14 @@ vi.mock('./hooks/use-workflow', () => ({
   }),
 }))
 
-vi.mock('./utils', () => ({
-  getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
-}))
+vi.mock('./utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./utils')>()
+
+  return {
+    ...actual,
+    getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
+  }
+})
 
 vi.mock('./hooks', async () => {
   const { useEdgesInteractions } = await import('./hooks/use-edges-interactions')
@@ -90,7 +95,7 @@ describe('EdgeContextmenu', () => {
     })
 
     const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
-    expect(screen.queryByText(/^del$/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/^del$/i)).toBeInTheDocument()
 
     await user.click(deleteAction)
 

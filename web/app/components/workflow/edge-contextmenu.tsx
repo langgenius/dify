@@ -10,6 +10,7 @@ import {
   ContextMenuItem,
 } from '@/app/components/base/ui/context-menu'
 import { useEdgesInteractions, usePanelInteractions } from './hooks'
+import ShortcutsName from './shortcuts-name'
 import { useStore } from './store'
 
 const EdgeContextmenu = () => {
@@ -47,11 +48,11 @@ const EdgeContextmenu = () => {
         popupClassName="rounded-lg"
       >
         <ContextMenuItem
-          destructive
-          className="justify-between gap-4 px-3"
+          className="justify-between gap-4 px-3 text-text-secondary data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive"
           onClick={handleEdgeDelete}
         >
           <span>{t('common:operation.delete')}</span>
+          <ShortcutsName keys={['del']} />
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
