@@ -233,6 +233,7 @@
     "sass": "1.98.0",
     "storybook": "10.2.17",
     "tailwindcss": "3.4.19",
+    "taze": "19.10.0",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
     "uglify-js": "3.19.3",
