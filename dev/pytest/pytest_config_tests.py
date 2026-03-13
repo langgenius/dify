@@ -3,6 +3,16 @@ from pathlib import Path
 import yaml  # type: ignore
 from dotenv import dotenv_values
 
+SSRF_TIMEOUT_CONFIG_KEYS = {"SSRF_REQUEST_TIMEOUT", "SSRF_READ_TIMEOUT"}
+SSRF_PROXY_ENV_DEFAULTS = {
+    "SSRF_REQUEST_TIMEOUT": "${SSRF_REQUEST_TIMEOUT:-1200}",
+    "SSRF_READ_TIMEOUT": "${SSRF_READ_TIMEOUT:-1200}",
+}
+SSRF_PROXY_TIMEOUT_TEMPLATE_LINES = {
+    "request_timeout ${SSRF_REQUEST_TIMEOUT} seconds",
+    "read_timeout ${SSRF_READ_TIMEOUT} seconds",
+}
+
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "APP_MAX_EXECUTION_TIME",
     "BATCH_UPLOAD_LIMIT",
@@ -109,6 +119,32 @@ def test_yaml_config():
     if DIFF_API_WITH_DOCKER_COMPOSE:
         print(f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}")
         raise Exception("API and Docker Compose config sets are different")
+
+    missing_ssrf_timeout_keys_in_docker = SSRF_TIMEOUT_CONFIG_KEYS - DOCKER_CONFIG_SET
+    if missing_ssrf_timeout_keys_in_docker:
+        print(f"Missing SSRF timeout keys in docker/.env.example: {missing_ssrf_timeout_keys_in_docker}")
+        raise Exception("docker/.env.example is missing SSRF timeout keys")
+
+    missing_ssrf_timeout_keys_in_compose = SSRF_TIMEOUT_CONFIG_KEYS - DOCKER_COMPOSE_CONFIG_SET
+    if missing_ssrf_timeout_keys_in_compose:
+        print(
+            f"Missing SSRF timeout keys in docker/docker-compose.yaml x-shared-env: {missing_ssrf_timeout_keys_in_compose}"
+        )
+        raise Exception("docker-compose.yaml x-shared-env is missing SSRF timeout keys")
+
+    docker_compose_template = (Path("docker") / Path("docker-compose-template.yaml")).read_text(encoding="utf-8")
+    for key, expected_value in SSRF_PROXY_ENV_DEFAULTS.items():
+        expected_line = f"{key}: {expected_value}"
+        if expected_line not in docker_compose_template:
+            print(f"Missing SSRF proxy timeout env mapping in docker-compose-template.yaml: {expected_line!r}")
+            raise Exception("docker-compose-template.yaml is missing SSRF timeout env mapping")
+
+    squid_template = (Path("docker") / Path("ssrf_proxy") / Path("squid.conf.template")).read_text(encoding="utf-8")
+    for line in SSRF_PROXY_TIMEOUT_TEMPLATE_LINES:
+        if line not in squid_template:
+            print(f"Missing Squid timeout template line: {line!r}")
+            raise Exception("squid.conf.template is missing SSRF timeout template line")
+
     print("All tests passed!")
 
 
