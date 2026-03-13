@@ -41,11 +41,9 @@ const EdgeContextmenu = () => {
     >
       <ContextMenuContent positionerProps={{ anchor }}>
         <ContextMenuItem
-          className="justify-between gap-4 hover:bg-state-destructive-hover hover:text-text-destructive"
-          onClick={() => {
-            handleEdgeDelete()
-            handleEdgeContextmenuCancel()
-          }}
+          destructive
+          className="justify-between gap-4"
+          onClick={handleEdgeDelete}
         >
           <span>{t('common:operation.delete')}</span>
         </ContextMenuItem>

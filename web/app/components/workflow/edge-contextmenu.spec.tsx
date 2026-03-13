@@ -48,6 +48,5 @@ describe('EdgeContextmenu', () => {
     await user.click(deleteAction)
 
     expect(hookMocks.handleEdgeDelete).toHaveBeenCalledTimes(1)
-    expect(hookMocks.handleEdgeContextmenuCancel).toHaveBeenCalled()
   })
 })
