@@ -75,8 +75,9 @@ class GitHubOAuth(OAuth):
         user_info = response.json()
 
         email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
+        email_response.raise_for_status()
         email_info = email_response.json()
-        primary_email: dict = next((email for email in email_info if email["primary"] == True), {})
+        primary_email: dict = next((email for email in email_info if email["primary"] is True), {})
 
         return {**user_info, "email": primary_email.get("email", "")}
 
