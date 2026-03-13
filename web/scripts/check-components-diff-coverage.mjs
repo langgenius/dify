@@ -2,6 +2,10 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL,
+  isTypeCoverageExcludedComponentFile,
+} from './component-coverage-filters.mjs'
+import {
   COMPONENTS_GLOBAL_THRESHOLDS,
   EXCLUDED_COMPONENT_MODULES,
   getComponentModuleThreshold,
@@ -174,6 +178,7 @@ function buildSummary({
     `Compared \`${baseSha.slice(0, 12)}\` -> \`${headSha.slice(0, 12)}\``,
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
+    `Excluded file kinds: \`${COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL}\``,
     '',
     '| Check | Result | Details |',
     '|---|---:|---|',
@@ -279,11 +284,12 @@ function buildSkipSummary(changedExcludedSourceFiles) {
     '### app/components Diff Coverage',
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
+    `Excluded file kinds: \`${COMPONENT_TYPE_COVERAGE_EXCLUDE_LABEL}\``,
     '',
   ]
 
   if (changedExcludedSourceFiles.length > 0) {
-    lines.push('Only excluded component modules changed, so diff coverage check was skipped.')
+    lines.push('Only excluded component modules or type-only files changed, so diff coverage check was skipped.')
     lines.push(`Skipped files: ${changedExcludedSourceFiles.length}`)
   }
   else {
@@ -346,7 +352,10 @@ function isTrackedComponentSourceFile(filePath) {
 
 function isExcludedComponentSourceFile(filePath) {
   return isAnyComponentSourceFile(filePath)
-    && EXCLUDED_COMPONENT_MODULES.has(getModuleName(filePath))
+    && (
+      EXCLUDED_COMPONENT_MODULES.has(getModuleName(filePath))
+      || isTypeCoverageExcludedComponentFile(filePath)
+    )
 }
 
 function isRelevantTestFile(filePath) {
