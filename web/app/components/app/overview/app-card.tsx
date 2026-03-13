@@ -16,7 +16,7 @@ import {
 } from '@remixicon/react'
 import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -160,18 +160,12 @@ function AppCard({
     }
   }
 
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
-  }, [appAccessSubjects, appDetail])
+  const isAppAccessSet = !(
+    appDetail && appAccessSubjects
+    && appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
+    && appAccessSubjects.groups?.length === 0
+    && appAccessSubjects.members?.length === 0
+  )
 
   const handleClickAccessControl = useCallback(() => {
     if (!appDetail)
