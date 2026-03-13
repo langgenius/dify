@@ -102,13 +102,11 @@ jobs:
       - name: Setup web environment
         if: steps.web-changes.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
-        with:
-          node-version: "24"
 
       - name: ESLint autofix
         if: steps.web-changes.outputs.any_changed == 'true'
         run: |
           cd web
-          pnpm eslint --concurrency=2 --prune-suppressions --quiet || true
+          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
       - uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3
