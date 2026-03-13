@@ -364,7 +364,15 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
 
-        if event.node_type == NodeType.LLM and event.outputs and "tool_calls" in event.outputs:
+        # Only persist tool calls for explicit structured external-tool callback runs.
+        # Regular chatflow preview turns should keep `message.tool_calls` empty so
+        # conversation memory continues to treat the next query as a user message.
+        if (
+            getattr(self._application_generate_entity, "tool_call_mode", None) == "structured"
+            and event.node_type == NodeType.LLM
+            and event.outputs
+            and "tool_calls" in event.outputs
+        ):
             self._tool_calls.extend(event.outputs["tool_calls"])
 
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
@@ -921,7 +929,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
-        if self._tool_calls:
+        if getattr(self._application_generate_entity, "tool_call_mode", None) == "structured" and self._tool_calls:
             message.tool_calls = self._tool_calls
 
         # Set usage first before dumping metadata

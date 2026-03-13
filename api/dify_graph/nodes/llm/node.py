@@ -10,11 +10,13 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -53,7 +55,7 @@ from dify_graph.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from dify_graph.model_runtime.memory import PromptMessageMemory
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
@@ -80,10 +82,10 @@ from dify_graph.variables import (
 )
 from extensions.ext_database import db
 from models.dataset import SegmentAttachmentBinding
-from models.model import UploadFile
+from models.model import Conversation, UploadFile
 
 from . import llm_utils
-from .entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, LLMNodeData
+from .entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, LLMNodeData, ModelConfig
 from .exc import (
     InvalidContextStructureError,
     InvalidVariableTypeError,
@@ -365,8 +367,8 @@ class LLMNode(Node[LLMNodeData]):
                 ),
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "model_provider": model_provider,
-                "model_name": model_name,
+                "model_provider": model_instance.provider,
+                "model_name": model_instance.model_name,
             }
             if tool_call_state:
                 process_data["external_tool_callback_round"] = current_round
@@ -552,12 +554,23 @@ class LLMNode(Node[LLMNodeData]):
             node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
         # fetch memory
-        memory = llm_utils.fetch_memory(
-            variable_pool=variable_pool,
-            app_id=self.app_id,
-            node_data_memory=self.node_data.memory,
-            model_instance=model_instance,
-        )
+        conversation_id = None
+        if (
+            conversation_id_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.CONVERSATION_ID))
+        ):
+            conversation_id = conversation_id_variable.text
+
+        memory: TokenBufferMemory | None = None
+        if self.node_data.memory and conversation_id:
+            dify_ctx = self.require_dify_context()
+            with Session(db.engine, expire_on_commit=False) as session:
+                stmt = select(Conversation).where(
+                    Conversation.app_id == dify_ctx.app_id,
+                    Conversation.id == conversation_id,
+                )
+                conversation = session.scalar(stmt)
+                if conversation:
+                    memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
         query: str | None = None
         if self.node_data.memory:
@@ -573,14 +586,13 @@ class LLMNode(Node[LLMNodeData]):
             sys_files=files,
             context=context,
             memory=memory,
-            model_config=model_config,
+            model_instance=model_instance,
             prompt_template=self.node_data.prompt_template,
             memory_config=self.node_data.memory,
             vision_enabled=self.node_data.vision.enabled,
             vision_detail=self.node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=self.node_data.prompt_config.jinja2_variables,
-            tenant_id=self.tenant_id,
             context_files=context_files,
         )
 
@@ -606,7 +618,7 @@ class LLMNode(Node[LLMNodeData]):
             model_instance=model_instance,
             prompt_messages=prompt_messages,
             stop=stop,
-            user_id=self.user_id,
+            user_id=self.require_dify_context().user_id,
             structured_output_enabled=self.node_data.structured_output_enabled,
             structured_output=self.node_data.structured_output,
             file_saver=self._llm_file_saver,
@@ -647,7 +659,6 @@ class LLMNode(Node[LLMNodeData]):
 
                 tool_calls = event.tool_calls
 
-                llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                 break
             elif isinstance(event, LLMStructuredOutput):
                 structured_output = event
@@ -739,6 +750,7 @@ class LLMNode(Node[LLMNodeData]):
     @staticmethod
     def invoke_llm(
         *,
+        node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None = None,
@@ -956,7 +968,6 @@ class LLMNode(Node[LLMNodeData]):
 
                             if tc.id:
                                 target_tool_call = collected_tool_calls_map.get(tc.id)
-
 
                             if target_tool_call:
                                 # Append delta arguments (standard OpenAI streaming behavior)

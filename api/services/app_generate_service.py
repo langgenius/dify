@@ -147,9 +147,10 @@ class AppGenerateService:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
                 tool_call_mode = args.get("tool_call_mode")
-                if tool_call_mode == "structured":
-                    # Structured tool callback mode: use synchronous thread path
-                    # so that pause/resume works without requiring Celery worker.
+                if tool_call_mode == "structured" or invoke_from == InvokeFrom.DEBUGGER:
+                    # Structured tool callback mode and debugger preview both use
+                    # the synchronous streaming path so local runs do not depend on
+                    # the background workflow worker to emit SSE events.
                     return rate_limit.generate(
                         AdvancedChatAppGenerator.convert_to_event_stream(
                             AdvancedChatAppGenerator().generate(

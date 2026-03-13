@@ -158,6 +158,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         try:
             # handle invoke result
             generator = LLMNode.invoke_llm(
+                node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,

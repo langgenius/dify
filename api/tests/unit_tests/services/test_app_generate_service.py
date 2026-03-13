@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import services.app_generate_service as app_generate_service_module
+from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -115,4 +116,48 @@ def test_advanced_chat_blocking_returns_dict_and_does_not_use_event_retrieval(mo
     # Assert: returns the dict from generate(), and did not call retrieve_events()
     assert result == {"result": "ok"}
     assert generate_spy.call_args.kwargs.get("streaming") is False
+    retrieve_spy.assert_not_called()
+
+
+def test_advanced_chat_debugger_streaming_uses_sync_generator(mocker, monkeypatch):
+    monkeypatch.setattr(app_generate_service_module.dify_config, "BILLING_ENABLED", False)
+    mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
+
+    workflow = MagicMock()
+    workflow.id = "workflow-id"
+    mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+
+    retrieve_spy = mocker.patch("services.app_generate_service.AdvancedChatAppGenerator.retrieve_events")
+    convert_spy = mocker.patch(
+        "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
+        side_effect=lambda response: response,
+    )
+    generate_spy = mocker.patch(
+        "services.app_generate_service.AdvancedChatAppGenerator.generate",
+        return_value=iter(["data: test\n\n"]),
+    )
+
+    app_model = MagicMock()
+    app_model.mode = AppMode.ADVANCED_CHAT
+    app_model.id = "app-id"
+    app_model.tenant_id = "tenant-id"
+    app_model.max_active_requests = 0
+    app_model.is_agent = False
+
+    user = MagicMock()
+    user.id = "user-id"
+
+    args = {"workflow_id": "wf-1", "query": "hello", "inputs": {}}
+
+    result = AppGenerateService.generate(
+        app_model=app_model,
+        user=user,
+        args=args,
+        invoke_from=InvokeFrom.DEBUGGER,
+        streaming=True,
+    )
+
+    assert list(result) == ["data: test\n\n"]
+    assert generate_spy.call_args.kwargs.get("streaming") is True
+    convert_spy.assert_called_once()
     retrieve_spy.assert_not_called()

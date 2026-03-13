@@ -14,6 +14,7 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities import GraphInitParams
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -24,6 +25,7 @@ from dify_graph.model_runtime.entities.message_entities import (
 )
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.node_events import ModelInvokeCompletedEvent, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,
@@ -324,6 +326,68 @@ def test_fetch_files_with_non_existent_variable():
     variable_pool = VariablePool.empty()
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
+
+
+def test_invoke_and_collect_does_not_deduct_quota_in_node(llm_node: LLMNode):
+    usage = LLMUsage.empty_usage()
+
+    def fake_generator():
+        yield StreamChunkEvent(selector=["1", "text"], chunk="hello")
+        yield ModelInvokeCompletedEvent(text="hello", usage=usage)
+
+    with (
+        mock.patch.object(LLMNode, "invoke_llm", return_value=fake_generator()),
+        mock.patch.object(
+            llm_utils,
+            "deduct_llm_quota",
+            side_effect=AssertionError("should not be called"),
+            create=True,
+        ),
+    ):
+        generator = llm_node._invoke_and_collect(
+            model_instance=llm_node.model_instance,
+            model_config=mock.MagicMock(spec=ModelConfigWithCredentialsEntity),
+            prompt_messages=[],
+            stop=None,
+            external_tools=None,
+            external_tool_choice=None,
+            external_tool_results=None,
+        )
+
+        assert next(generator).chunk == "hello"
+
+        with pytest.raises(StopIteration) as exc_info:
+            next(generator)
+
+    assert exc_info.value.value == ("hello", "hello", usage, None, "", None, None)
+
+
+def test_run_records_model_metadata_in_process_data(llm_node: LLMNode):
+    model_instance = mock.MagicMock(spec=ModelInstance)
+    model_instance.provider = "openai"
+    model_instance.model_name = "gpt-4o-mini"
+
+    def fake_first_run_build_prompt(*args, **kwargs):
+        if False:
+            yield
+        return [], None, [], 0
+
+    def fake_invoke_and_collect(*args, **kwargs):
+        if False:
+            yield
+        return "hello", "hello", LLMUsage.empty_usage(), "stop", "", None, None
+
+    with (
+        mock.patch("core.app.llm.model_access.fetch_model_config", return_value=(model_instance, mock.MagicMock())),
+        mock.patch.object(llm_node, "_first_run_build_prompt", side_effect=fake_first_run_build_prompt),
+        mock.patch.object(llm_node, "_invoke_and_collect", side_effect=fake_invoke_and_collect),
+    ):
+        events = list(llm_node._run())
+
+    assert isinstance(events[-1], StreamCompletedEvent)
+    process_data = events[-1].node_run_result.process_data
+    assert process_data["model_provider"] == "openai"
+    assert process_data["model_name"] == "gpt-4o-mini"
 
 
 # def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
