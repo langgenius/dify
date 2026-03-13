@@ -31,6 +31,8 @@ from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.graph_engine.manager import GraphEngineManager
 from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
+from fields.workflow_run_fields import workflow_run_node_execution_list_fields
 from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
@@ -42,6 +44,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_run_service import WorkflowRunService
 
 logger = logging.getLogger(__name__)
 
