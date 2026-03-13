@@ -109,9 +109,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       }
       <OutputVars>
         {
-          COMMON_OUTPUT.map((item, index) => (
+          COMMON_OUTPUT.map(item => (
             <VarItem
-              key={index}
+              key={item.name}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -120,9 +120,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isLocalFile && LOCAL_FILE_OUTPUT.map((item, index) => (
+          isLocalFile && LOCAL_FILE_OUTPUT.map(item => (
             <VarItem
-              key={index}
+              key={item.name}
               name={item.name}
               type={item.type}
               description={item.description}

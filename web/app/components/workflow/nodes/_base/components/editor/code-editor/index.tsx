@@ -33,6 +33,7 @@ export type Props = {
   showFileList?: boolean
   onGenerated?: (value: string) => void
   showCodeGenerator?: boolean
+  showVariableInspectButton?: boolean
   className?: string
   tip?: React.JSX.Element
   footer?: React.ReactNode
@@ -62,6 +63,7 @@ const CodeEditor: FC<Props> = ({
   showFileList,
   onGenerated,
   showCodeGenerator = false,
+  showVariableInspectButton = false,
   className,
   tip,
   footer,
@@ -177,6 +179,7 @@ const CodeEditor: FC<Props> = ({
               fileList={fileList as any}
               showFileList={showFileList}
               showCodeGenerator={showCodeGenerator}
+              showVariableInspectButton={showVariableInspectButton}
               tip={tip}
               footer={footer}
             >
