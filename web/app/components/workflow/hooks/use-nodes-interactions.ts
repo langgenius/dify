@@ -2215,7 +2215,7 @@ export const useNodesInteractions = () => {
       }
     })
 
-    const sourceEdges = validatedClipboardEdges.length ? validatedClipboardEdges : edges
+    const sourceEdges = validatedClipboardEdges
 
     sourceEdges.forEach((edge) => {
       const sourceId = idMapping[edge.source]
