@@ -11,7 +11,7 @@ IMAGE_EXTENSIONS = convert_to_lower_and_upper_set({"jpg", "jpeg", "png", "webp",
 
 VIDEO_EXTENSIONS = convert_to_lower_and_upper_set({"mp4", "mov", "mpeg", "webm"})
 
-AUDIO_EXTENSIONS = convert_to_lower_and_upper_set({"mp3", "m4a", "wav", "amr", "mpga"})
+AUDIO_EXTENSIONS = convert_to_lower_and_upper_set({"mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"})
 
 _doc_extensions: set[str]
 if dify_config.ETL_TYPE == "Unstructured":
