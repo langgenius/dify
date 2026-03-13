@@ -1,6 +1,6 @@
-import type { ReactFlowProps } from 'reactflow'
+import type { EdgeChange, ReactFlowProps } from 'reactflow'
 import type { Edge, Node } from '../types'
-import { waitFor } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { FlowType } from '@/types/common'
 import { Workflow } from '../index'
@@ -39,6 +39,34 @@ const workflowHookMocks = vi.hoisted(() => ({
   useWorkflowSearch: vi.fn(),
 }))
 
+const baseNodes = [
+  {
+    id: 'node-1',
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    data: {},
+  },
+] as unknown as Node[]
+
+const baseEdges = [
+  {
+    id: 'edge-1',
+    source: 'node-1',
+    target: 'node-2',
+    data: { sourceType: 'start', targetType: 'end' },
+  },
+] as unknown as Edge[]
+
+const edgeChanges: EdgeChange[] = [{ id: 'edge-1', type: 'remove' }]
+
+function createMouseEvent() {
+  return {
+    preventDefault: vi.fn(),
+    clientX: 24,
+    clientY: 48,
+  } as unknown as React.MouseEvent<Element, MouseEvent>
+}
+
 vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
@@ -48,7 +76,31 @@ vi.mock('reactflow', async () => {
   const base = mod.createReactFlowModuleMock()
   const ReactFlowMock = (props: ReactFlowProps) => {
     reactFlowState.lastProps = props
-    return React.createElement('div', { 'data-testid': 'reactflow-mock' }, props.children)
+    return React.createElement(
+      'div',
+      { 'data-testid': 'reactflow-mock' },
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit edge mouse enter',
+        'onClick': () => props.onEdgeMouseEnter?.(createMouseEvent(), baseEdges[0]),
+      }),
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit edge mouse leave',
+        'onClick': () => props.onEdgeMouseLeave?.(createMouseEvent(), baseEdges[0]),
+      }),
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit edges change',
+        'onClick': () => props.onEdgesChange?.(edgeChanges),
+      }),
+      React.createElement('button', {
+        'type': 'button',
+        'aria-label': 'Emit edge context menu',
+        'onClick': () => props.onEdgeContextMenu?.(createMouseEvent(), baseEdges[0]),
+      }),
+      props.children,
+    )
   }
 
   return {
@@ -214,24 +266,6 @@ vi.mock('../workflow-history-store', () => ({
   WorkflowHistoryProvider: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }))
 
-const baseNodes = [
-  {
-    id: 'node-1',
-    type: 'custom',
-    position: { x: 0, y: 0 },
-    data: {},
-  },
-] as unknown as Node[]
-
-const baseEdges = [
-  {
-    id: 'edge-1',
-    source: 'node-1',
-    target: 'node-2',
-    data: { sourceType: 'start', targetType: 'end' },
-  },
-] as unknown as Edge[]
-
 function renderSubject() {
   return renderWorkflowComponent(
     <Workflow
@@ -256,27 +290,31 @@ describe('Workflow edge event wiring', () => {
     reactFlowState.lastProps = null
   })
 
-  it('should wire React Flow edge events through workflow handlers', async () => {
+  it('should forward React Flow edge events to workflow handlers when emitted by the canvas', () => {
     renderSubject()
 
-    await waitFor(() => {
-      expect(reactFlowState.lastProps).not.toBeNull()
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Emit edge mouse enter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Emit edge mouse leave' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Emit edges change' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Emit edge context menu' }))
 
-    expect(reactFlowState.lastProps).toEqual(expect.objectContaining({
-      onEdgeMouseEnter: workflowHookMocks.handleEdgeEnter,
-      onEdgeMouseLeave: workflowHookMocks.handleEdgeLeave,
-      onEdgesChange: workflowHookMocks.handleEdgesChange,
-      onEdgeContextMenu: workflowHookMocks.handleEdgeContextMenu,
-    }))
+    expect(workflowHookMocks.handleEdgeEnter).toHaveBeenCalledWith(expect.objectContaining({
+      clientX: 24,
+      clientY: 48,
+    }), baseEdges[0])
+    expect(workflowHookMocks.handleEdgeLeave).toHaveBeenCalledWith(expect.objectContaining({
+      clientX: 24,
+      clientY: 48,
+    }), baseEdges[0])
+    expect(workflowHookMocks.handleEdgesChange).toHaveBeenCalledWith(edgeChanges)
+    expect(workflowHookMocks.handleEdgeContextMenu).toHaveBeenCalledWith(expect.objectContaining({
+      clientX: 24,
+      clientY: 48,
+    }), baseEdges[0])
   })
 
-  it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', async () => {
+  it('should keep edge deletion delegated to workflow shortcuts instead of React Flow defaults', () => {
     renderSubject()
-
-    await waitFor(() => {
-      expect(reactFlowState.lastProps).not.toBeNull()
-    })
 
     expect(reactFlowState.lastProps?.deleteKeyCode).toBeNull()
   })
