@@ -1,6 +1,5 @@
 import type { Dayjs } from 'dayjs'
 import type { TimePickerProps } from '../types'
-import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -54,6 +53,7 @@ const TimePicker = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      /* v8 ignore next 2 -- outside-click closing is handled by PortalToFollowElem; this local ref guard is a defensive fallback. */
       if (containerRef.current && !containerRef.current.contains(event.target as Node))
         setIsOpen(false)
     }
@@ -199,8 +199,8 @@ const TimePicker = ({
 
   const inputElem = (
     <input
-      className="system-xs-regular flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1
-            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder"
+      className="flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1 text-components-input-text-filled
+            outline-none system-xs-regular placeholder:text-components-input-text-placeholder"
       readOnly
       value={isOpen ? '' : displayValue}
       placeholder={placeholderDate}
@@ -226,26 +226,14 @@ const TimePicker = ({
                   triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
                 )}
                 onClick={handleClickTrigger}
+                data-testid="time-picker-trigger"
               >
                 {inputElem}
                 {showTimezone && timezone && (
                   <TimezoneLabel timezone={timezone} inline className="shrink-0 select-none text-xs" />
                 )}
-                <RiTimeLine className={cn(
-                  'h-4 w-4 shrink-0 text-text-quaternary',
-                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-                  (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden',
-                )}
-                />
-                <RiCloseCircleFill
-                  className={cn(
-                    'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                    (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
-                  )}
-                  role="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
-                  onClick={handleClear}
-                />
+                <span className={cn('i-ri-time-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden')} />
+                <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block')} role="button" aria-label={t('operation.clear', { ns: 'common' })} onClick={handleClear} />
               </div>
             )}
       </PortalToFollowElemTrigger>

@@ -8,15 +8,18 @@ const Zendesk = async () => {
     return null
 
   const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? '' : ''
+  /* v8 ignore next -- `nonce` is always a string (`''` or header value), so nullish fallback is unreachable in runtime. @preserve */
+  const scriptNonce = nonce ?? undefined
 
   return (
     <>
       <Script
-        nonce={nonce ?? undefined}
+        nonce={scriptNonce}
         id="ze-snippet"
         src={`https://static.zdassets.com/ekr/snippet.js?key=${ZENDESK_WIDGET_KEY}`}
+        data-testid="ze-snippet"
       />
-      <Script nonce={nonce ?? undefined} id="ze-init">
+      <Script nonce={scriptNonce} id="ze-init" data-testid="ze-init">
         {`
         (function () {
           window.addEventListener('load', function () {

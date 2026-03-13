@@ -63,14 +63,14 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = cn({
-    'block px-4 py-2 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
+    'block h-full w-full break-all border-0 px-4 py-2 text-sm text-gray-900 outline-0': true,
     'block-input--editing': isEditing,
   })
 
   const renderSafeContent = (value: string) => {
     const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight
@@ -111,7 +111,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
   const TextAreaContentView = () => {
     return (
-      <div className={cn(style, className)}>
+      <div className={cn(style, className)} data-testid="block-input-content">
         {renderSafeContent(currentValue || '')}
       </div>
     )
@@ -121,7 +121,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
 
   const textAreaContent = (
-    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
+    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
         ? (
             <div className="h-full px-4 py-2">
@@ -134,10 +134,10 @@ const BlockInput: FC<IBlockInputProps> = ({
                 onBlur={() => {
                   blur()
                   setIsEditing(false)
-                  // click confirm also make blur. Then outer value is change. So below code has problem.
-                  // setTimeout(() => {
-                  //   handleCancel()
-                  // }, 1000)
+                // click confirm also make blur. Then outer value is change. So below code has problem.
+                // setTimeout(() => {
+                //   handleCancel()
+                // }, 1000)
                 }}
               />
             </div>
@@ -147,7 +147,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   )
 
   return (
-    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
+    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')} data-testid="block-input">
       {textAreaContent}
       {/* footer */}
       {!readonly && (

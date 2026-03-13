@@ -11,8 +11,8 @@ from core.entities.parameter_entities import (
     ModelSelectorScope,
     ToolSelectorScope,
 )
-from core.model_runtime.entities.model_entities import ModelType
 from core.tools.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import ModelType
 
 
 class ProviderQuotaType(StrEnum):
