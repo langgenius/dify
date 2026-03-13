@@ -82,8 +82,11 @@ vi.mock('@/app/components/base/voice-input', () => {
   }
 })
 
-vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 16))
-vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+  cb(Date.now())
+  return 0
+})
+vi.stubGlobal('cancelAnimationFrame', vi.fn())
 vi.stubGlobal('devicePixelRatio', 1)
 
 // Mock Canvas
