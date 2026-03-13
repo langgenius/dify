@@ -1,10 +1,11 @@
+/// <reference types="vitest/config" />
+
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 
@@ -20,8 +21,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: isTest
       ? [
-          // TODO: remove tsconfigPaths from test config after vitest supports it natively
-          tsconfigPaths(),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
@@ -46,7 +45,8 @@ export default defineConfig(({ mode }) => {
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
-            vinext(),
+            react(),
+            vinext({ react: false }),
             customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
             // reactGrabOpenFilePlugin({
             //   injectTarget: browserInitializerInjectTarget,
@@ -78,6 +78,7 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
+      reporters: ['agent'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
