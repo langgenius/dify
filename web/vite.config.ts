@@ -15,7 +15,8 @@ const isCI = !!process.env.CI
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, projectRoot, 'VITE_')
+  const viteEnv = loadEnv(mode, projectRoot, 'VITE_')
+  const publicEnv = loadEnv(mode, projectRoot, 'NEXT_PUBLIC_')
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
@@ -68,8 +69,10 @@ export default defineConfig(({ mode }) => {
           server: {
             port: 3000,
             proxy: createDevProxyConfig({
-              consoleApiTarget: env.VITE_CONSOLE_API_PROXY_TARGET,
-              publicApiTarget: env.VITE_PUBLIC_API_PROXY_TARGET,
+              consoleApiTarget: viteEnv.VITE_CONSOLE_API_PROXY_TARGET,
+              publicApiTarget: viteEnv.VITE_PUBLIC_API_PROXY_TARGET,
+              consoleApiPrefix: publicEnv.NEXT_PUBLIC_API_PREFIX,
+              publicApiPrefix: publicEnv.NEXT_PUBLIC_PUBLIC_API_PREFIX,
             }),
           },
           ssr: {

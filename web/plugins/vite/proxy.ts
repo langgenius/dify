@@ -116,15 +116,29 @@ const createCookieAwareProxy = (target = DEFAULT_PROXY_TARGET): ProxyOptions => 
   },
 })
 
+const isRelativePathPrefix = (prefix?: string) => {
+  if (!prefix)
+    return false
+
+  return prefix.startsWith('/') && !prefix.startsWith('//')
+}
+
 export const createDevProxyConfig = (options?: {
   consoleApiTarget?: string
   publicApiTarget?: string
+  consoleApiPrefix?: string
+  publicApiPrefix?: string
 }) => {
   const consoleApiTarget = options?.consoleApiTarget || DEFAULT_PROXY_TARGET
   const publicApiTarget = options?.publicApiTarget || consoleApiTarget
 
-  return {
-    '/console/api': createCookieAwareProxy(consoleApiTarget),
-    '/api': createCookieAwareProxy(publicApiTarget),
-  } satisfies Record<string, ProxyOptions>
+  const proxyConfig: Record<string, ProxyOptions> = {}
+
+  if (isRelativePathPrefix(options?.consoleApiPrefix))
+    proxyConfig['/console/api'] = createCookieAwareProxy(consoleApiTarget)
+
+  if (isRelativePathPrefix(options?.publicApiPrefix))
+    proxyConfig['/api'] = createCookieAwareProxy(publicApiTarget)
+
+  return proxyConfig
 }
