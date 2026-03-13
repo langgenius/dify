@@ -365,24 +365,12 @@ class WorkflowRunRestore:
         def has_insert_default(column: Any) -> bool:
             # SQLAlchemy may set column.autoincrement to "auto" on non-PK columns.
             # Only treat the resolved autoincrement column as DB-generated.
-            return (
-                column.default is not None
-                or column.server_default is not None
-                or column is autoincrement_column
-            )
+            return column.default is not None or column.server_default is not None or column is autoincrement_column
 
         column_names = {column.key for column in columns}
-        required_columns = {
-            column.key
-            for column in columns
-            if not column.nullable
-            and not has_insert_default(column)
-        }
+        required_columns = {column.key for column in columns if not column.nullable and not has_insert_default(column)}
         non_nullable_with_default = {
-            column.key
-            for column in columns
-            if not column.nullable
-            and has_insert_default(column)
+            column.key for column in columns if not column.nullable and has_insert_default(column)
         }
         return column_names, required_columns, non_nullable_with_default
 
