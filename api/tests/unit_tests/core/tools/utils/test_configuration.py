@@ -154,7 +154,6 @@ def test_decrypt_tool_parameters_cache_miss() -> None:
 
 def test_delete_tool_parameters_cache():
     """Test that cache deletion calls the cache delete method."""
-    """Test that cache deletion calls the cache delete method."""
     with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
         cache_mock = MagicMock()
         cache_cls.return_value = cache_mock
