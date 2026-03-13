@@ -91,6 +91,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
             className="mr-2 shrink-0"
             checked={isSelected}
             onCheck={() => onSelectOne(doc.id)}
+            id={`doc-row-${doc.id}`}
           />
           {index + 1}
         </div>
