@@ -1,3 +1,4 @@
+from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -41,17 +42,17 @@ class HologresConfig(BaseSettings):
         default="public",
     )
 
-    HOLOGRES_TOKENIZER: str = Field(
+    HOLOGRES_TOKENIZER: TokenizerType = Field(
         description="Tokenizer for full-text search index (e.g., 'jieba', 'ik', 'standard', 'simple').",
         default="jieba",
     )
 
-    HOLOGRES_DISTANCE_METHOD: str = Field(
+    HOLOGRES_DISTANCE_METHOD: DistanceType = Field(
         description="Distance method for vector index (e.g., 'Cosine', 'Euclidean', 'InnerProduct').",
         default="Cosine",
     )
 
-    HOLOGRES_BASE_QUANTIZATION_TYPE: str = Field(
+    HOLOGRES_BASE_QUANTIZATION_TYPE: BaseQuantizationType = Field(
         description="Base quantization type for vector index (e.g., 'rabitq', 'sq8', 'fp16', 'fp32').",
         default="rabitq",
     )

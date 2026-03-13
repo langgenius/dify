@@ -1,5 +1,8 @@
 import os
 import uuid
+from typing import cast
+
+from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
 
 from core.rag.datasource.vdb.hologres.hologres_vector import HologresVector, HologresVectorConfig
 from core.rag.models.document import Document
@@ -23,9 +26,9 @@ class HologresVectorTest(AbstractVectorTest):
                 access_key_id=os.environ.get("HOLOGRES_ACCESS_KEY_ID", "test_key"),
                 access_key_secret=os.environ.get("HOLOGRES_ACCESS_KEY_SECRET", "test_secret"),
                 schema_name=os.environ.get("HOLOGRES_SCHEMA", "public"),
-                tokenizer=os.environ.get("HOLOGRES_TOKENIZER", "jieba"),
-                distance_method=os.environ.get("HOLOGRES_DISTANCE_METHOD", "Cosine"),
-                base_quantization_type=os.environ.get("HOLOGRES_BASE_QUANTIZATION_TYPE", "rabitq"),
+                tokenizer=cast(TokenizerType, os.environ.get("HOLOGRES_TOKENIZER", "jieba")),
+                distance_method=cast(DistanceType, os.environ.get("HOLOGRES_DISTANCE_METHOD", "Cosine")),
+                base_quantization_type=cast(BaseQuantizationType, os.environ.get("HOLOGRES_BASE_QUANTIZATION_TYPE", "rabitq")),
                 max_degree=int(os.environ.get("HOLOGRES_MAX_DEGREE", "64")),
                 ef_construction=int(os.environ.get("HOLOGRES_EF_CONSTRUCTION", "400")),
             ),
