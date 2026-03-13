@@ -68,7 +68,7 @@ def init_tool_node(config: dict):
     return node
 
 
-def test_tool_variable_invoke():
+def test_tool_variable_invoke(monkeypatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -87,7 +87,11 @@ def test_tool_variable_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
+    monkeypatch.setattr(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"}),
+    )
 
     node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
@@ -100,7 +104,7 @@ def test_tool_variable_invoke():
             assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke():
+def test_tool_mixed_invoke(monkeypatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -121,7 +125,11 @@ def test_tool_mixed_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
+    monkeypatch.setattr(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"}),
+    )
 
     # execute node
     result = node._run()

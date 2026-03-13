@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import core.tools.utils.configuration as configuration_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -109,20 +110,20 @@ def test_encrypt_tool_parameters():
     assert encrypted["plain"] == "x"
 
 
-def test_decrypt_tool_parameters_cache_hit_and_miss():
+def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch):
     manager = _build_manager()
 
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = {"secret": "cached"}
-        assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
-        cache.set.assert_not_called()
+    cache = MagicMock()
+    monkeypatch.setattr(configuration_module, "ToolParameterCache", lambda *args, **kwargs: cache)
+    cache.get.return_value = {"secret": "cached"}
+    assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
+    cache.set.assert_not_called()
 
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
-        with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
-            decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
+    cache = MagicMock()
+    monkeypatch.setattr(configuration_module, "ToolParameterCache", lambda *args, **kwargs: cache)
+    cache.get.return_value = None
+    with patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec"):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
 
     assert decrypted["secret"] == "dec"
     cache.set.assert_called_once()
@@ -137,12 +138,14 @@ def test_delete_tool_parameters_cache():
     cache_cls.return_value.delete.assert_called_once()
 
 
-def test_configuration_manager_decrypt_suppresses_errors():
+def test_configuration_manager_decrypt_suppresses_errors(monkeypatch):
     manager = _build_manager()
-    with patch("core.tools.utils.configuration.ToolParameterCache") as cache_cls:
-        cache = cache_cls.return_value
-        cache.get.return_value = None
-        with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
-            decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
+
+    cache = MagicMock()
+    monkeypatch.setattr(configuration_module, "ToolParameterCache", lambda *args, **kwargs: cache)
+    cache.get.return_value = None
+    with patch("core.tools.utils.configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
+
     # decryption failure is suppressed, original value is retained.
     assert decrypted["secret"] == "enc"
