@@ -138,20 +138,25 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             query = self.application_generate_entity.query
 
             # moderation
-            if self.handle_input_moderation(
+            stop, new_inputs, new_query = self.handle_input_moderation(
                 app_record=self._app,
                 app_generate_entity=self.application_generate_entity,
                 inputs=inputs,
                 query=query,
                 message_id=self.message.id,
-            ):
+            )
+            if stop:
                 return
+
+            self.application_generate_entity.inputs = new_inputs
+            self.application_generate_entity.query = new_query
+            system_inputs.query = new_query
 
             # annotation reply
             if self.handle_annotation_reply(
                 app_record=self._app,
                 message=self.message,
-                query=query,
+                query=new_query,
                 app_generate_entity=self.application_generate_entity,
             ):
                 return
@@ -163,7 +168,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             # init variable pool
             variable_pool = VariablePool(
                 system_variables=system_inputs,
-                user_inputs=inputs,
+                user_inputs=new_inputs,
                 environment_variables=self._workflow.environment_variables,
                 # Based on the definition of `Variable`,
                 # `VariableBase` instances can be safely used as `Variable` since they are compatible.
@@ -240,10 +245,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         inputs: Mapping[str, Any],
         query: str,
         message_id: str,
-    ) -> bool:
+    ) -> tuple[bool, Mapping[str, Any], str]:
         try:
             # process sensitive_word_avoidance
-            _, inputs, query = self.moderation_for_inputs(
+            _, new_inputs, new_query = self.moderation_for_inputs(
                 app_id=app_record.id,
                 tenant_id=app_generate_entity.app_config.tenant_id,
                 app_generate_entity=app_generate_entity,
@@ -253,9 +258,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
         except ModerationError as e:
             self._complete_with_stream_output(text=str(e), stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION)
-            return True
+            return True, inputs, query
 
-        return False
+        return False, new_inputs, new_query
 
     def handle_annotation_reply(
         self, app_record: App, message: Message, query: str, app_generate_entity: AdvancedChatAppGenerateEntity

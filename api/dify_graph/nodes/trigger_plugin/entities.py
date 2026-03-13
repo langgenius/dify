@@ -4,12 +4,15 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.trigger.entities.entities import EventParameter
-from dify_graph.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import NodeType
 from dify_graph.nodes.trigger_plugin.exc import TriggerEventParameterError
 
 
 class TriggerEventNodeData(BaseNodeData):
     """Plugin trigger node data"""
+
+    type: NodeType = NodeType.TRIGGER_PLUGIN
 
     class TriggerEventInput(BaseModel):
         value: Union[Any, list[str]]
@@ -38,8 +41,6 @@ class TriggerEventNodeData(BaseNodeData):
                 raise ValueError("value must be a string, int, float, bool or dict")
             return type
 
-    title: str
-    desc: str | None = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")
     event_name: str = Field(..., description="Event name")

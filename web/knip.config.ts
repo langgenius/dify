@@ -7,9 +7,10 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
+    'taze.config.js',
+    'tsslint.config.ts',
   ],
   ignore: [
-    'i18n/**',
     'public/**',
   ],
   ignoreBinaries: [
@@ -19,14 +20,6 @@ const config: KnipConfig = {
     '@iconify-json/*',
 
     '@storybook/addon-onboarding',
-
-    // vinext related
-    'react-server-dom-webpack',
-    '@vitejs/plugin-rsc',
-    '@mdx-js/rollup',
-
-    '@tsslint/compat-eslint',
-    '@tsslint/config',
   ],
   rules: {
     files: 'warn',
