@@ -397,11 +397,13 @@ class Node(Generic[NodeDataT]):
                 error=str(e),
                 error_type="WorkflowNodeError",
             )
+            finished_at = naive_utc_now()
             yield NodeRunFailedEvent(
                 id=self.execution_id,
                 node_id=self._node_id,
                 node_type=self.node_type,
                 start_at=self._start_at,
+                finished_at=finished_at,
                 node_run_result=result,
                 error=str(e),
             )
@@ -569,6 +571,7 @@ class Node(Generic[NodeDataT]):
         return self._node_data
 
     def _convert_node_run_result_to_graph_node_event(self, result: NodeRunResult) -> GraphNodeEventBase:
+        finished_at = naive_utc_now()
         match result.status:
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
@@ -576,6 +579,7 @@ class Node(Generic[NodeDataT]):
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
+                    finished_at=finished_at,
                     node_run_result=result,
                     error=result.error,
                 )
@@ -585,6 +589,7 @@ class Node(Generic[NodeDataT]):
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
+                    finished_at=finished_at,
                     node_run_result=result,
                 )
             case _:
@@ -607,6 +612,7 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamCompletedEvent) -> NodeRunSucceededEvent | NodeRunFailedEvent:
+        finished_at = naive_utc_now()
         match event.node_run_result.status:
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
@@ -614,6 +620,7 @@ class Node(Generic[NodeDataT]):
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
+                    finished_at=finished_at,
                     node_run_result=event.node_run_result,
                 )
             case WorkflowNodeExecutionStatus.FAILED:
@@ -622,6 +629,7 @@ class Node(Generic[NodeDataT]):
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
+                    finished_at=finished_at,
                     node_run_result=event.node_run_result,
                     error=event.node_run_result.error,
                 )

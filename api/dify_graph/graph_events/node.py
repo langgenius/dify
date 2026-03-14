@@ -36,16 +36,19 @@ class NodeRunRetrieverResourceEvent(GraphNodeEventBase):
 
 class NodeRunSucceededEvent(GraphNodeEventBase):
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunFailedEvent(GraphNodeEventBase):
     error: str = Field(..., description="error")
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunExceptionEvent(GraphNodeEventBase):
     error: str = Field(..., description="error")
     start_at: datetime = Field(..., description="node start time")
+    finished_at: datetime | None = Field(default=None, description="node finish time")
 
 
 class NodeRunRetryEvent(NodeRunStartedEvent):
