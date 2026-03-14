@@ -2,6 +2,7 @@ import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from functools import lru_cache
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
 
 from sqlalchemy import select
@@ -22,7 +23,6 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.node_resolution import resolve_workflow_node_class
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
@@ -81,9 +81,15 @@ def register_nodes() -> None:
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
-    """Return a read-only snapshot of the current production node registry."""
+    """Return a read-only snapshot of the current production node registry.
+
+    The workflow layer owns node bootstrap because it must compose built-in
+    `dify_graph.nodes.*` implementations with workflow-local nodes under
+    `core.workflow.nodes.*`. Keeping this import side effect here avoids
+    reintroducing registry bootstrapping into lower-level graph primitives.
+    """
     register_nodes()
-    return Node.get_node_type_classes_mapping()
+    return {node_type: MappingProxyType(version_map) for node_type, version_map in Node._registry.items()}
 
 
 def is_start_node_type(node_type: NodeType) -> bool:
@@ -350,6 +356,10 @@ class DifyNodeFactory(NodeFactory):
 
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+        # Import lazily to avoid a module cycle with `node_resolution`, which
+        # imports `get_node_type_classes_mapping` from this module at import time.
+        from core.workflow.node_resolution import resolve_workflow_node_class
+
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
     def _build_llm_compatible_node_init_kwargs(

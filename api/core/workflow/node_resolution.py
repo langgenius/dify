@@ -1,41 +1,12 @@
-from __future__ import annotations
-
-import pkgutil
-from collections.abc import Mapping
-from importlib import import_module
-
+from core.workflow.node_factory import get_node_type_classes_mapping
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.node_mapping import LATEST_VERSION, get_node_type_classes_mapping
 
-_workflow_nodes_registered = False
-
-
-def _import_node_package(package_name: str) -> None:
-    package = import_module(package_name)
-    for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
-        import_module(module_name)
-
-
-def ensure_workflow_nodes_registered() -> None:
-    """Import workflow-local node modules so they can register with `Node.__init_subclass__`."""
-    global _workflow_nodes_registered
-
-    if _workflow_nodes_registered:
-        return
-
-    _import_node_package("core.workflow.nodes")
-
-    _workflow_nodes_registered = True
-
-
-def get_workflow_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
-    ensure_workflow_nodes_registered()
-    return get_node_type_classes_mapping()
+LATEST_VERSION = "latest"
 
 
 def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
-    node_mapping = get_workflow_node_type_classes_mapping().get(node_type)
+    node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
 

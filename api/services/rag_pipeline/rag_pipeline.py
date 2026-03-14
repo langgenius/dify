@@ -36,7 +36,8 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_resolution import LATEST_VERSION, get_workflow_node_type_classes_mapping
+from core.workflow.node_factory import get_node_type_classes_mapping
+from core.workflow.node_resolution import LATEST_VERSION
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -381,7 +382,7 @@ class RagPipelineService:
         """
         # return default block config
         default_block_configs: list[dict[str, Any]] = []
-        for node_type, node_class_mapping in get_workflow_node_type_classes_mapping().items():
+        for node_type, node_class_mapping in get_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
             if node_type == BuiltinNodeTypes.HTTP_REQUEST:
@@ -410,7 +411,7 @@ class RagPipelineService:
         :return:
         """
         node_type_enum = NodeType(node_type)
-        node_mapping = get_workflow_node_type_classes_mapping()
+        node_mapping = get_node_type_classes_mapping()
 
         # return default block config
         if node_type_enum not in node_mapping:

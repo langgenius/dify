@@ -113,7 +113,7 @@ The codebase enforces strict layering via import-linter:
 1. Create node class in `nodes/<node_type>/`
 1. Inherit from `BaseNode` or appropriate base class
 1. Implement `_run()` method
-1. Register in `nodes/node_mapping.py`
+1. Ensure the node module is importable under `nodes/<node_type>/`
 1. Add tests in `tests/unit_tests/dify_graph/nodes/`
 
 ### Implementing a Custom Layer

@@ -486,7 +486,8 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             # variable selector to variable mapping
             try:
                 # Get node class
-                from dify_graph.nodes.node_mapping import get_node_type_classes_mapping
+                # TODO: Remove this workflow-layer import once node-class lookup no longer depends on node_factory.
+                from core.workflow.node_factory import get_node_type_classes_mapping
 
                 typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
                 node_type = typed_sub_node_config["data"].type
