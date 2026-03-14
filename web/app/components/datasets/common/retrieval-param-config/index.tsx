@@ -232,25 +232,25 @@ const RetrievalParamConfig: FC<Props> = ({
               }
             </div>
             {
-              value.reranking_mode === RerankingModeEnum.WeightedScore && (
+              value.reranking_mode === RerankingModeEnum.WeightedScore && value.weights && (
                 <WeightedScore
                   value={{
                     value: [
-                      value.weights!.vector_setting.vector_weight,
-                      value.weights!.keyword_setting.keyword_weight,
+                      value.weights.vector_setting.vector_weight,
+                      value.weights.keyword_setting.keyword_weight,
                     ],
                   }}
                   onChange={(v) => {
                     onChange({
                       ...value,
                       weights: {
-                        ...value.weights!,
+                        ...value.weights,
                         vector_setting: {
-                          ...value.weights!.vector_setting,
+                          ...value.weights.vector_setting,
                           vector_weight: v.value[0],
                         },
                         keyword_setting: {
-                          ...value.weights!.keyword_setting,
+                          ...value.weights.keyword_setting,
                           keyword_weight: v.value[1],
                         },
                       },
