@@ -14,8 +14,10 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.node_resolution import LATEST_VERSION, get_workflow_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -33,7 +35,6 @@ from dify_graph.nodes.human_input.entities import (
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormKind
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -618,7 +619,7 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs: list[Mapping[str, object]] = []
-        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
+        for node_type, node_class_mapping in get_workflow_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
             if node_type is NodeType.HTTP_REQUEST:
@@ -649,12 +650,13 @@ class WorkflowService:
         :return:
         """
         node_type_enum = NodeType(node_type)
+        node_mapping = get_workflow_node_type_classes_mapping()
 
         # return default block config
-        if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
+        if node_type_enum not in node_mapping:
             return {}
 
-        node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
+        node_class = node_mapping[node_type_enum][LATEST_VERSION]
         resolved_filters = dict(filters) if filters else {}
         if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
             resolved_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
@@ -693,7 +695,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config.get("data", {})
+        node_data = node_config["data"]
         if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -703,7 +705,7 @@ class WorkflowService:
                     workflow=draft_workflow,
                 )
                 if node_type is NodeType.START:
-                    start_data = StartNodeData.model_validate(node_data)
+                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
                     )
@@ -941,7 +943,7 @@ class WorkflowService:
         if node_type is not NodeType.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
-        node_data = HumanInputNodeData.model_validate(node_config.get("data", {}))
+        node_data = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
         delivery_method = self._resolve_human_input_delivery_method(
             node_data=node_data,
             delivery_method_id=delivery_method_id,
@@ -951,7 +953,7 @@ class WorkflowService:
         delivery_method = apply_debug_email_recipient(
             delivery_method,
             enabled=True,
-            user_id=account.id or "",
+            user_id=account.id,
         )
 
         variable_pool = self._build_human_input_variable_pool(
@@ -1059,7 +1061,7 @@ class WorkflowService:
         *,
         workflow: Workflow,
         account: Account,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         variable_pool: VariablePool,
     ) -> HumanInputNode:
         graph_init_params = GraphInitParams(
@@ -1079,7 +1081,7 @@ class WorkflowService:
             start_at=time.perf_counter(),
         )
         node = HumanInputNode(
-            id=node_config.get("id", str(uuid.uuid4())),
+            id=node_config["id"],
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -1092,7 +1094,7 @@ class WorkflowService:
         *,
         app_model: App,
         workflow: Workflow,
-        node_config: Mapping[str, Any],
+        node_config: NodeConfigDict,
         manual_inputs: Mapping[str, Any],
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():

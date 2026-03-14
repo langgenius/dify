@@ -9,9 +9,10 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_resolution import resolve_workflow_node_class
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigData, NodeConfigDict
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.models import File
 from dify_graph.graph import Graph
@@ -23,7 +24,6 @@ from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from dify_graph.nodes import NodeType
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -212,7 +212,7 @@ class WorkflowEntry:
         node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data["type"])
+        node_type = node_config_data.type
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -234,8 +234,7 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        typed_node_config = cast(dict[str, object], node_config)
-        node = cast(Any, node_factory).create_node(typed_node_config)
+        node = node_factory.create_node(node_config)
         node_cls = type(node)
 
         try:
@@ -344,7 +343,7 @@ class WorkflowEntry:
         if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]
+        node_cls = resolve_workflow_node_class(node_type=node_type, node_version="1")
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
@@ -371,10 +370,7 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config: NodeConfigDict = {
-            "id": node_id,
-            "data": cast(NodeConfigData, node_data),
-        }
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

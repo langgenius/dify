@@ -3730,7 +3730,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 attachment_ids=None,
                 dataset_ids=["d1"],
                 app_id="a1",
-                user_from="web",
+                user_from="account",
                 user_id="u1",
             )
             mock_session.add_all.assert_not_called()
@@ -3740,7 +3740,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 attachment_ids=["f1"],
                 dataset_ids=["d1", "d2"],
                 app_id="a1",
-                user_from="web",
+                user_from="account",
                 user_id="u1",
             )
             mock_session.add_all.assert_called()

@@ -119,7 +119,7 @@ const CustomWebAppBrand = () => {
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary system-md-medium">
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
-          size="l"
+          size="lg"
           value={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
           onChange={handleSwitch}

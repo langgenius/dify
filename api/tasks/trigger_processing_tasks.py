@@ -164,7 +164,7 @@ def _record_trigger_failure_log(
         elapsed_time=0.0,
         total_tokens=0,
         total_steps=0,
-        created_by_role=created_by_role.value,
+        created_by_role=created_by_role,
         created_by=created_by,
         created_at=now,
         finished_at=now,
@@ -179,7 +179,7 @@ def _record_trigger_failure_log(
         workflow_id=workflow.id,
         workflow_run_id=workflow_run.id,
         created_from=WorkflowAppLogCreatedFrom.SERVICE_API.value,
-        created_by_role=created_by_role.value,
+        created_by_role=created_by_role,
         created_by=created_by,
     )
     session.add(workflow_app_log)
@@ -212,7 +212,7 @@ def _record_trigger_failure_log(
         error=error_message,
         queue_name=queue_name,
         retry_count=0,
-        created_by_role=created_by_role.value,
+        created_by_role=created_by_role,
         created_by=created_by,
         triggered_at=now,
         finished_at=now,

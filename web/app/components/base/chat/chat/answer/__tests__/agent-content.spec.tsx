@@ -54,6 +54,26 @@ describe('AgentContent', () => {
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Log Annotation Content')
   })
 
+  it('renders empty string if logAnnotation content is missing', () => {
+    const itemWithEmptyAnnotation = {
+      ...mockItem,
+      annotation: {
+        logAnnotation: { content: '' },
+      },
+    }
+    const { rerender } = render(<AgentContent item={itemWithEmptyAnnotation as ChatItem} />)
+    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
+
+    const itemWithUndefinedAnnotation = {
+      ...mockItem,
+      annotation: {
+        logAnnotation: {},
+      },
+    }
+    rerender(<AgentContent item={itemWithUndefinedAnnotation as ChatItem} />)
+    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
+  })
+
   it('renders content prop if provided and no annotation', () => {
     render(<AgentContent item={mockItem} content="Direct Content" />)
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Direct Content')
