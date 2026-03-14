@@ -22,6 +22,8 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import Toast from '@/app/components/base/toast'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -47,6 +49,12 @@ import {
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
+  isClipboardEdgeStructurallyValid,
+  isClipboardNodeStructurallyValid,
+  isClipboardValueCompatibleWithDefault,
+  readWorkflowClipboard,
+  sanitizeClipboardValueByDefault,
+  writeWorkflowClipboard,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
@@ -73,8 +81,49 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   y: 21, // Adjusted based on visual testing feedback
 } as const
 
+const pruneClipboardNodesWithFilteredAncestors = (
+  sourceNodes: Node[],
+  candidateNodes: Node[],
+): Node[] => {
+  const candidateNodeIds = new Set(candidateNodes.map(node => node.id))
+  const filteredRootIds = sourceNodes
+    .filter(node => !candidateNodeIds.has(node.id))
+    .map(node => node.id)
+
+  if (!filteredRootIds.length)
+    return candidateNodes
+
+  const childrenByParent = new Map<string, string[]>()
+  sourceNodes.forEach((node) => {
+    if (!node.parentId)
+      return
+
+    const children = childrenByParent.get(node.parentId) ?? []
+    children.push(node.id)
+    childrenByParent.set(node.parentId, children)
+  })
+
+  const filteredNodeIds = new Set(filteredRootIds)
+  const queue = [...filteredRootIds]
+
+  while (queue.length) {
+    const currentNodeId = queue.shift()!
+    const children = childrenByParent.get(currentNodeId) ?? []
+    children.forEach((childId) => {
+      if (filteredNodeIds.has(childId))
+        return
+
+      filteredNodeIds.add(childId)
+      queue.push(childId)
+    })
+  }
+
+  return candidateNodes.filter(node => !filteredNodeIds.has(node.id))
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
+  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -450,13 +499,11 @@ export const useNodesInteractions = () => {
       }
 
       if (
-        edges.find(
-          edge =>
-            edge.source === source
-            && edge.sourceHandle === sourceHandle
-            && edge.target === target
-            && edge.targetHandle === targetHandle,
-        )
+        edges.some(edge =>
+          edge.source === source
+          && edge.sourceHandle === sourceHandle
+          && edge.target === target
+          && edge.targetHandle === targetHandle)
       ) {
         return
       }
@@ -778,9 +825,7 @@ export const useNodesInteractions = () => {
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
+            !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
         )
       })
       setEdges(newEdges)
@@ -856,7 +901,7 @@ export const useNodesInteractions = () => {
         const outgoers = getOutgoers(prevNode, nodes, edges).sort(
           (a, b) => a.position.y - b.position.y,
         )
-        const lastOutgoer = outgoers[outgoers.length - 1]
+        const lastOutgoer = outgoers.at(-1)
 
         newNode.data._connectedTargetHandleIds
           = nodeType === BlockEnum.DataSource ? [] : [targetHandle]
@@ -1582,9 +1627,7 @@ export const useNodesInteractions = () => {
       setNodes(newNodes)
       const remainingEdges = edges.filter(
         edge =>
-          !connectedEdges.find(
-            connectedEdge => connectedEdge.id === edge.id,
-          ),
+          !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
       )
       setEdges([...remainingEdges, ...reconnectedEdges])
       if (nodeType === BlockEnum.TriggerWebhook) {
@@ -1656,71 +1699,150 @@ export const useNodesInteractions = () => {
     [workflowStore, handleNodeSelect],
   )
 
+  const isNodeCopyable = useCallback((node: Node) => {
+    if (
+      node.type === CUSTOM_ITERATION_START_NODE
+      || node.type === CUSTOM_LOOP_START_NODE
+    ) {
+      return false
+    }
+
+    if (
+      node.data.type === BlockEnum.Start
+      || node.data.type === BlockEnum.LoopEnd
+      || node.data.type === BlockEnum.KnowledgeBase
+      || node.data.type === BlockEnum.DataSourceEmpty
+    ) {
+      return false
+    }
+
+    if (node.type === CUSTOM_NOTE_NODE)
+      return true
+
+    const nodeMeta = nodesMetaDataMap?.[node.data.type as BlockEnum]
+    if (!nodeMeta)
+      return false
+
+    const { metaData } = nodeMeta
+    return !metaData.isSingleton
+  }, [nodesMetaDataMap])
+
+  const getNodeDefaultValueForPaste = useCallback((node: Node) => {
+    if (node.type === CUSTOM_NOTE_NODE)
+      return {}
+
+    const nodeMeta = nodesMetaDataMap?.[node.data.type as BlockEnum]
+    return nodeMeta?.defaultValue
+  }, [nodesMetaDataMap])
+
   const handleNodesCopy = useCallback(
     (nodeId?: string) => {
       if (getNodesReadOnly())
         return
 
-      const { setClipboardElements } = workflowStore.getState()
-
-      const { getNodes } = store.getState()
-
+      const { setClipboardData } = workflowStore.getState()
+      const { getNodes, edges } = store.getState()
       const nodes = getNodes()
+      let nodesToCopy: Node[] = []
 
       if (nodeId) {
-        // If nodeId is provided, copy that specific node
-        const nodeToCopy = nodes.find(
-          node =>
-            node.id === nodeId
-            && node.data.type !== BlockEnum.Start
-            && node.type !== CUSTOM_ITERATION_START_NODE
-            && node.type !== CUSTOM_LOOP_START_NODE
-            && node.data.type !== BlockEnum.LoopEnd
-            && node.data.type !== BlockEnum.KnowledgeBase
-            && node.data.type !== BlockEnum.DataSourceEmpty,
-        )
+        const nodeToCopy = nodes.find(node => node.id === nodeId && isNodeCopyable(node))
         if (nodeToCopy)
-          setClipboardElements([nodeToCopy])
+          nodesToCopy = [nodeToCopy]
       }
       else {
-        // If no nodeId is provided, fall back to the current behavior
         const bundledNodes = nodes.filter((node) => {
           if (!node.data._isBundled)
             return false
+
+          if (!isNodeCopyable(node))
+            return false
+
           if (node.type === CUSTOM_NOTE_NODE)
             return true
-          const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
-          if (metaData.isSingleton)
-            return false
+
           return !node.data.isInIteration && !node.data.isInLoop
         })
 
         if (bundledNodes.length) {
-          setClipboardElements(bundledNodes)
-          return
+          nodesToCopy = bundledNodes
         }
+        else {
+          const selectedNodes = nodes.filter(
+            node => node.data.selected && isNodeCopyable(node),
+          )
 
-        const selectedNode = nodes.find((node) => {
-          if (!node.data.selected)
-            return false
-          if (node.type === CUSTOM_NOTE_NODE)
-            return true
-          const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
-          return !metaData.isSingleton
-        })
-
-        if (selectedNode)
-          setClipboardElements([selectedNode])
+          if (selectedNodes.length)
+            nodesToCopy = selectedNodes
+        }
       }
+
+      if (!nodesToCopy.length)
+        return
+
+      const copiedNodesMap = new Map(nodesToCopy.map(node => [node.id, node]))
+      const queue = nodesToCopy
+        .filter(node => node.data.type === BlockEnum.Iteration || node.data.type === BlockEnum.Loop)
+        .map(node => node.id)
+
+      while (queue.length) {
+        const parentId = queue.shift()!
+        nodes.forEach((node) => {
+          if (node.parentId !== parentId || copiedNodesMap.has(node.id))
+            return
+
+          copiedNodesMap.set(node.id, node)
+          if (node.data.type === BlockEnum.Iteration || node.data.type === BlockEnum.Loop)
+            queue.push(node.id)
+        })
+      }
+
+      const copiedNodes = [...copiedNodesMap.values()]
+      const copiedNodeIds = new Set(copiedNodes.map(node => node.id))
+      const copiedEdges = edges.filter(
+        edge => copiedNodeIds.has(edge.source) && copiedNodeIds.has(edge.target),
+      )
+
+      const clipboardData = {
+        nodes: copiedNodes,
+        edges: copiedEdges,
+      }
+
+      setClipboardData(clipboardData)
+      void writeWorkflowClipboard(clipboardData, appDslVersion).catch(() => {})
     },
-    [getNodesReadOnly, store, workflowStore],
+    [getNodesReadOnly, workflowStore, store, isNodeCopyable, appDslVersion],
   )
 
-  const handleNodesPaste = useCallback(() => {
+  const handleNodesPaste = useCallback(async () => {
     if (getNodesReadOnly())
       return
 
-    const { clipboardElements, mousePosition } = workflowStore.getState()
+    const {
+      clipboardElements: storeClipboardElements,
+      clipboardEdges: storeClipboardEdges,
+      mousePosition,
+      setClipboardData,
+    } = workflowStore.getState()
+    const clipboardData = await readWorkflowClipboard(appDslVersion)
+    const hasSystemClipboard = clipboardData.nodes.length > 0
+    const shouldRunCompatibilityCheck = hasSystemClipboard && clipboardData.isVersionMismatch
+
+    const clipboardElements = hasSystemClipboard
+      ? clipboardData.nodes
+      : storeClipboardElements
+    const clipboardEdges = hasSystemClipboard
+      ? clipboardData.edges
+      : storeClipboardEdges
+
+    if (hasSystemClipboard)
+      setClipboardData(clipboardData)
+
+    const validatedClipboardElements = clipboardElements.filter(isClipboardNodeStructurallyValid)
+    const validatedClipboardEdges = clipboardEdges.filter(isClipboardEdgeStructurallyValid)
+
+    if (!validatedClipboardElements.length)
+      return
 
     const { getNodes, setNodes, edges, setEdges } = store.getState()
 
@@ -1728,55 +1850,208 @@ export const useNodesInteractions = () => {
     const edgesToPaste: Edge[] = []
     const nodes = getNodes()
 
-    if (clipboardElements.length) {
-      const { x, y } = getTopLeftNodePosition(clipboardElements)
-      const { screenToFlowPosition } = reactflow
-      const currentPosition = screenToFlowPosition({
-        x: mousePosition.pageX,
-        y: mousePosition.pageY,
+    let compatibleClipboardElements = validatedClipboardElements.filter((node) => {
+      if (node.type === CUSTOM_NOTE_NODE)
+        return true
+
+      const nodeDefaultValue = getNodeDefaultValueForPaste(node)
+      if (!nodeDefaultValue)
+        return false
+
+      if (
+        shouldRunCompatibilityCheck
+        && !isClipboardValueCompatibleWithDefault(nodeDefaultValue, node.data)
+      ) {
+        return false
+      }
+
+      return true
+    })
+
+    if (shouldRunCompatibilityCheck) {
+      compatibleClipboardElements = pruneClipboardNodesWithFilteredAncestors(
+        validatedClipboardElements,
+        compatibleClipboardElements,
+      )
+    }
+
+    const compatibleClipboardNodeIds = new Set(
+      compatibleClipboardElements.map(node => node.id),
+    )
+    const filteredNodeCount = shouldRunCompatibilityCheck
+      ? validatedClipboardElements.length - compatibleClipboardElements.length
+      : 0
+    const filteredEdgeCount = shouldRunCompatibilityCheck
+      ? validatedClipboardEdges.filter(edge =>
+        !compatibleClipboardNodeIds.has(edge.source)
+        || !compatibleClipboardNodeIds.has(edge.target),
+      ).length
+      : 0
+
+    if (
+      shouldRunCompatibilityCheck
+      && (filteredNodeCount > 0 || filteredEdgeCount > 0)
+    ) {
+      Toast.notify({
+        type: 'warning',
+        message: t('common.clipboardVersionCompatibilityWarning', {
+          ns: 'workflow',
+        }),
       })
-      const offsetX = currentPosition.x - x
-      const offsetY = currentPosition.y - y
-      let idMapping: Record<string, string> = {}
-      const pastedNodesMap: Record<string, Node> = {}
-      const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
-      clipboardElements.forEach((nodeToPaste, index) => {
-        const nodeType = nodeToPaste.data.type
+    }
 
-        const { newNode, newIterationStartNode, newLoopStartNode }
-          = generateNewNode({
-            type: nodeToPaste.type,
-            data: {
-              ...(nodeToPaste.type !== CUSTOM_NOTE_NODE && nodesMetaDataMap![nodeType].defaultValue),
-              ...nodeToPaste.data,
-              selected: false,
-              _isBundled: false,
-              _connectedSourceHandleIds: [],
-              _connectedTargetHandleIds: [],
-              _dimmed: false,
-              title: genNewNodeTitleFromOld(nodeToPaste.data.title),
-            },
-            position: {
-              x: nodeToPaste.position.x + offsetX,
-              y: nodeToPaste.position.y + offsetY,
-            },
-            extent: nodeToPaste.extent,
-            zIndex: nodeToPaste.zIndex,
+    if (!compatibleClipboardElements.length)
+      return
+
+    const rootClipboardNodes = compatibleClipboardElements.filter(
+      node => !node.parentId || !compatibleClipboardNodeIds.has(node.parentId),
+    )
+    const positionReferenceNodes = rootClipboardNodes.length
+      ? rootClipboardNodes
+      : compatibleClipboardElements
+    const { x, y } = getTopLeftNodePosition(positionReferenceNodes)
+    const { screenToFlowPosition } = reactflow
+    const currentPosition = screenToFlowPosition({
+      x: mousePosition.pageX,
+      y: mousePosition.pageY,
+    })
+    const offsetX = currentPosition.x - x
+    const offsetY = currentPosition.y - y
+    let idMapping: Record<string, string> = {}
+    const pastedNodesMap: Record<string, Node> = {}
+    const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
+    const selectedNode = nodes.find(node => node.selected)
+
+    rootClipboardNodes.forEach((nodeToPaste, index) => {
+      const nodeDefaultValue = getNodeDefaultValueForPaste(nodeToPaste)
+      if (nodeToPaste.type !== CUSTOM_NOTE_NODE && !nodeDefaultValue)
+        return
+
+      const mergedData = shouldRunCompatibilityCheck
+        ? sanitizeClipboardValueByDefault(nodeDefaultValue ?? {}, nodeToPaste.data) as Record<string, unknown>
+        : {
+            ...(nodeToPaste.type !== CUSTOM_NOTE_NODE ? nodeDefaultValue : {}),
+            ...nodeToPaste.data,
+          }
+      const sourceTitle = typeof mergedData.title === 'string'
+        ? mergedData.title
+        : typeof nodeToPaste.data.title === 'string'
+          ? nodeToPaste.data.title
+          : 'Node'
+      const sourceDesc = typeof mergedData.desc === 'string'
+        ? mergedData.desc
+        : typeof nodeToPaste.data.desc === 'string'
+          ? nodeToPaste.data.desc
+          : ''
+
+      const { newNode, newIterationStartNode, newLoopStartNode }
+        = generateNewNode({
+          type: nodeToPaste.type,
+          data: {
+            ...mergedData,
+            type: nodeToPaste.data.type,
+            desc: sourceDesc,
+            selected: false,
+            _isBundled: false,
+            _connectedSourceHandleIds: [],
+            _connectedTargetHandleIds: [],
+            _dimmed: false,
+            isInIteration: false,
+            iteration_id: undefined,
+            isInLoop: false,
+            loop_id: undefined,
+            title: genNewNodeTitleFromOld(sourceTitle),
+          },
+          position: {
+            x: nodeToPaste.position.x + offsetX,
+            y: nodeToPaste.position.y + offsetY,
+          },
+          extent: nodeToPaste.extent,
+          zIndex: nodeToPaste.zIndex,
+        })
+      newNode.id = newNode.id + index
+
+      let newChildren: Node[] = []
+      if (nodeToPaste.data.type === BlockEnum.Iteration) {
+        if (newIterationStartNode) {
+          newIterationStartNode.parentId = newNode.id
+          const iterationNodeData = newNode.data as IterationNodeType
+          iterationNodeData.start_node_id = newIterationStartNode.id
+        }
+
+        const oldIterationStartNodeInClipboard = compatibleClipboardElements.find(
+          n =>
+            n.parentId === nodeToPaste.id
+            && n.type === CUSTOM_ITERATION_START_NODE,
+        )
+        if (oldIterationStartNodeInClipboard && newIterationStartNode)
+          idMapping[oldIterationStartNodeInClipboard.id] = newIterationStartNode.id
+
+        const copiedIterationChildren = compatibleClipboardElements.filter(
+          n =>
+            n.parentId === nodeToPaste.id
+            && n.type !== CUSTOM_ITERATION_START_NODE,
+        )
+        if (copiedIterationChildren.length) {
+          copiedIterationChildren.forEach((child, childIndex) => {
+            const childType = child.data.type
+            const childDefaultValue = getNodeDefaultValueForPaste(child)
+            if (child.type !== CUSTOM_NOTE_NODE && !childDefaultValue)
+              return
+
+            const mergedChildData = shouldRunCompatibilityCheck
+              ? sanitizeClipboardValueByDefault(childDefaultValue ?? {}, child.data) as Record<string, unknown>
+              : {
+                  ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
+                  ...child.data,
+                }
+            const childSourceTitle = typeof mergedChildData.title === 'string'
+              ? mergedChildData.title
+              : typeof child.data.title === 'string'
+                ? child.data.title
+                : 'Node'
+            const childSourceDesc = typeof mergedChildData.desc === 'string'
+              ? mergedChildData.desc
+              : typeof child.data.desc === 'string'
+                ? child.data.desc
+                : ''
+
+            const { newNode: newChild } = generateNewNode({
+              type: child.type,
+              data: {
+                ...mergedChildData,
+                desc: childSourceDesc,
+                selected: false,
+                _isBundled: false,
+                _connectedSourceHandleIds: [],
+                _connectedTargetHandleIds: [],
+                _dimmed: false,
+                title: genNewNodeTitleFromOld(childSourceTitle),
+                isInIteration: true,
+                iteration_id: newNode.id,
+                isInLoop: false,
+                loop_id: undefined,
+                type: childType,
+              },
+              position: child.position,
+              positionAbsolute: child.positionAbsolute,
+              parentId: newNode.id,
+              extent: child.extent,
+              zIndex: ITERATION_CHILDREN_Z_INDEX,
+            })
+            newChild.id = `${newNode.id}${newChild.id + childIndex}`
+            idMapping[child.id] = newChild.id
+            newChildren.push(newChild)
           })
-        newNode.id = newNode.id + index
-        // This new node is movable and can be placed anywhere
-        let newChildren: Node[] = []
-        if (nodeToPaste.data.type === BlockEnum.Iteration) {
-          newIterationStartNode!.parentId = newNode.id;
-          (newNode.data as IterationNodeType).start_node_id
-            = newIterationStartNode!.id
-
+        }
+        else {
           const oldIterationStartNode = nodes.find(
             n =>
               n.parentId === nodeToPaste.id
               && n.type === CUSTOM_ITERATION_START_NODE,
           )
-          idMapping[oldIterationStartNode!.id] = newIterationStartNode!.id
+          if (oldIterationStartNode && newIterationStartNode)
+            idMapping[oldIterationStartNode.id] = newIterationStartNode.id
 
           const { copyChildren, newIdMapping }
             = handleNodeIterationChildrenCopy(
@@ -1786,24 +2061,97 @@ export const useNodesInteractions = () => {
             )
           newChildren = copyChildren
           idMapping = newIdMapping
-          newChildren.forEach((child) => {
-            newNode.data._children?.push({
-              nodeId: child.id,
-              nodeType: child.data.type,
-            })
-          })
-          newChildren.push(newIterationStartNode!)
         }
-        else if (nodeToPaste.data.type === BlockEnum.Loop) {
-          newLoopStartNode!.parentId = newNode.id;
-          (newNode.data as LoopNodeType).start_node_id = newLoopStartNode!.id
 
+        newChildren.forEach((child) => {
+          newNode.data._children?.push({
+            nodeId: child.id,
+            nodeType: child.data.type,
+          })
+        })
+        if (newIterationStartNode)
+          newChildren.push(newIterationStartNode)
+      }
+      else if (nodeToPaste.data.type === BlockEnum.Loop) {
+        if (newLoopStartNode) {
+          newLoopStartNode.parentId = newNode.id
+          const loopNodeData = newNode.data as LoopNodeType
+          loopNodeData.start_node_id = newLoopStartNode.id
+        }
+
+        const oldLoopStartNodeInClipboard = compatibleClipboardElements.find(
+          n =>
+            n.parentId === nodeToPaste.id
+            && n.type === CUSTOM_LOOP_START_NODE,
+        )
+        if (oldLoopStartNodeInClipboard && newLoopStartNode)
+          idMapping[oldLoopStartNodeInClipboard.id] = newLoopStartNode.id
+
+        const copiedLoopChildren = compatibleClipboardElements.filter(
+          n =>
+            n.parentId === nodeToPaste.id
+            && n.type !== CUSTOM_LOOP_START_NODE,
+        )
+        if (copiedLoopChildren.length) {
+          copiedLoopChildren.forEach((child, childIndex) => {
+            const childType = child.data.type
+            const childDefaultValue = getNodeDefaultValueForPaste(child)
+            if (child.type !== CUSTOM_NOTE_NODE && !childDefaultValue)
+              return
+
+            const mergedChildData = shouldRunCompatibilityCheck
+              ? sanitizeClipboardValueByDefault(childDefaultValue ?? {}, child.data) as Record<string, unknown>
+              : {
+                  ...(child.type !== CUSTOM_NOTE_NODE ? childDefaultValue : {}),
+                  ...child.data,
+                }
+            const childSourceTitle = typeof mergedChildData.title === 'string'
+              ? mergedChildData.title
+              : typeof child.data.title === 'string'
+                ? child.data.title
+                : 'Node'
+            const childSourceDesc = typeof mergedChildData.desc === 'string'
+              ? mergedChildData.desc
+              : typeof child.data.desc === 'string'
+                ? child.data.desc
+                : ''
+
+            const { newNode: newChild } = generateNewNode({
+              type: child.type,
+              data: {
+                ...mergedChildData,
+                desc: childSourceDesc,
+                selected: false,
+                _isBundled: false,
+                _connectedSourceHandleIds: [],
+                _connectedTargetHandleIds: [],
+                _dimmed: false,
+                title: genNewNodeTitleFromOld(childSourceTitle),
+                isInIteration: false,
+                iteration_id: undefined,
+                isInLoop: true,
+                loop_id: newNode.id,
+                type: childType,
+              },
+              position: child.position,
+              positionAbsolute: child.positionAbsolute,
+              parentId: newNode.id,
+              extent: child.extent,
+              zIndex: LOOP_CHILDREN_Z_INDEX,
+            })
+            newChild.id = `${newNode.id}${newChild.id + childIndex}`
+            idMapping[child.id] = newChild.id
+            newChildren.push(newChild)
+          })
+        }
+        else {
           const oldLoopStartNode = nodes.find(
             n =>
               n.parentId === nodeToPaste.id
               && n.type === CUSTOM_LOOP_START_NODE,
           )
-          idMapping[oldLoopStartNode!.id] = newLoopStartNode!.id
+          if (oldLoopStartNode && newLoopStartNode)
+            idMapping[oldLoopStartNode.id] = newLoopStartNode.id
 
           const { copyChildren, newIdMapping }
             = handleNodeLoopChildrenCopy(
@@ -1813,127 +2161,126 @@ export const useNodesInteractions = () => {
             )
           newChildren = copyChildren
           idMapping = newIdMapping
-          newChildren.forEach((child) => {
-            newNode.data._children?.push({
-              nodeId: child.id,
-              nodeType: child.data.type,
-            })
+        }
+
+        newChildren.forEach((child) => {
+          newNode.data._children?.push({
+            nodeId: child.id,
+            nodeType: child.data.type,
           })
-          newChildren.push(newLoopStartNode!)
-        }
-        else {
-          // single node paste
-          const selectedNode = nodes.find(node => node.selected)
-          if (selectedNode) {
-            const commonNestedDisallowPasteNodes = [
-              // end node only can be placed outermost layer
-              BlockEnum.End,
-            ]
-
-            // handle disallow paste node
-            if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
-              return
-
-            // handle paste to nested block
-            if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
-              const isIteration = selectedNode.data.type === BlockEnum.Iteration
-
-              newNode.data.isInIteration = isIteration
-              newNode.data.iteration_id = isIteration ? selectedNode.id : undefined
-              newNode.data.isInLoop = !isIteration
-              newNode.data.loop_id = !isIteration ? selectedNode.id : undefined
-
-              newNode.parentId = selectedNode.id
-              newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
-              newNode.positionAbsolute = {
-                x: newNode.position.x,
-                y: newNode.position.y,
-              }
-              // set position base on parent node
-              newNode.position = getNestedNodePosition(newNode, selectedNode)
-              // update parent children array like native add
-              parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
-            }
-          }
-        }
-
-        idMapping[nodeToPaste.id] = newNode.id
-        nodesToPaste.push(newNode)
-        pastedNodesMap[newNode.id] = newNode
-
-        if (newChildren.length) {
-          newChildren.forEach((child) => {
-            pastedNodesMap[child.id] = child
-          })
-          nodesToPaste.push(...newChildren)
-        }
-      })
-
-      // Rebuild edges where both endpoints are part of the pasted set.
-      edges.forEach((edge) => {
-        const sourceId = idMapping[edge.source]
-        const targetId = idMapping[edge.target]
-
-        if (sourceId && targetId) {
-          const sourceNode = pastedNodesMap[sourceId]
-          const targetNode = pastedNodesMap[targetId]
-          const parentNode = sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId
-            ? pastedNodesMap[sourceNode.parentId] ?? nodes.find(n => n.id === sourceNode.parentId)
-            : null
-          const isInIteration = parentNode?.data.type === BlockEnum.Iteration
-          const isInLoop = parentNode?.data.type === BlockEnum.Loop
-          const newEdge: Edge = {
-            ...edge,
-            id: `${sourceId}-${edge.sourceHandle}-${targetId}-${edge.targetHandle}`,
-            source: sourceId,
-            target: targetId,
-            data: {
-              ...edge.data,
-              isInIteration,
-              iteration_id: isInIteration ? parentNode?.id : undefined,
-              isInLoop,
-              loop_id: isInLoop ? parentNode?.id : undefined,
-              _connectedNodeIsSelected: false,
-            },
-            zIndex: parentNode
-              ? isInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : isInLoop
-                  ? LOOP_CHILDREN_Z_INDEX
-                  : 0
-              : 0,
-          }
-          edgesToPaste.push(newEdge)
-        }
-      })
-
-      const newNodes = produce(nodes, (draft: Node[]) => {
-        parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
-          const p = draft.find(n => n.id === parentId)
-          if (p) {
-            p.data._children?.push({ nodeId: childId, nodeType: childType })
-          }
         })
-        draft.push(...nodesToPaste)
-      })
+        if (newLoopStartNode)
+          newChildren.push(newLoopStartNode)
+      }
+      else if (selectedNode) {
+        const commonNestedDisallowPasteNodes = [
+          BlockEnum.End,
+        ]
 
-      setNodes(newNodes)
-      setEdges([...edges, ...edgesToPaste])
-      saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
-        nodeId: nodesToPaste?.[0]?.id,
+        if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
+          return
+
+        if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
+          const isIteration = selectedNode.data.type === BlockEnum.Iteration
+
+          newNode.data.isInIteration = isIteration
+          newNode.data.iteration_id = isIteration ? selectedNode.id : undefined
+          newNode.data.isInLoop = !isIteration
+          newNode.data.loop_id = !isIteration ? selectedNode.id : undefined
+
+          newNode.parentId = selectedNode.id
+          newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
+          newNode.positionAbsolute = {
+            x: newNode.position.x,
+            y: newNode.position.y,
+          }
+          newNode.position = getNestedNodePosition(newNode, selectedNode)
+          parentChildrenToAppend.push({
+            parentId: selectedNode.id,
+            childId: newNode.id,
+            childType: newNode.data.type,
+          })
+        }
+      }
+
+      idMapping[nodeToPaste.id] = newNode.id
+      nodesToPaste.push(newNode)
+      pastedNodesMap[newNode.id] = newNode
+
+      if (newChildren.length) {
+        newChildren.forEach((child) => {
+          pastedNodesMap[child.id] = child
+        })
+        nodesToPaste.push(...newChildren)
+      }
+    })
+
+    const sourceEdges = validatedClipboardEdges
+
+    sourceEdges.forEach((edge) => {
+      const sourceId = idMapping[edge.source]
+      const targetId = idMapping[edge.target]
+
+      if (sourceId && targetId) {
+        const sourceNode = pastedNodesMap[sourceId]
+        const targetNode = pastedNodesMap[targetId]
+        const parentNode = sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId
+          ? pastedNodesMap[sourceNode.parentId] ?? nodes.find(n => n.id === sourceNode.parentId)
+          : null
+        const isInIteration = parentNode?.data.type === BlockEnum.Iteration
+        const isInLoop = parentNode?.data.type === BlockEnum.Loop
+        const newEdge: Edge = {
+          ...edge,
+          id: `${sourceId}-${edge.sourceHandle}-${targetId}-${edge.targetHandle}`,
+          source: sourceId,
+          target: targetId,
+          data: {
+            ...edge.data,
+            isInIteration,
+            iteration_id: isInIteration ? parentNode?.id : undefined,
+            isInLoop,
+            loop_id: isInLoop ? parentNode?.id : undefined,
+            _connectedNodeIsSelected: false,
+          },
+          zIndex: parentNode
+            ? isInIteration
+              ? ITERATION_CHILDREN_Z_INDEX
+              : isInLoop
+                ? LOOP_CHILDREN_Z_INDEX
+                : 0
+            : 0,
+        }
+        edgesToPaste.push(newEdge)
+      }
+    })
+
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
+        const p = draft.find(n => n.id === parentId)
+        if (p)
+          p.data._children?.push({ nodeId: childId, nodeType: childType })
       })
-      handleSyncWorkflowDraft()
-    }
+      draft.push(...nodesToPaste)
+    })
+
+    setNodes(newNodes)
+    setEdges([...edges, ...edgesToPaste])
+    saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
+      nodeId: nodesToPaste?.[0]?.id,
+    })
+    handleSyncWorkflowDraft()
   }, [
     getNodesReadOnly,
     workflowStore,
     store,
     reactflow,
+    t,
     saveStateToHistory,
     handleSyncWorkflowDraft,
     handleNodeIterationChildrenCopy,
     handleNodeLoopChildrenCopy,
-    nodesMetaDataMap,
+    getNodeDefaultValueForPaste,
+    appDslVersion,
   ])
 
   const handleNodesDuplicate = useCallback(
@@ -2076,9 +2423,7 @@ export const useNodesInteractions = () => {
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
+            !connectedEdges.some(connectedEdge => connectedEdge.id === edge.id),
         )
       })
       setEdges(newEdges)

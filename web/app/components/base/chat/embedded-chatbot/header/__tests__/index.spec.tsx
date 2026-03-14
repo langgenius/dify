@@ -59,6 +59,7 @@ describe('EmbeddedChatbot Header', () => {
   }
 
   const defaultSystemFeatures: SystemFeatures = {
+    app_dsl_version: '',
     trial_models: [],
     plugin_installation_permission: {
       plugin_installation_scope: InstallationScope.ALL,

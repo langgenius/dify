@@ -120,6 +120,7 @@
   "common.branch": "RAMO",
   "common.chooseDSL": "Scegli file DSL(yml)",
   "common.chooseStartNodeToRun": "Scegli il nodo di partenza da eseguire",
+  "common.clipboardVersionCompatibilityWarning": "Questo contenuto è stato copiato da una versione diversa dell'app Dify. Alcune parti potrebbero non essere compatibili.",
   "common.configure": "Configura",
   "common.configureRequired": "Configurazione Richiesta",
   "common.conversationLog": "Registro conversazioni",

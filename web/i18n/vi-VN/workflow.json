@@ -120,6 +120,7 @@
   "common.branch": "NHÁNH",
   "common.chooseDSL": "Chọn tệp DSL(yml)",
   "common.chooseStartNodeToRun": "Chọn nút bắt đầu để chạy",
+  "common.clipboardVersionCompatibilityWarning": "Nội dung này được sao chép từ một phiên bản ứng dụng Dify khác. Một số phần có thể không tương thích.",
   "common.configure": "Cấu hình",
   "common.configureRequired": "Yêu cầu cấu hình",
   "common.conversationLog": "Nhật ký cuộc trò chuyện",

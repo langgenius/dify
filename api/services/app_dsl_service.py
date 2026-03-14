@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from dify_graph.enums import NodeType
@@ -45,7 +46,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.6.0"
+CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
 class ImportMode(StrEnum):

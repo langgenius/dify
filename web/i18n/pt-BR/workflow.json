@@ -120,6 +120,7 @@
   "common.branch": "RAMIFICAÇÃO",
   "common.chooseDSL": "Escolha o arquivo DSL(yml)",
   "common.chooseStartNodeToRun": "Escolha o nó inicial para executar",
+  "common.clipboardVersionCompatibilityWarning": "Este conteúdo foi copiado de uma versão diferente do aplicativo Dify. Algumas partes podem ser incompatíveis.",
   "common.configure": "Configurar",
   "common.configureRequired": "Configuração necessária",
   "common.conversationLog": "Registro de conversa",
