@@ -14,6 +14,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.node_resolution import LATEST_VERSION, get_workflow_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -34,7 +35,6 @@ from dify_graph.nodes.human_input.entities import (
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormKind
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -619,7 +619,7 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs: list[Mapping[str, object]] = []
-        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
+        for node_type, node_class_mapping in get_workflow_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
             if node_type is NodeType.HTTP_REQUEST:
@@ -650,12 +650,13 @@ class WorkflowService:
         :return:
         """
         node_type_enum = NodeType(node_type)
+        node_mapping = get_workflow_node_type_classes_mapping()
 
         # return default block config
-        if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
+        if node_type_enum not in node_mapping:
             return {}
 
-        node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
+        node_class = node_mapping[node_type_enum][LATEST_VERSION]
         resolved_filters = dict(filters) if filters else {}
         if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
             resolved_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(

@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_resolution import resolve_workflow_node_class
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -23,7 +24,6 @@ from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from dify_graph.nodes import NodeType
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -343,7 +343,7 @@ class WorkflowEntry:
         if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]
+        node_cls = resolve_workflow_node_class(node_type=node_type, node_version="1")
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
