@@ -32,6 +32,7 @@ export const sortAgentSorts = (list: ThoughtItem[]) => {
 
 type AgentThoughtHistoryFile = FileResponse & { id: string }
 type AgentThoughtMessageFile = FileEntity | VisionFile | AgentThoughtHistoryFile
+type VisionFileSupportType = 'image' | 'video' | 'audio' | 'document'
 
 const isFileEntity = (file: AgentThoughtMessageFile): file is FileEntity => {
   return 'transferMethod' in file
@@ -41,7 +42,7 @@ const isAgentThoughtHistoryFile = (file: AgentThoughtMessageFile): file is Agent
   return 'filename' in file && 'mime_type' in file
 }
 
-const getVisionFileMimeType = (fileType: string) => {
+export const getVisionFileMimeType = (fileType: string) => {
   if (fileType.includes('/'))
     return fileType
 
@@ -57,35 +58,25 @@ const getVisionFileMimeType = (fileType: string) => {
   }
 }
 
-const getVisionFileSupportType = (fileType: string) => {
+export const getVisionFileSupportType = (fileType: string): VisionFileSupportType => {
   if (fileType.includes('/')) {
-    const [mainType, subType] = fileType.split('/')
-    if (mainType === 'image')
-      return 'image'
-    if (mainType === 'video')
-      return 'video'
-    if (mainType === 'audio')
-      return 'audio'
-    if (subType === 'pdf')
-      return 'document'
+    const [mainType] = fileType.split('/')
+    if (['image', 'video', 'audio'].includes(mainType))
+      return mainType as 'image' | 'video' | 'audio'
     return 'document'
   }
 
   switch (fileType) {
     case 'image':
-      return 'image'
     case 'video':
-      return 'video'
     case 'audio':
-      return 'audio'
-    case 'document':
-      return 'document'
+      return fileType
     default:
       return 'document'
   }
 }
 
-const getVisionFileName = (url: string, supportFileType: string) => {
+export const getVisionFileName = (url: string, supportFileType: VisionFileSupportType) => {
   const fileName = url.split('/').pop()?.split('?')[0]
   if (fileName)
     return fileName

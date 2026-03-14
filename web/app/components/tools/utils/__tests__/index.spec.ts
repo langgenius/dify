@@ -4,7 +4,13 @@ import type { VisionFile } from '@/types/app'
 import type { FileResponse } from '@/types/workflow'
 import { describe, expect, it } from 'vitest'
 import { TransferMethod } from '@/types/app'
-import { addFileInfos, sortAgentSorts } from '../index'
+import {
+  addFileInfos,
+  getVisionFileMimeType,
+  getVisionFileName,
+  getVisionFileSupportType,
+  sortAgentSorts,
+} from '../index'
 
 describe('tools/utils', () => {
   const createFileEntity = (overrides: Partial<FileEntity>): FileEntity => ({
@@ -51,6 +57,46 @@ describe('tools/utils', () => {
       ] as unknown as ThoughtItem[]
       const result = sortAgentSorts(items)
       expect(result).not.toBe(items)
+    })
+  })
+
+  describe('VisionFile helpers', () => {
+    it.each([
+      ['image', 'image/png'],
+      ['video', 'video/mp4'],
+      ['audio', 'audio/mpeg'],
+      ['application/pdf', 'application/pdf'],
+      ['document', 'application/octet-stream'],
+      ['unknown', 'application/octet-stream'],
+    ])('returns %s mime type as %s', (fileType, expectedMimeType) => {
+      expect(getVisionFileMimeType(fileType)).toBe(expectedMimeType)
+    })
+
+    it.each([
+      ['image', 'image'],
+      ['video', 'video'],
+      ['audio', 'audio'],
+      ['document', 'document'],
+      ['image/png', 'image'],
+      ['video/mp4', 'video'],
+      ['audio/mpeg', 'audio'],
+      ['application/pdf', 'document'],
+      ['application/json', 'document'],
+    ] as const)('returns %s support type as %s', (fileType, expectedSupportType) => {
+      expect(getVisionFileSupportType(fileType)).toBe(expectedSupportType)
+    })
+
+    it('extracts the file name from URLs with query params', () => {
+      expect(getVisionFileName('https://example.com/generated.png?signature=1', 'image')).toBe('generated.png')
+    })
+
+    it.each([
+      ['image', 'generated_image.png'],
+      ['video', 'generated_video.mp4'],
+      ['audio', 'generated_audio.mp3'],
+      ['document', 'generated_file.bin'],
+    ] as const)('returns a fallback file name for %s URLs without a file segment', (supportFileType, expectedFileName) => {
+      expect(getVisionFileName('https://example.com/', supportFileType)).toBe(expectedFileName)
     })
   })
 
@@ -128,6 +174,30 @@ describe('tools/utils', () => {
         transferMethod: TransferMethod.remote_url,
         supportFileType: 'image',
         uploadedId: 'upload-vision-1',
+      }))
+    })
+
+    it('matches VisionFile payloads by upload_file_id when id is missing', () => {
+      const visionFile: VisionFile = {
+        type: 'document',
+        transfer_method: TransferMethod.remote_url,
+        url: 'https://example.com/',
+        upload_file_id: 'upload-vision-fallback',
+      }
+
+      const items = [{ id: '1', files: ['upload-vision-fallback'] }] as unknown as ThoughtItem[]
+
+      const result = addFileInfos(items, [visionFile])
+      const messageFiles = (result[0] as ThoughtItem & { message_files: FileEntity[] }).message_files
+
+      expect(messageFiles).toHaveLength(1)
+      expect(messageFiles[0]).toEqual(expect.objectContaining({
+        id: 'upload-vision-fallback',
+        name: 'generated_file.bin',
+        type: 'application/octet-stream',
+        transferMethod: TransferMethod.remote_url,
+        supportFileType: 'document',
+        uploadedId: 'upload-vision-fallback',
       }))
     })
 
