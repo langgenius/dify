@@ -31,6 +31,7 @@ from core.app.entities.queue_entities import (
 )
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
+from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired
@@ -117,17 +118,19 @@ class WorkflowBasedAppRunner:
             raise ValueError("edges in workflow graph must be a list")
 
         # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
-            workflow_id=workflow_id,
-            graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id or "",
-                app_id=self._app_id,
-                user_id=user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            ),
-            call_depth=0,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": workflow_id,
+                "graph_config": graph_config,
+                "run_context": build_dify_run_context(
+                    tenant_id=tenant_id or "",
+                    app_id=self._app_id,
+                    user_id=user_id,
+                    user_from=user_from,
+                    invoke_from=invoke_from,
+                ),
+                "call_depth": 0,
+            }
         )
 
         # Use the provided graph_runtime_state for consistent state management
@@ -267,17 +270,19 @@ class WorkflowBasedAppRunner:
         graph_config["edges"] = edge_configs
 
         # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
-            workflow_id=workflow.id,
-            graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=self._app_id,
-                user_id="",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
-            call_depth=0,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": workflow.id,
+                "graph_config": graph_config,
+                "run_context": build_dify_run_context(
+                    tenant_id=workflow.tenant_id,
+                    app_id=self._app_id,
+                    user_id="",
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
+                "call_depth": 0,
+            }
         )
 
         node_factory = DifyNodeFactory(

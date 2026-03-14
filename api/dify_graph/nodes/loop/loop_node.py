@@ -415,11 +415,13 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         from dify_graph.runtime import GraphRuntimeState
 
         # Create GraphInitParams for child graph execution.
-        graph_init_params = GraphInitParams(
-            workflow_id=self.workflow_id,
-            graph_config=self.graph_config,
-            run_context=self.run_context,
-            call_depth=self.workflow_call_depth,
+        graph_init_params = GraphInitParams.model_validate(
+            {
+                "workflow_id": self.workflow_id,
+                "graph_config": self.graph_config,
+                "run_context": self.run_context,
+                "call_depth": self.workflow_call_depth,
+            }
         )
 
         # Create a new GraphRuntimeState for this iteration
