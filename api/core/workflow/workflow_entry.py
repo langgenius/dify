@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes import register_core_nodes
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -32,6 +33,8 @@ from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+register_core_nodes()
 
 
 class _WorkflowChildEngineBuilder:

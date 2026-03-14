@@ -8,7 +8,6 @@ from typing_extensions import override
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.llm.model_access import build_dify_model_access
-from core.datasource.datasource_manager import DatasourceManager
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -17,11 +16,9 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.rag.index_processor.index_processor import IndexProcessor
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.rag.summary_index.summary_index import SummaryIndex
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.nodes import register_core_nodes
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
@@ -52,6 +49,8 @@ from models.model import Conversation
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
     from dify_graph.runtime import GraphRuntimeState
+
+register_core_nodes()
 
 
 LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
@@ -127,7 +126,6 @@ class DifyNodeFactory(NodeFactory):
         self._http_request_http_client = ssrf_proxy
         self._http_request_tool_file_manager_factory = ToolFileManager
         self._http_request_file_manager = file_manager
-        self._rag_retrieval = DatasetRetrieval()
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
             api_key=dify_config.UNSTRUCTURED_API_KEY or "",
@@ -187,21 +185,11 @@ class DifyNodeFactory(NodeFactory):
             NodeType.HUMAN_INPUT: lambda: {
                 "form_repository": HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
             },
-            NodeType.KNOWLEDGE_INDEX: lambda: {
-                "index_processor": IndexProcessor(),
-                "summary_index_service": SummaryIndex(),
-            },
             NodeType.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
                 include_http_client=True,
             ),
-            NodeType.DATASOURCE: lambda: {
-                "datasource_manager": DatasourceManager,
-            },
-            NodeType.KNOWLEDGE_RETRIEVAL: lambda: {
-                "rag_retrieval": self._rag_retrieval,
-            },
             NodeType.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
                 "http_client": self._http_request_http_client,

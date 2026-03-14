@@ -5,9 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.nodes.knowledge_retrieval.entities import (
+from core.workflow.nodes.knowledge_retrieval.entities import (
     Condition,
     KnowledgeRetrievalNodeData,
     MetadataFilteringCondition,
@@ -15,9 +13,11 @@ from dify_graph.nodes.knowledge_retrieval.entities import (
     RerankingModelConfig,
     SingleRetrievalConfig,
 )
-from dify_graph.nodes.knowledge_retrieval.exc import RateLimitExceededError
-from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.repositories.rag_retrieval_protocol import RAGRetrievalProtocol, Source
+from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
+from dify_graph.enums import WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import StringSegment

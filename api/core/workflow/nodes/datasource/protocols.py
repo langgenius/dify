@@ -1,25 +1,10 @@
 from collections.abc import Generator
 from typing import Any, Protocol
 
-from pydantic import BaseModel
-
 from dify_graph.file import File
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
 
-
-class DatasourceParameter(BaseModel):
-    workspace_id: str
-    page_id: str
-    type: str
-
-
-class OnlineDriveDownloadFileParam(BaseModel):
-    id: str
-    bucket: str
-
-
-class DatasourceFinal(BaseModel):
-    data: dict[str, Any] | None = None
+from .entities import DatasourceParameter, OnlineDriveDownloadFileParam
 
 
 class DatasourceManagerProtocol(Protocol):

@@ -1,8 +1,11 @@
 import pytest
 
+from core.workflow.nodes import register_core_nodes
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
+
+register_core_nodes()
 
 # Ensures that all node classes are imported.
 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING

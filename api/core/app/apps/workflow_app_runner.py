@@ -29,7 +29,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes import register_core_nodes
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -71,6 +73,8 @@ from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
+
+register_core_nodes()
 
 
 class WorkflowBasedAppRunner:
@@ -490,7 +494,9 @@ class WorkflowBasedAppRunner:
         elif isinstance(event, NodeRunRetrieverResourceEvent):
             self._publish_event(
                 QueueRetrieverResourcesEvent(
-                    retriever_resources=event.retriever_resources,
+                    retriever_resources=[
+                        RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+                    ],
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                 )

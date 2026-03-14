@@ -1,8 +1,15 @@
+"""Knowledge retrieval workflow node implementation.
+
+This node now lives under ``core.workflow.nodes`` and is discovered directly by
+the workflow node registry.
+"""
+
 import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
@@ -15,7 +22,6 @@ from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import LLMUsageTrackingMixin
 from dify_graph.nodes.base.node import Node
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
 from dify_graph.variables import (
     ArrayFileSegment,
     FileSegment,
@@ -32,6 +38,7 @@ from .exc import (
     KnowledgeRetrievalNodeError,
     RateLimitExceededError,
 )
+from .retrieval import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
 
 if TYPE_CHECKING:
     from dify_graph.file.models import File
@@ -53,7 +60,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        rag_retrieval: RAGRetrievalProtocol,
+        rag_retrieval: RAGRetrievalProtocol | None = None,
     ):
         super().__init__(
             id=id,
@@ -63,7 +70,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
-        self._rag_retrieval = rag_retrieval
+        self._rag_retrieval = rag_retrieval or DatasetRetrieval()
 
     @classmethod
     def version(cls):

@@ -179,7 +179,8 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under dify_graph.nodes.*
+        # Only register production node implementations defined under the
+        # canonical workflow namespaces.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -187,7 +188,7 @@ class Node(Generic[NodeDataT]):
         node_type = cls.node_type
         version = cls.version()
         bucket = Node._registry.setdefault(node_type, {})
-        if module_name.startswith("dify_graph.nodes."):
+        if module_name.startswith(("dify_graph.nodes.", "core.workflow.nodes.")):
             # Production node definitions take precedence and may override
             bucket[version] = cls  # type: ignore[index]
         else:
@@ -203,6 +204,7 @@ class Node(Generic[NodeDataT]):
         else:
             latest_key = max(version_keys) if version_keys else version
         bucket["latest"] = bucket[latest_key]
+        Node._registry_version += 1
 
     @classmethod
     def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:
@@ -237,6 +239,11 @@ class Node(Generic[NodeDataT]):
 
     # Global registry populated via __init_subclass__
     _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
+    _registry_version: ClassVar[int] = 0
+
+    @classmethod
+    def get_registry_version(cls) -> int:
+        return cls._registry_version
 
     def __init__(
         self,
@@ -364,20 +371,18 @@ class Node(Generic[NodeDataT]):
         )
 
         # === FIXME(-LAN-): Needs to refactor.
-        from dify_graph.nodes.tool.tool_node import ToolNode
-
-        if isinstance(self, ToolNode):
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from dify_graph.nodes.datasource.datasource_node import DatasourceNode
-
-        if isinstance(self, DatasourceNode):
+        provider_id = getattr(self.node_data, "provider_id", "")
+        provider_type = getattr(self.node_data, "provider_type", "")
+        if not provider_id:
             plugin_id = getattr(self.node_data, "plugin_id", "")
             provider_name = getattr(self.node_data, "provider_name", "")
+            if plugin_id and provider_name:
+                provider_id = f"{plugin_id}/{provider_name}"
 
-            start_event.provider_id = f"{plugin_id}/{provider_name}"
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
+        if provider_id:
+            start_event.provider_id = provider_id
+        if provider_type:
+            start_event.provider_type = str(provider_type)
 
         from dify_graph.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 
@@ -523,17 +528,19 @@ class Node(Generic[NodeDataT]):
     def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
-        Import all modules under dify_graph.nodes so subclasses register themselves on import.
-        Then we return a readonly view of the registry to avoid accidental mutation.
+        Import all dify_graph node modules so subclasses register themselves on
+        import. Core workflow nodes are registered by the core workflow layer
+        before it reads the mapping, which keeps the dependency direction
+        pointing from core to dify_graph.
         """
-        # Import all node modules to ensure they are loaded (thus registered)
-        import dify_graph.nodes as _nodes_pkg
+        # Import all node modules to ensure they are loaded (thus registered).
+        import dify_graph.nodes as _dify_nodes_pkg
 
-        for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
+        for _, module_name, _ in pkgutil.walk_packages(_dify_nodes_pkg.__path__, _dify_nodes_pkg.__name__ + "."):
             # Avoid importing modules that depend on the registry to prevent circular imports.
-            if _modname == "dify_graph.nodes.node_mapping":
+            if module_name == "dify_graph.nodes.node_mapping":
                 continue
-            importlib.import_module(_modname)
+            importlib.import_module(module_name)
 
         # Return a readonly view so callers can't mutate the registry by accident
         return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}

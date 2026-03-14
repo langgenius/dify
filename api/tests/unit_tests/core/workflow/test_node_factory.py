@@ -145,7 +145,6 @@ class TestDifyNodeFactoryInit:
         graph_runtime_state = sentinel.graph_runtime_state
         dify_context = SimpleNamespace(tenant_id="tenant-id")
         template_renderer = sentinel.template_renderer
-        rag_retrieval = sentinel.rag_retrieval
         unstructured_api_config = sentinel.unstructured_api_config
         http_request_config = sentinel.http_request_config
         credentials_provider = sentinel.credentials_provider
@@ -162,7 +161,6 @@ class TestDifyNodeFactoryInit:
                 "CodeExecutorJinja2TemplateRenderer",
                 return_value=template_renderer,
             ) as renderer_factory,
-            patch.object(node_factory, "DatasetRetrieval", return_value=rag_retrieval),
             patch.object(
                 node_factory,
                 "UnstructuredApiConfig",
@@ -192,7 +190,6 @@ class TestDifyNodeFactoryInit:
         assert factory.graph_runtime_state is graph_runtime_state
         assert factory._dify_context is dify_context
         assert factory._template_renderer is template_renderer
-        assert factory._rag_retrieval is rag_retrieval
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
         assert factory._http_request_config is http_request_config
         assert factory._llm_credentials_provider is credentials_provider
@@ -248,7 +245,6 @@ class TestDifyNodeFactoryCreateNode:
         factory._http_request_http_client = sentinel.http_client
         factory._http_request_tool_file_manager_factory = sentinel.tool_file_manager_factory
         factory._http_request_file_manager = sentinel.file_manager
-        factory._rag_retrieval = sentinel.rag_retrieval
         factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
         factory._http_request_config = sentinel.http_request_config
         factory._llm_credentials_provider = sentinel.credentials_provider
@@ -350,11 +346,6 @@ class TestDifyNodeFactoryCreateNode:
                 "HumanInputFormRepositoryImpl",
                 form_repository_impl,
             )
-        elif constructor_name == "KnowledgeIndexNode":
-            index_processor = sentinel.index_processor
-            summary_index = sentinel.summary_index
-            monkeypatch.setattr(node_factory, "IndexProcessor", MagicMock(return_value=index_processor))
-            monkeypatch.setattr(node_factory, "SummaryIndex", MagicMock(return_value=summary_index))
 
         node_config = {"id": "node-id", "data": {"type": node_type.value}}
         result = factory.create_node(node_config)
@@ -380,13 +371,6 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
             form_repository_impl.assert_called_once_with(tenant_id="tenant-id")
-        elif constructor_name == "KnowledgeIndexNode":
-            assert kwargs["index_processor"] is index_processor
-            assert kwargs["summary_index_service"] is summary_index
-        elif constructor_name == "DatasourceNode":
-            assert kwargs["datasource_manager"] is node_factory.DatasourceManager
-        elif constructor_name == "KnowledgeRetrievalNode":
-            assert kwargs["rag_retrieval"] is sentinel.rag_retrieval
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client

@@ -9,10 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from dify_graph.nodes.answer.answer_node import AnswerNode
+from dify_graph.nodes import NodeType
 from dify_graph.nodes.base.template import Template
-from dify_graph.nodes.end.end_node import EndNode
-from dify_graph.nodes.knowledge_index import KnowledgeIndexNode
 from dify_graph.runtime.graph_runtime_state import NodeProtocol
 
 
@@ -33,10 +31,8 @@ class ResponseSession:
         """
         Create a ResponseSession from a response-capable node.
 
-        The parameter is typed as `NodeProtocol` because the graph is exposed behind a protocol at the runtime layer,
-        but at runtime this must be an `AnswerNode`, `EndNode`, or `KnowledgeIndexNode` that provides:
-        - `id: str`
-        - `get_streaming_template() -> Template`
+        The parameter is typed as `NodeProtocol` because the graph is exposed behind a protocol at the runtime layer.
+        At runtime this must be a response node that exposes `id` and `get_streaming_template()`.
 
         Args:
             node: Node from the materialized workflow graph.
@@ -47,8 +43,10 @@ class ResponseSession:
         Raises:
             TypeError: If node is not a supported response node type.
         """
-        if not isinstance(node, AnswerNode | EndNode | KnowledgeIndexNode):
-            raise TypeError("ResponseSession.from_node only supports AnswerNode, EndNode, or KnowledgeIndexNode")
+        if getattr(node, "node_type", None) not in {NodeType.ANSWER, NodeType.END, NodeType.KNOWLEDGE_INDEX}:
+            raise TypeError("ResponseSession.from_node only supports answer, end, or knowledge-index nodes")
+        if not hasattr(node, "get_streaming_template"):
+            raise TypeError("ResponseSession.from_node requires get_streaming_template() on response nodes")
         return cls(
             node_id=node.id,
             template=node.get_streaming_template(),

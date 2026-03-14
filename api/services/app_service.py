@@ -187,7 +187,10 @@ class AppService:
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**cast(dict[str, Any], tool))
+                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
+                if len(typed_tool) != len(tool):
+                    continue
+                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(

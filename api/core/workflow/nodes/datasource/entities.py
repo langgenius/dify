@@ -42,3 +42,14 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
             return typ
 
     datasource_parameters: dict[str, DatasourceInput] | None = None
+
+
+class DatasourceParameter(BaseModel):
+    workspace_id: str
+    page_id: str
+    type: str
+
+
+class OnlineDriveDownloadFileParam(BaseModel):
+    id: str
+    bucket: str

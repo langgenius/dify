@@ -1,7 +1,7 @@
+from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from dify_graph.nodes.datasource.datasource_node import DatasourceNode
 
 
 class _VarSeg:

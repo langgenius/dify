@@ -22,10 +22,10 @@ from sqlalchemy.orm import Session
 from core.helper import ssrf_proxy
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from dify_graph.enums import NodeType
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.datasource.entities import DatasourceNodeData
-from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
