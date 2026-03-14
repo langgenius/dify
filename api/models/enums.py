@@ -72,3 +72,23 @@ class AppTriggerType(StrEnum):
 
     # for backward compatibility
     UNKNOWN = "unknown"
+
+
+class AppStatus(StrEnum):
+    """App Status Enum"""
+
+    NORMAL = "normal"
+
+
+class AppMCPServerStatus(StrEnum):
+    """AppMCPServer Status Enum"""
+
+    NORMAL = "normal"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ConversationStatus(StrEnum):
+    """Conversation Status Enum"""
+
+    NORMAL = "normal"
