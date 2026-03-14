@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import StatusIndicators from './status-indicators'
 
@@ -6,10 +7,6 @@ let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1
 
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: React.ReactNode }) => <div>{popupContent}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
@@ -38,57 +35,95 @@ describe('StatusIndicators', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('should render warning states when provider model is disabled', () => {
-    const parentClick = vi.fn()
-    const { rerender } = render(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={true}
-          disabled={true}
-          pluginInfo={null}
-          t={t}
-        />
-      </div>,
+  it('should render deprecated tooltip when provider model is disabled and in model list', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={true}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
     )
-    expect(screen.getByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
 
-    rerender(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={false}
-          disabled={true}
-          pluginInfo={null}
-          t={t}
-        />
-      </div>,
-    )
-    expect(screen.getByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
-    expect(screen.getByText('nodes.agent.linkToPlugin').closest('a')).toHaveAttribute('href', '/plugins')
-    fireEvent.click(screen.getByText('nodes.agent.modelNotSupport.title'))
-    fireEvent.click(screen.getByText('nodes.agent.linkToPlugin'))
-    expect(parentClick).not.toHaveBeenCalled()
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
 
-    rerender(
-      <div onClick={parentClick}>
-        <StatusIndicators
-          needsConfiguration={false}
-          modelProvider={true}
-          inModelList={false}
-          disabled={true}
-          pluginInfo={{ name: 'demo-plugin' }}
-          t={t}
-        />
-      </div>,
+    expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
+  })
+
+  it('should render model-not-support tooltip when disabled model is not in model list and has no pluginInfo', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
     )
+
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
+  })
+
+  it('should render switch plugin version when pluginInfo exists for disabled unsupported model', () => {
+    render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'demo-plugin' }}
+        t={t}
+      />,
+    )
+
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
   })
 
-  it('should render marketplace warning when provider is unavailable', () => {
+  it('should render nothing when needsConfiguration is true even with disabled and modelProvider', () => {
+    const { container } = render(
+      <StatusIndicators
+        needsConfiguration={true}
+        modelProvider={true}
+        inModelList={true}
+        disabled={true}
+        pluginInfo={null}
+        t={t}
+      />,
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('should render SwitchVersion with empty identifier when plugin is not in installed list', () => {
+    installedPlugins = []
+
     render(
+      <StatusIndicators
+        needsConfiguration={false}
+        modelProvider={true}
+        inModelList={false}
+        disabled={true}
+        pluginInfo={{ name: 'missing-plugin' }}
+        t={t}
+      />,
+    )
+
+    expect(screen.getByText('SwitchVersion:')).toBeInTheDocument()
+  })
+
+  it('should render marketplace warning tooltip when provider is unavailable', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={false}
@@ -98,6 +133,11 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
-    expect(screen.getByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
+
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    await user.hover(trigger as HTMLElement)
+
+    expect(await screen.findByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
   })
 })

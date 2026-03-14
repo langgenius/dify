@@ -4,15 +4,16 @@ import time
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
-from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from dify_graph.model_runtime.entities import LLMMode
 from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
+from models.enums import CreatorUserRole
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ class HitTestingService:
                 content=json.dumps(dataset_queries),
                 source="hit_testing",
                 source_app_id=None,
-                created_by_role="account",
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             db.session.add(dataset_query)
@@ -138,7 +139,7 @@ class HitTestingService:
             content=query,
             source="hit_testing",
             source_app_id=None,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 

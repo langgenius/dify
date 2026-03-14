@@ -165,7 +165,7 @@ class TestChatMessageApiPermissions:
             agent_thoughts=[],
             message_files=[],
             message_metadata_dict={},
-            status="success",
+            status="normal",
             error="",
             parent_message_id=None,
         )

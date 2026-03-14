@@ -4,6 +4,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
+from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -18,21 +19,21 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.helper import ssrf_proxy
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.enums import NodeType
-from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
-from core.workflow.nodes.tool.entities import ToolNodeData
-from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
+from dify_graph.enums import NodeType
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from dify_graph.nodes.llm.entities import LLMNodeData
+from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
+from dify_graph.nodes.tool.entities import ToolNodeData
+from dify_graph.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig, IconType
+from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -428,17 +429,18 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
+        resolved_icon_type: IconType
         if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
-            icon_type = icon_type_value
+            resolved_icon_type = IconType(icon_type_value)
         else:
-            icon_type = IconType.EMOJI
+            resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
             # Update existing app
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
@@ -451,10 +453,10 @@ class AppDslService:
             app = App()
             app.id = str(uuid4())
             app.tenant_id = account.current_tenant_id
-            app.mode = app_mode.value
+            app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
             app.enable_site = True
@@ -523,7 +525,7 @@ class AppDslService:
             if not app.app_model_config:
                 app_model_config = AppModelConfig(
                     app_id=app.id, created_by=account.id, updated_by=account.id
-                ).from_model_config_dict(model_config)
+                ).from_model_config_dict(cast(AppModelConfigDict, model_config))
                 app_model_config.id = str(uuid4())
                 app.app_model_config_id = app_model_config.id
 
@@ -548,7 +550,7 @@ class AppDslService:
             "kind": "app",
             "app": {
                 "name": app_model.name,
-                "mode": app_model.mode,
+                "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
                 "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,

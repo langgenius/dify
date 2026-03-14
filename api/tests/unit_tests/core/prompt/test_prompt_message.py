@@ -1,6 +1,11 @@
-from core.model_runtime.entities.message_entities import (
+from core.prompt.simple_prompt_transform import ModelMode
+from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     TextPromptMessageContent,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 
@@ -25,3 +30,82 @@ def test_dump_prompt_message():
     )
     data = prompt.model_dump()
     assert data["content"][0].get("url") == example_url
+
+
+def test_prompt_messages_to_prompt_for_saving_chat_mode():
+    chat_messages = [
+        UserPromptMessage(
+            content=[
+                TextPromptMessageContent(data="hello "),
+                ImagePromptMessageContent(
+                    url="https://example.com/image1.jpg",
+                    format="jpg",
+                    mime_type="image/jpeg",
+                    detail=ImagePromptMessageContent.DETAIL.HIGH,
+                ),
+                AudioPromptMessageContent(
+                    url="https://example.com/audio1.mp3",
+                    format="mp3",
+                    mime_type="audio/mpeg",
+                ),
+                TextPromptMessageContent(data="world"),
+            ]
+        ),
+        AssistantPromptMessage(
+            content="assistant-text",
+            tool_calls=[
+                {
+                    "id": "tool-1",
+                    "type": "function",
+                    "function": {"name": "search", "arguments": '{"q":"python"}'},
+                }
+            ],
+        ),
+        ToolPromptMessage(content="tool-output", name="search", tool_call_id="tool-1"),
+        UserPromptMessage.model_construct(role="unknown", content="skip"),  # type: ignore[arg-type]
+    ]
+
+    prompts = PromptMessageUtil.prompt_messages_to_prompt_for_saving(ModelMode.CHAT, chat_messages)
+
+    assert len(prompts) == 3
+    assert prompts[0]["role"] == "user"
+    assert prompts[0]["text"] == "hello world"
+    assert prompts[0]["files"][0]["type"] == "image"
+    assert prompts[0]["files"][1]["type"] == "audio"
+
+    assert prompts[1]["role"] == "assistant"
+    assert prompts[1]["text"] == "assistant-text"
+    assert prompts[1]["tool_calls"][0]["function"]["name"] == "search"
+    assert prompts[2]["role"] == "tool"
+
+
+def test_prompt_messages_to_prompt_for_saving_completion_mode_with_and_without_files():
+    completion_message_with_files = UserPromptMessage(
+        content=[
+            TextPromptMessageContent(data="first "),
+            TextPromptMessageContent(data="second"),
+            ImagePromptMessageContent(
+                url="https://example.com/image2.jpg",
+                format="jpg",
+                mime_type="image/jpeg",
+                detail=ImagePromptMessageContent.DETAIL.LOW,
+            ),
+        ]
+    )
+    prompts = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+        ModelMode.COMPLETION, [completion_message_with_files]
+    )
+    assert prompts == [
+        {
+            "role": "user",
+            "text": "first second",
+            "files": prompts[0]["files"],
+        }
+    ]
+    assert prompts[0]["files"][0]["type"] == "image"
+
+    completion_message_text_only = UserPromptMessage(content="plain text")
+    prompts = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+        ModelMode.COMPLETION, [completion_message_text_only]
+    )
+    assert prompts == [{"role": "user", "text": "plain text"}]
