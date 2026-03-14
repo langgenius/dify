@@ -24,44 +24,46 @@ def init_app(app: DifyApp):
             content_type="application/json",
         )
 
-    @app.route("/threads")
-    def threads():  # pyright: ignore[reportUnusedFunction]
-        num_threads = threading.active_count()
-        threads = threading.enumerate()
+    if dify_config.DEBUG or app.config.get("TESTING"):
 
-        thread_list = []
-        for thread in threads:
-            thread_name = thread.name
-            thread_id = thread.ident
-            is_alive = thread.is_alive()
+        @app.route("/threads")
+        def threads():  # pyright: ignore[reportUnusedFunction]
+            num_threads = threading.active_count()
+            threads = threading.enumerate()
 
-            thread_list.append(
-                {
-                    "name": thread_name,
-                    "id": thread_id,
-                    "is_alive": is_alive,
-                }
-            )
+            thread_list = []
+            for thread in threads:
+                thread_name = thread.name
+                thread_id = thread.ident
+                is_alive = thread.is_alive()
 
-        return {
-            "pid": os.getpid(),
-            "thread_num": num_threads,
-            "threads": thread_list,
-        }
+                thread_list.append(
+                    {
+                        "name": thread_name,
+                        "id": thread_id,
+                        "is_alive": is_alive,
+                    }
+                )
 
-    @app.route("/db-pool-stat")
-    def pool_stat():  # pyright: ignore[reportUnusedFunction]
-        from extensions.ext_database import db
+            return {
+                "pid": os.getpid(),
+                "thread_num": num_threads,
+                "threads": thread_list,
+            }
 
-        engine = db.engine
-        # TODO: Fix the type error
-        # FIXME maybe its sqlalchemy issue
-        return {
-            "pid": os.getpid(),
-            "pool_size": engine.pool.size(),  # type: ignore
-            "checked_in_connections": engine.pool.checkedin(),  # type: ignore
-            "checked_out_connections": engine.pool.checkedout(),  # type: ignore
-            "overflow_connections": engine.pool.overflow(),  # type: ignore
-            "connection_timeout": engine.pool.timeout(),  # type: ignore
-            "recycle_time": db.engine.pool._recycle,  # type: ignore
-        }
+        @app.route("/db-pool-stat")
+        def pool_stat():  # pyright: ignore[reportUnusedFunction]
+            from extensions.ext_database import db
+
+            engine = db.engine
+            # TODO: Fix the type error
+            # FIXME maybe its sqlalchemy issue
+            return {
+                "pid": os.getpid(),
+                "pool_size": engine.pool.size(),  # type: ignore
+                "checked_in_connections": engine.pool.checkedin(),  # type: ignore
+                "checked_out_connections": engine.pool.checkedout(),  # type: ignore
+                "overflow_connections": engine.pool.overflow(),  # type: ignore
+                "connection_timeout": engine.pool.timeout(),  # type: ignore
+                "recycle_time": db.engine.pool._recycle,  # type: ignore
+            }
