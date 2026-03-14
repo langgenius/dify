@@ -19,6 +19,24 @@ vi.mock('../../dynamic-pdf-preview', () => ({
   ),
 }))
 
+vi.mock('../../audio-preview', () => ({
+  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+    <div data-testid="audio-preview" data-url={url}>
+      <audio data-testid="audio-element" src={url} />
+      <button data-testid="close-btn" onClick={onCancel}>Close Audio</button>
+    </div>
+  ),
+}))
+
+vi.mock('../../video-preview', () => ({
+  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+    <div data-testid="video-preview" data-url={url}>
+      <video data-testid="video-element" src={url} />
+      <button data-testid="video-preview-close-btn" onClick={onCancel}>Close Video</button>
+    </div>
+  ),
+}))
+
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
   name: 'document.pdf',
@@ -108,7 +126,7 @@ describe('FileItem (chat-input)', () => {
     expect(fileItemContainer).toHaveClass('bg-state-destructive-hover-alt')
   })
 
-  it('should show audio preview when audio file name is clicked', async () => {
+  it('should show audio preview when audio file name is clicked', () => {
     render(
       <FileItem
         file={createFile({
@@ -122,8 +140,7 @@ describe('FileItem (chat-input)', () => {
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    const audioElement = document.querySelector('audio')
-    expect(audioElement).toBeInTheDocument()
+    expect(screen.getByTestId('audio-preview')).toBeInTheDocument()
   })
 
   it('should show video preview when video file name is clicked', () => {
@@ -140,8 +157,7 @@ describe('FileItem (chat-input)', () => {
 
     fireEvent.click(screen.getByText(/video\.mp4/i))
 
-    const videoElement = document.querySelector('video')
-    expect(videoElement).toBeInTheDocument()
+    expect(screen.getByTestId('video-preview')).toBeInTheDocument()
   })
 
   it('should show pdf preview when pdf file name is clicked', () => {
@@ -174,12 +190,12 @@ describe('FileItem (chat-input)', () => {
     )
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
-    expect(document.querySelector('audio')).toBeInTheDocument()
+    expect(screen.getByTestId('audio-preview')).toBeInTheDocument()
 
-    const deleteButton = screen.getByTestId('close-btn')
-    fireEvent.click(deleteButton)
+    const closeButton = screen.getByTestId('close-btn')
+    fireEvent.click(closeButton)
 
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('audio-preview')).not.toBeInTheDocument()
   })
 
   it('should render download button when showDownloadAction is true and url exists', () => {
@@ -219,7 +235,7 @@ describe('FileItem (chat-input)', () => {
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('audio-preview')).not.toBeInTheDocument()
   })
 
   it('should close video preview', () => {
@@ -235,12 +251,12 @@ describe('FileItem (chat-input)', () => {
     )
 
     fireEvent.click(screen.getByText(/video\.mp4/i))
-    expect(document.querySelector('video')).toBeInTheDocument()
+    expect(screen.getByTestId('video-preview')).toBeInTheDocument()
 
     const closeBtn = screen.getByTestId('video-preview-close-btn')
     fireEvent.click(closeBtn)
 
-    expect(document.querySelector('video')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('video-preview')).not.toBeInTheDocument()
   })
 
   it('should close pdf preview', () => {
@@ -277,7 +293,7 @@ describe('FileItem (chat-input)', () => {
 
     fireEvent.click(screen.getByText(/audio\.mp3/i))
 
-    expect(document.querySelector('audio')).toBeInTheDocument()
+    expect(screen.getByTestId('audio-preview')).toBeInTheDocument()
     expect(createObjectURLSpy).toHaveBeenCalled()
     createObjectURLSpy.mockRestore()
   })
@@ -296,7 +312,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(createObjectURLSpy).not.toHaveBeenCalled()
     createObjectURLSpy.mockRestore()
-    expect(document.querySelector('audio')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('audio-preview')).not.toBeInTheDocument()
   })
 
   it('should not render download button when download_url is falsy', () => {
@@ -333,5 +349,15 @@ describe('FileItem (chat-input)', () => {
     render(<FileItem file={createFile({ size: 0 })} />)
 
     expect(screen.queryByText(/0B/)).not.toBeInTheDocument()
+  })
+
+  it('should not crash when type is undefined', () => {
+    // This test ensures that the component handles files with undefined type (e.g., from Stability AI)
+    const file = createFile({
+      type: undefined as any,
+      name: 'generated-image.png',
+    })
+    expect(() => render(<FileItem file={file} />)).not.toThrow()
+    expect(screen.getByText(/generated-image\.png/i)).toBeInTheDocument()
   })
 })
