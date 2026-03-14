@@ -627,7 +627,7 @@ class ProviderManager:
                                 tenant_id=tenant_id,
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
+                                provider_type=ProviderType.SYSTEM,
                                 quota_type=quota.quota_type,
                                 quota_limit=0,  # type: ignore
                                 quota_used=0,
