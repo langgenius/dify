@@ -215,8 +215,20 @@ class OAuthCallback(Resource):
                 account=account,
                 open_id=user_info.id,
                 token_response=token_response,
-                is_new_user=oauth_new_user,
             )
+
+            if oauth_new_user:
+                from tasks.import_acedatacloud_workflow_templates_task import (
+                    import_acedatacloud_workflow_templates_task,
+                )
+
+                tenants = TenantService.get_join_tenants(account)
+                tenant_id = account.current_tenant_id or (tenants[0].id if tenants else None)
+                if tenant_id:
+                    import_acedatacloud_workflow_templates_task.delay(
+                        tenant_id=str(tenant_id),
+                        account_id=str(account.id),
+                    )
 
         token_pair = AccountService.login(
             account=account,
@@ -294,7 +306,7 @@ class AceDataCloudOAuthSession(Resource):
 
 
 def _persist_acedatacloud_token(
-    *, account: Account, open_id: str, token_response: dict, is_new_user: bool = False
+    *, account: Account, open_id: str, token_response: dict
 ) -> None:
     """
     Persist AceDataCloud access/refresh tokens for later use.
@@ -349,16 +361,6 @@ def _persist_acedatacloud_token(
                 acedatacloud_user_id=str(open_id),
                 acedatacloud_access_token=str(access_token),
             )
-
-        from tasks.import_acedatacloud_workflow_templates_task import (
-            import_acedatacloud_workflow_templates_task,
-        )
-
-        import_acedatacloud_workflow_templates_task.delay(
-            tenant_id=str(tenant_id),
-            account_id=str(account.id),
-            is_new_user=is_new_user,
-        )
     except Exception:
         logger.exception("Failed to persist AceDataCloud token for account %s", account.id)
 
