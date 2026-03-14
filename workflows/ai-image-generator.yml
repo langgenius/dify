@@ -1,0 +1,240 @@
+app:
+  description: Enter a creative description, let AI refine the prompt, and generate high-quality images with Midjourney.
+  icon: 🎨
+  icon_background: '#E4FBCC'
+  mode: workflow
+  name: AI Image Generator
+  use_icon_as_answer_icon: false
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/midjourney
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-to-llm
+      source: start_node
+      sourceHandle: source
+      target: prompt_optimizer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: tool
+      id: llm-to-mj
+      source: prompt_optimizer
+      sourceHandle: source
+      target: midjourney_generate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: end
+      id: mj-to-end
+      source: midjourney_generate
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Creative Description
+          max_length: 2000
+          options: []
+          required: true
+          type: text-input
+          variable: description
+        - label: Style
+          max_length: 200
+          options:
+          - Realistic Photography
+          - Anime Illustration
+          - Oil Painting Style
+          - Cyberpunk
+          - Watercolor Style
+          - 3D Render
+          required: false
+          type: select
+          variable: style
+      height: 90
+      id: start_node
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Refine the user description into a professional Midjourney prompt
+        title: Prompt Optimization
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o-mini
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'You are an expert Midjourney prompt engineer. Convert the user''s creative description into an optimized Midjourney prompt in English. Follow these rules:
+
+            1. Be specific and descriptive about the scene, subjects, lighting, colors, mood
+
+            2. Include style keywords, camera angles, and technical terms
+
+            3. Add quality tags like --q 2, --s 750, --ar 16:9 as appropriate
+
+            4. If a style is specified, incorporate it naturally
+
+            5. Output ONLY the prompt text, nothing else
+
+            '
+        - role: user
+          text: 'Creative description: {{#start_node.description#}}
+
+            Style preference: {{#start_node.style#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: prompt_optimizer
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate images with Midjourney
+        title: Midjourney Generation
+        type: tool
+        provider_id: acedatacloud/midjourney
+        provider_type: plugin
+        provider_name: midjourney
+        tool_name: midjourney_imagine
+        tool_label: Midjourney Imagine
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: '{{#prompt_optimizer.text#}}'
+          mode:
+            type: mixed
+            value: fast
+          translation:
+            type: mixed
+            value: 'false'
+          split_images:
+            type: mixed
+            value: 'true'
+      height: 90
+      id: midjourney_generate
+      position:
+        x: 638
+        y: 227
+      positionAbsolute:
+        x: 638
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - midjourney_generate
+          - data
+          value_type: object
+          variable: result
+        - value_selector:
+          - prompt_optimizer
+          - text
+          value_type: string
+          variable: optimized_prompt
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 942
+        y: 227
+      positionAbsolute:
+        x: 942
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

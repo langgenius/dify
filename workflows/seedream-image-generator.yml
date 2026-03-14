@@ -1,0 +1,218 @@
+app:
+  description: Enter a text description and use Seedream to generate high-quality Chinese-style or realistic images.
+  icon: 🖼️
+  icon_background: '#D5F5F6'
+  mode: workflow
+  name: Seedream Image Generator
+  use_icon_as_answer_icon: false
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/seedream
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-to-optimizer
+      source: start_node
+      sourceHandle: source
+      target: prompt_optimizer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: tool
+      id: optimizer-to-seedream
+      source: prompt_optimizer
+      sourceHandle: source
+      target: seedream_generate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: end
+      id: seedream-to-end
+      source: seedream_generate
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Image Description
+          max_length: 2000
+          options: []
+          required: true
+          type: text-input
+          variable: description
+        - label: Quality
+          max_length: 10
+          options:
+          - 1K
+          - 2K
+          - 4K
+          required: false
+          type: select
+          variable: resolution
+      height: 90
+      id: start_node
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Optimize Prompt
+        title: Prompt Optimization
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o-mini
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'You are an expert prompt engineer for Seedream image generation. Optimize the user''s description into a detailed English prompt. Seedream excels at photorealistic, Chinese-style, and high-detail
+            images. Include composition, lighting, mood, color palette, and style details. Output ONLY the prompt.
+
+            '
+        - role: user
+          text: '{{#start_node.description#}}'
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: prompt_optimizer
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate images with Seedream
+        title: Seedream Generation
+        type: tool
+        provider_id: acedatacloud/seedream
+        provider_type: plugin
+        provider_name: seedream
+        tool_name: seedream_generate_image
+        tool_label: Seedream Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: '{{#prompt_optimizer.text#}}'
+          size:
+            type: mixed
+            value: '{{#start_node.resolution#}}'
+      height: 90
+      id: seedream_generate
+      position:
+        x: 638
+        y: 227
+      positionAbsolute:
+        x: 638
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - seedream_generate
+          - data
+          value_type: object
+          variable: images
+        - value_selector:
+          - prompt_optimizer
+          - text
+          value_type: string
+          variable: optimized_prompt
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 942
+        y: 227
+      positionAbsolute:
+        x: 942
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

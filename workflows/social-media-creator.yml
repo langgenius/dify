@@ -1,0 +1,467 @@
+app:
+  description: Enter a trending topic, let AI search the latest information, generate images and a short video, and automatically produce article-plus-video creator content.
+  icon: 📱
+  icon_background: '#FFF3CD'
+  mode: workflow
+  name: One-Click Creator Studio
+  use_icon_as_answer_icon: false
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/flux
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/nano-banana
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/serp
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/veo
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: tool
+      id: start-to-serp
+      source: start_node
+      sourceHandle: source
+      target: serp_research
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: llm
+      id: serp-to-writer
+      source: serp_research
+      sourceHandle: source
+      target: article_writer
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: tool
+      id: writer-to-flux
+      source: article_writer
+      sourceHandle: source
+      target: flux_cover
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: tool
+      id: flux-to-nano
+      source: flux_cover
+      sourceHandle: source
+      target: nano_thumbnail
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: tool
+      id: nano-to-veo
+      source: nano_thumbnail
+      sourceHandle: source
+      target: veo_short_video
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: llm
+      id: veo-to-final
+      source: veo_short_video
+      sourceHandle: source
+      target: final_package
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: final-to-end
+      source: final_package
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Topic / Trend
+          max_length: 500
+          options: []
+          required: true
+          type: text-input
+          variable: topic
+        - label: Platform
+          max_length: 200
+          options:
+          - WeChat Official Account
+          - Xiaohongshu
+          - Douyin
+          - Bilibili
+          - Twitter/X
+          required: false
+          type: select
+          variable: platform
+      height: 90
+      id: start_node
+      position:
+        x: 30
+        y: 277
+      positionAbsolute:
+        x: 30
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Search the latest updates
+        title: Trending Topic Search
+        type: tool
+        provider_id: acedatacloud/serp
+        provider_type: plugin
+        provider_name: serp
+        tool_name: serp_google
+        tool_label: Google Search
+        tool_configurations: {}
+        tool_parameters:
+          query:
+            type: mixed
+            value: '{{#start_node.topic#}}'
+          type:
+            type: mixed
+            value: news
+          number:
+            type: mixed
+            value: '8'
+      height: 90
+      id: serp_research
+      position:
+        x: 334
+        y: 277
+      positionAbsolute:
+        x: 334
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Write the article based on search results
+        title: Article Writing
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'You are a top social media content creator. Based on the research results, create engaging content in Chinese.
+
+
+            Output in EXACT format:
+
+            TITLE: <catchy title, max 30 chars>
+
+            COVER_PROMPT: <English prompt for a stunning cover image, photorealistic, eye-catching>
+
+            THUMBNAIL_PROMPT: <English prompt for a square social media thumbnail, vibrant, text-overlay style>
+
+            VIDEO_PROMPT: <English prompt for a short promotional video clip related to the topic>
+
+            ARTICLE:
+
+            <full article in Chinese, 500-800 words, engaging, informative, with emojis>
+
+            TAGS: <5-8 hashtags in Chinese>
+
+            '
+        - role: user
+          text: 'Topic: {{#start_node.topic#}}
+
+            Platform: {{#start_node.platform#}}
+
+            Search results: {{#serp_research.text#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: article_writer
+      position:
+        x: 638
+        y: 277
+      positionAbsolute:
+        x: 638
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate cover image with Flux
+        title: Cover Image
+        type: tool
+        provider_id: acedatacloud/flux
+        provider_type: plugin
+        provider_name: flux
+        tool_name: flux_generate_image
+        tool_label: Flux Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: '{{#article_writer.text#}}'
+          model:
+            type: mixed
+            value: flux-pro-1.1
+          size:
+            type: mixed
+            value: 1920x1080
+      height: 90
+      id: flux_cover
+      position:
+        x: 942
+        y: 177
+      positionAbsolute:
+        x: 942
+        y: 177
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate thumbnail with NanoBanana
+        title: Social Thumbnail
+        type: tool
+        provider_id: acedatacloud/nano-banana
+        provider_type: plugin
+        provider_name: nano-banana
+        tool_name: nano_banana_generate_image
+        tool_label: Nano Banana Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: '{{#article_writer.text#}}'
+          aspect_ratio:
+            type: mixed
+            value: '1:1'
+      height: 90
+      id: nano_thumbnail
+      position:
+        x: 942
+        y: 327
+      positionAbsolute:
+        x: 942
+        y: 327
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate short video with Veo
+        title: Short Video
+        type: tool
+        provider_id: acedatacloud/veo
+        provider_type: plugin
+        provider_name: veo
+        tool_name: veo_generate_video
+        tool_label: Veo Generate Video
+        tool_configurations: {}
+        tool_parameters:
+          action:
+            type: mixed
+            value: text2video
+          prompt:
+            type: mixed
+            value: '{{#article_writer.text#}}'
+      height: 90
+      id: veo_short_video
+      position:
+        x: 942
+        y: 477
+      positionAbsolute:
+        x: 942
+        y: 477
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Assemble all generated content
+        title: Content Packaging
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o-mini
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'Assemble all generated content into a ready-to-publish creator content package in English markdown.
+
+
+            Include:
+
+            ## 📱 Creator Content Package
+
+            ### Article Title & Body
+
+            ### Cover Image (URL)
+
+            ### Thumbnail (URL)
+
+            ### Short Video (URL/ID)
+
+            ### Hashtags
+
+            ### Publishing Suggestions (best practices for the selected platform)
+
+            '
+        - role: user
+          text: 'Platform: {{#start_node.platform#}}
+
+            Article content: {{#article_writer.text#}}
+
+            Cover result: {{#flux_cover.text#}}
+
+            Thumbnail result: {{#nano_thumbnail.text#}}
+
+            Video result: {{#veo_short_video.text#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: final_package
+      position:
+        x: 1246
+        y: 327
+      positionAbsolute:
+        x: 1246
+        y: 327
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - final_package
+          - text
+          value_type: string
+          variable: content_package
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 1550
+        y: 327
+      positionAbsolute:
+        x: 1550
+        y: 327
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.6

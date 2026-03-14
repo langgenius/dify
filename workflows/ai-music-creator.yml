@@ -1,0 +1,262 @@
+app:
+  description: Enter a music theme or mood, and let AI write lyrics, compose, and generate a complete song automatically.
+  icon: 🎵
+  icon_background: '#D5F5F6'
+  mode: workflow
+  name: AI Music Creator
+  use_icon_as_answer_icon: false
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/suno
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-to-lyricist
+      source: start_node
+      sourceHandle: source
+      target: lyricist_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: tool
+      id: lyricist-to-suno
+      source: lyricist_llm
+      sourceHandle: source
+      target: suno_generate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: end
+      id: suno-to-end
+      source: suno_generate
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Music Theme
+          max_length: 1000
+          options: []
+          required: true
+          type: text-input
+          variable: theme
+        - label: Music Genre
+          max_length: 200
+          options:
+          - Pop
+          - Rock
+          - R&B
+          - Hip-Hop
+          - Jazz
+          - Electronic
+          - Classical
+          - Folk
+          - Country
+          required: false
+          type: select
+          variable: genre
+        - label: Language
+          max_length: 50
+          options:
+          - Chinese
+          - English
+          - Japanese
+          - 한국어
+          required: false
+          type: select
+          variable: language
+      height: 90
+      id: start_node
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Write lyrics and determine style tags
+        title: AI Lyricist
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o-mini
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'You are a professional songwriter. Given the user''s theme/mood and preferences, produce:
+
+            1. A song title (short, catchy)
+
+            2. A style tag string for Suno (comma-separated: genre, mood, instruments, tempo)
+
+            3. Full lyrics in the requested language (default Chinese) using Suno metatags like [Verse], [Chorus], [Bridge], [Outro]
+
+
+            Output in this EXACT format (no extra text):
+
+            TITLE: <title>
+
+            STYLE: <style tags>
+
+            LYRICS:
+
+            <lyrics with metatags>
+
+            '
+        - role: user
+          text: 'Theme: {{#start_node.theme#}}
+
+            Genre: {{#start_node.genre#}}
+
+            Language: {{#start_node.language#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: lyricist_llm
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate music with Suno
+        title: Suno Generation
+        type: tool
+        provider_id: acedatacloud/suno
+        provider_type: plugin
+        provider_name: suno
+        tool_name: suno_generate_audios
+        tool_label: Suno Generate Audios
+        tool_configurations: {}
+        tool_parameters:
+          action:
+            type: mixed
+            value: generate
+          custom:
+            type: mixed
+            value: 'true'
+          lyric:
+            type: mixed
+            value: '{{#lyricist_llm.text#}}'
+          prompt:
+            type: mixed
+            value: '{{#start_node.theme#}}'
+      height: 90
+      id: suno_generate
+      position:
+        x: 638
+        y: 227
+      positionAbsolute:
+        x: 638
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - suno_generate
+          - data
+          value_type: object
+          variable: songs
+        - value_selector:
+          - lyricist_llm
+          - text
+          value_type: string
+          variable: lyrics_and_style
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 942
+        y: 227
+      positionAbsolute:
+        x: 942
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

@@ -1,0 +1,424 @@
+app:
+  description: Enter a brand name and description, and let AI design multiple logo concepts.
+  icon: ✏️
+  icon_background: '#E8D0FF'
+  mode: workflow
+  name: AI Logo Designer
+  use_icon_as_answer_icon: false
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: acedatacloud/flux
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-to-designer
+      source: start_node
+      sourceHandle: source
+      target: designer_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: tool
+      id: designer-to-flux1
+      source: designer_llm
+      sourceHandle: source
+      target: flux_logo1
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: tool
+      id: flux1-to-flux2
+      source: flux_logo1
+      sourceHandle: source
+      target: flux_logo2
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: tool
+      id: flux2-to-flux3
+      source: flux_logo2
+      sourceHandle: source
+      target: flux_logo3
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: llm
+      id: flux3-to-summary
+      source: flux_logo3
+      sourceHandle: source
+      target: summary_llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: summary-to-end
+      source: summary_llm
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: Brand Name
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: brand_name
+        - label: Brand Description
+          max_length: 1000
+          options: []
+          required: true
+          type: text-input
+          variable: brand_description
+        - label: Style Preference
+          max_length: 200
+          options:
+          - Minimal Modern
+          - Tech Aesthetic
+          - Vintage Classic
+          - Cute Cartoon
+          - Luxury Premium
+          required: false
+          type: select
+          variable: style_preference
+      height: 90
+      id: start_node
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Generate logo prompts in three different styles
+        title: Logo Designer
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'You are a professional logo designer. Given a brand name and description, create 3 different logo design prompts optimized for AI image generation.
+
+
+            Each prompt should create a distinct style while maintaining brand relevance. Include:
+
+            - Clean vector-style logo design
+
+            - White or transparent background
+
+            - Specific color scheme
+
+            - Typography style hint
+
+            - Design element descriptions
+
+
+            Output EXACTLY in this format:
+
+            LOGO1: <prompt for minimalist/modern style>
+
+            LOGO2: <prompt for iconic/symbolic style>
+
+            LOGO3: <prompt for creative/artistic style>
+
+
+            Style preference to incorporate: the user''s chosen style
+
+            '
+        - role: user
+          text: 'Brand name: {{#start_node.brand_name#}}
+
+            Brand description: {{#start_node.brand_description#}}
+
+            Style preference: {{#start_node.style_preference#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: designer_llm
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'Concept 1: Minimal Modern'
+        title: Logo Concept 1
+        type: tool
+        provider_id: acedatacloud/flux
+        provider_type: plugin
+        provider_name: flux
+        tool_name: flux_generate_image
+        tool_label: Flux Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: 'Extract LOGO1 prompt from: {{#designer_llm.text#}}'
+          model:
+            type: mixed
+            value: flux-pro-1.1
+          size:
+            type: mixed
+            value: 1024x1024
+      height: 90
+      id: flux_logo1
+      position:
+        x: 638
+        y: 127
+      positionAbsolute:
+        x: 638
+        y: 127
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'Concept 2: Icon Style'
+        title: Logo Concept 2
+        type: tool
+        provider_id: acedatacloud/flux
+        provider_type: plugin
+        provider_name: flux
+        tool_name: flux_generate_image
+        tool_label: Flux Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: 'Extract LOGO2 prompt from: {{#designer_llm.text#}}'
+          model:
+            type: mixed
+            value: flux-pro-1.1
+          size:
+            type: mixed
+            value: 1024x1024
+      height: 90
+      id: flux_logo2
+      position:
+        x: 638
+        y: 277
+      positionAbsolute:
+        x: 638
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'Concept 3: Creative Art'
+        title: Logo Concept 3
+        type: tool
+        provider_id: acedatacloud/flux
+        provider_type: plugin
+        provider_name: flux
+        tool_name: flux_generate_image
+        tool_label: Flux Generate Image
+        tool_configurations: {}
+        tool_parameters:
+          prompt:
+            type: mixed
+            value: 'Extract LOGO3 prompt from: {{#designer_llm.text#}}'
+          model:
+            type: mixed
+            value: flux-pro-1.1
+          size:
+            type: mixed
+            value: 1024x1024
+      height: 90
+      id: flux_logo3
+      position:
+        x: 638
+        y: 427
+      positionAbsolute:
+        x: 638
+        y: 427
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: Summarize the three concepts
+        title: Concept Summary
+        type: llm
+        model:
+          provider: openai
+          name: gpt-4o-mini
+          mode: chat
+        prompt_template:
+        - role: system
+          text: 'Present the 3 logo design results in a clean markdown format. For each:
+
+            1. Show the logo image (extract image_url from the tool result)
+
+            2. Describe the design concept
+
+            3. Suggest use cases (business card, website, app icon, etc.)
+
+            Write in Chinese.
+
+            '
+        - role: user
+          text: 'Brand: {{#start_node.brand_name#}}
+
+            Design prompts: {{#designer_llm.text#}}
+
+            Concept 1 result: {{#flux_logo1.text#}}
+
+            Concept 2 result: {{#flux_logo2.text#}}
+
+            Concept 3 result: {{#flux_logo3.text#}}
+
+            '
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: summary_llm
+      position:
+        x: 942
+        y: 277
+      positionAbsolute:
+        x: 942
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - summary_llm
+          - text
+          value_type: string
+          variable: design_report
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 1246
+        y: 277
+      positionAbsolute:
+        x: 1246
+        y: 277
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7
