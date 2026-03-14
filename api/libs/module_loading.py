@@ -23,7 +23,7 @@ def cached_import(module_path: str, class_name: str) -> Any:
     """
     module = sys.modules.get(module_path)
     spec = getattr(module, "__spec__", None) if module is not None else None
-    if module is None or getattr(spec, "_initializing", False):
+    if module is None or spec is None or getattr(spec, "_initializing", False):
         module = import_module(module_path)
     return getattr(module, class_name)
 
