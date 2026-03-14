@@ -211,7 +211,12 @@ class OAuthCallback(Resource):
             )
 
         if provider == ACEDATACLOUD_PROVIDER and token_response:
-            _persist_acedatacloud_token(account=account, open_id=user_info.id, token_response=token_response)
+            _persist_acedatacloud_token(
+                account=account,
+                open_id=user_info.id,
+                token_response=token_response,
+                is_new_user=oauth_new_user,
+            )
 
         token_pair = AccountService.login(
             account=account,
@@ -288,7 +293,9 @@ class AceDataCloudOAuthSession(Resource):
         }
 
 
-def _persist_acedatacloud_token(*, account: Account, open_id: str, token_response: dict) -> None:
+def _persist_acedatacloud_token(
+    *, account: Account, open_id: str, token_response: dict, is_new_user: bool = False
+) -> None:
     """
     Persist AceDataCloud access/refresh tokens for later use.
     We store an encrypted payload in object storage and keep a short reference path in DB.
@@ -350,6 +357,7 @@ def _persist_acedatacloud_token(*, account: Account, open_id: str, token_respons
         import_acedatacloud_workflow_templates_task.delay(
             tenant_id=str(tenant_id),
             account_id=str(account.id),
+            is_new_user=is_new_user,
         )
     except Exception:
         logger.exception("Failed to persist AceDataCloud token for account %s", account.id)
