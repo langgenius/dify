@@ -1645,9 +1645,6 @@
   "app/components/base/chat/chat/answer/agent-content.tsx": {
     "style/multiline-ternary": {
       "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/base/chat/chat/answer/human-input-content/utils.ts": {
