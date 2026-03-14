@@ -737,7 +737,6 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.inputs_truncated
         assert not response.data.process_data_truncated
         assert not response.data.outputs_truncated
-        assert response.data.extras == {}
 
     def test_trigger_plugin_start_event_uses_provider_id_for_icon(self):
         converter = self.create_test_converter(InvokeFrom.WEB_APP)

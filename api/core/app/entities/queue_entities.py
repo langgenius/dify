@@ -315,7 +315,6 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_loop_id: str | None = None
     start_at: datetime
     agent_strategy: AgentNodeStrategyInit | None = None
-    extras: dict[str, object] = Field(default_factory=dict)
 
     # Legacy provider fields kept for existing start-event consumers.
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType

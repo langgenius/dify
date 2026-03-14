@@ -392,7 +392,6 @@ class WorkflowBasedAppRunner:
             process_data = node_run_result.process_data
             outputs = node_run_result.outputs
             execution_metadata = node_run_result.metadata
-            provider_id = event.provider_id or str(event.extras.get("provider_id", ""))
             self._publish_event(
                 QueueNodeRetryEvent(
                     node_execution_id=event.id,
@@ -408,13 +407,11 @@ class WorkflowBasedAppRunner:
                     error=event.error,
                     execution_metadata=execution_metadata,
                     retry_index=event.retry_index,
-                    extras=dict(event.extras),
                     provider_type=event.provider_type,
-                    provider_id=provider_id,
+                    provider_id=event.provider_id,
                 )
             )
         elif isinstance(event, NodeRunStartedEvent):
-            provider_id = event.provider_id or str(event.extras.get("provider_id", ""))
             self._publish_event(
                 QueueNodeStartedEvent(
                     node_execution_id=event.id,
@@ -425,9 +422,8 @@ class WorkflowBasedAppRunner:
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     agent_strategy=event.agent_strategy,
-                    extras=dict(event.extras),
                     provider_type=event.provider_type,
-                    provider_id=provider_id,
+                    provider_id=event.provider_id,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):

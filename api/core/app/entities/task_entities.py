@@ -472,7 +472,6 @@ class NodeRetryStreamResponse(StreamResponse):
         iteration_id: str | None = None
         loop_id: str | None = None
         retry_index: int = 0
-        extras: dict[str, object] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.NODE_RETRY
     workflow_run_id: str
@@ -503,7 +502,6 @@ class NodeRetryStreamResponse(StreamResponse):
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
                 "retry_index": self.data.retry_index,
-                "extras": {},
             },
         }
 
