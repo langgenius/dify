@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from typing_extensions import TypedDict
 
 from configs import dify_config
