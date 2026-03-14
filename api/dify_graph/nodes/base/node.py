@@ -519,6 +519,7 @@ class Node(Generic[NodeDataT]):
 
         # Return a readonly view so callers can't mutate the registry by accident
         return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
+
     @property
     def retry(self) -> bool:
         return False

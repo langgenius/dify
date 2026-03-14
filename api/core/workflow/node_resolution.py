@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import pkgutil
 from collections.abc import Mapping
 from importlib import import_module
-import pkgutil
 
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
