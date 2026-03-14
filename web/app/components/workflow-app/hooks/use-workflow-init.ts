@@ -72,6 +72,7 @@ export const useWorkflowInit = () => {
       setIsLoading(false)
     }
     catch (error: any) {
+      console.error(error)
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
@@ -93,7 +94,7 @@ export const useWorkflowInit = () => {
                   edges: edgesData,
                 },
                 features: {
-                  retriever_resource: { enabled: true },
+                     retriever_resource: { enabled: true },
                 },
                 environment_variables: [],
                 conversation_variables: [],
@@ -109,7 +110,8 @@ export const useWorkflowInit = () => {
             workflowStore.setState({ isWorkflowDataLoaded: false })
             setIsLoading(false)
           }
-        }).catch(() => {
+        }).catch((err) => {
+          console.error(err)
           setIsLoading(false)
         })
       }
@@ -118,48 +120,3 @@ export const useWorkflowInit = () => {
       }
     }
   }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
-
-  useEffect(() => {
-    handleGetInitialWorkflowData()
-  }, [])
-
-  const handleFetchPreloadData = useCallback(async () => {
-    try {
-      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
-      workflowStore.setState({
-        nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
-          if (!acc[block.type])
-            acc[block.type] = { ...block.config }
-          return acc
-        }, {} as Record<string, any>),
-      })
-      workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
-      const graph = publishedWorkflow?.graph
-      workflowStore.getState().setLastPublishedHasUserInput(
-        hasConnectedUserInput(graph?.nodes, graph?.edges),
-      )
-    }
-    catch (e) {
-      console.error(e)
-      workflowStore.getState().setLastPublishedHasUserInput(false)
-    }
-  }, [workflowStore, appDetail])
-
-  useEffect(() => {
-    handleFetchPreloadData()
-  }, [handleFetchPreloadData])
-
-  useEffect(() => {
-    if (data) {
-      workflowStore.getState().setDraftUpdatedAt(data.updated_at)
-      workflowStore.getState().setToolPublished(data.tool_published)
-    }
-  }, [data, workflowStore])
-
-  return {
-    data,
-    isLoading: isLoading || isFileUploadConfigLoading,
-    fileUploadConfigResponse,
-  }
-}
