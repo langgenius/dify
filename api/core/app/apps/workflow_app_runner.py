@@ -32,6 +32,8 @@ from core.app.entities.queue_entities import (
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
@@ -62,7 +64,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.nodes import NodeType
 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -307,9 +308,11 @@ class WorkflowBasedAppRunner:
         if not target_node_config:
             raise ValueError(f"{node_type_label} node id not found in workflow graph")
 
+        target_node_config = NodeConfigDictAdapter.validate_python(target_node_config)
+
         # Get node class
-        node_type = NodeType(target_node_config.get("data", {}).get("type"))
-        node_version = target_node_config.get("data", {}).get("version", "1")
+        node_type = target_node_config["data"].type
+        node_version = str(target_node_config["data"].version)
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # Use the variable pool from graph_runtime_state instead of creating a new one

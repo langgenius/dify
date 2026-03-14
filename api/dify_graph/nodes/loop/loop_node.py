@@ -5,6 +5,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
     NodeExecutionType,
     NodeType,
@@ -298,11 +299,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: LoopNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = LoopNodeData.model_validate(node_data)
-
         variable_mapping = {}
 
         # Extract loop node IDs statically from graph_config
@@ -320,14 +318,15 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 # Get node class
                 from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
                 if node_type not in NODE_TYPE_CLASSES_MAPPING:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
+                node_version = str(typed_sub_node_config["data"].version)
                 node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -342,7 +341,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in typed_node_data.loop_variables or []:
+        for loop_variable in node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping

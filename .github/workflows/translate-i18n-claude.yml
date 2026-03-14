@@ -50,8 +50,6 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
-        with:
-          install-dependencies: "false"
 
       - name: Detect changed files and generate diff
         id: detect_changes
