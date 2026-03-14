@@ -583,15 +583,15 @@ class AgentNode(Node[AgentNodeData]):
                 if node_type == NodeType.AGENT:
                     if isinstance(message.message.json_object, dict):
                         msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                        llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        new_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
+                        if new_usage.total_tokens > 0:
+                            llm_usage = llm_usage.plus(new_usage)
                         agent_execution_metadata = {
                             WorkflowNodeExecutionMetadataKey(key): value
                             for key, value in msg_metadata.items()
                             if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                         }
                     else:
-                        msg_metadata = {}
-                        llm_usage = LLMUsage.empty_usage()
                         agent_execution_metadata = {}
                 if message.message.json_object:
                     json_list.append(message.message.json_object)
