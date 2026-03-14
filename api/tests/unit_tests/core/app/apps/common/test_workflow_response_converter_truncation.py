@@ -739,7 +739,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.outputs_truncated
         assert response.data.extras == {}
 
-    def test_trigger_plugin_start_event_uses_extras_provider_id_for_icon(self):
+    def test_trigger_plugin_start_event_uses_provider_id_for_icon(self):
         converter = self.create_test_converter(InvokeFrom.WEB_APP)
         event = QueueNodeStartedEvent(
             node_execution_id=str(uuid.uuid4()),
@@ -750,8 +750,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             in_iteration_id=None,
             in_loop_id=None,
             provider_type="",
-            provider_id="",
-            extras={"provider_id": "provider-1"},
+            provider_id="provider-1",
         )
 
         with patch(
@@ -761,7 +760,6 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             response = converter.workflow_node_start_to_stream_response(event=event, task_id="task-1")
 
         assert response is not None
-        assert response.data.extras["provider_id"] == "provider-1"
         assert response.data.extras["icon"] == "https://example.com/icon.png"
         get_trigger_plugin_icon.assert_called_once_with("test_tenant", "provider-1")
 
