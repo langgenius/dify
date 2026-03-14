@@ -15,8 +15,9 @@ class NodeRunStartedEvent(GraphNodeEventBase):
     predecessor_node_id: str | None = None
     agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
+    extras: dict[str, object] = Field(default_factory=dict)
 
-    # FIXME(-LAN-): only for ToolNode
+    # Legacy provider fields kept for existing start-event consumers.
     provider_type: str = ""
     provider_id: str = ""
 

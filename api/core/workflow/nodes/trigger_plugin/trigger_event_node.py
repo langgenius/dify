@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType, NodeType
+from dify_graph.graph_events import NodeRunStartedEvent
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 
@@ -31,6 +32,11 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
+
+    def customize_start_event(self, event: NodeRunStartedEvent) -> None:
+        provider_id = self.node_data.provider_id
+        event.provider_id = provider_id
+        event.extras["provider_id"] = provider_id
 
     def _run(self) -> NodeRunResult:
         """

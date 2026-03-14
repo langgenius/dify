@@ -273,6 +273,10 @@ class Node(Generic[NodeDataT]):
         """Optional hook for subclasses requiring extra initialization."""
         return
 
+    def customize_start_event(self, event: NodeRunStartedEvent) -> None:
+        """Optional hook for subclasses to attach start-event metadata or extras."""
+        return
+
     @property
     def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
@@ -387,6 +391,8 @@ class Node(Generic[NodeDataT]):
                 name=cast(AgentNodeData, self.node_data).agent_strategy_name,
                 icon=self.agent_strategy_icon,
             )
+
+        self.customize_start_event(start_event)
 
         # ===
         yield start_event
