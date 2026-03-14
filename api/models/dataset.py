@@ -28,7 +28,7 @@ from libs.uuid_utils import uuidv7
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .enums import CreatorUserRole
 from .model import App, Tag, TagBinding, UploadFile
@@ -43,7 +43,7 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
-class Dataset(Base):
+class Dataset(TypeBase):
     __tablename__ = "datasets"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -249,7 +249,9 @@ class Dataset(Base):
             "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
             "external_knowledge_api_id": external_knowledge_api.id,
             "external_knowledge_api_name": external_knowledge_api.name,
-            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
+            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", "")
+            if external_knowledge_api.settings
+            else "",
         }
 
     @property
@@ -358,7 +360,7 @@ class DatasetProcessRule(Base):  # bug
             return None
 
 
-class Document(Base):
+class Document(TypeBase):
     __tablename__ = "documents"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_pkey"),
@@ -379,9 +381,11 @@ class Document(Base):
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_api_request_id = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     # start processing
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -404,7 +408,7 @@ class Document(Base):
 
     # pause
     is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
-    paused_by = mapped_column(StringUUID, nullable=True)
+    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
@@ -415,10 +419,10 @@ class Document(Base):
     indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'"))
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    archived_reason = mapped_column(String(255), nullable=True)
-    archived_by = mapped_column(StringUUID, nullable=True)
+    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
@@ -659,51 +663,10 @@ class Document(Base):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
-        return cls(
-            id=data.get("id"),
-            tenant_id=data.get("tenant_id"),
-            dataset_id=data.get("dataset_id"),
-            position=data.get("position"),
-            data_source_type=data.get("data_source_type"),
-            data_source_info=data.get("data_source_info"),
-            dataset_process_rule_id=data.get("dataset_process_rule_id"),
-            batch=data.get("batch"),
-            name=data.get("name"),
-            created_from=data.get("created_from"),
-            created_by=data.get("created_by"),
-            created_api_request_id=data.get("created_api_request_id"),
-            created_at=data.get("created_at"),
-            processing_started_at=data.get("processing_started_at"),
-            file_id=data.get("file_id"),
-            word_count=data.get("word_count"),
-            parsing_completed_at=data.get("parsing_completed_at"),
-            cleaning_completed_at=data.get("cleaning_completed_at"),
-            splitting_completed_at=data.get("splitting_completed_at"),
-            tokens=data.get("tokens"),
-            indexing_latency=data.get("indexing_latency"),
-            completed_at=data.get("completed_at"),
-            is_paused=data.get("is_paused"),
-            paused_by=data.get("paused_by"),
-            paused_at=data.get("paused_at"),
-            error=data.get("error"),
-            stopped_at=data.get("stopped_at"),
-            indexing_status=data.get("indexing_status"),
-            enabled=data.get("enabled"),
-            disabled_at=data.get("disabled_at"),
-            disabled_by=data.get("disabled_by"),
-            archived=data.get("archived"),
-            archived_reason=data.get("archived_reason"),
-            archived_by=data.get("archived_by"),
-            archived_at=data.get("archived_at"),
-            updated_at=data.get("updated_at"),
-            doc_type=data.get("doc_type"),
-            doc_metadata=data.get("doc_metadata"),
-            doc_form=data.get("doc_form"),
-            doc_language=data.get("doc_language"),
-        )
+        return cls(**data)
 
 
-class DocumentSegment(Base):
+class DocumentSegment(TypeBase):
     __tablename__ = "document_segments"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_pkey"),
@@ -727,9 +690,9 @@ class DocumentSegment(Base):
     tokens: Mapped[int]
 
     # indexing fields
-    keywords = mapped_column(sa.JSON, nullable=True)
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
+    keywords: Mapped[list | None] = mapped_column(sa.JSON, nullable=True)
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -918,7 +881,7 @@ class DocumentSegment(Base):
         return attachment_list
 
 
-class ChildChunk(Base):
+class ChildChunk(TypeBase):
     __tablename__ = "child_chunks"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="child_chunk_pkey"),

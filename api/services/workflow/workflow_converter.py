@@ -190,13 +190,13 @@ class WorkflowConverter:
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type=WorkflowType.from_app_mode(new_app_mode).value,
+            type=WorkflowType.from_app_mode(new_app_mode),
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
-            features=json.dumps(features),
+            _features=json.dumps(features),
             created_by=account_id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         db.session.add(workflow)

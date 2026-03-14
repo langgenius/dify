@@ -109,21 +109,18 @@ def _create_node_execution_from_domain(
 
     # Serialize complex data as JSON
     json_converter = WorkflowRuntimeTypeConverter()
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    node_execution.process_data = (
+    inputs_json = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_json = (
         json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
     )
-    node_execution.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
-    # Convert metadata enum keys to strings for JSON serialization
+    outputs_json = json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     if execution.metadata:
         metadata_for_json = {
             key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
         }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
+        metadata_json = json.dumps(json_converter.to_json_encodable(metadata_for_json))
     else:
-        node_execution.execution_metadata = "{}"
+        metadata_json = "{}"
 
     node_execution.status = execution.status.value
     node_execution.error = execution.error
@@ -131,7 +128,6 @@ def _create_node_execution_from_domain(
     node_execution.created_by_role = creator_user_role
     node_execution.created_by = creator_user_id
     node_execution.created_at = execution.created_at
-    node_execution.finished_at = execution.finished_at
 
     return node_execution
 
