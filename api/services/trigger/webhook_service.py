@@ -16,15 +16,15 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType
-from dify_graph.file.models import FileTransferMethod
-from dify_graph.nodes.trigger_webhook.entities import (
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     WebhookBodyParameter,
     WebhookData,
     WebhookParameter,
 )
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import NodeType
+from dify_graph.file.models import FileTransferMethod
 from dify_graph.variables.types import ArrayValidation, SegmentType
 from enums.quota_type import QuotaType
 from extensions.ext_database import db

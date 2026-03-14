@@ -179,7 +179,7 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under dify_graph.nodes.*
+        # Only register production node implementations defined under dify_graph.nodes.*.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -271,6 +271,10 @@ class Node(Generic[NodeDataT]):
 
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
+        return
+
+    def customize_start_event(self, event: NodeRunStartedEvent) -> None:
+        """Optional hook for subclasses to attach start-event metadata or extras."""
         return
 
     @property
@@ -379,12 +383,6 @@ class Node(Generic[NodeDataT]):
             start_event.provider_id = f"{plugin_id}/{provider_name}"
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
-        from dify_graph.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
-
-        if isinstance(self, TriggerEventNode):
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
         from dify_graph.nodes.agent.agent_node import AgentNode
         from dify_graph.nodes.agent.entities import AgentNodeData
 
@@ -393,6 +391,8 @@ class Node(Generic[NodeDataT]):
                 name=cast(AgentNodeData, self.node_data).agent_strategy_name,
                 icon=self.agent_strategy_icon,
             )
+
+        self.customize_start_event(start_event)
 
         # ===
         yield start_event
@@ -524,6 +524,7 @@ class Node(Generic[NodeDataT]):
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
         Import all modules under dify_graph.nodes so subclasses register themselves on import.
+        Higher-level packages may register additional nodes before calling this helper.
         Then we return a readonly view of the registry to avoid accidental mutation.
         """
         # Import all node modules to ensure they are loaded (thus registered)

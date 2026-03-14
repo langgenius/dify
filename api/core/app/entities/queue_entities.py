@@ -316,7 +316,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     start_at: datetime
     agent_strategy: AgentNodeStrategyInit | None = None
 
-    # FIXME(-LAN-): only for ToolNode, need to refactor
+    # Legacy provider fields kept for existing start-event consumers.
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
     provider_id: str
 

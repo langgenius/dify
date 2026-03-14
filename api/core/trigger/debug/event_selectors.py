@@ -19,10 +19,10 @@ from core.trigger.debug.events import (
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import NodeType
-from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
-from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.schedule_utils import calculate_next_run_at

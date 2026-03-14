@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -737,6 +737,30 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.inputs_truncated
         assert not response.data.process_data_truncated
         assert not response.data.outputs_truncated
+
+    def test_trigger_plugin_start_event_uses_provider_id_for_icon(self):
+        converter = self.create_test_converter(InvokeFrom.WEB_APP)
+        event = QueueNodeStartedEvent(
+            node_execution_id=str(uuid.uuid4()),
+            node_id="trigger-node",
+            node_title="Trigger Node",
+            node_type=NodeType.TRIGGER_PLUGIN,
+            start_at=naive_utc_now(),
+            in_iteration_id=None,
+            in_loop_id=None,
+            provider_type="",
+            provider_id="provider-1",
+        )
+
+        with patch(
+            "core.app.apps.common.workflow_response_converter.TriggerManager.get_trigger_plugin_icon",
+            return_value="https://example.com/icon.png",
+        ) as get_trigger_plugin_icon:
+            response = converter.workflow_node_start_to_stream_response(event=event, task_id="task-1")
+
+        assert response is not None
+        assert response.data.extras["icon"] == "https://example.com/icon.png"
+        get_trigger_plugin_icon.assert_called_once_with("test_tenant", "provider-1")
 
     def test_service_api_iteration_events_no_truncation(self):
         """Test that Service API doesn't truncate iteration events."""

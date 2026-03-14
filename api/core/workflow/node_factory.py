@@ -22,6 +22,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
@@ -39,7 +40,6 @@ from dify_graph.nodes.document_extractor import UnstructuredApiConfig
 from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.template_transform.template_renderer import (

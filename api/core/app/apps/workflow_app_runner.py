@@ -30,6 +30,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -63,7 +64,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool

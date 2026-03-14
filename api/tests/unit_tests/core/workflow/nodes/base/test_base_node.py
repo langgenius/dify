@@ -1,11 +1,10 @@
 import pytest
 
+# Ensures that all node classes are imported.
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
 from dify_graph.nodes.base.node import Node
-
-# Ensures that all node classes are imported.
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
 # Ensure `NODE_TYPE_CLASSES_MAPPING` is used and not automatically removed.
 _ = NODE_TYPE_CLASSES_MAPPING
