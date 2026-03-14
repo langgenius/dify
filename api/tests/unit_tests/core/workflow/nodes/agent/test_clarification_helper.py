@@ -2,8 +2,6 @@
 Tests for agent node clarification helper and configuration.
 """
 
-import pytest
-
 from core.workflow.nodes.agent.clarification_helper import (
     extract_clarification_request,
     should_enable_clarification,
