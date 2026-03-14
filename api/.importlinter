@@ -129,7 +129,6 @@ ignore_imports =
     dify_graph.model_runtime.model_providers.model_provider_factory -> configs
     dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
     dify_graph.model_runtime.model_providers.model_provider_factory -> models.provider_ids
-    dify_graph.nodes.llm.prompt_message_builder -> core.model_manager
 
 [importlinter:contract:rsc]
 name = RSC

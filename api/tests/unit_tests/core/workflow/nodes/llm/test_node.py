@@ -35,7 +35,6 @@ from dify_graph.nodes.llm.entities import (
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
 from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.prompt_message_builder import handle_memory_completion_mode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -643,10 +642,8 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch(
-        "dify_graph.nodes.llm.prompt_message_builder.calculate_rest_token", return_value=2000
-    ) as mock_rest_token:
-        memory_text = handle_memory_completion_mode(
+    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = llm_utils.handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
             model_instance=model_instance,
