@@ -20,6 +20,8 @@ import { createContext, useContext } from 'use-context-selector'
 export type ChatWithHistoryContextValue = {
   appMeta?: AppMeta | null
   appData?: AppData | null
+  siteDescription?: string
+  showSiteDescription: boolean
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -95,5 +97,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
   initUserVariables: {},
+  siteDescription: '',
+  showSiteDescription: false,
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

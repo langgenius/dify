@@ -193,6 +193,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
   }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
+  const siteDescription = appData?.site?.description || ''
+  const showSiteDescription = !currentConversationId && !!siteDescription
+
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)
@@ -587,6 +590,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     currentConversationItem,
     handleConversationIdInfoChange,
     appData,
+    siteDescription,
+    showSiteDescription,
     appParams: appParams || {} as ChatConfig,
     appMeta,
     appPinnedConversationData,
