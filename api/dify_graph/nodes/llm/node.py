@@ -29,6 +29,7 @@ from dify_graph.enums import (
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.file import File, FileTransferMethod, FileType, file_manager
+from dify_graph.file.constants import maybe_file_object
 from dify_graph.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
@@ -76,6 +77,7 @@ from dify_graph.variables import (
     StringSegment,
 )
 from extensions.ext_database import db
+from factories.file_factory import build_from_mapping
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 
@@ -679,10 +681,19 @@ class LLMNode(Node[LLMNodeData]):
                 context_str = ""
                 original_retriever_resource: list[RetrievalSourceMetadata] = []
                 context_files: list[File] = []
+                tenant_id = self.require_dify_context().tenant_id
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
                     else:
+                        if isinstance(item, File):
+                            context_files.append(item)
+                            continue
+                        if maybe_file_object(item):
+                            file_obj = build_from_mapping(mapping=item, tenant_id=tenant_id, config=None)
+                            context_files.append(file_obj)
+                            continue
+
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
