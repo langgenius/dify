@@ -71,6 +71,7 @@ class BuiltinNodeTypes:
     AGENT: ClassVar[NodeType] = "agent"
     HUMAN_INPUT: ClassVar[NodeType] = "human-input"
 
+
 BUILT_IN_NODE_TYPES: tuple[NodeType, ...] = (
     BuiltinNodeTypes.START,
     BuiltinNodeTypes.END,
