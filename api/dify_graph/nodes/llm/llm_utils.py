@@ -259,7 +259,7 @@ def fetch_prompt_messages(
             if prompt_message_content:
                 prompt_message.content = prompt_message_content
                 filtered_prompt_messages.append(prompt_message)
-        elif prompt_message.content:
+        elif not prompt_message.is_empty():
             filtered_prompt_messages.append(prompt_message)
 
     if len(filtered_prompt_messages) == 0:

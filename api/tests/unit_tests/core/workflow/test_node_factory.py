@@ -411,13 +411,8 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),
         [
-<<<<<<< HEAD
-            (BuiltinNodeTypes.LLM, "LLMNode", {"http_client": sentinel.http_client}),
-            (BuiltinNodeTypes.QUESTION_CLASSIFIER, "QuestionClassifierNode", {"http_client": sentinel.http_client}),
-            (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
-=======
             (
-                NodeType.LLM,
+                BuiltinNodeTypes.LLM,
                 "LLMNode",
                 {
                     "http_client": sentinel.http_client,
@@ -425,15 +420,14 @@ class TestDifyNodeFactoryCreateNode:
                 },
             ),
             (
-                NodeType.QUESTION_CLASSIFIER,
+                BuiltinNodeTypes.QUESTION_CLASSIFIER,
                 "QuestionClassifierNode",
                 {
                     "http_client": sentinel.http_client,
                     "template_renderer": sentinel.llm_template_renderer,
                 },
             ),
-            (NodeType.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
->>>>>>> 86c3ede373 (refactor: llm decouple code executor module)
+            (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
         ],
     )
     def test_creates_model_backed_nodes(

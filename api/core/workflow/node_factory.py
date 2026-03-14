@@ -403,7 +403,7 @@ class DifyNodeFactory(NodeFactory):
                 model_instance=model_instance,
             ),
         }
-        if validated_node_data.type in {NodeType.LLM, NodeType.QUESTION_CLASSIFIER}:
+        if validated_node_data.type in {BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
             node_init_kwargs["template_renderer"] = self._llm_template_renderer
         if include_http_client:
             node_init_kwargs["http_client"] = self._http_request_http_client
