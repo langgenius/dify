@@ -42,6 +42,7 @@ import {
 import { useHooksStore } from '../../hooks-store'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
+import { upsertTopLevelTracingNodeOnStart } from '../../utils/top-level-tracing'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -486,19 +487,13 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess!.tracing![currentIndex] = {
-              ...data,
-              status: NodeRunningStatus.Running,
-            }
-          }
-          else {
-            responseItem.workflowProcess!.tracing!.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            })
-          }
+          if (params.loop_id)
+            return
+
+          upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess!.tracing!, {
+            ...data,
+            status: NodeRunningStatus.Running,
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -517,6 +512,9 @@ export const useChat = (
           })
         },
         onNodeFinished: ({ data }) => {
+          if (params.loop_id)
+            return
+
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
             responseItem.workflowProcess!.tracing[currentTracingIndex] = {
@@ -758,8 +756,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
+          const iterationIndex = tracing.findIndex(item => item.id === iterationFinishedData.id)!
           if (iterationIndex > -1) {
             tracing[iterationIndex] = {
               ...tracing[iterationIndex],
@@ -776,22 +773,10 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess.tracing[currentIndex] = {
-              ...nodeStartedData,
-              status: NodeRunningStatus.Running,
-            }
-          }
-          else {
-            if (nodeStartedData.iteration_id)
-              return
-
-            responseItem.workflowProcess.tracing.push({
-              ...nodeStartedData,
-              status: WorkflowRunningStatus.Running,
-            })
-          }
+          upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
+            ...nodeStartedData,
+            status: WorkflowRunningStatus.Running,
+          })
         })
       },
       onNodeFinished: ({ data: nodeFinishedData }) => {
@@ -800,6 +785,9 @@ export const useChat = (
             return
 
           if (nodeFinishedData.iteration_id)
+            return
+
+          if (nodeFinishedData.loop_id)
             return
 
           const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
@@ -829,8 +817,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          const loopIndex = tracing.findIndex(item => item.id === loopFinishedData.id)!
           if (loopIndex > -1) {
             tracing[loopIndex] = {
               ...tracing[loopIndex],
