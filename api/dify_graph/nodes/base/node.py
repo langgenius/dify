@@ -793,11 +793,16 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
+        from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+
+        retriever_resources = [
+            RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+        ]
         return NodeRunRetrieverResourceEvent(
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            retriever_resources=event.retriever_resources,
+            retriever_resources=retriever_resources,
             context=event.context,
             node_version=self.version(),
         )
