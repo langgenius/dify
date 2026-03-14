@@ -5,7 +5,12 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from dify_graph.enums import NodeType
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
+from dify_graph.enums import BuiltinNodeTypes
 from models import Account, AppMode
 from models.model import IconType
 from services import app_dsl_service
@@ -522,7 +527,7 @@ def test_create_or_update_app_creates_workflow_app_and_saves_dependencies(monkey
             "conversation_variables": [{"y": 2}],
             "graph": {
                 "nodes": [
-                    {"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["enc-1", "enc-2"]}},
+                    {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["enc-1", "enc-2"]}},
                 ]
             },
             "features": {},
@@ -671,17 +676,17 @@ def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
     workflow_dict = {
         "graph": {
             "nodes": [
-                {"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["d1", "d2"]}},
-                {"data": {"type": NodeType.TOOL, "credential_id": "secret"}},
+                {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "dataset_ids": ["d1", "d2"]}},
+                {"data": {"type": BuiltinNodeTypes.TOOL, "credential_id": "secret"}},
                 {
                     "data": {
-                        "type": NodeType.AGENT,
+                        "type": BuiltinNodeTypes.AGENT,
                         "agent_parameters": {"tools": {"value": [{"credential_id": "secret"}]}},
                     }
                 },
-                {"data": {"type": NodeType.TRIGGER_SCHEDULE.value, "config": {"x": 1}}},
-                {"data": {"type": NodeType.TRIGGER_WEBHOOK.value, "webhook_url": "x", "webhook_debug_url": "y"}},
-                {"data": {"type": NodeType.TRIGGER_PLUGIN.value, "subscription_id": "s"}},
+                {"data": {"type": TRIGGER_SCHEDULE_NODE_TYPE, "config": {"x": 1}}},
+                {"data": {"type": TRIGGER_WEBHOOK_NODE_TYPE, "webhook_url": "x", "webhook_debug_url": "y"}},
+                {"data": {"type": TRIGGER_PLUGIN_NODE_TYPE, "subscription_id": "s"}},
             ]
         }
     }
@@ -809,11 +814,11 @@ def test_extract_dependencies_from_workflow_graph_covers_all_node_types(monkeypa
 
     graph = {
         "nodes": [
-            {"data": {"type": NodeType.TOOL}},
-            {"data": {"type": NodeType.LLM}},
-            {"data": {"type": NodeType.QUESTION_CLASSIFIER}},
-            {"data": {"type": NodeType.PARAMETER_EXTRACTOR}},
-            {"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}},
+            {"data": {"type": BuiltinNodeTypes.TOOL}},
+            {"data": {"type": BuiltinNodeTypes.LLM}},
+            {"data": {"type": BuiltinNodeTypes.QUESTION_CLASSIFIER}},
+            {"data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}},
+            {"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}},
             {"data": {"type": "unknown"}},
         ]
     }
@@ -826,7 +831,9 @@ def test_extract_dependencies_from_workflow_graph_handles_exceptions(monkeypatch
     monkeypatch.setattr(
         app_dsl_service.ToolNodeData, "model_validate", lambda _d: (_ for _ in ()).throw(ValueError("bad"))
     )
-    deps = AppDslService._extract_dependencies_from_workflow_graph({"nodes": [{"data": {"type": NodeType.TOOL}}]})
+    deps = AppDslService._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.TOOL}}]}
+    )
     assert deps == []
 
 

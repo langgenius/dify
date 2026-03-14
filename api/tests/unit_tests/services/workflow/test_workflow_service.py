@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction
 from dify_graph.nodes.human_input.enums import FormInputType
 from models.model import App
@@ -209,7 +209,7 @@ class TestWorkflowService:
 
         workflow = MagicMock()
         node_config = NodeConfigDictAdapter.validate_python(
-            {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}
         )
         workflow.get_node_config_by_id.return_value = node_config
         workflow.get_enclosing_node_type_and_id.return_value = None
@@ -279,7 +279,7 @@ class TestWorkflowService:
 
         workflow = MagicMock()
         workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
-            {"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}}
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}
         )
         service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
 
@@ -312,7 +312,7 @@ class TestWorkflowService:
 
         # Mock node config
         mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
-            {"id": "node-1", "data": {"type": NodeType.LLM.value}}
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.LLM}}
         )
         mock_workflow.get_enclosing_node_type_and_id.return_value = None
 
@@ -379,7 +379,7 @@ class TestWorkflowService:
         mock_workflow.environment_variables = []
         mock_workflow.conversation_variables = []
         mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
-            {"id": "node-1", "data": {"type": NodeType.LLM.value}}
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.LLM}}
         )
         mock_workflow.get_enclosing_node_type_and_id.return_value = None
 

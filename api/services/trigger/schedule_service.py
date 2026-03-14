@@ -5,15 +5,15 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.nodes import NodeType
-from dify_graph.nodes.trigger_schedule.entities import (
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from core.workflow.nodes.trigger_schedule.entities import (
     ScheduleConfig,
     SchedulePlanUpdate,
     TriggerScheduleNodeData,
     VisualConfig,
 )
-from dify_graph.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from dify_graph.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
@@ -240,7 +240,7 @@ class ScheduleService:
         for node in nodes:
             node_data = node.get("data", {})
 
-            if node_data.get("type") != NodeType.TRIGGER_SCHEDULE.value:
+            if node_data.get("type") != TRIGGER_SCHEDULE_NODE_TYPE:
                 continue
 
             node_id = node.get("id", "start")

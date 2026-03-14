@@ -6,7 +6,7 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, SystemVariableKey, WorkflowNodeExecutionMetadataKey
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
@@ -24,7 +24,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
     Datasource Node
     """
 
-    node_type = NodeType.DATASOURCE
+    node_type = BuiltinNodeTypes.DATASOURCE
     execution_type = NodeExecutionType.ROOT
 
     def __init__(

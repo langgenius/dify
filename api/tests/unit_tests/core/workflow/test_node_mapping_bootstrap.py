@@ -11,18 +11,18 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
         """
         from core.app.apps import workflow_app_runner
         from core.workflow import workflow_entry
-        from core.workflow.node_factory import DifyNodeFactory
-        from dify_graph.enums import NodeType
-        from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+        from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+        from core.workflow.node_factory import DifyNodeFactory, NODE_TYPE_CLASSES_MAPPING
+        from dify_graph.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline
 
         _ = workflow_entry, workflow_app_runner, workflow_service, rag_pipeline
 
         expected = (
-            NodeType.KNOWLEDGE_RETRIEVAL,
-            NodeType.KNOWLEDGE_INDEX,
-            NodeType.DATASOURCE,
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+            KNOWLEDGE_INDEX_NODE_TYPE,
+            BuiltinNodeTypes.DATASOURCE,
         )
 
         for node_type in expected:

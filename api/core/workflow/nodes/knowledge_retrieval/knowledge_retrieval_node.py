@@ -13,7 +13,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
-    node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
     # Instance attributes specific to LLMNode.
     # Output variable for file

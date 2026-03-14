@@ -20,13 +20,14 @@ from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginInvokeError
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
-from dify_graph.enums import NodeType, WorkflowExecutionStatus
-from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
+from dify_graph.enums import WorkflowExecutionStatus
 from enums.quota_type import QuotaType, unlimited
 from models.enums import (
     AppTriggerType,
@@ -278,7 +279,7 @@ def dispatch_triggered_workflow(
 
             # Find the trigger node in the workflow
             event_node = None
-            for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+            for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
                 if node_id == plugin_trigger.node_id:
                     event_node = node_config
                     break

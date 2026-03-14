@@ -1,4 +1,8 @@
-from collections.abc import Callable, Mapping
+import importlib
+import pkgutil
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from functools import lru_cache
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
 
 from sqlalchemy import select
@@ -18,11 +22,11 @@ from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.nodes import register_core_nodes
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph.graph import NodeFactory
 from dify_graph.model_runtime.entities.model_entities import ModelType
@@ -36,7 +40,6 @@ from dify_graph.nodes.document_extractor import UnstructuredApiConfig
 from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.template_transform.template_renderer import (
@@ -50,7 +53,116 @@ if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
     from dify_graph.runtime import GraphRuntimeState
 
-register_core_nodes()
+LATEST_VERSION = "latest"
+_START_NODE_TYPES: frozenset[NodeType] = frozenset(
+    (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
+)
+
+
+def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] = frozenset()) -> None:
+    package = importlib.import_module(package_name)
+    for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
+        if module_name in excluded_modules:
+            continue
+        importlib.import_module(module_name)
+
+
+@lru_cache(maxsize=1)
+def register_nodes() -> None:
+    """Import production node modules so they self-register with ``Node``."""
+    _import_node_package("dify_graph.nodes")
+    _import_node_package("core.workflow.nodes")
+
+
+def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
+    """Return a read-only snapshot of the current production node registry."""
+    register_nodes()
+
+    return {node_type: MappingProxyType(version_map) for node_type, version_map in Node._registry.items()}
+
+
+def is_start_node_type(node_type: NodeType) -> bool:
+    """Return True when the node type can serve as a workflow entry point."""
+    return node_type in _START_NODE_TYPES
+
+
+def get_default_root_node_id(graph_config: Mapping[str, Any]) -> str:
+    """Resolve the default entry node for a persisted top-level workflow graph.
+
+    This workflow-layer helper depends on start-node semantics defined by
+    `is_start_node_type`, so it intentionally lives next to the node registry
+    instead of in the raw `dify_graph.entities.graph_config` schema module.
+    """
+    nodes = graph_config.get("nodes")
+    if not isinstance(nodes, list):
+        raise ValueError("nodes in workflow graph must be a list")
+
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+
+        if node.get("type") == "custom-note":
+            continue
+
+        node_id = node.get("id")
+        data = node.get("data")
+        if not isinstance(node_id, str) or not isinstance(data, Mapping):
+            continue
+
+        node_type = data.get("type")
+        if isinstance(node_type, str) and is_start_node_type(node_type):
+            return node_id
+
+    raise ValueError("Unable to determine default root node ID from workflow graph")
+
+
+class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Node]]]):
+    """Mutable dict-like view over the current node registry."""
+
+    def __init__(self) -> None:
+        self._cached_snapshot: dict[NodeType, Mapping[str, type[Node]]] = {}
+        self._cached_version = -1
+        self._deleted: set[NodeType] = set()
+        self._overrides: dict[NodeType, Mapping[str, type[Node]]] = {}
+
+    def _snapshot(self) -> dict[NodeType, Mapping[str, type[Node]]]:
+        current_version = Node.get_registry_version()
+        if self._cached_version != current_version:
+            self._cached_snapshot = dict(get_node_type_classes_mapping())
+            self._cached_version = current_version
+        if not self._deleted and not self._overrides:
+            return self._cached_snapshot
+
+        snapshot = {key: value for key, value in self._cached_snapshot.items() if key not in self._deleted}
+        snapshot.update(self._overrides)
+        return snapshot
+
+    def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
+        return self._snapshot()[key]
+
+    def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
+        self._deleted.discard(key)
+        self._overrides[key] = value
+
+    def __delitem__(self, key: NodeType) -> None:
+        if key in self._overrides:
+            del self._overrides[key]
+            return
+        if key in self._cached_snapshot:
+            self._deleted.add(key)
+            return
+        raise KeyError(key)
+
+    def __iter__(self) -> Iterator[NodeType]:
+        return iter(self._snapshot())
+
+    def __len__(self) -> int:
+        return len(self._snapshot())
+
+
+# Keep the canonical node-class mapping in the workflow layer that also bootstraps
+# legacy `core.workflow.nodes.*` registrations.
+NODE_TYPE_CLASSES_MAPPING: MutableMapping[NodeType, Mapping[str, type[Node]]] = _LazyNodeTypeClassesMapping()
 
 
 LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
@@ -168,43 +280,43 @@ class DifyNodeFactory(NodeFactory):
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
-            NodeType.CODE: lambda: {
+            BuiltinNodeTypes.CODE: lambda: {
                 "code_executor": self._code_executor,
                 "code_limits": self._code_limits,
             },
-            NodeType.TEMPLATE_TRANSFORM: lambda: {
+            BuiltinNodeTypes.TEMPLATE_TRANSFORM: lambda: {
                 "template_renderer": self._template_renderer,
                 "max_output_length": self._template_transform_max_output_length,
             },
-            NodeType.HTTP_REQUEST: lambda: {
+            BuiltinNodeTypes.HTTP_REQUEST: lambda: {
                 "http_request_config": self._http_request_config,
                 "http_client": self._http_request_http_client,
                 "tool_file_manager_factory": self._http_request_tool_file_manager_factory,
                 "file_manager": self._http_request_file_manager,
             },
-            NodeType.HUMAN_INPUT: lambda: {
+            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "form_repository": HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
             },
-            NodeType.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
+            BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
                 include_http_client=True,
             ),
-            NodeType.DOCUMENT_EXTRACTOR: lambda: {
+            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
                 "http_client": self._http_request_http_client,
             },
-            NodeType.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
+            BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
                 include_http_client=True,
             ),
-            NodeType.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
+            BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
                 include_http_client=False,
             ),
-            NodeType.TOOL: lambda: {
+            BuiltinNodeTypes.TOOL: lambda: {
                 "tool_file_manager_factory": self._http_request_tool_file_manager_factory(),
             },
         }

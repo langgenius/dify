@@ -30,8 +30,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.nodes import register_core_nodes
+from core.workflow.node_factory import NODE_TYPE_CLASSES_MAPPING, DifyNodeFactory, get_default_root_node_id
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -65,7 +64,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -73,8 +71,6 @@ from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
-
-register_core_nodes()
 
 
 class WorkflowBasedAppRunner:
@@ -140,6 +136,9 @@ class WorkflowBasedAppRunner:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+
+        if root_node_id is None:
+            root_node_id = get_default_root_node_id(graph_config)
 
         # init graph
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)

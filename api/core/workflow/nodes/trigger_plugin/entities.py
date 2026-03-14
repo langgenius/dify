@@ -3,16 +3,18 @@ from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.entities.entities import EventParameter
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
-from dify_graph.nodes.trigger_plugin.exc import TriggerEventParameterError
+
+from .exc import TriggerEventParameterError
 
 
 class TriggerEventNodeData(BaseNodeData):
     """Plugin trigger node data"""
 
-    type: NodeType = NodeType.TRIGGER_PLUGIN
+    type: NodeType = TRIGGER_PLUGIN_NODE_TYPE
 
     class TriggerEventInput(BaseModel):
         value: Union[Any, list[str]]

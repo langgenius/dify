@@ -8,8 +8,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.nodes import register_core_nodes
+from core.workflow.node_factory import NODE_TYPE_CLASSES_MAPPING, DifyNodeFactory
 from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -22,9 +21,8 @@ from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLay
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -33,8 +31,6 @@ from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
-
-register_core_nodes()
 
 
 class _WorkflowChildEngineBuilder:
@@ -256,7 +252,7 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
-        if node_type != NodeType.DATASOURCE:
+        if node_type != BuiltinNodeTypes.DATASOURCE:
             cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
                 user_inputs=user_inputs,
@@ -306,7 +302,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START,
+                "type": BuiltinNodeTypes.START,
                 "title": "Start",
                 "desc": "Start",
             },
@@ -342,8 +338,8 @@ class WorkflowEntry:
         # Create a minimal graph for single node execution
         graph_dict = cls._create_single_node_graph(node_id, node_data)
 
-        node_type = NodeType(node_data.get("type", ""))
-        if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
+        node_type = node_data.get("type", "")
+        if node_type not in {BuiltinNodeTypes.PARAMETER_EXTRACTOR, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import operator
-import pkgutil
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
@@ -161,7 +159,7 @@ class Node(Generic[NodeDataT]):
 
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
-                node_type = NodeType.CODE
+                node_type = BuiltinNodeTypes.CODE
                 # No need to implement _get_title, _get_error_strategy, etc.
         """
         super().__init_subclass__(**kwargs)
@@ -384,12 +382,6 @@ class Node(Generic[NodeDataT]):
         if provider_type:
             start_event.provider_type = str(provider_type)
 
-        from dify_graph.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
-
-        if isinstance(self, TriggerEventNode):
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
         from dify_graph.nodes.agent.agent_node import AgentNode
         from dify_graph.nodes.agent.entities import AgentNodeData
 
@@ -518,32 +510,7 @@ class Node(Generic[NodeDataT]):
     @abstractmethod
     def version(cls) -> str:
         """`node_version` returns the version of current node type."""
-        # NOTE(QuantumGhost): This should be in sync with `NODE_TYPE_CLASSES_MAPPING`.
-        #
-        # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
-        # in `api/dify_graph/nodes/__init__.py`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
-
-    @classmethod
-    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
-        """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
-
-        Import all dify_graph node modules so subclasses register themselves on
-        import. Core workflow nodes are registered by the core workflow layer
-        before it reads the mapping, which keeps the dependency direction
-        pointing from core to dify_graph.
-        """
-        # Import all node modules to ensure they are loaded (thus registered).
-        import dify_graph.nodes as _dify_nodes_pkg
-
-        for _, module_name, _ in pkgutil.walk_packages(_dify_nodes_pkg.__path__, _dify_nodes_pkg.__name__ + "."):
-            # Avoid importing modules that depend on the registry to prevent circular imports.
-            if module_name == "dify_graph.nodes.node_mapping":
-                continue
-            importlib.import_module(module_name)
-
-        # Return a readonly view so callers can't mutate the registry by accident
-        return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
 
     @property
     def retry(self) -> bool:

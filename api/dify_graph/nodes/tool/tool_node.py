@@ -9,7 +9,7 @@ from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
@@ -42,7 +42,7 @@ class ToolNode(Node[ToolNodeData]):
     Tool Node
     """
 
-    node_type = NodeType.TOOL
+    node_type = BuiltinNodeTypes.TOOL
 
     def __init__(
         self,

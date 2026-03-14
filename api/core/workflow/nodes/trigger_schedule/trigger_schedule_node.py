@@ -1,15 +1,17 @@
 from collections.abc import Mapping
 
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType
+from dify_graph.enums import NodeExecutionType
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.trigger_schedule.entities import TriggerScheduleNodeData
+
+from .entities import TriggerScheduleNodeData
 
 
 class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
-    node_type = NodeType.TRIGGER_SCHEDULE
+    node_type = TRIGGER_SCHEDULE_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
@@ -19,7 +21,7 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
-            "type": "trigger-schedule",
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "config": {
                 "mode": "visual",
                 "frequency": "daily",

@@ -1,3 +1,3 @@
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
-__all__ = ["NodeType"]
+__all__ = ["BuiltinNodeTypes"]

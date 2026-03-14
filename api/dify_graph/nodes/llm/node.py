@@ -22,6 +22,7 @@ from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
@@ -103,7 +104,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMNode(Node[LLMNodeData]):
-    node_type = NodeType.LLM
+    node_type = BuiltinNodeTypes.LLM
 
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)

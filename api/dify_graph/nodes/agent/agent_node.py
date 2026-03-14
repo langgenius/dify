@@ -23,6 +23,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
@@ -71,7 +72,7 @@ class AgentNode(Node[AgentNodeData]):
     Agent Node
     """
 
-    node_type = NodeType.AGENT
+    node_type = BuiltinNodeTypes.AGENT
 
     @classmethod
     def version(cls) -> str:
@@ -580,7 +581,7 @@ class AgentNode(Node[AgentNodeData]):
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
-                if node_type == NodeType.AGENT:
+                if node_type == BuiltinNodeTypes.AGENT:
                     if isinstance(message.message.json_object, dict):
                         msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
                         llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))
