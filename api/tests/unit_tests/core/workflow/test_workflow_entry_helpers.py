@@ -401,8 +401,8 @@ class TestWorkflowEntryHelpers:
     def test_run_free_node_rejects_missing_node_class(self, monkeypatch):
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {BuiltinNodeTypes.PARAMETER_EXTRACTOR: {"1": None}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=None),
         )
 
         with pytest.raises(ValueError, match="Node class not found for node type parameter-extractor"):
@@ -433,8 +433,8 @@ class TestWorkflowEntryHelpers:
         dify_node_factory.create_node.return_value = FakeNode()
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {BuiltinNodeTypes.PARAMETER_EXTRACTOR: {"1": FakeNodeClass}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=FakeNodeClass),
         )
 
         with (
@@ -519,8 +519,8 @@ class TestWorkflowEntryHelpers:
         dify_node_factory.create_node.return_value = FakeNode()
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {BuiltinNodeTypes.PARAMETER_EXTRACTOR: {"1": FakeNodeClass}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=FakeNodeClass),
         )
 
         with (

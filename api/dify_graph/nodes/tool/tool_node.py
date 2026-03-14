@@ -65,6 +65,10 @@ class ToolNode(Node[ToolNodeData]):
     def version(cls) -> str:
         return "1"
 
+    def populate_start_event(self, event) -> None:
+        event.provider_id = self.node_data.provider_id
+        event.provider_type = self.node_data.provider_type
+
     def _run(self) -> Generator[NodeEventBase, None, None]:
         """
         Run the tool node

@@ -11,9 +11,9 @@ from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 class AgentNodeData(BaseNodeData):
     type: NodeType = BuiltinNodeTypes.AGENT
-    agent_strategy_provider_name: str  # redundancy
+    agent_strategy_provider_name: str
     agent_strategy_name: str
-    agent_strategy_label: str  # redundancy
+    agent_strategy_label: str
     memory: MemoryConfig | None = None
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version

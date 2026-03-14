@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import operator
+import pkgutil
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
@@ -9,7 +11,7 @@ from types import MappingProxyType
 from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
-from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
+from dify_graph.entities import GraphInitParams
 from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
@@ -354,6 +356,10 @@ class Node(Generic[NodeDataT]):
         """
         raise NotImplementedError
 
+    def populate_start_event(self, event: NodeRunStartedEvent) -> None:
+        """Allow subclasses to enrich the started event without cross-node imports in the base class."""
+        _ = event
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
@@ -367,31 +373,10 @@ class Node(Generic[NodeDataT]):
             in_iteration_id=None,
             start_at=self._start_at,
         )
-
-        # === FIXME(-LAN-): Needs to refactor.
-        provider_id = getattr(self.node_data, "provider_id", "")
-        provider_type = getattr(self.node_data, "provider_type", "")
-        if not provider_id:
-            plugin_id = getattr(self.node_data, "plugin_id", "")
-            provider_name = getattr(self.node_data, "provider_name", "")
-            if plugin_id and provider_name:
-                provider_id = f"{plugin_id}/{provider_name}"
-
-        if provider_id:
-            start_event.provider_id = provider_id
-        if provider_type:
-            start_event.provider_type = str(provider_type)
-
-        from dify_graph.nodes.agent.agent_node import AgentNode
-        from dify_graph.nodes.agent.entities import AgentNodeData
-
-        if isinstance(self, AgentNode):
-            start_event.agent_strategy = AgentNodeStrategyInit(
-                name=cast(AgentNodeData, self.node_data).agent_strategy_name,
-                icon=self.agent_strategy_icon,
-            )
-
-        # ===
+        try:
+            self.populate_start_event(start_event)
+        except Exception:
+            logger.warning("Failed to populate start event for node %s", self._node_id, exc_info=True)
         yield start_event
 
         try:
@@ -510,8 +495,30 @@ class Node(Generic[NodeDataT]):
     @abstractmethod
     def version(cls) -> str:
         """`node_version` returns the version of current node type."""
+        # NOTE(QuantumGhost): Node versions must remain unique per `NodeType` so
+        # `Node.get_node_type_classes_mapping()` can resolve numeric versions and `latest`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
+    @classmethod
+    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
+        """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
+
+        Import all modules under dify_graph.nodes so subclasses register themselves on import.
+        Callers that rely on workflow-local nodes defined outside `dify_graph.nodes` must import
+        those modules before invoking this method so they can register through `__init_subclass__`.
+        We then return a readonly view of the registry to avoid accidental mutation.
+        """
+        # Import all node modules to ensure they are loaded (thus registered)
+        import dify_graph.nodes as _nodes_pkg
+
+        for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
+            # Avoid importing modules that depend on the registry to prevent circular imports.
+            if _modname == "dify_graph.nodes.node_mapping":
+                continue
+            importlib.import_module(_modname)
+
+        # Return a readonly view so callers can't mutate the registry by accident
+        return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
     @property
     def retry(self) -> bool:
         return False

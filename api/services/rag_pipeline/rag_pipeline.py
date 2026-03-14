@@ -36,13 +36,13 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from core.workflow.node_resolution import LATEST_VERSION, get_workflow_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, SystemVariableKey
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from dify_graph.graph_events.base import GraphNodeEventBase
@@ -381,7 +381,7 @@ class RagPipelineService:
         """
         # return default block config
         default_block_configs: list[dict[str, Any]] = []
-        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
+        for node_type, node_class_mapping in get_workflow_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
             if node_type == BuiltinNodeTypes.HTTP_REQUEST:
@@ -409,13 +409,14 @@ class RagPipelineService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum = node_type
+        node_type_enum = NodeType(node_type)
+        node_mapping = get_workflow_node_type_classes_mapping()
 
         # return default block config
-        if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
+        if node_type_enum not in node_mapping:
             return None
 
-        node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
+        node_class = node_mapping[node_type_enum][LATEST_VERSION]
         final_filters = dict(filters) if filters else {}
         if node_type_enum == BuiltinNodeTypes.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
             final_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(

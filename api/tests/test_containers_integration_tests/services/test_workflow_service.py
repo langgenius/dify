@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="active",
+            status="normal",
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -1090,20 +1090,19 @@ class TestWorkflowService:
 
         This test ensures that the service correctly handles feature validation
         for unsupported app modes, preventing invalid operations.
+        With EnumText, invalid values are rejected at the DB level during flush,
+        raising StatementError wrapping ValueError.
         """
         # Arrange
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, fake)
         app.mode = "invalid_mode"  # Invalid mode
 
-        db_session_with_containers.commit()
+        # Act & Assert - EnumText validation rejects invalid values at DB flush
+        import sqlalchemy as sa
 
-        workflow_service = WorkflowService()
-        features = {"test": "value"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Invalid app mode: invalid_mode"):
-            workflow_service.validate_features_structure(app_model=app, features=features)
+        with pytest.raises((ValueError, sa.exc.StatementError)):
+            db_session_with_containers.commit()
 
     def test_update_workflow_success(self, db_session_with_containers: Session):
         """

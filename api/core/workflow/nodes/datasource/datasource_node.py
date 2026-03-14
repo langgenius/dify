@@ -42,6 +42,10 @@ class DatasourceNode(Node[DatasourceNodeData]):
         )
         self.datasource_manager = DatasourceManager
 
+    def populate_start_event(self, event) -> None:
+        event.provider_id = f"{self.node_data.plugin_id}/{self.node_data.provider_name}"
+        event.provider_type = self.node_data.provider_type
+
     def _run(self) -> Generator:
         """
         Run the datasource node

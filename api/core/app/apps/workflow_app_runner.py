@@ -3,7 +3,10 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from pydantic import ValidationError
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -30,7 +33,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.node_factory import NODE_TYPE_CLASSES_MAPPING, DifyNodeFactory, get_default_root_node_id
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.node_resolution import resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -311,7 +315,7 @@ class WorkflowBasedAppRunner:
         # Get node class
         node_type = target_node_config["data"].type
         node_version = str(target_node_config["data"].version)
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+        node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
         # Use the variable pool from graph_runtime_state instead of creating a new one
         variable_pool = graph_runtime_state.variable_pool
@@ -338,6 +342,18 @@ class WorkflowBasedAppRunner:
         )
 
         return graph, variable_pool
+
+    @staticmethod
+    def _build_agent_strategy_info(event: NodeRunStartedEvent) -> AgentStrategyInfo | None:
+        raw_agent_strategy = event.extras.get("agent_strategy")
+        if raw_agent_strategy is None:
+            return None
+
+        try:
+            return AgentStrategyInfo.model_validate(raw_agent_strategy)
+        except ValidationError:
+            logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
+            return None
 
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """
@@ -424,7 +440,7 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
-                    agent_strategy=event.agent_strategy,
+                    agent_strategy=self._build_agent_strategy_info(event),
                     provider_type=event.provider_type,
                     provider_id=event.provider_id,
                 )

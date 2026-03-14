@@ -23,6 +23,13 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.node_resolution import resolve_workflow_node_class
+from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
+from core.workflow.nodes.agent.plugin_strategy_adapter import (
+    PluginAgentStrategyPresentationProvider,
+    PluginAgentStrategyResolver,
+)
+from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
@@ -208,10 +215,7 @@ class DefaultWorkflowCodeExecutor:
 @final
 class DifyNodeFactory(NodeFactory):
     """
-    Default implementation of NodeFactory that uses the traditional node mapping.
-
-    This factory creates nodes by looking up their types in NODE_TYPE_CLASSES_MAPPING
-    and instantiating the appropriate node class.
+    Default implementation of NodeFactory that resolves node classes from the live registry.
     """
 
     def __init__(
@@ -253,6 +257,10 @@ class DifyNodeFactory(NodeFactory):
         )
 
         self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context.tenant_id)
+        self._agent_strategy_resolver = PluginAgentStrategyResolver()
+        self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
+        self._agent_runtime_support = AgentRuntimeSupport()
+        self._agent_message_transformer = AgentMessageTransformer()
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -319,6 +327,12 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.TOOL: lambda: {
                 "tool_file_manager_factory": self._http_request_tool_file_manager_factory(),
             },
+            BuiltinNodeTypes.AGENT: lambda: {
+                "strategy_resolver": self._agent_strategy_resolver,
+                "presentation_provider": self._agent_strategy_presentation_provider,
+                "runtime_support": self._agent_runtime_support,
+                "message_transformer": self._agent_message_transformer,
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
@@ -338,16 +352,7 @@ class DifyNodeFactory(NodeFactory):
 
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
-        node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
-        if not node_mapping:
-            raise ValueError(f"No class mapping found for node type: {node_type}")
-
-        latest_node_class = node_mapping.get(LATEST_VERSION)
-        matched_node_class = node_mapping.get(node_version)
-        node_class = matched_node_class or latest_node_class
-        if not node_class:
-            raise ValueError(f"No latest version class found for node type: {node_type}")
-        return node_class
+        return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
     def _build_llm_compatible_node_init_kwargs(
         self,
