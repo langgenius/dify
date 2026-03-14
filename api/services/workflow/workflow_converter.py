@@ -24,7 +24,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 
 
@@ -72,7 +72,7 @@ class WorkflowConverter:
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
         new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
-        new_app.icon_type = icon_type or app_model.icon_type
+        new_app.icon_type = IconType(icon_type) if icon_type else app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
         new_app.enable_site = app_model.enable_site

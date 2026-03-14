@@ -29,9 +29,9 @@ from libs.uuid_utils import uuidv7
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
-from .enums import CreatorUserRole
+from .enums import CreatorUserRole, MessageStatus
 from .provider_ids import GenericProviderID
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from .workflow import Workflow
@@ -337,8 +337,8 @@ class App(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
-    mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
+    mode: Mapped[AppMode] = mapped_column(EnumText(AppMode, length=255))
+    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255))
     icon = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
@@ -1000,7 +1000,7 @@ class Conversation(Base):
     model_provider = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(LongText)
     model_id = mapped_column(String(255), nullable=True)
-    mode: Mapped[str] = mapped_column(String(255))
+    mode: Mapped[AppMode] = mapped_column(EnumText(AppMode, length=255))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
@@ -1353,7 +1353,12 @@ class Message(Base):
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
+    status: Mapped[MessageStatus] = mapped_column(
+        EnumText(MessageStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'normal'"),
+        default=MessageStatus.NORMAL,
+    )
     error: Mapped[str | None] = mapped_column(LongText)
     message_metadata: Mapped[str | None] = mapped_column(LongText)
     invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1366,7 +1371,7 @@ class Message(Base):
     )
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
-    app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    app_mode: Mapped[AppMode | None] = mapped_column(EnumText(AppMode, length=255), nullable=True)
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -1769,7 +1774,7 @@ class MessageFile(TypeBase):
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[FileTransferMethod] = mapped_column(String(255), nullable=False)
-    created_by_role: Mapped[CreatorUserRole] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
     url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
@@ -2017,7 +2022,7 @@ class Site(Base):
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    icon_type = mapped_column(String(255), nullable=True)
+    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
     icon = mapped_column(String(255))
     icon_background = mapped_column(String(255))
     description = mapped_column(LongText)
@@ -2112,7 +2117,12 @@ class UploadFile(Base):
 
     # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
     # Its value is derived from the `CreatorUserRole` enumeration.
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'account'"))
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255),
+        nullable=False,
+        server_default=sa.text("'account'"),
+        default=CreatorUserRole.ACCOUNT,
+    )
 
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
@@ -2165,7 +2175,7 @@ class UploadFile(Base):
         self.size = size
         self.extension = extension
         self.mime_type = mime_type
-        self.created_by_role = created_by_role.value
+        self.created_by_role = created_by_role
         self.created_by = created_by
         self.created_at = created_at
         self.used = used
@@ -2228,7 +2238,7 @@ class MessageAgentThought(TypeBase):
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_chain_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     thought: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
