@@ -13,6 +13,7 @@ from pymochow.exception import ServerError  # type: ignore
 from pymochow.model.database import Database
 from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
 from pymochow.model.schema import (
+    AutoBuildRowCountIncrement,
     Field,
     FilteringIndex,
     HNSWParams,
@@ -51,6 +52,9 @@ class BaiduConfig(BaseModel):
     replicas: int = 3
     inverted_index_analyzer: str = "DEFAULT_ANALYZER"
     inverted_index_parser_mode: str = "COARSE_MODE"
+    auto_build_row_count_increment: int = 500
+    auto_build_row_count_increment_ratio: float = 0.05
+    rebuild_index_timeout_in_seconds: int = 300
 
     @model_validator(mode="before")
     @classmethod
@@ -106,18 +110,6 @@ class BaiduVector(BaseVector):
                 )
                 rows.append(row)
             table.upsert(rows=rows)
-
-        # rebuild vector index after upsert finished
-        table.rebuild_index(self.vector_index)
-        timeout = 3600  # 1 hour timeout
-        start_time = time.time()
-        while True:
-            time.sleep(1)
-            index = table.describe_index(self.vector_index)
-            if index.state == IndexState.NORMAL:
-                break
-            if time.time() - start_time > timeout:
-                raise TimeoutError(f"Index rebuild timeout after {timeout} seconds")
 
     def text_exists(self, id: str) -> bool:
         res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
@@ -232,8 +224,14 @@ class BaiduVector(BaseVector):
             return self._client.database(self._client_config.database)
 
     def _table_existed(self) -> bool:
-        tables = self._db.list_table()
-        return any(table.table_name == self._collection_name for table in tables)
+        try:
+            table = self._db.table(self._collection_name)
+        except ServerError as e:
+            if e.code == ServerErrCode.TABLE_NOT_EXIST:
+                return False
+            else:
+                raise
+        return True
 
     def _create_table(self, dimension: int):
         # Try to grab distributed lock and create table
@@ -287,6 +285,11 @@ class BaiduVector(BaseVector):
                     field=VDBField.VECTOR,
                     metric_type=metric_type,
                     params=HNSWParams(m=16, efconstruction=200),
+                    auto_build=True,
+                    auto_build_index_policy=AutoBuildRowCountIncrement(
+                        row_count_increment=self._client_config.auto_build_row_count_increment,
+                        row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+                    ),
                 )
             )
 
@@ -335,7 +338,7 @@ class BaiduVector(BaseVector):
             )
 
             # Wait for table created
-            timeout = 300  # 5 minutes timeout
+            timeout = self._client_config.rebuild_index_timeout_in_seconds  # default 5 minutes timeout
             start_time = time.time()
             while True:
                 time.sleep(1)
@@ -345,6 +348,20 @@ class BaiduVector(BaseVector):
                 if time.time() - start_time > timeout:
                     raise TimeoutError(f"Table creation timeout after {timeout} seconds")
             redis_client.set(table_exist_cache_key, 1, ex=3600)
+            # rebuild vector index immediately after table created, make sure index is ready
+            table.rebuild_index(self.vector_index)
+            timeout = 3600  # 1 hour timeout
+            self._wait_for_index_ready(table, timeout)
+
+    def _wait_for_index_ready(self, table, timeout: int = 3600):
+        start_time = time.time()
+        while True:
+            time.sleep(1)
+            index = table.describe_index(self.vector_index)
+            if index.state == IndexState.NORMAL:
+                break
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Index rebuild timeout after {timeout} seconds")
 
 
 class BaiduVectorFactory(AbstractVectorFactory):
@@ -369,5 +386,8 @@ class BaiduVectorFactory(AbstractVectorFactory):
                 replicas=dify_config.BAIDU_VECTOR_DB_REPLICAS,
                 inverted_index_analyzer=dify_config.BAIDU_VECTOR_DB_INVERTED_INDEX_ANALYZER,
                 inverted_index_parser_mode=dify_config.BAIDU_VECTOR_DB_INVERTED_INDEX_PARSER_MODE,
+                auto_build_row_count_increment=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT,
+                auto_build_row_count_increment_ratio=dify_config.BAIDU_VECTOR_DB_AUTO_BUILD_ROW_COUNT_INCREMENT_RATIO,
+                rebuild_index_timeout_in_seconds=dify_config.BAIDU_VECTOR_DB_REBUILD_INDEX_TIMEOUT_IN_SECONDS,
             ),
         )
