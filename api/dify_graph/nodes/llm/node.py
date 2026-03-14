@@ -1028,35 +1028,3 @@ class LLMNode(Node[LLMNodeData]):
     @property
     def model_instance(self) -> ModelInstance:
         return self._model_instance
-
-    @staticmethod
-    def _render_jinja2_message(
-        *,
-        template: str,
-        jinja2_variables: Sequence[VariableSelector],
-        variable_pool: VariablePool,
-        template_renderer: TemplateRenderer | None = None,
-    ) -> str:
-        return llm_utils.render_jinja2_message(
-            template=template,
-            jinja2_variables=jinja2_variables,
-            variable_pool=variable_pool,
-            template_renderer=template_renderer,
-        )
-
-    @staticmethod
-    def _handle_completion_template(
-        *,
-        template: LLMNodeCompletionModelPromptTemplate,
-        context: str | None,
-        jinja2_variables: Sequence[VariableSelector],
-        variable_pool: VariablePool,
-        template_renderer: TemplateRenderer | None = None,
-    ) -> Sequence[PromptMessage]:
-        return llm_utils.handle_completion_template(
-            template=template,
-            context=context,
-            jinja2_variables=jinja2_variables,
-            variable_pool=variable_pool,
-            template_renderer=template_renderer,
-        )
