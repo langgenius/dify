@@ -146,6 +146,24 @@ Workflow applications offers non-session support and is ideal for translation, a
           - `total_price` (decimal) optional Total cost
           - `currency` (string) optional e.g. `USD` / `RMB`
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: human_input_required` Workflow paused and requires Human-in-the-Loop input
+      - `task_id` (string) Task ID, used for request tracking
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `human_input_required`
+      - `data` (object) detail
+        - `form_id` (string) Human input form ID
+        - `node_id` (string) Human input node ID
+        - `node_title` (string) Human input node title
+        - `form_content` (string) Rendered form content
+        - `inputs` (array[object]) Input field definitions
+        - `actions` (array[object]) User action buttons
+          - `id` (string) Action ID
+          - `title` (string) Button text
+          - `button_style` (string) Button style
+        - `display_in_ui` (bool) Whether this form should be shown in UI
+        - `form_token` (string) Token used by `/form/human_input/:form_token` APIs
+        - `resolved_default_values` (object) Runtime-resolved default values
+        - `expiration_time` (timestamp) Form expiration time (Unix seconds)
     - `event: workflow_finished` workflow execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `workflow_run_id` (string) Unique ID of workflow execution
@@ -457,6 +475,24 @@ Workflow applications offers non-session support and is ideal for translation, a
           - `total_price` (decimal) optional total cost
           - `currency` (string) optional currency, such as `USD` / `RMB`
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: human_input_required` Workflow paused and requires Human-in-the-Loop input
+      - `task_id` (string) Task ID, used for request tracking
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `human_input_required`
+      - `data` (object) detail
+        - `form_id` (string) Human input form ID
+        - `node_id` (string) Human input node ID
+        - `node_title` (string) Human input node title
+        - `form_content` (string) Rendered form content
+        - `inputs` (array[object]) Input field definitions
+        - `actions` (array[object]) User action buttons
+          - `id` (string) Action ID
+          - `title` (string) Button text
+          - `button_style` (string) Button style
+        - `display_in_ui` (bool) Whether this form should be shown in UI
+        - `form_token` (string) Token used by `/form/human_input/:form_token` APIs
+        - `resolved_default_values` (object) Runtime-resolved default values
+        - `expiration_time` (timestamp) Form expiration time (Unix seconds)
     - `event: workflow_finished` workflow execution finished, success and failure are different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `workflow_run_id` (string) Unique ID of workflow execution
@@ -659,6 +695,166 @@ Workflow applications offers non-session support and is ideal for translation, a
     {
       "result": "success"
     }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='GET'
+  title='Get Human Input Form'
+  name='#get-human-input-form'
+/>
+<Row>
+  <Col>
+    Retrieve a pending Human-in-the-Loop form by `form_token`.
+
+    Use this endpoint when a workflow pauses with `human_input_required` and returns a `form_token`.
+
+    ### Path
+    - `form_token` (string) Required, token returned by the pause event.
+
+    ### Response
+    - `form_content` (string) Rendered form content (markdown/plain text)
+    - `inputs` (array[object]) Form input definitions
+    - `resolved_default_values` (object) Default values resolved to strings
+    - `user_actions` (array[object]) Action buttons
+    - `expiration_time` (timestamp) Form expiration time (Unix seconds)
+
+    ### Errors
+    - 404, form not found or does not belong to current app
+    - 412, `human_input_form_submitted`, form already submitted
+    - 412, `human_input_form_expired`, form expired
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "form_content": "Please confirm the final answer: {{#$output.answer#}}",
+      "inputs": [
+        {
+          "label": "Answer",
+          "type": "text-input",
+          "required": true,
+          "output_variable_name": "answer"
+        }
+      ],
+      "resolved_default_values": {
+        "answer": "Initial value"
+      },
+      "user_actions": [
+        { "id": "approve", "title": "Approve", "button_style": "primary" },
+        { "id": "reject", "title": "Reject", "button_style": "warning" }
+      ],
+      "expiration_time": 1735689600
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='POST'
+  title='Submit Human Input Form'
+  name='#submit-human-input-form'
+/>
+<Row>
+  <Col>
+    Submit a pending Human-in-the-Loop form.
+
+    ### Path
+    - `form_token` (string) Required, token returned by the pause event.
+
+    ### Request Body
+    - `inputs` (object) Required, key/value pairs for form fields.
+    - `action` (string) Required, selected action ID from `user_actions`.
+    - `user` (string) Required, end-user identifier.
+
+    ### Response
+    Returns an empty object on success.
+
+    ### Errors
+    - 400, `invalid_form_data`, submitted data does not match the form schema
+    - 404, form not found or does not belong to current app
+    - 412, `human_input_form_submitted`, form already submitted
+    - 412, `human_input_form_expired`, form expired
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {"answer": "Approved answer"},
+  "action": "approve",
+  "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflow/:task_id/events'
+  method='GET'
+  title='Get Workflow Resume Events'
+  name='#get-workflow-resume-events'
+/>
+<Row>
+  <Col>
+    Continue receiving workflow events after submitting a human input form.
+
+    This endpoint returns `text/event-stream` and can be used to observe the resumed run until completion.
+
+    ### Path
+    - `task_id` (string) Required, workflow run ID (`workflow_run_id`).
+
+    ### Query
+    - `user` (string) Required, end-user identifier.
+    - `include_state_snapshot` (bool) Optional, set to `true` to replay from persisted state snapshot before continuing with live events.
+
+    ### Response
+    Server-Sent Events stream (`text/event-stream`).
+    Typical events include `node_started`, `node_finished`, `human_input_form_filled`, `human_input_form_timeout`, and `workflow_finished`.
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflow/:task_id/events"
+      targetCode={`curl -N -X GET '${props.appDetail.api_base_url}/workflow/{workflow_run_id}/events?user=abc-123' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+    data: {"event":"human_input_form_filled","task_id":"run-1","workflow_run_id":"run-1","data":{"node_id":"human_input_1","node_title":"Human Input","rendered_content":"Approved answer","action_id":"approve","action_text":"Approve"}}
+    data: {"event":"node_finished","task_id":"run-1","workflow_run_id":"run-1","data":{"id":"node-execution-id","node_id":"llm_1","node_type":"llm","title":"LLM","index":5,"status":"succeeded","created_at":1735689601}}
+    data: {"event":"workflow_finished","task_id":"run-1","workflow_run_id":"run-1","data":{"id":"run-1","workflow_id":"workflow-id","status":"succeeded","outputs":{"text":"Done"},"created_at":1735689590,"finished_at":1735689602,"elapsed_time":12.0,"total_tokens":1000,"total_steps":6}}
     ```
     </CodeGroup>
   </Col>
