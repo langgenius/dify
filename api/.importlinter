@@ -96,7 +96,6 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     dify_graph.nodes.tool.tool_node -> core.tools.tool_engine
     dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
-    dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> dify_graph.model_runtime.model_providers.__base.large_language_model
