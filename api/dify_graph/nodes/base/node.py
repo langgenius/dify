@@ -179,7 +179,8 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under dify_graph.nodes.*
+        # Only register production node implementations defined under
+        # dify_graph.nodes.* or core.workflow.nodes.*.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -187,7 +188,7 @@ class Node(Generic[NodeDataT]):
         node_type = cls.node_type
         version = cls.version()
         bucket = Node._registry.setdefault(node_type, {})
-        if module_name.startswith("dify_graph.nodes."):
+        if module_name.startswith(("dify_graph.nodes.", "core.workflow.nodes.")):
             # Production node definitions take precedence and may override
             bucket[version] = cls  # type: ignore[index]
         else:
@@ -379,9 +380,7 @@ class Node(Generic[NodeDataT]):
             start_event.provider_id = f"{plugin_id}/{provider_name}"
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
-        from dify_graph.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
-
-        if isinstance(self, TriggerEventNode):
+        if self.node_type == NodeType.TRIGGER_PLUGIN:
             start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
@@ -524,6 +523,7 @@ class Node(Generic[NodeDataT]):
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
         Import all modules under dify_graph.nodes so subclasses register themselves on import.
+        Higher-level packages may register additional nodes before calling this helper.
         Then we return a readonly view of the registry to avoid accidental mutation.
         """
         # Import all node modules to ensure they are loaded (thus registered)

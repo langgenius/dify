@@ -14,6 +14,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -34,7 +35,6 @@ from dify_graph.nodes.human_input.entities import (
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormKind
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from dify_graph.runtime import GraphRuntimeState, VariablePool

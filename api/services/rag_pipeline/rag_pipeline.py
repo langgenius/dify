@@ -36,6 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -48,7 +49,6 @@ from dify_graph.graph_events.base import GraphNodeEventBase
 from dify_graph.node_events.base import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from dify_graph.runtime import VariablePool
 from dify_graph.system_variable import SystemVariable

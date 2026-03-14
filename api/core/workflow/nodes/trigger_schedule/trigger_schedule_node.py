@@ -5,7 +5,8 @@ from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionSta
 from dify_graph.enums import NodeExecutionType, NodeType
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.trigger_schedule.entities import TriggerScheduleNodeData
+
+from .entities import TriggerScheduleNodeData
 
 
 class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
