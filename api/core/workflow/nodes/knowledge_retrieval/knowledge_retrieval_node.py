@@ -38,7 +38,7 @@ from .exc import (
     KnowledgeRetrievalNodeError,
     RateLimitExceededError,
 )
-from .retrieval import KnowledgeRetrievalRequest, RAGRetrievalProtocol, Source
+from .retrieval import KnowledgeRetrievalRequest, Source
 
 if TYPE_CHECKING:
     from dify_graph.file.models import File
@@ -60,7 +60,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        rag_retrieval: RAGRetrievalProtocol | None = None,
     ):
         super().__init__(
             id=id,
@@ -70,7 +69,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
-        self._rag_retrieval = rag_retrieval or DatasetRetrieval()
+        self._rag_retrieval = DatasetRetrieval()
 
     @classmethod
     def version(cls):

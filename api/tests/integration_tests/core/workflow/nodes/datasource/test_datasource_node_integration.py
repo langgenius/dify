@@ -66,6 +66,8 @@ def test_node_integration_minimal_stream(mocker):
         def get_upload_file_by_id(cls, **_):
             raise AssertionError
 
+    mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
+
     node = DatasourceNode(
         id="n",
         config={
@@ -82,7 +84,6 @@ def test_node_integration_minimal_stream(mocker):
         },
         graph_init_params=_GP(),
         graph_runtime_state=_GS(vp),
-        datasource_manager=_Mgr,
     )
 
     out = list(node._run())

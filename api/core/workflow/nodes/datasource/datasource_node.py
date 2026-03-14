@@ -13,7 +13,6 @@ from dify_graph.nodes.base.variable_template_parser import VariableTemplateParse
 
 from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError
-from .protocols import DatasourceManagerProtocol
 
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
@@ -34,7 +33,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        datasource_manager: DatasourceManagerProtocol | None = None,
     ):
         super().__init__(
             id=id,
@@ -42,7 +40,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self.datasource_manager = datasource_manager or DatasourceManager
+        self.datasource_manager = DatasourceManager
 
     def _run(self) -> Generator:
         """

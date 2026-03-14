@@ -15,7 +15,6 @@ from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
-from .protocols import IndexProcessorProtocol, SummaryIndexServiceProtocol
 
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
@@ -35,12 +34,10 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        index_processor: IndexProcessorProtocol | None = None,
-        summary_index_service: SummaryIndexServiceProtocol | None = None,
     ) -> None:
         super().__init__(id, config, graph_init_params, graph_runtime_state)
-        self.index_processor = index_processor or IndexProcessor()
-        self.summary_index_service = summary_index_service or SummaryIndex()
+        self.index_processor = IndexProcessor()
+        self.summary_index_service = SummaryIndex()
 
     def _run(self) -> NodeRunResult:  # type: ignore
         node_data = self.node_data
