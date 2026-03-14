@@ -28,7 +28,6 @@ from dify_graph.nodes.llm import (
     llm_utils,
 )
 from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from dify_graph.nodes.llm.prompt_message_builder import fetch_prompt_messages
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.protocols import HttpClientProtocol
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -146,7 +145,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         # If both self._get_prompt_template and self._fetch_prompt_messages append a user prompt,
         # two consecutive user prompts will be generated, causing model's error.
         # To avoid this, set sys_query to an empty string so that only one user prompt is appended at the end.
-        prompt_messages, stop = fetch_prompt_messages(
+        prompt_messages, stop = llm_utils.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query="",
             memory=memory,
@@ -292,7 +291,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
-        prompt_messages, _ = fetch_prompt_messages(
+        prompt_messages, _ = llm_utils.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query="",
             sys_files=[],

@@ -7,7 +7,6 @@ from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.nodes.question_classifier import (
     QuestionClassifierNode,
     QuestionClassifierNodeData,
-    question_classifier_node,
 )
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -107,10 +106,12 @@ def test_question_classifier_calculate_rest_token_uses_shared_prompt_builder(mon
         template_renderer=template_renderer,
     )
     fetch_prompt_messages = MagicMock(return_value=([], None))
-    monkeypatch.setattr(question_classifier_node, "fetch_prompt_messages", fetch_prompt_messages)
     monkeypatch.setattr(
-        question_classifier_node.llm_utils,
-        "fetch_model_schema",
+        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_prompt_messages",
+        fetch_prompt_messages,
+    )
+    monkeypatch.setattr(
+        "dify_graph.nodes.question_classifier.question_classifier_node.llm_utils.fetch_model_schema",
         MagicMock(return_value=SimpleNamespace(model_properties={}, parameter_rules=[])),
     )
 

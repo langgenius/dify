@@ -82,18 +82,6 @@ from .exc import (
     VariableNotFoundError,
 )
 from .file_saver import FileSaverImpl, LLMFileSaver
-from .prompt_message_builder import (
-    fetch_prompt_messages as build_prompt_messages,
-)
-from .prompt_message_builder import (
-    handle_completion_template as build_completion_template,
-)
-from .prompt_message_builder import (
-    handle_list_messages as build_list_messages,
-)
-from .prompt_message_builder import (
-    render_jinja2_message as build_jinja2_message,
-)
 
 if TYPE_CHECKING:
     from dify_graph.file.models import File
@@ -777,7 +765,7 @@ class LLMNode(Node[LLMNodeData]):
         context_files: list[File] | None = None,
         template_renderer: TemplateRenderer | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
-        return build_prompt_messages(
+        return llm_utils.fetch_prompt_messages(
             sys_query=sys_query,
             sys_files=sys_files,
             context=context,
@@ -894,7 +882,7 @@ class LLMNode(Node[LLMNodeData]):
         vision_detail_config: ImagePromptMessageContent.DETAIL,
         template_renderer: TemplateRenderer | None = None,
     ) -> Sequence[PromptMessage]:
-        return build_list_messages(
+        return llm_utils.handle_list_messages(
             messages=messages,
             context=context,
             jinja2_variables=jinja2_variables,
@@ -1049,7 +1037,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         template_renderer: TemplateRenderer | None = None,
     ) -> str:
-        return build_jinja2_message(
+        return llm_utils.render_jinja2_message(
             template=template,
             jinja2_variables=jinja2_variables,
             variable_pool=variable_pool,
@@ -1065,7 +1053,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         template_renderer: TemplateRenderer | None = None,
     ) -> Sequence[PromptMessage]:
-        return build_completion_template(
+        return llm_utils.handle_completion_template(
             template=template,
             context=context,
             jinja2_variables=jinja2_variables,
