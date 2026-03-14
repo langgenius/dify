@@ -13,6 +13,7 @@ export type AgentNodeType = CommonNodeType & {
   memory?: Memory
   version?: string
   tool_node_version?: string
+  enable_human_clarification?: boolean
 }
 
 export enum AgentFeature {

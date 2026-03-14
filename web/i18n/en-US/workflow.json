@@ -373,6 +373,8 @@
   "nodes.agent.toolbox": "toolbox",
   "nodes.agent.tools": "Tools",
   "nodes.agent.unsupportedStrategy": "Unsupported strategy",
+  "nodes.agent.enableHumanClarification.label": "Enable Human Clarification",
+  "nodes.agent.enableHumanClarification.tooltip": "Allow human intervention to clarify agent reasoning during execution",
   "nodes.answer.answer": "Answer",
   "nodes.answer.outputVars": "Output Variables",
   "nodes.assigner.append": "Append",
