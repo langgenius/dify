@@ -179,8 +179,7 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under
-        # dify_graph.nodes.* or core.workflow.nodes.*.
+        # Only register production node implementations defined under dify_graph.nodes.*.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -188,7 +187,7 @@ class Node(Generic[NodeDataT]):
         node_type = cls.node_type
         version = cls.version()
         bucket = Node._registry.setdefault(node_type, {})
-        if module_name.startswith(("dify_graph.nodes.", "core.workflow.nodes.")):
+        if module_name.startswith("dify_graph.nodes."):
             # Production node definitions take precedence and may override
             bucket[version] = cls  # type: ignore[index]
         else:
@@ -378,10 +377,6 @@ class Node(Generic[NodeDataT]):
             provider_name = getattr(self.node_data, "provider_name", "")
 
             start_event.provider_id = f"{plugin_id}/{provider_name}"
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        if self.node_type == NodeType.TRIGGER_PLUGIN:
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
             start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from dify_graph.nodes.agent.agent_node import AgentNode
