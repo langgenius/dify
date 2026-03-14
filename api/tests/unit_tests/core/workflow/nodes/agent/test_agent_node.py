@@ -169,3 +169,31 @@ def test_transform_message_keeps_existing_usage_when_later_json_has_no_metadata(
 
     assert result.llm_usage == expected_usage
     assert result.outputs["usage"] == jsonable_encoder(expected_usage)
+
+
+def test_transform_message_accumulates_zero_token_usage_metadata(agent_node: AgentNode) -> None:
+    metadata_with_tokens: LLMUsageMetadata = {
+        "prompt_tokens": 9,
+        "completion_tokens": 3,
+        "total_tokens": 12,
+        "total_price": "0.11",
+        "latency": 0.2,
+    }
+    metadata_without_tokens: LLMUsageMetadata = {
+        "total_tokens": 0,
+        "total_price": "0.04",
+        "latency": 0.5,
+    }
+
+    result = _run_transform(
+        agent_node,
+        [
+            _build_json_message({"execution_metadata": dict(metadata_with_tokens), "step": 1}),
+            _build_json_message({"execution_metadata": dict(metadata_without_tokens), "step": 2}),
+        ],
+    )
+
+    expected_usage = LLMUsage.from_metadata(metadata_with_tokens) + LLMUsage.from_metadata(metadata_without_tokens)
+
+    assert result.llm_usage == expected_usage
+    assert result.outputs["usage"] == jsonable_encoder(expected_usage)
