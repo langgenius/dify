@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
@@ -179,7 +179,7 @@ const Tools = () => {
                   </div>
                   <div className="ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block" />
                   <Switch
-                    size="l"
+                    size="lg"
                     value={item.enabled ?? false}
                     onChange={(enabled: boolean) => handleSaveExternalDataToolModal({ ...item, enabled }, index)}
                   />

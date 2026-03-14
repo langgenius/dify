@@ -1,7 +1,7 @@
 import re
 
 from core.app.app_config.entities import RagPipelineVariableEntity
-from core.workflow.variables.input_entities import VariableEntity
+from dify_graph.variables.input_entities import VariableEntity
 from models.workflow import Workflow
 
 

@@ -22,17 +22,17 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
-from core.workflow.constants import (
+from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from core.workflow.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from core.workflow.enums import NodeType, WorkflowExecutionStatus
-from core.workflow.file.constants import maybe_file_object
-from core.workflow.file.models import File
-from core.workflow.variables import utils as variable_utils
-from core.workflow.variables.variables import FloatVariable, IntegerVariable, StringVariable
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.file.constants import maybe_file_object
+from dify_graph.file.models import File
+from dify_graph.variables import utils as variable_utils
+from dify_graph.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -46,14 +46,14 @@ if TYPE_CHECKING:
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from core.workflow.variables import SecretVariable, Segment, SegmentType, VariableBase
+from dify_graph.variables import SecretVariable, Segment, SegmentType, VariableBase
 from factories import variable_factory
 from libs import helper
 
 from .account import Account
 from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
-from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
+from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class Workflow(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[WorkflowType] = mapped_column(String(255), nullable=False)
+    type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False)
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
@@ -192,7 +192,7 @@ class Workflow(TypeBase):
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
         workflow.app_id = app_id
-        workflow.type = type
+        workflow.type = WorkflowType(type)
         workflow.version = version
         workflow.graph = graph
         workflow.features = features
@@ -237,8 +237,11 @@ class Workflow(TypeBase):
 
     def get_node_config_by_id(self, node_id: str) -> NodeConfigDict:
         """Extract a node configuration from the workflow graph by node ID.
-        A node configuration is a dictionary containing the node's properties, including
-        the node's id, title, and its data as a dict.
+
+        A node configuration includes the node id and a typed `BaseNodeData` for `data`.
+        `BaseNodeData` keeps a dict-like `get`/`__getitem__` compatibility layer backed by
+        model fields plus Pydantic extra storage for legacy consumers, but callers should
+        prefer attribute access.
         """
         workflow_graph = self.graph_dict
 
@@ -256,12 +259,9 @@ class Workflow(TypeBase):
         return NodeConfigDictAdapter.validate_python(node_config)
 
     @staticmethod
-    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+    def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
         """Extract type of a node from the node configuration returned by `get_node_config_by_id`."""
-        node_config_data = node_config.get("data", {})
-        # Get node class
-        node_type = NodeType(node_config_data.get("type"))
-        return node_type
+        return node_config["data"].type
 
     @staticmethod
     def get_enclosing_node_type_and_id(
@@ -349,7 +349,7 @@ class Workflow(TypeBase):
             "selected": false,
         }
 
-        For specific node type, refer to `core.workflow.nodes`
+        For specific node type, refer to `dify_graph.nodes`
         """
         graph_dict = self.graph_dict
         if "nodes" not in graph_dict:
@@ -612,8 +612,8 @@ class WorkflowRun(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    type: Mapped[str] = mapped_column(String(255))
-    triggered_from: Mapped[str] = mapped_column(String(255))
+    type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255))
+    triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(EnumText(WorkflowRunTriggeredFrom, length=255))
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(LongText)
     inputs: Mapped[str | None] = mapped_column(LongText)
@@ -834,8 +834,10 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    triggered_from: Mapped[str] = mapped_column(String(255))
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
+    triggered_from: Mapped[WorkflowNodeExecutionTriggeredFrom] = mapped_column(
+        EnumText(WorkflowNodeExecutionTriggeredFrom, length=255)
+    )
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     index: Mapped[int] = mapped_column(sa.Integer)
     predecessor_node_id: Mapped[str | None] = mapped_column(String(255), default=None)
     node_execution_id: Mapped[str | None] = mapped_column(String(255), default=None)
@@ -850,7 +852,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
     execution_metadata: Mapped[str | None] = mapped_column(LongText)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
-    created_by_role: Mapped[str] = mapped_column(String(255))
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255))
     created_by: Mapped[str] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -1138,7 +1140,7 @@ class WorkflowAppLog(TypeBase):
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1212,7 +1214,7 @@ class WorkflowArchiveLog(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     log_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -1221,7 +1223,9 @@ class WorkflowArchiveLog(TypeBase):
 
     run_version: Mapped[str] = mapped_column(String(255), nullable=False)
     run_status: Mapped[str] = mapped_column(String(255), nullable=False)
-    run_triggered_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(
+        EnumText(WorkflowRunTriggeredFrom, length=255), nullable=False
+    )
     run_error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     run_elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     run_total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
@@ -1351,8 +1355,8 @@ class WorkflowDraftVariable(Base):
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
     #
-    # ref: api/core/workflow/entities/variable_pool.py:18
-    name: Mapped[str] = mapped_column(sa.String(255), nullable=False, init=False)
+    # ref: api/dify_graph/entities/variable_pool.py:18
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),
         default="",

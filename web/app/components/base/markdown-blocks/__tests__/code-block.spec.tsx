@@ -1,7 +1,6 @@
 import { createRequire } from 'node:module'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Theme } from '@/types/app'
 
 import CodeBlock from '../code-block'
@@ -58,6 +57,11 @@ class MockAudioContext {
 vi.mock('@/hooks/use-theme', () => ({
   __esModule: true,
   default: () => mockUseTheme(),
+}))
+
+vi.mock('@/app/components/base/mermaid', () => ({
+  __esModule: true,
+  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
 }))
 
 const findEchartsHost = async () => {
@@ -154,11 +158,17 @@ describe('CodeBlock', () => {
       expect(screen.getByText('Ruby')).toBeInTheDocument()
     })
 
-    it('should render mermaid controls when language is mermaid', async () => {
-      render(<CodeBlock className="language-mermaid">graph TB; A--&gt;B;</CodeBlock>)
+    // it('should render mermaid controls when language is mermaid', async () => {
+    //   render(<CodeBlock className="language-mermaid">graph TB; A--&gt;B;</CodeBlock>)
 
-      expect(await screen.findByText('app.mermaid.classic')).toBeInTheDocument()
+    //   expect(await screen.findByTestId('classic')).toBeInTheDocument()
+    //   expect(screen.getByText('Mermaid')).toBeInTheDocument()
+    // })
+    it('should render mermaid block when language is mermaid', async () => {
+      render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
+
       expect(screen.getByText('Mermaid')).toBeInTheDocument()
+      expect(await screen.findByTestId('mock-mermaid')).toHaveTextContent('graph TD; A-->B;')
     })
 
     it('should render abc section header when language is abc', () => {
@@ -349,6 +359,16 @@ describe('CodeBlock', () => {
     it('should cleanup echarts resize listener without pending timer on unmount', async () => {
       const { unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
       await findEchartsHost()
+
+      unmount()
+    })
+
+    it('should cleanup echarts resize listener when no debounce timer is pending', async () => {
+      const { rerender, unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
+      await findEchartsHost()
+
+      rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
+      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
 
       unmount()
     })

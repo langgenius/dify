@@ -1,16 +1,11 @@
 from enum import StrEnum
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import NodeType
 
 
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
-
-
-class UserFrom(StrEnum):
-    ACCOUNT = "account"
-    END_USER = "end-user"
 
 
 class WorkflowRunTriggeredFrom(StrEnum):
@@ -77,3 +72,23 @@ class AppTriggerType(StrEnum):
 
     # for backward compatibility
     UNKNOWN = "unknown"
+
+
+class AppStatus(StrEnum):
+    """App Status Enum"""
+
+    NORMAL = "normal"
+
+
+class AppMCPServerStatus(StrEnum):
+    """AppMCPServer Status Enum"""
+
+    NORMAL = "normal"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ConversationStatus(StrEnum):
+    """Conversation Status Enum"""
+
+    NORMAL = "normal"

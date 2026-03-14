@@ -1,82 +1,33 @@
-import type { Plugin } from 'vite'
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { codeInspectorPlugin } from 'code-inspector-plugin'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import Inspect from 'vite-plugin-inspect'
+import { defineConfig } from 'vite-plus'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
+import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
+import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
-const inspectorPort = 5678
-const inspectorInjectTarget = path.resolve(__dirname, 'app/components/browser-initializer.tsx')
-const inspectorRuntimeFile = path.resolve(
-  __dirname,
-  `node_modules/code-inspector-plugin/dist/append-code-${inspectorPort}.js`,
-)
-
-const getInspectorRuntimeSnippet = (): string => {
-  if (!fs.existsSync(inspectorRuntimeFile))
-    return ''
-
-  const raw = fs.readFileSync(inspectorRuntimeFile, 'utf-8')
-  // Remove the helper module default export from append file to avoid duplicate default exports.
-  return raw.replace(
-    /\s*export default function CodeInspectorEmptyElement\(\)\s*\{[\s\S]*$/,
-    '',
-  )
-}
-
-const normalizeInspectorModuleId = (id: string): string => {
-  const withoutQuery = id.split('?', 1)[0]
-
-  // Vite/vinext may pass absolute fs modules as "/@fs/<abs-path>".
-  if (withoutQuery.startsWith('/@fs/'))
-    return withoutQuery.slice('/@fs'.length)
-
-  return withoutQuery
-}
-
-const createCodeInspectorPlugin = (): Plugin => {
-  return codeInspectorPlugin({
-    bundler: 'vite',
-    port: inspectorPort,
-    injectTo: inspectorInjectTarget,
-    exclude: [/^(?!.*\.(?:js|ts|mjs|mts|jsx|tsx|vue|svelte|html)(?:$|\?)).*/],
-  }) as Plugin
-}
-
-const createForceInspectorClientInjectionPlugin = (): Plugin => {
-  const clientSnippet = getInspectorRuntimeSnippet()
-
-  return {
-    name: 'vinext-force-code-inspector-client',
-    apply: 'serve',
-    enforce: 'pre',
-    transform(code, id) {
-      if (!clientSnippet)
-        return null
-
-      const cleanId = normalizeInspectorModuleId(id)
-      if (cleanId !== inspectorInjectTarget)
-        return null
-      if (code.includes('code-inspector-component'))
-        return null
-
-      return `${clientSnippet}\n${code}`
-    },
-  }
-}
+const coverageScope = process.env.VITEST_COVERAGE_SCOPE
+const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
+const excludedAppComponentsCoveragePaths = [...EXCLUDED_COMPONENT_MODULES]
+  .map(moduleName => `app/components/${moduleName}/**`)
 
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
+  const isTest = mode === 'test'
+  const isStorybook = process.env.STORYBOOK === 'true'
+    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
+  const isAppComponentsCoverage = coverageScope === 'app-components'
+  const excludedComponentCoverageFiles = isAppComponentsCoverage
+    ? collectComponentCoverageExcludedFiles(path.join(projectRoot, 'app/components'), { pathPrefix: 'app/components' })
+    : []
 
   return {
-    plugins: mode === 'test'
+    plugins: isTest
       ? [
-          tsconfigPaths(),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
@@ -86,31 +37,45 @@ export default defineConfig(({ mode }) => {
               if (id.endsWith('.mdx'))
                 return { code: 'export default () => null', map: null }
             },
-          } as Plugin,
+          },
         ]
-      : [
-          ...(isDev
-            ? [
-                createCodeInspectorPlugin(),
-                createForceInspectorClientInjectionPlugin(),
-              ]
-            : []),
-          vinext(),
-        ],
+      : isStorybook
+        ? [
+            react(),
+          ]
+        : [
+            Inspect(),
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
+              injectTarget: browserInitializerInjectTarget,
+              projectRoot,
+            }),
+            react(),
+            vinext({ react: false }),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
+          ],
     resolve: {
-      alias: {
-        '~@': __dirname,
-      },
+      tsconfigPaths: true,
     },
 
     // vinext related config
-    ...(mode !== 'test'
+    ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['nuqs'],
+            exclude: ['@tanstack/react-query'],
           },
           server: {
             port: 3000,
+          },
+          ssr: {
+            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
+            noExternal: ['emoji-mart'],
           },
         }
       : {}),
@@ -120,9 +85,25 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
+      reporters: ['agent'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
+        ...(isAppComponentsCoverage
+          ? {
+              include: ['app/components/**/*.{ts,tsx}'],
+              exclude: [
+                'app/components/**/*.d.ts',
+                'app/components/**/*.spec.{ts,tsx}',
+                'app/components/**/*.test.{ts,tsx}',
+                'app/components/**/__tests__/**',
+                'app/components/**/__mocks__/**',
+                'app/components/**/*.stories.{ts,tsx}',
+                ...excludedComponentCoverageFiles,
+                ...excludedAppComponentsCoveragePaths,
+              ],
+            }
+          : {}),
       },
     },
   }
