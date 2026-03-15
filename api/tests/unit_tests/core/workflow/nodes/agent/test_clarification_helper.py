@@ -79,4 +79,3 @@ class TestClarificationHelper:
             enable_human_clarification=False,
         )
         assert node_data_disabled.enable_human_clarification is False
-
