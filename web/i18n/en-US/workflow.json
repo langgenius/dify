@@ -324,6 +324,8 @@
   "nodes.agent.checkList.strategyNotSelected": "Strategy not selected",
   "nodes.agent.clickToViewParameterSchema": "Click to view parameter schema",
   "nodes.agent.configureModel": "Configure Model",
+  "nodes.agent.enableHumanClarification.label": "Enable Human Clarification",
+  "nodes.agent.enableHumanClarification.tooltip": "Allow human intervention to clarify agent reasoning during execution",
   "nodes.agent.installPlugin.cancel": "Cancel",
   "nodes.agent.installPlugin.changelog": "Change log",
   "nodes.agent.installPlugin.desc": "About to install the following plugin",
