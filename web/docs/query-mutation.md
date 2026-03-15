@@ -1,4 +1,4 @@
-# Query & Mutation Best Practices
+# Query & Mutation Rules
 
 Complements the `orpc-contract-first` skill (contract definition, queryOptions call-site pattern, decision rules).
 This document focuses on **cache invalidation** and **mutation error handling**.
