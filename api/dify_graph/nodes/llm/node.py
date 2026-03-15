@@ -364,28 +364,35 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_parameters = model_instance.parameters
         invoke_model_parameters = dict(model_parameters)
+        invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None]
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
                 structured_output=structured_output or {},
             )
             request_start_time = time.perf_counter()
 
-            invoke_result = model_instance.invoke_llm_with_structured_output(
-                prompt_messages=prompt_messages,
-                json_schema=output_schema,
-                model_parameters=invoke_model_parameters,
-                stop=stop,
-                stream=True,
+            invoke_result = cast(
+                LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None],
+                model_instance.invoke_llm_with_structured_output(
+                    prompt_messages=prompt_messages,
+                    json_schema=output_schema,
+                    model_parameters=invoke_model_parameters,
+                    stop=stop,
+                    stream=True,
+                ),
             )
         else:
             request_start_time = time.perf_counter()
 
-            invoke_result = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters=invoke_model_parameters,
-                tools=None,
-                stop=stop,
-                stream=True,
+            invoke_result = cast(
+                LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None],
+                model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=invoke_model_parameters,
+                    tools=None,
+                    stop=stop,
+                    stream=True,
+                ),
             )
 
         return LLMNode.handle_invoke_result(

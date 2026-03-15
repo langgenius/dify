@@ -156,7 +156,6 @@ class TestCacheEmbeddingDocuments:
             # Verify model was invoked with correct parameters
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=texts,
-                user="test-user",
                 input_type=EmbeddingInputType.DOCUMENT,
             )
 
@@ -651,7 +650,6 @@ class TestCacheEmbeddingQuery:
             # Verify model was invoked with QUERY input type
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
-                user="test-user",
                 input_type=EmbeddingInputType.QUERY,
             )
 
@@ -1623,7 +1621,6 @@ class TestEmbeddingEdgeCases:
             # Verify user parameter was passed to model
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
-                user=user_id,
                 input_type=EmbeddingInputType.QUERY,
             )
 
@@ -1676,7 +1673,6 @@ class TestEmbeddingEdgeCases:
             # Verify user parameter was passed
             mock_model_instance.invoke_text_embedding.assert_called_once()
             call_args = mock_model_instance.invoke_text_embedding.call_args
-            assert call_args.kwargs["user"] == user_id
             assert call_args.kwargs["input_type"] == EmbeddingInputType.DOCUMENT
 
 

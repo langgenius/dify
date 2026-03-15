@@ -6,17 +6,14 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from core.helper import ssrf_proxy
-from core.tools import signature
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.file import FileTransferMethod, FileType, models
+from dify_graph.file import FileTransferMethod, FileType
 from dify_graph.nodes.llm.file_saver import (
     FileSaverImpl,
     _extract_content_type_and_extension,
     _get_extension,
     _validate_extension_override,
 )
-from models import ToolFile
 
 _PNG_DATA = b"\x89PNG\r\n\x1a\n"
 
@@ -27,58 +24,46 @@ def _gen_id():
 
 class TestFileSaverImpl:
     def test_save_binary_string(self, monkeypatch: pytest.MonkeyPatch):
-        user_id = _gen_id()
-        tenant_id = _gen_id()
         file_type = FileType.IMAGE
         mime_type = "image/png"
-        mock_signed_url = "https://example.com/image.png"
-        mock_tool_file = ToolFile(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            conversation_id=None,
-            file_key="test-file-key",
-            mimetype=mime_type,
-            original_url=None,
-            name=f"{_gen_id()}.png",
-            size=len(_PNG_DATA),
-        )
+        mock_tool_file = MagicMock()
         mock_tool_file.id = _gen_id()
+        mock_tool_file.name = f"{_gen_id()}.png"
+        mock_tool_file.file_key = "test-file-key"
         mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManager)
-
         mocked_tool_file_manager.create_file_by_raw.return_value = mock_tool_file
-        monkeypatch.setattr(FileSaverImpl, "_get_tool_file_manager", lambda _: mocked_tool_file_manager)
-        # Since `File.generate_url` used `ToolFileManager.sign_file` directly, we also need to patch it here.
-        mocked_sign_file = mock.MagicMock(spec=signature.sign_tool_file)
-        # Since `File.generate_url` used `signature.sign_tool_file` directly, we also need to patch it here.
-        monkeypatch.setattr(models, "sign_tool_file", mocked_sign_file)
-        mocked_sign_file.return_value = mock_signed_url
+        file_reference = MagicMock()
+        file_reference_factory = MagicMock()
+        file_reference_factory.build_from_mapping.return_value = file_reference
         http_client = MagicMock()
 
-        storage_file_manager = FileSaverImpl(
-            user_id=user_id,
-            tenant_id=tenant_id,
+        file_saver = FileSaverImpl(
+            tool_file_manager=mocked_tool_file_manager,
+            file_reference_factory=file_reference_factory,
             http_client=http_client,
         )
 
-        file = storage_file_manager.save_binary_string(_PNG_DATA, mime_type, file_type)
-        assert file.tenant_id == tenant_id
-        assert file.type == file_type
-        assert file.transfer_method == FileTransferMethod.TOOL_FILE
-        assert file.extension == ".png"
-        assert file.mime_type == mime_type
-        assert file.size == len(_PNG_DATA)
-        assert file.related_id == mock_tool_file.id
-
-        assert file.generate_url() == mock_signed_url
+        file = file_saver.save_binary_string(_PNG_DATA, mime_type, file_type)
+        assert file is file_reference
 
         mocked_tool_file_manager.create_file_by_raw.assert_called_once_with(
-            user_id=user_id,
-            tenant_id=tenant_id,
             conversation_id=None,
             file_binary=_PNG_DATA,
             mimetype=mime_type,
         )
-        mocked_sign_file.assert_called_once_with(tool_file_id=mock_tool_file.id, extension=".png", for_external=True)
+        file_reference_factory.build_from_mapping.assert_called_once_with(
+            mapping={
+                "type": file_type,
+                "transfer_method": FileTransferMethod.TOOL_FILE,
+                "filename": mock_tool_file.name,
+                "extension": ".png",
+                "mime_type": mime_type,
+                "size": len(_PNG_DATA),
+                "tool_file_id": mock_tool_file.id,
+                "related_id": mock_tool_file.id,
+                "storage_key": mock_tool_file.file_key,
+            }
+        )
 
     def test_save_remote_url_request_failed(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
@@ -91,8 +76,8 @@ class TestFileSaverImpl:
         http_client.get.return_value = mock_response
 
         file_saver = FileSaverImpl(
-            user_id=_gen_id(),
-            tenant_id=_gen_id(),
+            tool_file_manager=MagicMock(),
+            file_reference_factory=MagicMock(),
             http_client=http_client,
         )
 
@@ -104,8 +89,6 @@ class TestFileSaverImpl:
     def test_save_remote_url_success(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
         mime_type = "image/png"
-        user_id = _gen_id()
-        tenant_id = _gen_id()
 
         mock_request = httpx.Request("GET", _TEST_URL)
         mock_response = httpx.Response(
@@ -117,21 +100,13 @@ class TestFileSaverImpl:
         http_client = MagicMock()
         http_client.get.return_value = mock_response
 
-        file_saver = FileSaverImpl(user_id=user_id, tenant_id=tenant_id, http_client=http_client)
-        mock_tool_file = ToolFile(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            conversation_id=None,
-            file_key="test-file-key",
-            mimetype=mime_type,
-            original_url=None,
-            name=f"{_gen_id()}.png",
-            size=len(_PNG_DATA),
+        file_saver = FileSaverImpl(
+            tool_file_manager=MagicMock(),
+            file_reference_factory=MagicMock(),
+            http_client=http_client,
         )
-        mock_tool_file.id = _gen_id()
-        mock_get = mock.MagicMock(spec=ssrf_proxy.get, return_value=mock_response)
-        monkeypatch.setattr(ssrf_proxy, "get", mock_get)
-        mock_save_binary_string = mock.MagicMock(spec=file_saver.save_binary_string, return_value=mock_tool_file)
+        expected_file = MagicMock()
+        mock_save_binary_string = mock.MagicMock(spec=file_saver.save_binary_string, return_value=expected_file)
         monkeypatch.setattr(file_saver, "save_binary_string", mock_save_binary_string)
 
         file = file_saver.save_remote_url(_TEST_URL, FileType.IMAGE)
@@ -141,7 +116,7 @@ class TestFileSaverImpl:
             FileType.IMAGE,
             extension_override=".png",
         )
-        assert file == mock_tool_file
+        assert file is expected_file
 
 
 def test_validate_extension_override():

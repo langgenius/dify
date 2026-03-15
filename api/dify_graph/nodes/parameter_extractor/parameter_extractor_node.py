@@ -758,6 +758,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         except ValueError as exc:
             raise ModelSchemaNotFoundError("Model schema not found") from exc
 
+        prompt_template: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
         if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
         else:

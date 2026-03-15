@@ -237,8 +237,7 @@ class TestAudioServiceASR:
         # Assert
         assert result == {"text": "Transcribed text"}
         mock_model_instance.invoke_speech2text.assert_called_once()
-        call_args = mock_model_instance.invoke_speech2text.call_args
-        assert call_args.kwargs["user"] == "user-123"
+        mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(self, mock_model_manager_class, factory):
@@ -398,10 +397,9 @@ class TestAudioServiceTTS:
 
         # Assert
         assert result == b"audio data"
+        mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello world",
-            user="user-123",
-            tenant_id=app.tenant_id,
             voice="en-US-Neural",
         )
 

@@ -482,7 +482,8 @@ class TestIndexingRunnerTransform:
         # Arrange
         runner = IndexingRunner()
         mock_embedding_instance = MagicMock()
-        runner.model_manager.get_model_instance.return_value = mock_embedding_instance
+        model_manager = mock_dependencies["model_manager"].return_value
+        model_manager.get_model_instance.return_value = mock_embedding_instance
 
         mock_processor = MagicMock()
         transformed_docs = [
@@ -509,7 +510,7 @@ class TestIndexingRunnerTransform:
         assert len(result) == 2
         assert result[0].page_content == "Chunk 1"
         assert result[1].page_content == "Chunk 2"
-        runner.model_manager.get_model_instance.assert_called_once_with(
+        model_manager.get_model_instance.assert_called_once_with(
             tenant_id=sample_dataset.tenant_id,
             provider=sample_dataset.embedding_model_provider,
             model_type=ModelType.TEXT_EMBEDDING,
@@ -522,6 +523,7 @@ class TestIndexingRunnerTransform:
         # Arrange
         runner = IndexingRunner()
         sample_dataset.indexing_technique = "economy"
+        model_manager = mock_dependencies["model_manager"].return_value
 
         mock_processor = MagicMock()
         transformed_docs = [
@@ -539,14 +541,15 @@ class TestIndexingRunnerTransform:
 
         # Assert
         assert len(result) == 1
-        runner.model_manager.get_model_instance.assert_not_called()
+        model_manager.get_model_instance.assert_not_called()
 
     def test_transform_with_custom_segmentation(self, mock_dependencies, sample_dataset, sample_text_docs):
         """Test transformation with custom segmentation rules."""
         # Arrange
         runner = IndexingRunner()
         mock_embedding_instance = MagicMock()
-        runner.model_manager.get_model_instance.return_value = mock_embedding_instance
+        model_manager = mock_dependencies["model_manager"].return_value
+        model_manager.get_model_instance.return_value = mock_embedding_instance
 
         mock_processor = MagicMock()
         transformed_docs = [Document(page_content="Custom chunk", metadata={"doc_id": "custom1", "doc_hash": "hash1"})]
@@ -645,7 +648,8 @@ class TestIndexingRunnerLoad:
         runner = IndexingRunner()
         mock_embedding_instance = MagicMock()
         mock_embedding_instance.get_text_embedding_num_tokens.return_value = 100
-        runner.model_manager.get_model_instance.return_value = mock_embedding_instance
+        model_manager = mock_dependencies["model_manager"].return_value
+        model_manager.get_model_instance.return_value = mock_embedding_instance
 
         mock_processor = MagicMock()
 
@@ -664,7 +668,7 @@ class TestIndexingRunnerLoad:
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
         # Assert
-        runner.model_manager.get_model_instance.assert_called_once()
+        model_manager.get_model_instance.assert_called_once()
         # Verify executor was used for parallel processing
         assert mock_executor_instance.submit.called
 
@@ -714,7 +718,8 @@ class TestIndexingRunnerLoad:
 
         mock_embedding_instance = MagicMock()
         mock_embedding_instance.get_text_embedding_num_tokens.return_value = 50
-        runner.model_manager.get_model_instance.return_value = mock_embedding_instance
+        model_manager = mock_dependencies["model_manager"].return_value
+        model_manager.get_model_instance.return_value = mock_embedding_instance
 
         mock_processor = MagicMock()
 
