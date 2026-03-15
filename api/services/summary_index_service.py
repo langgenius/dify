@@ -98,7 +98,7 @@ class SummaryIndexService:
                 # Update existing record
                 existing_summary.summary_content = summary_content
                 existing_summary.status = status
-                existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
+                existing_summary.error = None  # Clear any previous errors
                 # Re-enable if it was disabled
                 if not existing_summary.enabled:
                     existing_summary.enabled = True
@@ -547,7 +547,7 @@ class SummaryIndexService:
                 if existing_summary:
                     # Update existing record
                     existing_summary.status = status
-                    existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
+                    existing_summary.error = None  # Clear any previous errors
                     if not existing_summary.enabled:
                         existing_summary.enabled = True
                         existing_summary.disabled_at = None
@@ -639,7 +639,7 @@ class SummaryIndexService:
 
                 # Update status to "generating"
                 summary_record_in_session.status = "generating"
-                summary_record_in_session.error = None  # type: ignore[assignment]
+                summary_record_in_session.error = None
                 session.add(summary_record_in_session)
                 # Don't flush here - wait until after vectorization succeeds
 
@@ -1068,7 +1068,7 @@ class SummaryIndexService:
                     # Update summary content
                     summary_record.summary_content = summary_content
                     summary_record.status = "generating"
-                    summary_record.error = None  # type: ignore[assignment]  # Clear any previous errors
+                    summary_record.error = None  # Clear any previous errors
                     session.add(summary_record)
                     # Flush to ensure summary_content is saved before vectorize_summary queries it
                     session.flush()

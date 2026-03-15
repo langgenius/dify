@@ -86,7 +86,7 @@ def _apply_timezone(handlers: list[logging.Handler]):
 
         for handler in handlers:
             if handler.formatter:
-                handler.formatter.converter = time_converter  # type: ignore[attr-defined]
+                handler.formatter.converter = time_converter
 
 
 class _TextFormatter(logging.Formatter):
