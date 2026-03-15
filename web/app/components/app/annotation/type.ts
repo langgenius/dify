@@ -33,13 +33,19 @@ export type EmbeddingModelConfig = {
   embedding_model_name: string
 }
 
-export enum AnnotationEnableStatus {
-  enable = 'enable',
-  disable = 'disable',
-}
+export const AnnotationEnableStatus = {
+  enable: 'enable',
+  disable: 'disable',
+} as const
 
-export enum JobStatus {
-  waiting = 'waiting',
-  processing = 'processing',
-  completed = 'completed',
-}
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type AnnotationEnableStatus = typeof AnnotationEnableStatus[keyof typeof AnnotationEnableStatus]
+
+export const JobStatus = {
+  waiting: 'waiting',
+  processing: 'processing',
+  completed: 'completed',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type JobStatus = typeof JobStatus[keyof typeof JobStatus]

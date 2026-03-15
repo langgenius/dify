@@ -1,26 +1,35 @@
 import type { ModelProviderQuotaGetPaid } from './model-provider'
 
-export enum SSOProtocol {
-  SAML = 'saml',
-  OIDC = 'oidc',
-  OAuth2 = 'oauth2',
-}
+export const SSOProtocol = {
+  SAML: 'saml',
+  OIDC: 'oidc',
+  OAuth2: 'oauth2',
+} as const
 
-export enum LicenseStatus {
-  NONE = 'none',
-  INACTIVE = 'inactive',
-  ACTIVE = 'active',
-  EXPIRING = 'expiring',
-  EXPIRED = 'expired',
-  LOST = 'lost',
-}
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type SSOProtocol = typeof SSOProtocol[keyof typeof SSOProtocol]
 
-export enum InstallationScope {
-  ALL = 'all',
-  NONE = 'none',
-  OFFICIAL_ONLY = 'official_only',
-  OFFICIAL_AND_PARTNER = 'official_and_specific_partners',
-}
+export const LicenseStatus = {
+  NONE: 'none',
+  INACTIVE: 'inactive',
+  ACTIVE: 'active',
+  EXPIRING: 'expiring',
+  EXPIRED: 'expired',
+  LOST: 'lost',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type LicenseStatus = typeof LicenseStatus[keyof typeof LicenseStatus]
+
+export const InstallationScope = {
+  ALL: 'all',
+  NONE: 'none',
+  OFFICIAL_ONLY: 'official_only',
+  OFFICIAL_AND_PARTNER: 'official_and_specific_partners',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type InstallationScope = typeof InstallationScope[keyof typeof InstallationScope]
 
 type License = {
   status: LicenseStatus
