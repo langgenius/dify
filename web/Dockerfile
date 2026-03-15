@@ -7,7 +7,8 @@ FROM langgenius/node:24-alpine3.23-sfw-dev AS base
 # RUN npm config set registry https://registry.npmmirror.com
 
 RUN apk add --no-cache tzdata
-RUN corepack enable
+RUN npm install -g corepack@latest \
+    && corepack enable
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ARG NEXT_PUBLIC_BASE_PATH=""
