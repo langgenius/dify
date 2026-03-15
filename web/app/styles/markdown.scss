@@ -1035,3 +1035,14 @@
 .markdown-body .abcjs-inline-audio .abcjs-btn {
   display: flex !important;
 }
+
+/* React Spreadsheet readonly cell styles */
+.Spreadsheet__cell[readonly],
+.Spreadsheet td[readonly] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="dark"] .Spreadsheet__cell[readonly],
+[data-theme="dark"] .Spreadsheet td[readonly] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
