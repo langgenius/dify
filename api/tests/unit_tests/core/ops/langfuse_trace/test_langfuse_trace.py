@@ -25,7 +25,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from models import EndUser
 from models.enums import MessageStatus
 
@@ -147,7 +147,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = {
         "model_mode": "chat",
@@ -164,7 +164,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_other = MagicMock()
     node_other.id = "node-other"
     node_other.title = "Other Node"
-    node_other.node_type = NodeType.CODE
+    node_other.node_type = BuiltinNodeTypes.CODE
     node_other.status = "failed"
     node_other.process_data = None
     node_other.inputs = {"code": "print"}
@@ -664,7 +664,7 @@ def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypat
     node = MagicMock()
     node.id = "n1"
     node.title = "LLM Node"
-    node.node_type = NodeType.LLM
+    node.node_type = BuiltinNodeTypes.LLM
     node.status = "succeeded"
 
     class BadDict(collections.UserDict):

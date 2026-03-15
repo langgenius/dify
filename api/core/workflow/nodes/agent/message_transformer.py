@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
@@ -123,7 +123,7 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
-                if node_type == NodeType.AGENT:
+                if node_type == BuiltinNodeTypes.AGENT:
                     if isinstance(message.message.json_object, dict):
                         msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
                         llm_usage = LLMUsage.from_metadata(cast(LLMUsageMetadata, msg_metadata))

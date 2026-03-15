@@ -54,7 +54,7 @@ def init_tool_node(config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
 

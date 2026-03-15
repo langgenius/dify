@@ -1,22 +1,17 @@
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, SystemVariableKey, WorkflowNodeExecutionMetadataKey
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.repositories.datasource_manager_protocol import (
-    DatasourceManagerProtocol,
-    DatasourceParameter,
-    OnlineDriveDownloadFileParam,
-)
 
-from ...entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from .entities import DatasourceNodeData
+from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError
 
 if TYPE_CHECKING:
@@ -29,7 +24,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
     Datasource Node
     """
 
-    node_type = NodeType.DATASOURCE
+    node_type = BuiltinNodeTypes.DATASOURCE
     execution_type = NodeExecutionType.ROOT
 
     def __init__(
@@ -38,7 +33,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        datasource_manager: DatasourceManagerProtocol,
     ):
         super().__init__(
             id=id,
@@ -46,7 +40,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self.datasource_manager = datasource_manager
+        self.datasource_manager = DatasourceManager
 
     def populate_start_event(self, event) -> None:
         event.provider_id = f"{self.node_data.plugin_id}/{self.node_data.provider_name}"

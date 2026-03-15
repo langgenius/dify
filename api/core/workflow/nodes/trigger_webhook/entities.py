@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import NodeType
 from dify_graph.variables.types import SegmentType
@@ -93,7 +94,7 @@ class WebhookData(BaseNodeData):
     class SyncMode(StrEnum):
         SYNC = "async"  # only support
 
-    type: NodeType = NodeType.TRIGGER_WEBHOOK
+    type: NodeType = TRIGGER_WEBHOOK_NODE_TYPE
     method: Method = Method.GET
     content_type: ContentType = Field(default=ContentType.JSON)
     headers: Sequence[WebhookParameter] = Field(default_factory=list)

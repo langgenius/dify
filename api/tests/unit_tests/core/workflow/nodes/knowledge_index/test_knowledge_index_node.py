@@ -5,12 +5,16 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
+from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
+from core.workflow.nodes.knowledge_index.protocols import (
+    IndexProcessorProtocol,
+    Preview,
+    PreviewItem,
+    SummaryIndexServiceProtocol,
+)
 from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
-from dify_graph.nodes.knowledge_index.entities import KnowledgeIndexNodeData
-from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
-from dify_graph.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import StringSegment
@@ -45,16 +49,24 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor():
+def mock_index_processor(mocker):
     """Create mock IndexProcessorProtocol."""
     mock_processor = Mock(spec=IndexProcessorProtocol)
+    mocker.patch(
+        "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
+        return_value=mock_processor,
+    )
     return mock_processor
 
 
 @pytest.fixture
-def mock_summary_index_service():
+def mock_summary_index_service(mocker):
     """Create mock SummaryIndexServiceProtocol."""
     mock_service = Mock(spec=SummaryIndexServiceProtocol)
+    mocker.patch(
+        "core.workflow.nodes.knowledge_index.knowledge_index_node.SummaryIndex",
+        return_value=mock_service,
+    )
     return mock_service
 
 
@@ -107,8 +119,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Assert
@@ -137,8 +147,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act & Assert
@@ -172,8 +180,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act & Assert
@@ -210,8 +216,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -269,8 +273,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -334,8 +336,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -387,8 +387,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -446,8 +444,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -506,8 +502,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -546,8 +540,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -595,8 +587,6 @@ class TestKnowledgeIndexNode:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -637,8 +627,6 @@ class TestInvokeKnowledgeIndex:
             config=config,
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act

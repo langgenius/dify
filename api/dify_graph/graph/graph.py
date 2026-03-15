@@ -84,50 +84,6 @@ class Graph:
         return node_configs_map
 
     @classmethod
-    def _find_root_node_id(
-        cls,
-        node_configs_map: Mapping[str, NodeConfigDict],
-        edge_configs: Sequence[Mapping[str, object]],
-        root_node_id: str | None = None,
-    ) -> str:
-        """
-        Find the root node ID if not specified.
-
-        :param node_configs_map: mapping of node ID to node config
-        :param edge_configs: list of edge configurations
-        :param root_node_id: explicitly specified root node ID
-        :return: determined root node ID
-        """
-        if root_node_id:
-            if root_node_id not in node_configs_map:
-                raise ValueError(f"Root node id {root_node_id} not found in the graph")
-            return root_node_id
-
-        # Find nodes with no incoming edges
-        nodes_with_incoming: set[str] = set()
-        for edge_config in edge_configs:
-            target = edge_config.get("target")
-            if isinstance(target, str):
-                nodes_with_incoming.add(target)
-
-        root_candidates = [nid for nid in node_configs_map if nid not in nodes_with_incoming]
-
-        # Prefer START node if available
-        start_node_id = None
-        for nid in root_candidates:
-            node_data = node_configs_map[nid]["data"]
-            if node_data.type.is_start_node:
-                start_node_id = nid
-                break
-
-        root_node_id = start_node_id or (root_candidates[0] if root_candidates else None)
-
-        if not root_node_id:
-            raise ValueError("Unable to determine root node ID")
-
-        return root_node_id
-
-    @classmethod
     def _build_edges(
         cls, edge_configs: list[dict[str, object]]
     ) -> tuple[dict[str, Edge], dict[str, list[str]], dict[str, list[str]]]:
@@ -301,15 +257,15 @@ class Graph:
         *,
         graph_config: Mapping[str, object],
         node_factory: NodeFactory,
-        root_node_id: str | None = None,
+        root_node_id: str,
         skip_validation: bool = False,
     ) -> Graph:
         """
-        Initialize graph
+        Initialize a graph with an explicit execution entry point.
 
         :param graph_config: graph config containing nodes and edges
         :param node_factory: factory for creating node instances from config data
-        :param root_node_id: root node id
+        :param root_node_id: active root node id
         :return: graph instance
         """
         # Parse configs
@@ -327,8 +283,8 @@ class Graph:
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)
 
-        # Find root node
-        root_node_id = cls._find_root_node_id(node_configs_map, edge_configs, root_node_id)
+        if root_node_id not in node_configs_map:
+            raise ValueError(f"Root node id {root_node_id} not found in the graph")
 
         # Build edges
         edges, in_edges, out_edges = cls._build_edges(edge_configs)
