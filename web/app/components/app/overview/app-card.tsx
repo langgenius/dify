@@ -143,6 +143,16 @@ function AppCard({
           setShowEmbedded(true)
         }
       default:
+        // When rendered inside a panel (e.g. the workflow detail panel), navigate to
+        // the develop page in a new tab to avoid triggering a same-page navigation that
+        // would clear the app detail and make the current page disappear.
+        if (isInPanel) {
+          return () => {
+            const pathSegments = pathname.split('/')
+            pathSegments.pop()
+            window.open(`${pathSegments.join('/')}/develop`, '_blank')
+          }
+        }
         // jump to page develop
         return () => {
           const pathSegments = pathname.split('/')
