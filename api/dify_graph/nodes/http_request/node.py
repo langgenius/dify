@@ -84,7 +84,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             },
             "retry_config": {
                 "max_retries": http_request_config.ssrf_default_max_retries,
-                "retry_interval": 0.5 * (2**2),
+                "retry_interval": 100,  # Base interval: 100ms (will grow exponentially)
                 "retry_enabled": True,
             },
         }
@@ -257,20 +257,3 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
     @property
     def retry(self) -> bool:
         return self.node_data.retry_config.retry_enabled
-
-    def get_default_config(self) -> dict[str, Any]:
-        return {
-            "method": "get",
-            "authorization": {"type": "no-auth", "config": None},
-            "body": {"type": "none", "data": None},
-            "headers": [],
-            "params": [],
-            "timeout": {"connect": 10, "read": 60, "write": 60},
-            "ssl_verify": {"enable": True, "max": None},
-            # Use exponential backoff with 100ms base interval
-            "retry_config": {
-                "max_retries": http_request_config.ssrf_default_max_retries,
-                "retry_interval": 100,  # Base interval: 100ms (will grow exponentially)
-                "retry_enabled": True,
-            },
-        }

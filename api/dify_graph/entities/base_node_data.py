@@ -57,9 +57,6 @@ class RetryConfig(BaseModel):
         jitter = random.uniform(-jitter_amount, jitter_amount)
         interval += jitter
 
-        # Ensure minimum interval (at least base interval)
-        interval = max(interval, base_interval)
-
         # Cap at maximum interval
         max_interval = self.retry_max_interval / 1000.0
         interval = min(interval, max_interval)
@@ -216,4 +213,4 @@ class BaseNodeData(ABC, BaseModel):
             return extras.get(key, default)
 
         return default
-
+
