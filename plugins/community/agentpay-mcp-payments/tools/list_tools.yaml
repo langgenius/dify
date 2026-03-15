@@ -1,0 +1,23 @@
+identity:
+  name: list_tools
+  author: AI Agent Economy Community
+  label:
+    en_US: List Tools
+  description:
+    human:
+      en_US: List all available paid tools and their pricing.
+    llm: List all available paid tools and pricing plans.
+parameters:
+  - name: limit
+    type: number
+    required: false
+    form: llm
+    label:
+      en_US: Limit
+    human_description:
+      en_US: Max number of tools to return.
+    llm_description: Maximum number of tools to return.
+    default: 25
+extra:
+  python:
+    source: tools/list_tools.py

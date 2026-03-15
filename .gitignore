@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# AgentPay MCP local debug artifacts
+plugins/community/agentpay-mcp-payments/.tmp/
+plugins/community/agentpay-mcp-payments/*.local.md
+plugins/community/agentpay-mcp-payments/*.local.log
 # C extensions
 *.so
 
