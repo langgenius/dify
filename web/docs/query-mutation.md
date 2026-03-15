@@ -10,20 +10,23 @@ Use this file for Dify-specific rules:
 
 ## Conditional Queries
 
-Prefer contract-shaped `queryOptions(...)`, then gate execution with `enabled`.
-Do not fabricate placeholder params such as empty ids just to make a query run.
-Keep the condition as a cheap primitive boolean near the call site or orchestration hook; do not derive it through extra state or effects.
+Prefer contract-shaped `queryOptions(...)`.
+When required input is missing, prefer `input: skipToken` instead of placeholder params or non-null assertions.
+Use `enabled` only for extra business gating after the input itself is already valid.
 
 ```typescript
-// ✅ only run when the required input exists
-function useAccessMode(appId: string | undefined, enabled: boolean) {
+import { skipToken, useQuery } from '@tanstack/react-query'
+
+// ✅ disable the query by skipping input construction
+function useAccessMode(appId: string | undefined) {
   return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
-    input: { params: { appId: appId! } },
-    enabled: !!appId && enabled,
+    input: appId
+      ? { params: { appId } }
+      : skipToken,
   }))
 }
 
-// ❌ do not send fake input to bypass conditional fetching
+// ❌ do not fake input just to satisfy the type
 function useBadAccessMode(appId: string | undefined) {
   return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
     input: { params: { appId: appId || '' } },
