@@ -9,7 +9,6 @@ from core.workflow.nodes.agent.clarification_helper import (
     should_enable_clarification,
 )
 from core.workflow.nodes.agent.entities import AgentNodeData
-from dify_graph.enums import NodeType
 
 
 @pytest.fixture
@@ -17,7 +16,7 @@ def base_node_data_args() -> dict:
     """Fixture providing base arguments for AgentNodeData construction."""
     return {
         "id": "test_node",
-        "type": NodeType.AGENT,
+        "type": "agent",
         "agent_strategy_provider_name": "test_provider",
         "agent_strategy_name": "test_strategy",
         "agent_strategy_label": "Test Strategy",

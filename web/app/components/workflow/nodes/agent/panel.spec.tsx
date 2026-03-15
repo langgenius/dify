@@ -91,7 +91,7 @@ vi.mock('../_base/components/split', () => ({
 
 // Mock FormInputBoolean to capture onChange callback
 vi.mock('../_base/components/form-input-boolean', () => ({
-  default: ({ onChange }: { value: boolean; onChange: (value: boolean) => void }) => {
+  default: ({ onChange }: { value: boolean, onChange: (value: boolean) => void }) => {
     capturedOnChange = onChange
     return <div data-testid="form-input-boolean" />
   },
@@ -107,7 +107,7 @@ describe('AgentPanel - Enable Human Clarification', () => {
     const mockData: AgentNodeType = {
       id: 'test-node',
       data: {},
-    } as any
+    }
 
     render(
       <AgentPanel
@@ -130,7 +130,7 @@ describe('AgentPanel - Enable Human Clarification', () => {
     const mockData: AgentNodeType = {
       id: 'test-node',
       data: {},
-    } as any
+    }
 
     render(
       <AgentPanel
@@ -153,7 +153,7 @@ describe('AgentPanel - Enable Human Clarification', () => {
     const mockData: AgentNodeType = {
       id: 'test-node',
       data: {},
-    } as any
+    }
 
     render(
       <AgentPanel
