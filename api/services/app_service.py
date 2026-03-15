@@ -137,8 +137,8 @@ class AppService:
         # app_template["app"] always contains a 'mode' key, and mode is explicitly
         # set below from args["mode"], so unpacking it here would conflict if the
         # constructor call is ever refactored to pass mode as a keyword argument.
-        app_template_app = {k: v for k, v in app_template["app"].items() if k != "mode"}
-        app = App(**app_template_app)
+        app_kwargs = {k: v for k, v in app_template["app"].items() if k != "mode"}
+        app = App(**app_kwargs)
         app.name = args["name"]
         app.description = args.get("description", "")
         app.mode = args["mode"]
