@@ -315,13 +315,9 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             # variable selector to variable mapping
             try:
-                # Get node class
-                # TODO: Remove this workflow-layer import once node-class lookup no longer depends on node_factory.
-                from core.workflow.node_factory import get_node_type_classes_mapping
-
                 typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
                 node_type = typed_sub_node_config["data"].type
-                node_mapping = get_node_type_classes_mapping()
+                node_mapping = Node.get_node_type_classes_mapping()
                 if node_type not in node_mapping:
                     continue
                 node_version = str(typed_sub_node_config["data"].version)

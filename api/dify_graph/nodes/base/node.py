@@ -274,6 +274,10 @@ class Node(Generic[NodeDataT]):
         """Validate shared graph node payloads against the subclass-declared NodeData model."""
         return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
 
+    def init_node_data(self, data: BaseNodeData | Mapping[str, Any]) -> None:
+        """Hydrate `_node_data` for legacy callers that bypass `__init__`."""
+        self._node_data = self.validate_node_data(cast(BaseNodeData, data))
+
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
         return
@@ -494,8 +498,19 @@ class Node(Generic[NodeDataT]):
     def version(cls) -> str:
         """`node_version` returns the version of current node type."""
         # NOTE(QuantumGhost): Node versions must remain unique per `NodeType` so
-        # workflow-layer node resolution can resolve numeric versions and `latest`.
+        # registry lookups can resolve numeric versions and `latest`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
+
+    @classmethod
+    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
+        """Return a read-only view of the currently registered node classes.
+
+        This accessor intentionally performs no imports. The embedding layer that
+        owns bootstrap (for example `core.workflow.node_factory`) must import any
+        extension node packages before calling it so their subclasses register via
+        `__init_subclass__`.
+        """
+        return {node_type: MappingProxyType(version_map) for node_type, version_map in cls._registry.items()}
 
     @property
     def retry(self) -> bool:

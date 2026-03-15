@@ -30,8 +30,6 @@ ignore_imports =
 
     dify_graph.nodes.iteration.iteration_node -> dify_graph.graph_engine
     dify_graph.nodes.loop.loop_node -> dify_graph.graph_engine
-    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
-    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
     # TODO(QuantumGhost): fix the import violation later
     dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
 
@@ -91,8 +89,6 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    dify_graph.nodes.iteration.iteration_node -> core.workflow.node_factory
-    dify_graph.nodes.loop.loop_node -> core.workflow.node_factory
     dify_graph.nodes.llm.llm_utils -> core.model_manager
     dify_graph.nodes.llm.protocols -> core.model_manager
     dify_graph.nodes.llm.llm_utils -> dify_graph.model_runtime.model_providers.__base.large_language_model

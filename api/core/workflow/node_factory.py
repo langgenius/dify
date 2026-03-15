@@ -2,7 +2,6 @@ import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from functools import lru_cache
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
 
 from sqlalchemy import select
@@ -89,7 +88,7 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
     reintroducing registry bootstrapping into lower-level graph primitives.
     """
     register_nodes()
-    return {node_type: MappingProxyType(version_map) for node_type, version_map in Node._registry.items()}
+    return Node.get_node_type_classes_mapping()
 
 
 def is_start_node_type(node_type: NodeType) -> bool:
