@@ -357,21 +357,49 @@ class TestUtilityFunctions:
         assert result == expected
 
     def test_extract_answer_from_streaming_response(self):
-        """Test extracting answer from streaming response"""
+        """Test extracting answer from streaming response with agent_message events"""
         app = Mock(spec=App)
 
-        # Mock RateLimitGenerator
         mock_generator = Mock(spec=RateLimitGenerator)
         mock_generator.generator = [
             'data: {"event": "agent_thought", "thought": "thinking..."}',
-            'data: {"event": "agent_thought", "thought": "more thinking"}',
-            'data: {"event": "other", "content": "ignore this"}',
+            'data: {"event": "agent_message", "answer": "Hello "}',
+            'data: {"event": "agent_message", "answer": "World"}',
+            'data: {"event": "message_end", "metadata": {}}',
             "not data format",
         ]
 
         result = extract_answer_from_response(app, mock_generator)
 
-        assert result == "thinking...more thinking"
+        assert result == "Hello World"
+
+    def test_extract_answer_from_streaming_response_message_event(self):
+        """Test extracting answer from streaming response with message event"""
+        app = Mock(spec=App)
+
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "message", "answer": "Hello from chat"}',
+        ]
+
+        result = extract_answer_from_response(app, mock_generator)
+
+        assert result == "Hello from chat"
+
+    def test_extract_answer_from_streaming_response_fallback_to_thought(self):
+        """Test extracting answer falls back to thought when no message events"""
+        app = Mock(spec=App)
+
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "agent_thought", "thought": "thinking..."}',
+            'data: {"event": "agent_thought", "thought": "more thinking"}',
+            'data: {"event": "other", "content": "ignore this"}',
+        ]
+
+        result = extract_answer_from_response(app, mock_generator)
+
+        assert result == "more thinking"
 
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
