@@ -18,10 +18,12 @@ class TestModelLoadBalancingService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.model_load_balancing_service.ProviderManager", autospec=True) as mock_provider_manager,
+            patch(
+                "services.model_load_balancing_service.create_plugin_provider_manager", autospec=True
+            ) as mock_provider_manager,
             patch("services.model_load_balancing_service.LBModelManager", autospec=True) as mock_lb_model_manager,
             patch(
-                "services.model_load_balancing_service.ModelProviderFactory", autospec=True
+                "services.model_load_balancing_service.create_plugin_model_provider_factory", autospec=True
             ) as mock_model_provider_factory,
             patch("services.model_load_balancing_service.encrypter", autospec=True) as mock_encrypter,
         ):

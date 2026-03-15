@@ -18,8 +18,12 @@ class TestModelProviderService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.model_provider_service.ProviderManager", autospec=True) as mock_provider_manager,
-            patch("services.model_provider_service.ModelProviderFactory", autospec=True) as mock_model_provider_factory,
+            patch(
+                "services.model_provider_service.create_plugin_provider_manager", autospec=True
+            ) as mock_provider_manager,
+            patch(
+                "services.model_provider_service.create_plugin_model_provider_factory", autospec=True
+            ) as mock_model_provider_factory,
         ):
             # Setup default mock returns
             mock_provider_manager.return_value.get_configurations.return_value = MagicMock()
