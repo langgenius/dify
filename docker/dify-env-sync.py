@@ -355,19 +355,11 @@ def show_statistics(work_dir: Path) -> None:
     example_file = work_dir / ".env.example"
     env_file = work_dir / ".env"
 
-    def count_vars(path: Path) -> int:
-        if not path.exists():
-            return 0
-        count = 0
-        with path.open(encoding="utf-8") as fh:
-            for line in fh:
-                stripped = line.strip()
-                if stripped and not stripped.startswith("#") and "=" in stripped:
-                    count += 1
-        return count
+    example_count = len(parse_env_file(example_file)) if example_file.exists() else 0
+    env_count = len(parse_env_file(env_file)) if env_file.exists() else 0
 
-    log_info(f"  .env.example environment variables: {count_vars(example_file)}")
-    log_info(f"  .env environment variables: {count_vars(env_file)}")
+    log_info(f"  .env.example environment variables: {example_count}")
+    log_info(f"  .env environment variables: {env_count}")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
