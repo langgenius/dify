@@ -27,7 +27,7 @@ def should_enable_clarification(node_data: AgentNodeData) -> bool:
 
 
 def extract_clarification_request(
-    agent_output: dict[str, Any],
+    _agent_output: dict[str, Any],
     enable_clarification: bool,
 ) -> dict[str, Any] | None:
     """
@@ -37,7 +37,7 @@ def extract_clarification_request(
     Currently returns None as clarification is not yet implemented.
 
     Args:
-        agent_output: The output from agent execution.
+        _agent_output: The output from agent execution. Currently unused, reserved for future HITL expansion.
         enable_clarification: Whether clarification is enabled.
 
     Returns:
