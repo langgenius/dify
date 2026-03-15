@@ -1,9 +1,9 @@
 import datetime
 from types import SimpleNamespace
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import NodeType, UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
@@ -31,19 +31,23 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": form_content,
@@ -91,19 +95,23 @@ def _build_timeout_node() -> HumanInputNode:
         start_at=0.0,
     )
     graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
         workflow_id="workflow",
         graph_config={"nodes": [], "edges": []},
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "user",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
 
     config = {
         "id": "node-1",
-        "type": NodeType.HUMAN_INPUT.value,
+        "type": BuiltinNodeTypes.HUMAN_INPUT,
         "data": {
             "title": "Human Input",
             "form_content": "Please enter your name:\n\n{{#$output.name#}}",

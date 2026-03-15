@@ -9,7 +9,7 @@ const mockNotify = vi.fn()
 const mockClose = vi.fn()
 
 // Mock ToastContext with factory function
-vi.mock('@/app/components/base/toast', async () => {
+vi.mock('@/app/components/base/toast/context', async () => {
   const { createContext, useContext } = await import('use-context-selector')
   const context = createContext({ notify: mockNotify, close: mockClose })
   return {
@@ -87,7 +87,7 @@ vi.mock('@/service/base', () => ({
 
 // Import after all mocks are set up
 const { useLocalFileUpload } = await import('../use-local-file-upload')
-const { ToastContext } = await import('@/app/components/base/toast')
+const { ToastContext } = await import('@/app/components/base/toast/context')
 
 const createWrapper = () => {
   return ({ children }: { children: ReactNode }) => (

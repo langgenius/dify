@@ -18,13 +18,13 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from dify_graph.file.models import FileUploadConfig
 from dify_graph.model_runtime.entities.llm_entities import LLMMode
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.variables.input_entities import VariableEntity
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 
 
@@ -72,7 +72,7 @@ class WorkflowConverter:
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
         new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
-        new_app.icon_type = icon_type or app_model.icon_type
+        new_app.icon_type = IconType(icon_type) if icon_type else app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
         new_app.enable_site = app_model.enable_site
@@ -234,7 +234,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "START",
-                "type": NodeType.START,
+                "type": BuiltinNodeTypes.START,
                 "variables": [jsonable_encoder(v) for v in variables],
             },
         }
@@ -296,7 +296,7 @@ class WorkflowConverter:
                 "position": None,
                 "data": {
                     "title": f"HTTP REQUEST {api_based_extension.name}",
-                    "type": NodeType.HTTP_REQUEST,
+                    "type": BuiltinNodeTypes.HTTP_REQUEST,
                     "method": "post",
                     "url": api_based_extension.api_endpoint,
                     "authorization": {"type": "api-key", "config": {"type": "bearer", "api_key": api_key}},
@@ -314,7 +314,7 @@ class WorkflowConverter:
                 "position": None,
                 "data": {
                     "title": f"Parse {api_based_extension.name} Response",
-                    "type": NodeType.CODE,
+                    "type": BuiltinNodeTypes.CODE,
                     "variables": [{"variable": "response_json", "value_selector": [http_request_node["id"], "body"]}],
                     "code_language": "python3",
                     "code": "import json\n\ndef main(response_json: str) -> str:\n    response_body = json.loads("
@@ -354,7 +354,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "KNOWLEDGE RETRIEVAL",
-                "type": NodeType.KNOWLEDGE_RETRIEVAL,
+                "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                 "query_variable_selector": query_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
@@ -402,9 +402,9 @@ class WorkflowConverter:
         :param external_data_variable_node_mapping: external data variable node mapping
         """
         # fetch start and knowledge retrieval node
-        start_node = next(filter(lambda n: n["data"]["type"] == NodeType.START, graph["nodes"]))
+        start_node = next(filter(lambda n: n["data"]["type"] == BuiltinNodeTypes.START, graph["nodes"]))
         knowledge_retrieval_node = next(
-            filter(lambda n: n["data"]["type"] == NodeType.KNOWLEDGE_RETRIEVAL, graph["nodes"]), None
+            filter(lambda n: n["data"]["type"] == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, graph["nodes"]), None
         )
 
         role_prefix = None
@@ -523,7 +523,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "LLM",
-                "type": NodeType.LLM,
+                "type": BuiltinNodeTypes.LLM,
                 "model": {
                     "provider": model_config.provider,
                     "name": model_config.model,
@@ -578,7 +578,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "END",
-                "type": NodeType.END,
+                "type": BuiltinNodeTypes.END,
                 "outputs": [{"variable": "result", "value_selector": ["llm", "text"]}],
             },
         }
@@ -592,7 +592,7 @@ class WorkflowConverter:
         return {
             "id": "answer",
             "position": None,
-            "data": {"title": "ANSWER", "type": NodeType.ANSWER, "answer": "{{#llm.text#}}"},
+            "data": {"title": "ANSWER", "type": BuiltinNodeTypes.ANSWER, "answer": "{{#llm.text#}}"},
         }
 
     def _create_edge(self, source: str, target: str):

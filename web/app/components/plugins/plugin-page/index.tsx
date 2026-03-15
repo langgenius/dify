@@ -28,10 +28,8 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
-import {
-  PluginPageContextProvider,
-  usePluginPageContext,
-} from './context'
+import { usePluginPageContext } from './context'
+import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import PluginTasks from './plugin-tasks'
