@@ -16,6 +16,10 @@ import AgentPanel from './panel'
 // Mock setInputs at the top level
 const mockSetInputs = vi.fn()
 
+// Stub for panelProps - using any to avoid complex type requirements in test
+// eslint-disable-next-line ts/no-explicit-any
+const mockPanelProps = {} as any
+
 // Capture FormInputBoolean's onChange callback
 let capturedOnChange: ((value: boolean) => void) | null = null
 
@@ -104,15 +108,13 @@ describe('AgentPanel - Enable Human Clarification', () => {
   })
 
   it('should call setInputs with enable_human_clarification=true when onChange is triggered with true', () => {
-    const mockData: AgentNodeType = {
-      id: 'test-node',
-      data: {},
-    }
+    const mockData = {} as AgentNodeType
 
     render(
       <AgentPanel
         id="test-node"
         data={mockData}
+        panelProps={mockPanelProps}
       />,
     )
 
@@ -127,15 +129,13 @@ describe('AgentPanel - Enable Human Clarification', () => {
   })
 
   it('should call setInputs with enable_human_clarification=false when onChange is triggered with false', () => {
-    const mockData: AgentNodeType = {
-      id: 'test-node',
-      data: {},
-    }
+    const mockData = {} as AgentNodeType
 
     render(
       <AgentPanel
         id="test-node"
         data={mockData}
+        panelProps={mockPanelProps}
       />,
     )
 
@@ -150,15 +150,13 @@ describe('AgentPanel - Enable Human Clarification', () => {
   })
 
   it('should preserve other inputs when updating enable_human_clarification', () => {
-    const mockData: AgentNodeType = {
-      id: 'test-node',
-      data: {},
-    }
+    const mockData = {} as AgentNodeType
 
     render(
       <AgentPanel
         id="test-node"
         data={mockData}
+        panelProps={mockPanelProps}
       />,
     )
 
