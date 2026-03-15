@@ -5,6 +5,8 @@ root_packages =
     configs
     controllers
     extensions
+    factories
+    libs
     models
     tasks
     services
@@ -42,6 +44,8 @@ forbidden_modules =
     configs
     controllers
     extensions
+    factories
+    libs
     models
     services
     tasks
