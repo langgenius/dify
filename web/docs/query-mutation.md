@@ -1,19 +1,54 @@
 # Query & Mutation Rules
 
-Complements the `orpc-contract-first` skill (contract definition, queryOptions call-site pattern, decision rules).
-This document focuses on **cache invalidation** and **mutation error handling**.
+This document complements `orpc-contract-first`.
+Use that skill for contract shape and query/mutation call-site patterns.
+Use this file for Dify-specific rules:
+
+- conditional queries
+- cache invalidation
+- mutation error handling
+
+## Conditional Queries
+
+Prefer contract-shaped `queryOptions(...)`, then gate execution with `enabled`.
+Do not fabricate placeholder params such as empty ids just to make a query run.
+Keep the condition as a cheap primitive boolean near the call site or orchestration hook; do not derive it through extra state or effects.
+
+```typescript
+// ✅ only run when the required input exists
+function useAccessMode(appId: string | undefined, enabled: boolean) {
+  return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
+    input: { params: { appId: appId! } },
+    enabled: !!appId && enabled,
+  }))
+}
+
+// ❌ do not send fake input to bypass conditional fetching
+function useBadAccessMode(appId: string | undefined) {
+  return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
+    input: { params: { appId: appId || '' } },
+  }))
+}
+```
 
 ## Cache Invalidation
 
-Bind invalidation in the service-layer mutation definition. Components only add UI feedback via call-site `onSuccess` (callbacks are additive, not overriding — definition fires first, then call-site).
+Bind invalidation in the service-layer mutation definition.
+Components may add UI feedback in call-site callbacks, but they should not decide which queries to invalidate.
+
+Use:
+
+- `.key()` for namespace or prefix invalidation
+- `.queryKey(...)` only for exact cache reads or writes such as `getQueryData` and `setQueryData`
+- `queryClient.invalidateQueries(...)` in mutation `onSuccess`
+
+Do not use deprecated `useInvalid` from `use-base.ts`.
 
 ```typescript
-// ✅ service layer — web/service/access-control.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
-
+// ✅ service layer owns cache invalidation
 export const useUpdateAccessMode = () => {
   const queryClient = useQueryClient()
+
   return useMutation(consoleQuery.accessControl.updateAccessMode.mutationOptions({
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -23,106 +58,56 @@ export const useUpdateAccessMode = () => {
   }))
 }
 
-// ✅ component — only UI feedback, no invalidation knowledge
-function AccessModeForm({ appId }: { appId: string }) {
-  const { data: currentMode } = useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
-    input: { params: { appId } },
-  }))
-  const { mutate: updateAccessMode } = useUpdateAccessMode()
+// ✅ component only adds UI behavior
+updateAccessMode({ appId, mode }, {
+  onSuccess: () => Toast.notify({ type: 'success', message: '...' }),
+})
 
-  const handleSubmit = useCallback((selectedMode: string) => {
-    updateAccessMode({ appId, mode: selectedMode }, {
-      onSuccess: () => Toast.notify({ type: 'success', message: '...' }),
+// ❌ component should not own invalidation knowledge
+mutate({ appId, mode }, {
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.accessControl.appWhitelistSubjects.key(),
     })
-  }, [appId, updateAccessMode])
-}
-
-// ❌ component should NOT own invalidation logic for mutations
-function BadComponent({ appId }: { appId: string }) {
-  const queryClient = useQueryClient()
-  const { mutate } = useMutation(consoleQuery.accessControl.updateAccessMode.mutationOptions())
-
-  const handleSubmit = useCallback((selectedMode: string) => {
-    mutate({ appId, mode: selectedMode }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.accessControl.appWhitelistSubjects.key(),
-        })
-      },
-    })
-  }, [appId, mutate, queryClient])
-}
+  },
+})
 ```
 
-### Rules
+## `mutate` vs `mutateAsync`
 
-- Use `.key()` for prefix-based invalidation (all queries under a namespace).
-- Use `.queryKey(...)` only for exact cache addressing (`setQueryData` / `getQueryData`).
-- Do not import `useInvalid` from `use-base.ts` — it is deprecated.
-- Mutation-triggered invalidation belongs in the service layer. Components should not decide which queries to invalidate after a mutation.
+Prefer `mutate` by default.
+Use `mutateAsync` only when you truly need Promise semantics, such as parallel mutations or sequential steps with result dependencies.
 
-## mutate vs mutateAsync
+Rules:
 
-Prefer `mutate` unless you need the Promise.
-
-`mutate` internally calls `mutateAsync().catch(noop)`, so errors are silently handled and you get results
-via callbacks. `mutateAsync` returns a raw Promise — if you `await` it without `try-catch`, a failed mutation
-produces an unhandled rejection.
+- Event handlers should usually call `mutate(...)` with `onSuccess` / `onError`
+- Every `await mutateAsync(...)` must be wrapped in `try/catch`
+- Do not use `mutateAsync` when callbacks already express the flow clearly
 
 ```typescript
-import { useMutation } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
+// ✅ default
+mutation.mutate(data, {
+  onSuccess: result => router.push(result.url),
+})
 
-function Example() {
-  const mutation = useMutation(consoleQuery.billing.subscribe.mutationOptions())
-
-  // ✅ mutate — errors handled internally, results via callbacks
-  mutation.mutate(data, {
-    onSuccess: result => router.push(result.url),
-  })
-
-  // ❌ mutateAsync without try-catch — unhandled rejection
-  const result = await mutation.mutateAsync(data)
-  router.push(result.url)
+// ✅ Promise is required
+try {
+  const order = await createOrder.mutateAsync(orderData)
+  await confirmPayment.mutateAsync({ orderId: order.id, token })
+  router.push(`/orders/${order.id}`)
 }
-```
-
-Use `mutateAsync` when you need the Promise — concurrent mutations or sequential steps with result dependencies:
-
-```typescript
-function ConcurrentExample() {
-  // ✅ concurrent mutations
-  try {
-    await Promise.all([
-      mutation1.mutateAsync(data1),
-      mutation2.mutateAsync(data2),
-    ])
-  }
-  catch (error) {
-    Toast.notify({ type: 'error', message: error.message })
-  }
-}
-
-function SequentialExample() {
-  // ✅ sequential chain where each step depends on the previous result
-  try {
-    const order = await createOrder.mutateAsync(orderData)
-    await confirmPayment.mutateAsync({ orderId: order.id, token })
-    router.push(`/orders/${order.id}`)
-  }
-  catch (error) {
-    Toast.notify({ type: 'error', message: error.message })
-  }
+catch (error) {
+  Toast.notify({ type: 'error', message: error.message })
 }
 ```
 
 ## Legacy Migration
 
-When touching files that use the old patterns below, migrate them:
+When touching old code, migrate it toward these rules:
 
 | Old pattern | New pattern |
 |---|---|
-| `useInvalid(key)` in service layer | `queryClient.invalidateQueries` inside `useMutation.onSuccess` |
-| `useInvalidateXxx()` called from components after mutations | Move invalidation into the service-layer mutation definition |
-| `await deleteXxx(id)` (imperative fetch) + manual invalidation | Wrap in `useMutation` with `onSuccess` invalidation |
-| `await mutateAsync()` without try-catch | Switch to `mutate` + callbacks, or add try-catch |
+| `useInvalid(key)` in service layer | `queryClient.invalidateQueries(...)` inside mutation `onSuccess` |
+| component-triggered invalidation after mutation | move invalidation into the service-layer mutation definition |
+| imperative fetch plus manual invalidation | wrap it in `useMutation(...mutationOptions(...))` |
+| `await mutateAsync()` without `try/catch` | switch to `mutate(...)` or add `try/catch` |

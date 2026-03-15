@@ -10,9 +10,9 @@
 
 ## Query & Mutation (Mandatory)
 
-- `./docs/query-mutation.md` defines cache invalidation, conditional queries, and mutation error handling rules.
-- The `orpc-contract-first` skill is the source of truth for contract definition and query/mutation call-site patterns.
-- When writing or modifying query/mutation code, read both resources and follow every requirement.
+- Use `orpc-contract-first` for contracts, query shape, data-fetching wrappers, and query/mutation call-site patterns.
+- Use `./docs/query-mutation.md` for Dify-specific conditional query, invalidation, and mutation error-handling rules.
+- If a task touches both, follow both.
 
 ## Automated Test Generation
 
