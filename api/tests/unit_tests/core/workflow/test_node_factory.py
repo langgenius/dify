@@ -260,7 +260,11 @@ class TestDifyNodeFactoryCreateNode:
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
 
     def test_rejects_missing_class_mapping(self, monkeypatch, factory):
-        monkeypatch.setattr(node_factory, "NODE_TYPE_CLASSES_MAPPING", {})
+        monkeypatch.setattr(
+            node_factory,
+            "resolve_workflow_node_class",
+            MagicMock(side_effect=ValueError("No class mapping found for node type: start")),
+        )
 
         with pytest.raises(ValueError, match="No class mapping found for node type: start"):
             factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value}})
@@ -268,8 +272,8 @@ class TestDifyNodeFactoryCreateNode:
     def test_rejects_missing_latest_class(self, monkeypatch, factory):
         monkeypatch.setattr(
             node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {node_factory.LATEST_VERSION: None}},
+            "resolve_workflow_node_class",
+            MagicMock(side_effect=ValueError("No latest version class found for node type: start")),
         )
 
         with pytest.raises(ValueError, match="No latest version class found for node type: start"):
@@ -281,13 +285,8 @@ class TestDifyNodeFactoryCreateNode:
         matched_node_class = MagicMock(return_value=matched_node)
         monkeypatch.setattr(
             node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {
-                NodeType.START: {
-                    node_factory.LATEST_VERSION: latest_node_class,
-                    "9": matched_node_class,
-                }
-            },
+            "resolve_workflow_node_class",
+            MagicMock(return_value=matched_node_class),
         )
 
         result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
@@ -306,8 +305,8 @@ class TestDifyNodeFactoryCreateNode:
         latest_node_class = MagicMock(return_value=latest_node)
         monkeypatch.setattr(
             node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {node_factory.LATEST_VERSION: latest_node_class}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=latest_node_class),
         )
 
         result = factory.create_node({"id": "node-id", "data": {"type": NodeType.START.value, "version": "9"}})
@@ -338,8 +337,8 @@ class TestDifyNodeFactoryCreateNode:
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
             node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: constructor}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=constructor),
         )
 
         if constructor_name == "HumanInputNode":
@@ -411,8 +410,8 @@ class TestDifyNodeFactoryCreateNode:
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
             node_factory,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {node_type: {node_factory.LATEST_VERSION: constructor}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=constructor),
         )
         llm_init_kwargs = {
             "credentials_provider": sentinel.credentials_provider,

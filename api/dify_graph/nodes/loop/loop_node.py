@@ -316,14 +316,15 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             # variable selector to variable mapping
             try:
                 # Get node class
-                from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+                from dify_graph.nodes.node_mapping import get_node_type_classes_mapping
 
                 typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
                 node_type = typed_sub_node_config["data"].type
-                if node_type not in NODE_TYPE_CLASSES_MAPPING:
+                node_mapping = get_node_type_classes_mapping()
+                if node_type not in node_mapping:
                     continue
                 node_version = str(typed_sub_node_config["data"].version)
-                node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+                node_cls = node_mapping[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
                     graph_config=graph_config, config=typed_sub_node_config

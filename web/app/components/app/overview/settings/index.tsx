@@ -6,7 +6,7 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
@@ -99,6 +99,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
+  const hideMoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -137,10 +138,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       : { type: 'emoji', icon, background: icon_background! })
   }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
 
+  useEffect(() => {
+    return () => {
+      if (hideMoreTimerRef.current) {
+        clearTimeout(hideMoreTimerRef.current)
+        hideMoreTimerRef.current = null
+      }
+    }
+  }, [])
+
   const onHide = () => {
     onClose()
-    setTimeout(() => {
+    if (hideMoreTimerRef.current)
+      clearTimeout(hideMoreTimerRef.current)
+    hideMoreTimerRef.current = setTimeout(() => {
       setIsShowMore(false)
+      hideMoreTimerRef.current = null
     }, 200)
   }
 

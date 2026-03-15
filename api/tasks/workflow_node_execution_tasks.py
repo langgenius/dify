@@ -98,7 +98,7 @@ def _create_node_execution_from_domain(
     node_execution.tenant_id = tenant_id
     node_execution.app_id = app_id
     node_execution.workflow_id = execution.workflow_id
-    node_execution.triggered_from = triggered_from.value
+    node_execution.triggered_from = triggered_from
     node_execution.workflow_run_id = execution.workflow_execution_id
     node_execution.index = execution.index
     node_execution.predecessor_node_id = execution.predecessor_node_id
@@ -128,7 +128,7 @@ def _create_node_execution_from_domain(
     node_execution.status = execution.status.value
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
-    node_execution.created_by_role = creator_user_role.value
+    node_execution.created_by_role = creator_user_role
     node_execution.created_by = creator_user_id
     node_execution.created_at = execution.created_at
     node_execution.finished_at = execution.finished_at

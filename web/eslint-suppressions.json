@@ -5616,12 +5616,6 @@
   "app/components/share/text-generation/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "app/components/share/text-generation/info-modal.tsx": {
