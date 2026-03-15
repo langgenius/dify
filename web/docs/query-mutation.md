@@ -24,32 +24,33 @@ export const useUpdateAccessMode = () => {
 }
 
 // ✅ component — only UI feedback, no invalidation knowledge
-function AccessModeForm() {
-  const [mode, setMode] = useState('public')
+function AccessModeForm({ appId }: { appId: string }) {
+  const { data: currentMode } = useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
+    input: { params: { appId } },
+  }))
   const { mutate: updateAccessMode } = useUpdateAccessMode()
 
-  const handleSubmit = useCallback(() => {
-    updateAccessMode({ mode }, {
+  const handleSubmit = useCallback((selectedMode: string) => {
+    updateAccessMode({ appId, mode: selectedMode }, {
       onSuccess: () => Toast.notify({ type: 'success', message: '...' }),
     })
-  }, [mode, updateAccessMode])
+  }, [appId, updateAccessMode])
 }
 
 // ❌ component should NOT own invalidation logic for mutations
-function BadComponent() {
-  const [mode, setMode] = useState('public')
+function BadComponent({ appId }: { appId: string }) {
   const queryClient = useQueryClient()
   const { mutate } = useMutation(consoleQuery.accessControl.updateAccessMode.mutationOptions())
 
-  const handleSubmit = useCallback(() => {
-    mutate({ mode }, {
+  const handleSubmit = useCallback((selectedMode: string) => {
+    mutate({ appId, mode: selectedMode }, {
       onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: consoleQuery.accessControl.appWhitelistSubjects.key(),
         })
       },
     })
-  }, [mode, mutate, queryClient])
+  }, [appId, mutate, queryClient])
 }
 ```
 
