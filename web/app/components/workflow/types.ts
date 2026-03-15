@@ -239,11 +239,14 @@ export type ModelConfig = {
   completion_params: Record<string, any>
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type PromptRole = typeof PromptRole[keyof typeof PromptRole]
 
 export enum EditionType {
   basic = 'basic',

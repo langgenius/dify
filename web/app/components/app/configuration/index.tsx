@@ -392,7 +392,7 @@ const Configuration: FC = () => {
     }
   }, [textGenerationModelList, hasFetchedDetail, modelModeType, currModel, modelConfig])
 
-  const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
+  const [promptMode, doSetPromptMode] = useState<PromptMode>(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
