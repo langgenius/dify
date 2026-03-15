@@ -1,11 +1,8 @@
+import type { BundledLanguage, BundledTheme } from 'shiki'
 import ReactEcharts from 'echarts-for-react'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import SyntaxHighlighter from 'react-syntax-highlighter'
-import {
-  atelierHeathDark,
-  atelierHeathLight,
-} from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import { codeToHtml } from 'shiki'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
@@ -63,6 +60,56 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // Error: Minified React error 185;
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
+
+const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language: string, theme: BundledTheme }) => {
+  const [html, setHtml] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+    codeToHtml(code, {
+      lang: language as BundledLanguage,
+      theme,
+    }).then((result) => {
+      if (!cancelled)
+        setHtml(result)
+    }).catch(() => {
+      if (!cancelled)
+        setHtml('')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [code, language, theme])
+
+  if (!html) {
+    return (
+      <pre style={{
+        paddingLeft: 12,
+        borderBottomLeftRadius: '10px',
+        borderBottomRightRadius: '10px',
+        backgroundColor: 'var(--color-components-input-bg-normal)',
+        margin: 0,
+        overflow: 'auto',
+      }}
+      >
+        <code>{code}</code>
+      </pre>
+    )
+  }
+
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{
+        borderBottomLeftRadius: '10px',
+        borderBottomRightRadius: '10px',
+        overflow: 'auto',
+      }}
+      className="[&_pre]:!m-0 [&_pre]:!rounded-b-[10px] [&_pre]:!rounded-t-none [&_pre]:!bg-components-input-bg-normal [&_pre]:!p-3"
+    />
+  )
+})
+ShikiCodeBlock.displayName = 'ShikiCodeBlock'
 
 // Define ECharts event parameter types
 type EChartsEventParams = {
@@ -388,20 +435,11 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         )
       default:
         return (
-          <SyntaxHighlighter
-            {...props}
-            style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
-            customStyle={{
-              paddingLeft: 12,
-              borderBottomLeftRadius: '10px',
-              borderBottomRightRadius: '10px',
-              backgroundColor: 'var(--color-components-input-bg-normal)',
-            }}
-            language={match?.[1]}
-            showLineNumbers
-          >
-            {content}
-          </SyntaxHighlighter>
+          <ShikiCodeBlock
+            code={content}
+            language={match?.[1] || 'text'}
+            theme={isDarkMode ? 'github-dark' : 'github-light'}
+          />
         )
     }
   }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, handleChartReady, echartsEvents])
