@@ -8,6 +8,12 @@
 - In new or modified code, use only overlay primitives from `@/app/components/base/ui/*`.
 - Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
 
+## Query & Mutation (Mandatory)
+
+- `./docs/query-mutation.md` defines cache invalidation, conditional queries, and mutation error handling rules.
+- The `orpc-contract-first` skill is the source of truth for contract definition and query/mutation call-site patterns.
+- When writing or modifying query/mutation code, read both resources and follow every requirement.
+
 ## Automated Test Generation
 
 - Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.
