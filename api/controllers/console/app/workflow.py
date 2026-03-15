@@ -11,7 +11,12 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import console_ns
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import (
+    ConversationCompletedError,
+    DraftWorkflowNotExist,
+    DraftWorkflowNotSync,
+    VariableValidationError,
+)
 from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
@@ -32,6 +37,7 @@ from dify_graph.enums import NodeType
 from dify_graph.file.models import File
 from dify_graph.graph_engine.manager import GraphEngineManager
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.variables.exc import VariableError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -302,6 +308,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
+        except VariableError as e:
+            raise VariableValidationError(description=str(e))
 
         return {
             "result": "success",
