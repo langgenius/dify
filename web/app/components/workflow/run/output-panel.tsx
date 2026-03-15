@@ -9,6 +9,8 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 
+const DIFY_FILE_IDENTITY = '__dify__file__'
+
 type OutputPanelProps = {
   isRunning?: boolean
   outputs?: any
@@ -44,9 +46,9 @@ const OutputPanel: FC<OutputPanelProps> = ({
       return false
     return fileList.length > 0 && Object.keys(outputs).every((key) => {
       const val = outputs[key]
-      if (Array.isArray(val))
-        return val.every((item: any) => item?.dify_model_identity === '__dify__file__')
-      return val?.dify_model_identity === '__dify__file__'
+      return Array.isArray(val)
+        ? val.every((item: any) => item?.dify_model_identity === DIFY_FILE_IDENTITY)
+        : val?.dify_model_identity === DIFY_FILE_IDENTITY
     })
   }, [outputs, fileList])
 
