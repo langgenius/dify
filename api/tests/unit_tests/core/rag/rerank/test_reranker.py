@@ -352,7 +352,9 @@ class TestRerankModelRunner:
         # Assert: Empty result is returned
         assert len(result) == 0
 
-    def test_user_parameter_passed_to_model(self, rerank_runner, mock_model_instance, sample_documents):
+    def test_user_parameter_passed_to_model(
+        self, rerank_runner, mock_model_instance, sample_documents, mock_model_manager
+    ):
         """Test that user parameter is passed to model invocation.
 
         Verifies:
@@ -366,6 +368,7 @@ class TestRerankModelRunner:
                 RerankDocument(index=0, text=sample_documents[0].page_content, score=0.90),
             ],
         )
+        mock_model_manager.return_value.get_model_instance.return_value = mock_model_instance
         mock_model_instance.invoke_rerank.return_value = mock_rerank_result
 
         # Act: Run reranking with user parameter
@@ -375,9 +378,10 @@ class TestRerankModelRunner:
             user="user123",
         )
 
-        # Assert: User parameter is passed to model
+        # Assert: User context is bound through ModelManager and the rebound instance is invoked.
+        mock_model_manager.assert_any_call(tenant_id="test-tenant-id", user_id="user123")
         call_kwargs = mock_model_instance.invoke_rerank.call_args.kwargs
-        assert call_kwargs["user"] == "user123"
+        assert "user" not in call_kwargs
 
 
 class _ForwardingBaseRerankRunner(BaseRerankRunner):
@@ -539,10 +543,14 @@ class TestRerankModelRunnerMultimodal:
         )
         mock_model_instance.invoke_multimodal_rerank.return_value = rerank_result
 
+        session = MagicMock()
+        session.query.return_value = query_chain
         with (
-            patch("core.rag.rerank.rerank_model.db.session.query", return_value=query_chain),
+            patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_model_manager,
+            patch("core.rag.rerank.rerank_model.db.session", session),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
         ):
+            mock_model_manager.return_value.get_model_instance.return_value = mock_model_instance
             result, unique_documents = rerank_runner.fetch_multimodal_rerank(
                 query="query-upload-id",
                 documents=[text_doc],
@@ -554,10 +562,11 @@ class TestRerankModelRunnerMultimodal:
 
         assert result == rerank_result
         assert unique_documents == [text_doc]
+        mock_model_manager.assert_any_call(tenant_id="test-tenant-id", user_id="user-1")
         invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
         assert invoke_kwargs["query"]["content_type"] == DocType.IMAGE
         assert invoke_kwargs["docs"][0]["content"] == "text-content"
-        assert invoke_kwargs["user"] == "user-1"
+        assert "user" not in invoke_kwargs
 
     def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
         query_chain = Mock()
@@ -595,7 +604,7 @@ class TestWeightRerankRunner:
     @pytest.fixture
     def mock_model_manager(self):
         """Mock ModelManager for embedding model."""
-        with patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant", autospec=True) as mock_manager:
+        with patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     @pytest.fixture
@@ -1527,7 +1536,7 @@ class TestRerankEdgeCases:
         # Mock dependencies
         with (
             patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant") as mock_manager,
             patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()
@@ -1673,7 +1682,7 @@ class TestRerankPerformance:
 
         with (
             patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant") as mock_manager,
             patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()
@@ -1824,7 +1833,7 @@ class TestRerankErrorHandling:
 
         with (
             patch("core.rag.rerank.weight_rerank.JiebaKeywordTableHandler", autospec=True) as mock_jieba,
-            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant", autospec=True) as mock_manager,
+            patch("core.rag.rerank.weight_rerank.ModelManager.for_tenant") as mock_manager,
             patch("core.rag.rerank.weight_rerank.CacheEmbedding", autospec=True) as mock_cache,
         ):
             mock_handler = MagicMock()

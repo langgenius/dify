@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Generator, Iterator, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
@@ -12,7 +11,6 @@ import pytest
 import dify_graph.model_runtime.model_providers.__base.large_language_model as llm_module
 
 # Access large_language_model members via llm_module to avoid partial import issues in CI
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from dify_graph.model_runtime.callbacks.base_callback import Callback
 from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -116,24 +114,10 @@ class _TestLLM(llm_module.LargeLanguageModel):
 
 @pytest.fixture
 def llm() -> _TestLLM:
-    plugin_provider = PluginModelProviderEntity.model_construct(
-        id="provider-id",
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        provider="provider",
-        tenant_id="tenant",
-        plugin_unique_identifier="plugin-uid",
-        plugin_id="plugin-id",
-        declaration=MagicMock(),
-    )
-    return _TestLLM.model_construct(
-        tenant_id="tenant",
-        model_type=ModelType.LLM,
-        plugin_id="plugin-id",
-        provider_name="provider",
-        plugin_model_provider=plugin_provider,
-        started_at=1.0,
-    )
+    provider_schema = SimpleNamespace(provider="provider", label=SimpleNamespace(en_US="Provider"))
+    model_runtime = MagicMock()
+    model_runtime.get_llm_num_tokens.return_value = 0
+    return _TestLLM(provider_schema=provider_schema, model_runtime=model_runtime, started_at=1.0)
 
 
 def test_gen_tool_call_id_is_uuid_based(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -280,23 +264,11 @@ def test_build_llm_result_from_chunks_accumulates_all_chunks() -> None:
     assert result.message.content == "firstsecond"
 
 
-def test_invoke_llm_via_plugin_passes_list_converted_stop(monkeypatch: pytest.MonkeyPatch) -> None:
-    invoked: dict[str, Any] = {}
-
-    class FakePluginModelClient:
-        def invoke_llm(self, **kwargs: Any) -> str:
-            invoked.update(kwargs)
-            return "ok"
-
-    import core.plugin.impl.model as plugin_model_module
-
-    monkeypatch.setattr(plugin_model_module, "PluginModelClient", FakePluginModelClient)
-
+def test_invoke_llm_via_runtime_passes_list_converted_stop(llm: _TestLLM) -> None:
+    llm.model_runtime = MagicMock()
     prompt_messages: Sequence[PromptMessage] = (UserPromptMessage(content="hi"),)
-    result = llm_module._invoke_llm_via_plugin(
-        tenant_id="t",
-        user_id="u",
-        plugin_id="p",
+    result = llm_module._invoke_llm_via_runtime(
+        llm_model=llm,
         provider="prov",
         model="m",
         credentials={"k": "v"},
@@ -307,21 +279,29 @@ def test_invoke_llm_via_plugin_passes_list_converted_stop(monkeypatch: pytest.Mo
         stream=True,
     )
 
-    assert result == "ok"
-    assert invoked["prompt_messages"] == list(prompt_messages)
-    assert invoked["stop"] == ["a", "b"]
+    llm.model_runtime.invoke_llm.assert_called_once_with(
+        provider="prov",
+        model="m",
+        credentials={"k": "v"},
+        model_parameters={"temp": 1},
+        prompt_messages=list(prompt_messages),
+        tools=None,
+        stop=("a", "b"),
+        stream=True,
+    )
+    assert result is llm.model_runtime.invoke_llm.return_value
 
 
-def test_normalize_non_stream_plugin_result_passthrough_llmresult() -> None:
+def test_normalize_non_stream_runtime_result_passthrough_llmresult() -> None:
     llm_result = LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage())
     assert (
-        llm_module._normalize_non_stream_plugin_result(model="m", prompt_messages=[], result=llm_result) is llm_result
+        llm_module._normalize_non_stream_runtime_result(model="m", prompt_messages=[], result=llm_result) is llm_result
     )
 
 
-def test_normalize_non_stream_plugin_result_builds_from_chunks() -> None:
+def test_normalize_non_stream_runtime_result_builds_from_chunks() -> None:
     chunks = iter([_chunk(content="hello", usage=_usage(1, 1))])
-    result = llm_module._normalize_non_stream_plugin_result(
+    result = llm_module._normalize_non_stream_runtime_result(
         model="m", prompt_messages=[UserPromptMessage(content="u")], result=chunks
     )
     assert isinstance(result, LLMResult)
@@ -331,7 +311,7 @@ def test_normalize_non_stream_plugin_result_builds_from_chunks() -> None:
 def test_invoke_non_stream_normalizes_and_sets_prompt_messages(llm: _TestLLM, monkeypatch: pytest.MonkeyPatch) -> None:
     plugin_result = LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage())
     monkeypatch.setattr(
-        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_runtime",
         lambda **_: plugin_result,
     )
     cb = SpyCallback()
@@ -355,7 +335,7 @@ def test_invoke_stream_wraps_generator_and_triggers_callbacks(llm: _TestLLM, mon
         ]
     )
     monkeypatch.setattr(
-        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_runtime",
         lambda **_: plugin_chunks,
     )
 
@@ -383,7 +363,7 @@ def test_invoke_triggers_error_callbacks_and_raises_transformed(llm: _TestLLM, m
         raise ValueError("plugin down")
 
     monkeypatch.setattr(
-        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin", boom
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_runtime", boom
     )
     cb = SpyCallback()
     with pytest.raises(RuntimeError, match="transformed: plugin down"):
@@ -397,8 +377,8 @@ def test_invoke_triggers_error_callbacks_and_raises_transformed(llm: _TestLLM, m
 def test_invoke_raises_not_implemented_for_unsupported_result_type(
     llm: _TestLLM, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(llm_module, "_invoke_llm_via_plugin", lambda **_: "not-a-result")
-    monkeypatch.setattr(llm_module, "_normalize_non_stream_plugin_result", lambda **_: "not-a-result")
+    monkeypatch.setattr(llm_module, "_invoke_llm_via_runtime", lambda **_: "not-a-result")
+    monkeypatch.setattr(llm_module, "_normalize_non_stream_runtime_result", lambda **_: "not-a-result")
     with pytest.raises(NotImplementedError, match="unsupported invoke result type"):
         llm.invoke(model="m", credentials={}, prompt_messages=[UserPromptMessage(content="x")], stream=False)
 
@@ -410,9 +390,9 @@ def test_invoke_appends_logging_callback_in_debug(llm: _TestLLM, monkeypatch: py
         pass
 
     monkeypatch.setattr(llm_module, "LoggingCallback", FakeLoggingCallback)
-    monkeypatch.setattr(llm_module.dify_config, "DEBUG", True)
+    monkeypatch.setattr(llm_module.logger, "isEnabledFor", lambda level: level == logging.DEBUG)
     monkeypatch.setattr(
-        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_plugin",
+        "dify_graph.model_runtime.model_providers.__base.large_language_model._invoke_llm_via_runtime",
         lambda **_: LLMResult(model="m", message=AssistantPromptMessage(content="x"), usage=_usage()),
     )
 
@@ -427,26 +407,22 @@ def test_invoke_appends_logging_callback_in_debug(llm: _TestLLM, monkeypatch: py
     assert any(isinstance(cb, FakeLoggingCallback) for cb in captured_callbacks[0])
 
 
-def test_get_num_tokens_returns_0_when_plugin_disabled(llm: _TestLLM, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_module.dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", False)
+def test_get_num_tokens_returns_0_when_runtime_returns_0(llm: _TestLLM) -> None:
+    llm.model_runtime.get_llm_num_tokens.return_value = 0
     assert llm.get_num_tokens(model="m", credentials={}, prompt_messages=[UserPromptMessage(content="x")]) == 0
 
 
-def test_get_num_tokens_uses_plugin_when_enabled(llm: _TestLLM, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm_module.dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", True)
-
-    class FakePluginModelClient:
-        def get_llm_num_tokens(self, **kwargs: Any) -> int:
-            assert kwargs["tenant_id"] == "tenant"
-            assert kwargs["plugin_id"] == "plugin-id"
-            assert kwargs["provider"] == "provider"
-            assert kwargs["model_type"] == "llm"
-            return 42
-
-    import core.plugin.impl.model as plugin_model_module
-
-    monkeypatch.setattr(plugin_model_module, "PluginModelClient", FakePluginModelClient)
+def test_get_num_tokens_uses_runtime(llm: _TestLLM) -> None:
+    llm.model_runtime.get_llm_num_tokens.return_value = 42
     assert llm.get_num_tokens(model="m", credentials={}, prompt_messages=[UserPromptMessage(content="x")]) == 42
+    llm.model_runtime.get_llm_num_tokens.assert_called_once_with(
+        provider="provider",
+        model_type=ModelType.LLM,
+        model="m",
+        credentials={},
+        prompt_messages=[UserPromptMessage(content="x")],
+        tools=None,
+    )
 
 
 def test_calc_response_usage_uses_prices_and_latency(llm: _TestLLM, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -213,7 +213,9 @@ def test_create_segments_vector_parent_child_calls_generate_child_chunks_with_ex
     embedding_model_instance = MagicMock(name="embedding_model_instance")
     model_manager_instance = MagicMock(name="model_manager_instance")
     model_manager_instance.get_model_instance.return_value = embedding_model_instance
-    monkeypatch.setattr(vector_service_module, "ModelManager", MagicMock(return_value=model_manager_instance))
+    monkeypatch.setattr(
+        vector_service_module.ModelManager, "for_tenant", MagicMock(return_value=model_manager_instance)
+    )
 
     generate_child_chunks_mock = MagicMock()
     monkeypatch.setattr(VectorService, "generate_child_chunks", generate_child_chunks_mock)
@@ -261,7 +263,9 @@ def test_create_segments_vector_parent_child_uses_default_embedding_model_when_p
     embedding_model_instance = MagicMock()
     model_manager_instance = MagicMock()
     model_manager_instance.get_default_model_instance.return_value = embedding_model_instance
-    monkeypatch.setattr(vector_service_module, "ModelManager", MagicMock(return_value=model_manager_instance))
+    monkeypatch.setattr(
+        vector_service_module.ModelManager, "for_tenant", MagicMock(return_value=model_manager_instance)
+    )
 
     generate_child_chunks_mock = MagicMock()
     monkeypatch.setattr(VectorService, "generate_child_chunks", generate_child_chunks_mock)

@@ -55,7 +55,7 @@ class TypeMismatchError(Exception):
     pass
 
 
-SEGMENT_TO_VARIABLE_MAP = {
+SEGMENT_TO_VARIABLE_MAP: Mapping[type[Segment], type[Any]] = {
     ArrayAnySegment: ArrayAnyVariable,
     ArrayBooleanSegment: ArrayBooleanVariable,
     ArrayFileSegment: ArrayFileVariable,

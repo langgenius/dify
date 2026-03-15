@@ -188,7 +188,7 @@ def test_vectorize_summary_retries_connection_errors_then_succeeds(monkeypatch: 
     embedding_model.get_text_embedding_num_tokens.return_value = [5]
     model_manager = MagicMock()
     model_manager.get_model_instance.return_value = embedding_model
-    monkeypatch.setattr(summary_module, "ModelManager", MagicMock(return_value=model_manager))
+    monkeypatch.setattr(summary_module.ModelManager, "for_tenant", MagicMock(return_value=model_manager))
 
     vector_instance = MagicMock()
     vector_instance.add_texts.side_effect = [RuntimeError("connection timeout"), None]
@@ -227,7 +227,7 @@ def test_vectorize_summary_without_session_creates_record_when_missing(monkeypat
 
     model_manager = MagicMock()
     model_manager.get_model_instance.side_effect = RuntimeError("no model")
-    monkeypatch.setattr(summary_module, "ModelManager", MagicMock(return_value=model_manager))
+    monkeypatch.setattr(summary_module.ModelManager, "for_tenant", MagicMock(return_value=model_manager))
 
     # New session used after vectorization succeeds (record not found by id nor chunk_id).
     session = MagicMock(name="session")
@@ -404,8 +404,8 @@ def test_vectorize_summary_updates_existing_record_found_by_chunk_id(monkeypatch
     vector_instance.add_texts.return_value = None
     monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector_instance))
     monkeypatch.setattr(
-        summary_module,
-        "ModelManager",
+        summary_module.ModelManager,
+        "for_tenant",
         MagicMock(return_value=MagicMock(get_model_instance=MagicMock(return_value=None))),
     )
 
@@ -438,8 +438,8 @@ def test_vectorize_summary_updates_existing_record_found_by_id(monkeypatch: pyte
         summary_module, "Vector", MagicMock(return_value=MagicMock(add_texts=MagicMock(return_value=None)))
     )
     monkeypatch.setattr(
-        summary_module,
-        "ModelManager",
+        summary_module.ModelManager,
+        "for_tenant",
         MagicMock(return_value=MagicMock(get_model_instance=MagicMock(return_value=None))),
     )
 
@@ -471,8 +471,8 @@ def test_vectorize_summary_session_enter_returns_none_triggers_runtime_error(mon
         summary_module, "Vector", MagicMock(return_value=MagicMock(add_texts=MagicMock(return_value=None)))
     )
     monkeypatch.setattr(
-        summary_module,
-        "ModelManager",
+        summary_module.ModelManager,
+        "for_tenant",
         MagicMock(return_value=MagicMock(get_model_instance=MagicMock(return_value=None))),
     )
 
@@ -507,8 +507,8 @@ def test_vectorize_summary_created_record_becomes_none_triggers_guard(monkeypatc
         summary_module, "Vector", MagicMock(return_value=MagicMock(add_texts=MagicMock(return_value=None)))
     )
     monkeypatch.setattr(
-        summary_module,
-        "ModelManager",
+        summary_module.ModelManager,
+        "for_tenant",
         MagicMock(return_value=MagicMock(get_model_instance=MagicMock(return_value=None))),
     )
 

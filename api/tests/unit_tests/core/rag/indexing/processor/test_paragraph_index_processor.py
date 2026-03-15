@@ -398,7 +398,9 @@ class TestParagraphIndexProcessor:
         model_instance.invoke_llm.return_value = self._llm_result("text summary")
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
+            ) as mock_provider_manager,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -409,7 +411,7 @@ class TestParagraphIndexProcessor:
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
             summary, usage = ParagraphIndexProcessor.generate_summary(
                 "tenant-1",
                 "text content",
@@ -432,7 +434,9 @@ class TestParagraphIndexProcessor:
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png", url="http://example.com/a.png")
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
+            ) as mock_provider_manager,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -447,7 +451,7 @@ class TestParagraphIndexProcessor:
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota"),
         ):
-            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
             summary, _ = ParagraphIndexProcessor.generate_summary(
                 "tenant-1",
                 "text content",
@@ -468,7 +472,9 @@ class TestParagraphIndexProcessor:
         image_file = SimpleNamespace()
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
+            ) as mock_provider_manager,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -485,7 +491,7 @@ class TestParagraphIndexProcessor:
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
             with pytest.raises(ValueError, match="Expected LLMResult"):
                 ParagraphIndexProcessor.generate_summary(
                     "tenant-1",
