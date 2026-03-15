@@ -61,6 +61,8 @@ const WorkflowPreview = () => {
 
     if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
+    if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !!workflowRunningData.result.files?.length)
+      switchTab('RESULT')
     if (status === WorkflowRunningStatus.Paused)
       switchTab('RESULT')
   }, [workflowRunningData])

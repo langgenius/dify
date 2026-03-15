@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { useMemo } from 'react'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -34,25 +34,22 @@ const OutputPanel: FC<OutputPanelProps> = ({
   }, [outputs])
 
   const fileList = useMemo(() => {
-    const fileList: any[] = []
     if (!outputs)
-      return fileList
-    if (Object.keys(outputs).length > 1)
-      return fileList
-    for (const key in outputs) {
-      if (Array.isArray(outputs[key])) {
-        outputs[key].map((output: any) => {
-          if (output?.dify_model_identity === '__dify__file__')
-            fileList.push(output)
-          return null
-        })
-      }
-      else if (outputs[key]?.dify_model_identity === '__dify__file__') {
-        fileList.push(outputs[key])
-      }
-    }
-    return getProcessedFilesFromResponse(fileList)
+      return []
+    return getFilesInLogs(outputs)
   }, [outputs])
+
+  const isFileOnlyOutput = useMemo(() => {
+    if (!outputs || typeof outputs !== 'object')
+      return false
+    return fileList.length > 0 && Object.keys(outputs).every((key) => {
+      const val = outputs[key]
+      if (Array.isArray(val))
+        return val.every((item: any) => item?.dify_model_identity === '__dify__file__')
+      return val?.dify_model_identity === '__dify__file__'
+    })
+  }, [outputs, fileList])
+
   return (
     <div className="p-2">
       {isRunning && (
@@ -82,16 +79,21 @@ const OutputPanel: FC<OutputPanelProps> = ({
         </div>
       )}
       {fileList.length > 0 && (
-        <div className="px-4 py-2">
-          <FileList
-            files={fileList}
-            showDeleteAction={false}
-            showDownloadAction
-            canPreview
-          />
+        <div className="flex flex-col gap-2 px-4 py-2">
+          {fileList.map((item: any) => (
+            <div key={item.varName} className="flex flex-col gap-1 system-xs-regular">
+              <div className="py-1 text-text-tertiary">{item.varName}</div>
+              <FileList
+                files={item.list}
+                showDeleteAction={false}
+                showDownloadAction
+                canPreview
+              />
+            </div>
+          ))}
         </div>
       )}
-      {!isTextOutput && outputs && Object.keys(outputs).length > 0 && height! > 0 && (
+      {!isTextOutput && !isFileOnlyOutput && outputs && Object.keys(outputs).length > 0 && height! > 0 && (
         <div className="flex flex-col gap-2">
           <CodeEditor
             showFileList
