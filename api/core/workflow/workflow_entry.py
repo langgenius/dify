@@ -5,32 +5,92 @@ from typing import Any, cast
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.app.workflow.node_factory import DifyNodeFactory
-from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
-from core.workflow.entities.graph_config import NodeConfigData, NodeConfigDict
-from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.file.models import File
-from core.workflow.graph import Graph
-from core.workflow.graph_engine import GraphEngine, GraphEngineConfig
-from core.workflow.graph_engine.command_channels import InMemoryChannel
-from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
-from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
+from core.workflow.node_factory import DifyNodeFactory, resolve_workflow_node_class
+from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.errors import WorkflowNodeRunFailedError
+from dify_graph.file.models import File
+from dify_graph.graph import Graph
+from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
+from dify_graph.graph_engine.command_channels import InMemoryChannel
+from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_engine.protocols.command_channel import CommandChannel
+from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
+from dify_graph.nodes import BuiltinNodeTypes
+from dify_graph.nodes.base.node import Node
+from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
-from models.enums import UserFrom
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class _WorkflowChildEngineBuilder:
+    @staticmethod
+    def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
+        """
+        Return whether `graph_config["nodes"]` contains the given node id.
+
+        Returns `None` when the nodes payload shape is unexpected, so graph-level
+        validation can surface the original configuration error.
+        """
+        nodes = graph_config.get("nodes")
+        if not isinstance(nodes, list):
+            return None
+
+        for node in nodes:
+            if not isinstance(node, Mapping):
+                return None
+            current_id = node.get("id")
+            if isinstance(current_id, str) and current_id == node_id:
+                return True
+        return False
+
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
+        graph_config: Mapping[str, Any],
+        root_node_id: str,
+        layers: Sequence[object] = (),
+    ) -> GraphEngine:
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
+        has_root_node = self._has_node_id(graph_config=graph_config, node_id=root_node_id)
+        if has_root_node is False:
+            raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
+
+        child_graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=root_node_id,
+        )
+
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
+            child_engine_builder=self,
+        )
+        child_engine.layer(LLMQuotaLayer())
+        for layer in layers:
+            child_engine.layer(cast(GraphEngineLayer, layer))
+        return child_engine
 
 
 class WorkflowEntry:
@@ -76,6 +136,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
+        self._child_engine_builder = _WorkflowChildEngineBuilder()
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -87,6 +148,7 @@ class WorkflowEntry:
                 scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
+            child_engine_builder=self._child_engine_builder,
         )
 
         # Add debug logging layer when in debug mode
@@ -106,6 +168,7 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
+        self.graph_engine.layer(LLMQuotaLayer())
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
@@ -148,17 +211,19 @@ class WorkflowEntry:
         node_config_data = node_config["data"]
 
         # Get node type
-        node_type = NodeType(node_config_data["type"])
+        node_type = node_config_data.type
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -168,8 +233,7 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        typed_node_config = cast(dict[str, object], node_config)
-        node = cast(Any, node_factory).create_node(typed_node_config)
+        node = node_factory.create_node(node_config)
         node_cls = type(node)
 
         try:
@@ -188,7 +252,7 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
-        if node_type != NodeType.DATASOURCE:
+        if node_type != BuiltinNodeTypes.DATASOURCE:
             cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
                 user_inputs=user_inputs,
@@ -238,7 +302,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START,
+                "type": BuiltinNodeTypes.START,
                 "title": "Start",
                 "desc": "Start",
             },
@@ -274,11 +338,11 @@ class WorkflowEntry:
         # Create a minimal graph for single node execution
         graph_dict = cls._create_single_node_graph(node_id, node_data)
 
-        node_type = NodeType(node_data.get("type", ""))
-        if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
+        node_type = node_data.get("type", "")
+        if node_type not in {BuiltinNodeTypes.PARAMETER_EXTRACTOR, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]
+        node_cls = resolve_workflow_node_class(node_type=node_type, node_version="1")
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
@@ -291,22 +355,21 @@ class WorkflowEntry:
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
-            tenant_id=tenant_id,
-            app_id="",
             workflow_id="",
             graph_config=graph_dict,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+            run_context=build_dify_run_context(
+                tenant_id=tenant_id,
+                app_id="",
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config: NodeConfigDict = {
-            "id": node_id,
-            "data": cast(NodeConfigData, node_data),
-        }
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

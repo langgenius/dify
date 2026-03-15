@@ -25,10 +25,6 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
@@ -60,14 +56,18 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from core.workflow.file import File, FileTransferMethod, FileType
 from core.workflow.nodes.knowledge_retrieval import exc
-from core.workflow.repositories.rag_retrieval_protocol import (
+from core.workflow.nodes.knowledge_retrieval.retrieval import (
     KnowledgeRetrievalRequest,
     Source,
     SourceChildChunk,
     SourceMetadata,
 )
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -83,6 +83,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
+from models.enums import CreatorUserRole
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
@@ -127,11 +128,12 @@ class DatasetRetrieval:
         metadata_filter_document_ids, metadata_condition = None, None
 
         if request.metadata_filtering_mode != "disabled":
-            # Convert workflow layer types to app_config layer types
-            if not request.metadata_model_config:
-                raise ValueError("metadata_model_config is required for this method")
+            app_metadata_model_config = ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={})
+            if request.metadata_filtering_mode == "automatic":
+                if not request.metadata_model_config:
+                    raise ValueError("metadata_model_config is required for this method")
 
-            app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
+                app_metadata_model_config = ModelConfig.model_validate(request.metadata_model_config.model_dump())
 
             app_metadata_filtering_conditions = None
             if request.metadata_filtering_conditions is not None:
@@ -248,19 +250,22 @@ class DatasetRetrieval:
         retrieval_resource_list = []
         # deal with external documents
         for item in external_documents:
+            ext_meta = item.metadata or {}
+            title = ext_meta.get("title") or ""
+            doc_id = ext_meta.get("document_id") or title
             source = Source(
                 metadata=SourceMetadata(
                     source="knowledge",
-                    dataset_id=item.metadata.get("dataset_id"),
-                    dataset_name=item.metadata.get("dataset_name"),
-                    document_id=item.metadata.get("document_id"),
-                    document_name=item.metadata.get("title"),
+                    dataset_id=ext_meta.get("dataset_id") or "",
+                    dataset_name=ext_meta.get("dataset_name") or "",
+                    document_id=str(doc_id),
+                    document_name=ext_meta.get("title") or "",
                     data_source_type="external",
                     retriever_from="workflow",
-                    score=item.metadata.get("score"),
-                    doc_metadata=item.metadata,
+                    score=float(ext_meta.get("score") or 0.0),
+                    doc_metadata=ext_meta,
                 ),
-                title=item.metadata.get("title"),
+                title=title,
                 content=item.page_content,
             )
             retrieval_resource_list.append(source)
@@ -1005,7 +1010,7 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source="app",
                     source_app_id=app_id,
-                    created_by_role=user_from,
+                    created_by_role=CreatorUserRole(user_from),
                     created_by=user_id,
                 )
                 dataset_queries.append(dataset_query)

@@ -7,7 +7,8 @@ for workflows containing nodes that require third-party services.
 
 import pytest
 
-from core.workflow.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from .test_table_runner import TableTestRunner, WorkflowTestCase
@@ -199,22 +200,19 @@ def test_mock_config_builder():
 
 def test_mock_factory_node_type_detection():
     """Test that MockNodeFactory correctly identifies nodes to mock."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     from .test_mock_factory import MockNodeFactory
 
-    graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="test",
         graph_config={},
+        tenant_id="test",
+        app_id="test",
         user_id="test",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
-        call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
@@ -229,23 +227,23 @@ def test_mock_factory_node_type_detection():
     )
 
     # Test that third-party service nodes are identified for mocking
-    assert factory.should_mock_node(NodeType.LLM)
-    assert factory.should_mock_node(NodeType.AGENT)
-    assert factory.should_mock_node(NodeType.TOOL)
-    assert factory.should_mock_node(NodeType.KNOWLEDGE_RETRIEVAL)
-    assert factory.should_mock_node(NodeType.HTTP_REQUEST)
-    assert factory.should_mock_node(NodeType.PARAMETER_EXTRACTOR)
-    assert factory.should_mock_node(NodeType.DOCUMENT_EXTRACTOR)
+    assert factory.should_mock_node(BuiltinNodeTypes.LLM)
+    assert factory.should_mock_node(BuiltinNodeTypes.AGENT)
+    assert factory.should_mock_node(BuiltinNodeTypes.TOOL)
+    assert factory.should_mock_node(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
+    assert factory.should_mock_node(BuiltinNodeTypes.HTTP_REQUEST)
+    assert factory.should_mock_node(BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+    assert factory.should_mock_node(BuiltinNodeTypes.DOCUMENT_EXTRACTOR)
 
     # Test that CODE and TEMPLATE_TRANSFORM are mocked (they require SSRF proxy)
-    assert factory.should_mock_node(NodeType.CODE)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    assert factory.should_mock_node(BuiltinNodeTypes.CODE)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Test that non-service nodes are not mocked
-    assert not factory.should_mock_node(NodeType.START)
-    assert not factory.should_mock_node(NodeType.END)
-    assert not factory.should_mock_node(NodeType.IF_ELSE)
-    assert not factory.should_mock_node(NodeType.VARIABLE_AGGREGATOR)
+    assert not factory.should_mock_node(BuiltinNodeTypes.START)
+    assert not factory.should_mock_node(BuiltinNodeTypes.END)
+    assert not factory.should_mock_node(BuiltinNodeTypes.IF_ELSE)
+    assert not factory.should_mock_node(BuiltinNodeTypes.VARIABLE_AGGREGATOR)
 
 
 def test_custom_mock_handler():
@@ -309,11 +307,9 @@ def test_workflow_without_auto_mock():
 
 def test_register_custom_mock_node():
     """Test registering a custom mock implementation for a node type."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.nodes.template_transform import TemplateTransformNode
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.nodes.template_transform import TemplateTransformNode
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     from .test_mock_factory import MockNodeFactory
 
@@ -323,15 +319,14 @@ def test_register_custom_mock_node():
             # Custom mock implementation
             pass
 
-    graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
+    graph_init_params = build_test_graph_init_params(
         workflow_id="test",
         graph_config={},
+        tenant_id="test",
+        app_id="test",
         user_id="test",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
-        call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(environment_variables=[], conversation_variables=[], user_inputs={}),
@@ -346,15 +341,15 @@ def test_register_custom_mock_node():
     )
 
     # TEMPLATE_TRANSFORM is mocked by default (requires SSRF proxy)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Unregister mock
-    factory.unregister_mock_node_type(NodeType.TEMPLATE_TRANSFORM)
-    assert not factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    factory.unregister_mock_node_type(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
+    assert not factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Re-register custom mock
-    factory.register_mock_node_type(NodeType.TEMPLATE_TRANSFORM, MockTemplateTransformNode)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    factory.register_mock_node_type(BuiltinNodeTypes.TEMPLATE_TRANSFORM, MockTemplateTransformNode)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
 
 def test_default_config_by_node_type():
@@ -363,7 +358,7 @@ def test_default_config_by_node_type():
 
     # Set default config for all LLM nodes
     mock_config.set_default_config(
-        NodeType.LLM,
+        BuiltinNodeTypes.LLM,
         {
             "default_response": "Default LLM response for all nodes",
             "temperature": 0.7,
@@ -372,23 +367,23 @@ def test_default_config_by_node_type():
 
     # Set default config for all HTTP nodes
     mock_config.set_default_config(
-        NodeType.HTTP_REQUEST,
+        BuiltinNodeTypes.HTTP_REQUEST,
         {
             "default_status": 200,
             "default_timeout": 30,
         },
     )
 
-    llm_config = mock_config.get_default_config(NodeType.LLM)
+    llm_config = mock_config.get_default_config(BuiltinNodeTypes.LLM)
     assert llm_config["default_response"] == "Default LLM response for all nodes"
     assert llm_config["temperature"] == 0.7
 
-    http_config = mock_config.get_default_config(NodeType.HTTP_REQUEST)
+    http_config = mock_config.get_default_config(BuiltinNodeTypes.HTTP_REQUEST)
     assert http_config["default_status"] == 200
     assert http_config["default_timeout"] == 30
 
     # Non-configured node type should return empty dict
-    tool_config = mock_config.get_default_config(NodeType.TOOL)
+    tool_config = mock_config.get_default_config(BuiltinNodeTypes.TOOL)
     assert tool_config == {}
 
 

@@ -74,7 +74,8 @@ class ExtractProcessor:
                         else:
                             suffix = ""
             # https://stackoverflow.com/questions/26541416/generate-temporary-file-names-without-creating-actual-file-in-python#comment90414256_26541521
-            file_path = f"{temp_dir}/{tempfile.gettempdir()}{suffix}"
+            # Generate a temporary filename under the created temp_dir and ensure the directory exists
+            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
             Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type=DatasourceType.FILE, document_model="text_model")
             if return_text:

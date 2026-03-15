@@ -3,13 +3,9 @@ Simple test to validate the auto-mock system without external dependencies.
 """
 
 import sys
-from pathlib import Path
 
-# Add api directory to path
-api_dir = Path(__file__).parent.parent.parent.parent.parent.parent
-sys.path.insert(0, str(api_dir))
-
-from core.workflow.enums import NodeType
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from dify_graph.enums import BuiltinNodeTypes
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder, NodeMockConfig
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -68,8 +64,8 @@ def test_mock_config_operations():
     assert error_config.error == "Test error"
 
     # Test default configs by node type
-    config.set_default_config(NodeType.LLM, {"temperature": 0.7})
-    llm_config = config.get_default_config(NodeType.LLM)
+    config.set_default_config(BuiltinNodeTypes.LLM, {"temperature": 0.7})
+    llm_config = config.get_default_config(BuiltinNodeTypes.LLM)
     assert llm_config == {"temperature": 0.7}
 
     print("✓ MockConfig operations test passed")
@@ -101,21 +97,24 @@ def test_node_mock_config():
 
 def test_mock_factory_detection():
     """Test MockNodeFactory node type detection."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory detection...")
 
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
@@ -131,44 +130,47 @@ def test_mock_factory_detection():
     )
 
     # Test that third-party service nodes are identified for mocking
-    assert factory.should_mock_node(NodeType.LLM)
-    assert factory.should_mock_node(NodeType.AGENT)
-    assert factory.should_mock_node(NodeType.TOOL)
-    assert factory.should_mock_node(NodeType.KNOWLEDGE_RETRIEVAL)
-    assert factory.should_mock_node(NodeType.HTTP_REQUEST)
-    assert factory.should_mock_node(NodeType.PARAMETER_EXTRACTOR)
-    assert factory.should_mock_node(NodeType.DOCUMENT_EXTRACTOR)
+    assert factory.should_mock_node(BuiltinNodeTypes.LLM)
+    assert factory.should_mock_node(BuiltinNodeTypes.AGENT)
+    assert factory.should_mock_node(BuiltinNodeTypes.TOOL)
+    assert factory.should_mock_node(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
+    assert factory.should_mock_node(BuiltinNodeTypes.HTTP_REQUEST)
+    assert factory.should_mock_node(BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+    assert factory.should_mock_node(BuiltinNodeTypes.DOCUMENT_EXTRACTOR)
 
     # Test that CODE and TEMPLATE_TRANSFORM are mocked (they require SSRF proxy)
-    assert factory.should_mock_node(NodeType.CODE)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    assert factory.should_mock_node(BuiltinNodeTypes.CODE)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Test that non-service nodes are not mocked
-    assert not factory.should_mock_node(NodeType.START)
-    assert not factory.should_mock_node(NodeType.END)
-    assert not factory.should_mock_node(NodeType.IF_ELSE)
-    assert not factory.should_mock_node(NodeType.VARIABLE_AGGREGATOR)
+    assert not factory.should_mock_node(BuiltinNodeTypes.START)
+    assert not factory.should_mock_node(BuiltinNodeTypes.END)
+    assert not factory.should_mock_node(BuiltinNodeTypes.IF_ELSE)
+    assert not factory.should_mock_node(BuiltinNodeTypes.VARIABLE_AGGREGATOR)
 
     print("✓ MockNodeFactory detection test passed")
 
 
 def test_mock_factory_registration():
     """Test registering and unregistering mock node types."""
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from core.workflow.entities import GraphInitParams
-    from core.workflow.runtime import GraphRuntimeState, VariablePool
-    from models.enums import UserFrom
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState, VariablePool
 
     print("Testing MockNodeFactory registration...")
 
     graph_init_params = GraphInitParams(
-        tenant_id="test",
-        app_id="test",
         workflow_id="test",
         graph_config={},
-        user_id="test",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: {
+                "tenant_id": "test",
+                "app_id": "test",
+                "user_id": "test",
+                "user_from": UserFrom.ACCOUNT,
+                "invoke_from": InvokeFrom.SERVICE_API,
+            }
+        },
         call_depth=0,
     )
     graph_runtime_state = GraphRuntimeState(
@@ -184,18 +186,18 @@ def test_mock_factory_registration():
     )
 
     # TEMPLATE_TRANSFORM is mocked by default (requires SSRF proxy)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Unregister mock
-    factory.unregister_mock_node_type(NodeType.TEMPLATE_TRANSFORM)
-    assert not factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    factory.unregister_mock_node_type(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
+    assert not factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     # Register custom mock (using a dummy class for testing)
     class DummyMockNode:
         pass
 
-    factory.register_mock_node_type(NodeType.TEMPLATE_TRANSFORM, DummyMockNode)
-    assert factory.should_mock_node(NodeType.TEMPLATE_TRANSFORM)
+    factory.register_mock_node_type(BuiltinNodeTypes.TEMPLATE_TRANSFORM, DummyMockNode)
+    assert factory.should_mock_node(BuiltinNodeTypes.TEMPLATE_TRANSFORM)
 
     print("✓ MockNodeFactory registration test passed")
 

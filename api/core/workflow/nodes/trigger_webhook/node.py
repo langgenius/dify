@@ -2,14 +2,15 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeExecutionType, NodeType
-from core.workflow.file import FileTransferMethod
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.node import Node
-from core.workflow.variables.types import SegmentType
-from core.workflow.variables.variables import FileVariable
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeExecutionType
+from dify_graph.file import FileTransferMethod
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base.node import Node
+from dify_graph.variables.types import SegmentType
+from dify_graph.variables.variables import FileVariable
 from factories import file_factory
 from factories.variable_factory import build_segment_with_type
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class TriggerWebhookNode(Node[WebhookData]):
-    node_type = NodeType.TRIGGER_WEBHOOK
+    node_type = TRIGGER_WEBHOOK_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
@@ -69,6 +70,7 @@ class TriggerWebhookNode(Node[WebhookData]):
         )
 
     def generate_file_var(self, param_name: str, file: dict):
+        dify_ctx = self.require_dify_context()
         related_id = file.get("related_id")
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -84,7 +86,7 @@ class TriggerWebhookNode(Node[WebhookData]):
             try:
                 file_obj = file_factory.build_from_mapping(
                     mapping=file,
-                    tenant_id=self.tenant_id,
+                    tenant_id=dify_ctx.tenant_id,
                 )
                 file_segment = build_segment_with_type(SegmentType.FILE, file_obj)
                 return FileVariable(name=param_name, value=file_segment.value, selector=[self.id, param_name])
@@ -151,7 +153,7 @@ class TriggerWebhookNode(Node[WebhookData]):
                     outputs[param_name] = raw_data
                 continue
 
-            if param_type == "file":
+            if param_type == SegmentType.FILE:
                 # Get File object (already processed by webhook controller)
                 files = webhook_data.get("files", {})
                 if files and isinstance(files, dict):

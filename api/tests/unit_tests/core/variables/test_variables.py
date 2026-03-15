@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.workflow.variables import (
+from dify_graph.variables import (
     ArrayFileVariable,
     ArrayVariable,
     FloatVariable,
@@ -11,7 +11,7 @@ from core.workflow.variables import (
     SegmentType,
     StringVariable,
 )
-from core.workflow.variables.variables import VariableBase
+from dify_graph.variables.variables import VariableBase
 
 
 def test_frozen_variables():
