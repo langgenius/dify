@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask, g
 
+from controllers.console.auth.error import InvalidTokenError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
@@ -52,7 +53,7 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     @patch("libs.login.check_csrf_token", return_value=None)
     @patch("controllers.console.wraps.FeatureService.get_system_features")
-    def test_should_normalize_new_email_phase(
+    def test_should_infer_new_email_phase_from_token(
         self,
         mock_features,
         mock_csrf,
@@ -68,13 +69,16 @@ class TestChangeEmailSend:
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_account = _build_account("current@example.com", "acc1")
         mock_current_account.return_value = (mock_account, None)
-        mock_get_change_data.return_value = {"email": "current@example.com"}
+        mock_get_change_data.return_value = {
+            "email": "current@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+        }
         mock_send_email.return_value = "token-abc"
 
         with app.test_request_context(
             "/account/change-email",
             method="POST",
-            json={"email": "New@Example.com", "language": "en-US", "phase": "new_email", "token": "token-123"},
+            json={"email": "New@Example.com", "language": "en-US", "token": "token-123"},
         ):
             _set_logged_in_user(_build_account("tester@example.com", "tester"))
             response = ChangeEmailSendEmailApi().post()
@@ -87,6 +91,107 @@ class TestChangeEmailSend:
             language="en-US",
             phase="new_email",
         )
+        mock_extract_ip.assert_called_once()
+        mock_is_ip_limit.assert_called_once_with("127.0.0.1")
+        mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.db")
+    @patch("controllers.console.workspace.account.Session")
+    @patch("controllers.console.workspace.account.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
+    @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_ignore_client_phase_and_use_old_phase_when_token_missing(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_extract_ip,
+        mock_is_ip_limit,
+        mock_send_email,
+        mock_get_account_by_email,
+        mock_session_cls,
+        mock_account_db,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        mock_current_account.return_value = (_build_account("current@example.com", "current"), None)
+        existing_account = _build_account("old@example.com", "acc-old")
+        mock_get_account_by_email.return_value = existing_account
+        mock_send_email.return_value = "token-legacy"
+        mock_session = MagicMock()
+        mock_session_cm = MagicMock()
+        mock_session_cm.__enter__.return_value = mock_session
+        mock_session_cm.__exit__.return_value = None
+        mock_session_cls.return_value = mock_session_cm
+        mock_account_db.engine = MagicMock()
+
+        with app.test_request_context(
+            "/account/change-email",
+            method="POST",
+            json={"email": "old@example.com", "language": "en-US", "phase": "new_email"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            response = ChangeEmailSendEmailApi().post()
+
+        assert response == {"result": "success", "data": "token-legacy"}
+        mock_get_account_by_email.assert_called_once_with("old@example.com", session=mock_session)
+        mock_send_email.assert_called_once_with(
+            account=existing_account,
+            email="old@example.com",
+            old_email="old@example.com",
+            language="en-US",
+            phase=AccountService.CHANGE_EMAIL_PHASE_OLD,
+        )
+        mock_extract_ip.assert_called_once()
+        mock_is_ip_limit.assert_called_once_with("127.0.0.1")
+        mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
+    @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_reject_unverified_old_email_token_for_new_email_phase(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_extract_ip,
+        mock_is_ip_limit,
+        mock_send_email,
+        mock_get_change_data,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        mock_account = _build_account("current@example.com", "acc1")
+        mock_current_account.return_value = (mock_account, None)
+        mock_get_change_data.return_value = {
+            "email": "current@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_OLD,
+        }
+
+        with app.test_request_context(
+            "/account/change-email",
+            method="POST",
+            json={"email": "New@Example.com", "language": "en-US", "token": "token-123"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            with pytest.raises(InvalidTokenError):
+                ChangeEmailSendEmailApi().post()
+
+        mock_send_email.assert_not_called()
         mock_extract_ip.assert_called_once()
         mock_is_ip_limit.assert_called_once_with("127.0.0.1")
         mock_csrf.assert_called_once()
@@ -122,7 +227,12 @@ class TestChangeEmailValidity:
         mock_account = _build_account("user@example.com", "acc2")
         mock_current_account.return_value = (mock_account, None)
         mock_is_rate_limit.return_value = False
-        mock_get_data.return_value = {"email": "user@example.com", "code": "1234", "old_email": "old@example.com"}
+        mock_get_data.return_value = {
+            "email": "user@example.com",
+            "code": "1234",
+            "old_email": "old@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_OLD,
+        }
         mock_generate_token.return_value = (None, "new-token")
 
         with app.test_request_context(
@@ -138,9 +248,74 @@ class TestChangeEmailValidity:
         mock_add_rate.assert_not_called()
         mock_revoke_token.assert_called_once_with("token-123")
         mock_generate_token.assert_called_once_with(
-            "user@example.com", code="1234", old_email="old@example.com", additional_data={}
+            "user@example.com",
+            code="1234",
+            old_email="old@example.com",
+            additional_data={
+                AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED
+            },
         )
         mock_reset_rate.assert_called_once_with("user@example.com")
+        mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.reset_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.generate_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.add_change_email_error_rate_limit")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.is_change_email_error_rate_limit")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_refresh_new_email_phase_to_verified(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_is_rate_limit,
+        mock_get_data,
+        mock_add_rate,
+        mock_revoke_token,
+        mock_generate_token,
+        mock_reset_rate,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        mock_account = _build_account("old@example.com", "acc2")
+        mock_current_account.return_value = (mock_account, None)
+        mock_is_rate_limit.return_value = False
+        mock_get_data.return_value = {
+            "email": "new@example.com",
+            "code": "5678",
+            "old_email": "old@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_NEW,
+        }
+        mock_generate_token.return_value = (None, "new-phase-token")
+
+        with app.test_request_context(
+            "/account/change-email/validity",
+            method="POST",
+            json={"email": "New@Example.com", "code": "5678", "token": "token-456"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            response = ChangeEmailCheckApi().post()
+
+        assert response == {"is_valid": True, "email": "new@example.com", "token": "new-phase-token"}
+        mock_is_rate_limit.assert_called_once_with("new@example.com")
+        mock_add_rate.assert_not_called()
+        mock_revoke_token.assert_called_once_with("token-456")
+        mock_generate_token.assert_called_once_with(
+            "new@example.com",
+            code="5678",
+            old_email="old@example.com",
+            additional_data={
+                AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED
+            },
+        )
+        mock_reset_rate.assert_called_once_with("new@example.com")
         mock_csrf.assert_called_once()
 
 
@@ -175,7 +350,11 @@ class TestChangeEmailReset:
         mock_current_account.return_value = (current_user, None)
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
-        mock_get_data.return_value = {"old_email": "OLD@example.com"}
+        mock_get_data.return_value = {
+            "old_email": "OLD@example.com",
+            "email": "new@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+        }
         mock_account_after_update = _build_account("new@example.com", "acc3-updated")
         mock_update_account.return_value = mock_account_after_update
 
@@ -193,6 +372,106 @@ class TestChangeEmailReset:
             mock_update_account.assert_called_once_with(current_user, email="new@example.com")
             mock_send_notify.assert_called_once_with(email="new@example.com")
             mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
+    @patch("controllers.console.workspace.account.AccountService.update_account_email")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
+    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_reject_old_phase_token_for_reset(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_is_freeze,
+        mock_check_unique,
+        mock_get_data,
+        mock_revoke_token,
+        mock_update_account,
+        mock_send_notify,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        current_user = _build_account("old@example.com", "acc3")
+        mock_current_account.return_value = (current_user, None)
+        mock_is_freeze.return_value = False
+        mock_check_unique.return_value = True
+        mock_get_data.return_value = {
+            "old_email": "OLD@example.com",
+            "email": "old@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_OLD,
+        }
+
+        with app.test_request_context(
+            "/account/change-email/reset",
+            method="POST",
+            json={"new_email": "new@example.com", "token": "token-123"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            with pytest.raises(InvalidTokenError):
+                ChangeEmailResetApi().post()
+
+        mock_revoke_token.assert_not_called()
+        mock_update_account.assert_not_called()
+        mock_send_notify.assert_not_called()
+        mock_csrf.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.workspace.account.current_account_with_tenant")
+    @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
+    @patch("controllers.console.workspace.account.AccountService.update_account_email")
+    @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
+    @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
+    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
+    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("libs.login.check_csrf_token", return_value=None)
+    @patch("controllers.console.wraps.FeatureService.get_system_features")
+    def test_should_reject_mismatched_new_email_for_verified_token(
+        self,
+        mock_features,
+        mock_csrf,
+        mock_is_freeze,
+        mock_check_unique,
+        mock_get_data,
+        mock_revoke_token,
+        mock_update_account,
+        mock_send_notify,
+        mock_current_account,
+        mock_db,
+        app,
+    ):
+        _mock_wraps_db(mock_db)
+        mock_features.return_value = SimpleNamespace(enable_change_email=True)
+        current_user = _build_account("old@example.com", "acc3")
+        mock_current_account.return_value = (current_user, None)
+        mock_is_freeze.return_value = False
+        mock_check_unique.return_value = True
+        mock_get_data.return_value = {
+            "old_email": "OLD@example.com",
+            "email": "another@example.com",
+            AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+        }
+
+        with app.test_request_context(
+            "/account/change-email/reset",
+            method="POST",
+            json={"new_email": "new@example.com", "token": "token-789"},
+        ):
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
+            with pytest.raises(InvalidTokenError):
+                ChangeEmailResetApi().post()
+
+        mock_revoke_token.assert_not_called()
+        mock_update_account.assert_not_called()
+        mock_send_notify.assert_not_called()
+        mock_csrf.assert_called_once()
 
 
 class TestAccountDeletionFeedback:

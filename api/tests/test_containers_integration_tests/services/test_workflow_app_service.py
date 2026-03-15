@@ -950,6 +950,16 @@ class TestWorkflowAppService:
         assert result_with_new_email["total"] == 3
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
 
+        # Create another account in a different tenant using the original email.
+        # Querying by the old email should still fail for this app's tenant.
+        cross_tenant_account = AccountService.create_account(
+            email=original_email,
+            name=fake.name(),
+            interface_language="en-US",
+            password=fake.password(length=12),
+        )
+        TenantService.create_owner_tenant_if_not_exist(cross_tenant_account, name=fake.company())
+
         # Old email unbound, is unexpected input, should raise ValueError
         with pytest.raises(ValueError) as exc_info:
             service.get_paginate_workflow_app_logs(

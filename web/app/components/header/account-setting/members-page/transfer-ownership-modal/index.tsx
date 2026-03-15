@@ -36,13 +36,30 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const [stepToken, setStepToken] = useState<string>('')
   const [newOwner, setNewOwner] = useState<string>('')
   const [isTransfer, setIsTransfer] = useState<boolean>(false)
+  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [])
 
   const startCount = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
     setTime(60)
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTime((prev) => {
         if (prev <= 0) {
-          clearInterval(timer)
+          if (timerRef.current) {
+            clearInterval(timerRef.current)
+            timerRef.current = null
+          }
           return 0
         }
         return prev - 1

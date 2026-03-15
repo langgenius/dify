@@ -4,6 +4,7 @@ import logging
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from hashlib import sha256
 from typing import Any, cast
 
@@ -90,12 +91,25 @@ class TokenPair(BaseModel):
     csrf_token: str
 
 
+class ChangeEmailPhase(StrEnum):
+    OLD = "old_email"
+    OLD_VERIFIED = "old_email_verified"
+    NEW = "new_email"
+    NEW_VERIFIED = "new_email_verified"
+
+
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
+    CHANGE_EMAIL_TOKEN_PHASE_KEY = "email_change_phase"
+    CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD
+    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_VERIFIED
+    CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW
+    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_VERIFIED
+
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
@@ -552,13 +566,20 @@ class AccountService:
             raise ValueError("Email must be provided.")
         if not phase:
             raise ValueError("phase must be provided.")
+        if phase not in (cls.CHANGE_EMAIL_PHASE_OLD, cls.CHANGE_EMAIL_PHASE_NEW):
+            raise ValueError("phase must be one of old_email or new_email.")
 
         if cls.change_email_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import EmailChangeRateLimitExceededError
 
             raise EmailChangeRateLimitExceededError(int(cls.change_email_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_change_email_token(account_email, account, old_email=old_email)
+        code, token = cls.generate_change_email_token(
+            account_email,
+            account,
+            old_email=old_email,
+            additional_data={cls.CHANGE_EMAIL_TOKEN_PHASE_KEY: phase},
+        )
 
         send_change_mail_task.delay(
             language=language,
