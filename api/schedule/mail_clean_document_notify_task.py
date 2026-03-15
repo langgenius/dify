@@ -62,10 +62,8 @@ def mail_clean_document_notify_task():
                 if not account:
                     continue
 
-                dataset_auto_dataset_map: dict[str, list[str]] = {}
+                dataset_auto_dataset_map: dict[str, list[str]] = defaultdict(list)
                 for dataset_auto_disable_log in tenant_dataset_auto_disable_logs:
-                    if dataset_auto_disable_log.dataset_id not in dataset_auto_dataset_map:
-                        dataset_auto_dataset_map[dataset_auto_disable_log.dataset_id] = []
                     dataset_auto_dataset_map[dataset_auto_disable_log.dataset_id].append(
                         dataset_auto_disable_log.document_id
                     )
