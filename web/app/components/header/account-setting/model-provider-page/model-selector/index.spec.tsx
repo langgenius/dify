@@ -1,4 +1,6 @@
-import type { Model, ModelItem } from '../declarations'
+import type { ReactNode } from 'react'
+import type { DefaultModel, Model, ModelItem } from '../declarations'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
@@ -7,16 +9,20 @@ import {
 } from '../declarations'
 import ModelSelector from './index'
 
-vi.mock('./model-trigger', () => ({
-  default: () => <div>model-trigger</div>,
-}))
+vi.mock('./model-selector-trigger', () => ({
+  default: ({
+    currentProvider,
+    currentModel,
+    defaultModel,
+  }: { currentProvider?: Model, currentModel?: ModelItem, defaultModel?: DefaultModel }) => {
+    if (currentProvider && currentModel)
+      return <div>model-trigger</div>
 
-vi.mock('./deprecated-model-trigger', () => ({
-  default: ({ modelName }: { modelName: string }) => <div>{`deprecated:${modelName}`}</div>,
-}))
+    if (defaultModel)
+      return <div>{`deprecated:${defaultModel.model}`}</div>
 
-vi.mock('./empty-trigger', () => ({
-  default: () => <div>empty-trigger</div>,
+    return <div>empty-trigger</div>
+  },
 }))
 
 vi.mock('./popup', () => ({
@@ -52,24 +58,43 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+    mutations: { retry: false },
+  },
+})
+
+const renderWithQueryClient = (node: ReactNode) => {
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {node}
+    </QueryClientProvider>,
+  )
+}
+
 describe('ModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should toggle popup and close it after selecting a model', () => {
-    render(<ModelSelector modelList={[makeModel()]} />)
+    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
+    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+
+    fireEvent.click(triggerButton)
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('select')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('select'))
-    expect(screen.queryByText('select')).not.toBeInTheDocument()
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('should call onSelect when provided', () => {
     const onSelect = vi.fn()
-    render(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
+    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
 
     fireEvent.click(screen.getByText('empty-trigger'))
     fireEvent.click(screen.getByText('select'))
@@ -78,24 +103,26 @@ describe('ModelSelector', () => {
   })
 
   it('should close popup when popup requests hide', () => {
-    render(<ModelSelector modelList={[makeModel()]} />)
+    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
+    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+    fireEvent.click(triggerButton)
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('hide')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('hide'))
-    expect(screen.queryByText('hide')).not.toBeInTheDocument()
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('should not open popup when readonly', () => {
-    render(<ModelSelector modelList={[makeModel()]} readonly />)
+    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} readonly />)
 
     fireEvent.click(screen.getByText('empty-trigger'))
     expect(screen.queryByText('select')).not.toBeInTheDocument()
   })
 
   it('should render deprecated trigger when defaultModel is not in list', () => {
-    const { rerender } = render(
+    const { unmount } = renderWithQueryClient(
       <ModelSelector
         defaultModel={{ provider: 'openai', model: 'missing-model' }}
         modelList={[makeModel()]}
@@ -104,7 +131,8 @@ describe('ModelSelector', () => {
 
     expect(screen.getByText('deprecated:missing-model')).toBeInTheDocument()
 
-    rerender(
+    unmount()
+    renderWithQueryClient(
       <ModelSelector
         defaultModel={{ provider: '', model: '' }}
         modelList={[makeModel()]}
@@ -114,7 +142,7 @@ describe('ModelSelector', () => {
   })
 
   it('should render model trigger when defaultModel matches', () => {
-    render(
+    renderWithQueryClient(
       <ModelSelector
         defaultModel={{ provider: 'openai', model: 'gpt-4' }}
         modelList={[makeModel()]}

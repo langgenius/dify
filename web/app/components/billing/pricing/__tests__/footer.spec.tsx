@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { CategoryEnum } from '..'
 import Footer from '../footer'
+import { CategoryEnum } from '../types'
 
 vi.mock('next/link', () => ({
   default: ({ children, href, className, target }: { children: React.ReactNode, href: string, className?: string, target?: string }) => (

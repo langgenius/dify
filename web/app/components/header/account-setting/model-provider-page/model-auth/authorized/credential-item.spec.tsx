@@ -2,12 +2,6 @@ import type { Credential } from '../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import CredentialItem from './credential-item'
 
-vi.mock('@remixicon/react', () => ({
-  RiCheckLine: () => <div data-testid="check-icon" />,
-  RiDeleteBinLine: () => <div data-testid="delete-icon" />,
-  RiEqualizer2Line: () => <div data-testid="edit-icon" />,
-}))
-
 vi.mock('@/app/components/header/indicator', () => ({
   default: () => <div data-testid="indicator" />,
 }))
@@ -61,8 +55,12 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
 
-    fireEvent.click(screen.getByTestId('edit-icon').closest('button') as HTMLButtonElement)
-    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
+    const buttons = screen.getAllByRole('button')
+    const editButton = buttons.find(b => b.querySelector('.i-ri-equalizer-2-line'))!
+    const deleteButton = buttons.find(b => b.querySelector('.i-ri-delete-bin-line'))!
+
+    fireEvent.click(editButton)
+    fireEvent.click(deleteButton)
 
     expect(onEdit).toHaveBeenCalledWith(credential)
     expect(onDelete).toHaveBeenCalledWith(credential)
@@ -81,7 +79,10 @@ describe('CredentialItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
+    const deleteButton = screen.getAllByRole('button')
+      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+
+    fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
@@ -121,14 +122,16 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} disabled onDelete={onDelete} />)
 
-    fireEvent.click(screen.getByTestId('delete-icon').closest('button') as HTMLButtonElement)
+    const deleteButton = screen.getAllByRole('button')
+      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
 
   // showSelectedIcon=true: check icon area is always rendered; check icon only appears when IDs match
   it('should render check icon area when showSelectedIcon=true and selectedCredentialId matches', () => {
-    render(
+    const { container } = render(
       <CredentialItem
         credential={credential}
         showSelectedIcon
@@ -136,7 +139,7 @@ describe('CredentialItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('check-icon')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
 
   it('should not render check icon when showSelectedIcon=true but selectedCredentialId does not match', () => {

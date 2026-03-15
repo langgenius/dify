@@ -49,7 +49,7 @@ vi.mock('@/service/use-common', () => ({
     data: {
       data: parameterRules,
     },
-    isPending: isRulesLoading,
+    isLoading: isRulesLoading,
   }),
 }))
 
@@ -91,7 +91,7 @@ vi.mock('./presets-parameter', () => ({
 }))
 
 vi.mock('./trigger', () => ({
-  default: () => <button>Open Settings</button>,
+  default: () => <div data-testid="trigger-mock">Open Settings</div>,
 }))
 
 vi.mock('@/config', async (importOriginal) => {
