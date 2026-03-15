@@ -106,7 +106,7 @@ class ErrorHandler:
         Handle error by retrying the node.
 
         This strategy re-attempts node execution up to a configured
-        maximum number of retries with configurable intervals.
+        maximum number of retries with exponential backoff intervals.
 
         Args:
             event: The failure event
@@ -121,8 +121,9 @@ class ErrorHandler:
         if not node.retry or retry_count >= node.retry_config.max_retries:
             return None
 
-        # Wait for retry interval
-        time.sleep(node.retry_config.retry_interval_seconds)
+        # Calculate retry interval using exponential backoff with jitter
+        retry_interval = node.retry_config.calculate_retry_interval(retry_count)
+        time.sleep(retry_interval)
 
         # Create retry event
         return NodeRunRetryEvent(
@@ -209,3 +210,4 @@ class ErrorHandler:
             ),
             error=event.error,
         )
+

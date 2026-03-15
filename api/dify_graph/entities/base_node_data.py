@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from abc import ABC
 from builtins import type as type_
 from enum import StrEnum
@@ -19,12 +20,51 @@ class RetryConfig(BaseModel):
     """node retry config"""
 
     max_retries: int = 0  # max retry times
-    retry_interval: int = 0  # retry interval in milliseconds
+    retry_interval: int = 0  # retry interval in milliseconds (base interval)
     retry_enabled: bool = False  # whether retry is enabled
+
+    # Exponential backoff configuration
+    retry_max_interval: int = 10000  # max retry interval in milliseconds (10 seconds)
+    retry_jitter_ratio: float = 0.1  # jitter ratio (10% of interval)
 
     @property
     def retry_interval_seconds(self) -> float:
         return self.retry_interval / 1000
+
+    def calculate_retry_interval(self, retry_count: int) -> float:
+        """
+        Calculate retry interval using exponential backoff with jitter.
+
+        Args:
+            retry_count: Current retry attempt count (0-based)
+
+        Returns:
+            Retry interval in seconds
+
+        Formula:
+            interval = base * (2 ** retry_count)
+            interval += random.uniform(-jitter, jitter)
+            return min(interval, max_interval)
+        """
+        # Convert base interval to seconds
+        base_interval = self.retry_interval / 1000.0
+
+        # Calculate exponential backoff
+        interval = base_interval * (2 ** retry_count)
+
+        # Add jitter to avoid thundering herd problem
+        jitter_amount = interval * self.retry_jitter_ratio
+        jitter = random.uniform(-jitter_amount, jitter_amount)
+        interval += jitter
+
+        # Ensure minimum interval (at least base interval)
+        interval = max(interval, base_interval)
+
+        # Cap at maximum interval
+        max_interval = self.retry_max_interval / 1000.0
+        interval = min(interval, max_interval)
+
+        return interval
 
 
 class DefaultValueType(StrEnum):
@@ -176,3 +216,4 @@ class BaseNodeData(ABC, BaseModel):
             return extras.get(key, default)
 
         return default
+
