@@ -101,7 +101,10 @@ try {
   router.push(`/orders/${order.id}`)
 }
 catch (error) {
-  Toast.notify({ type: 'error', message: error.message })
+  Toast.notify({
+    type: 'error',
+    message: error instanceof Error ? error.message : 'Unknown error',
+  })
 }
 ```
 
