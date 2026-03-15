@@ -220,8 +220,8 @@ class SegmentType(StrEnum):
 
     @staticmethod
     def get_zero_value(t: SegmentType):
-        # Lazy import to avoid circular dependency
-        from factories import variable_factory
+        # Lazy import to avoid circular dependency between segment types and factory helpers.
+        from dify_graph.variables.factory import build_segment, build_segment_with_type
 
         match t:
             case (
@@ -231,19 +231,19 @@ class SegmentType(StrEnum):
                 | SegmentType.ARRAY_NUMBER
                 | SegmentType.ARRAY_BOOLEAN
             ):
-                return variable_factory.build_segment_with_type(t, [])
+                return build_segment_with_type(t, [])
             case SegmentType.OBJECT:
-                return variable_factory.build_segment({})
+                return build_segment({})
             case SegmentType.STRING:
-                return variable_factory.build_segment("")
+                return build_segment("")
             case SegmentType.INTEGER:
-                return variable_factory.build_segment(0)
+                return build_segment(0)
             case SegmentType.FLOAT:
-                return variable_factory.build_segment(0.0)
+                return build_segment(0.0)
             case SegmentType.NUMBER:
-                return variable_factory.build_segment(0)
+                return build_segment(0)
             case SegmentType.BOOLEAN:
-                return variable_factory.build_segment(False)
+                return build_segment(False)
             case _:
                 raise ValueError(f"unsupported variable type: {t}")
 

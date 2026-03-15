@@ -32,8 +32,8 @@ from dify_graph.nodes.llm import LLMNode, llm_utils
 from dify_graph.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
 from dify_graph.nodes.llm.runtime_protocols import PreparedLLMProtocol, PromptMessageSerializerProtocol
 from dify_graph.runtime import VariablePool
+from dify_graph.variables import build_segment_with_type
 from dify_graph.variables.types import ArrayValidation, SegmentType
-from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
