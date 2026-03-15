@@ -61,7 +61,8 @@ class RetryConfig(BaseModel):
         max_interval = self.retry_max_interval / 1000.0
         interval = min(interval, max_interval)
 
-        return interval
+        # Ensure non-negative interval (defensive programming)
+        return max(0.0, interval)
 
 
 class DefaultValueType(StrEnum):
@@ -213,4 +214,5 @@ class BaseNodeData(ABC, BaseModel):
             return extras.get(key, default)
 
         return default
+
 
