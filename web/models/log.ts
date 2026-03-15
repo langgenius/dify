@@ -211,15 +211,18 @@ export type AnnotationsCountResponse = {
   count: number
 }
 
-export enum WorkflowRunTriggeredFrom {
-  DEBUGGING = 'debugging',
-  APP_RUN = 'app-run',
-  RAG_PIPELINE_RUN = 'rag-pipeline-run',
-  RAG_PIPELINE_DEBUGGING = 'rag-pipeline-debugging',
-  WEBHOOK = 'webhook',
-  SCHEDULE = 'schedule',
-  PLUGIN = 'plugin',
-}
+export const WorkflowRunTriggeredFrom = {
+  DEBUGGING: 'debugging',
+  APP_RUN: 'app-run',
+  RAG_PIPELINE_RUN: 'rag-pipeline-run',
+  RAG_PIPELINE_DEBUGGING: 'rag-pipeline-debugging',
+  WEBHOOK: 'webhook',
+  SCHEDULE: 'schedule',
+  PLUGIN: 'plugin',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type WorkflowRunTriggeredFrom = typeof WorkflowRunTriggeredFrom[keyof typeof WorkflowRunTriggeredFrom]
 
 export type TriggerMetadata = {
   type?: string

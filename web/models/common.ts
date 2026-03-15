@@ -82,17 +82,21 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
 }
 
-export enum ProviderName {
-  OPENAI = 'openai',
-  AZURE_OPENAI = 'azure_openai',
-  ANTHROPIC = 'anthropic',
-  Replicate = 'replicate',
-  HuggingfaceHub = 'huggingface_hub',
-  MiniMax = 'minimax',
-  Spark = 'spark',
-  Tongyi = 'tongyi',
-  ChatGLM = 'chatglm',
-}
+export const ProviderName = {
+  OPENAI: 'openai',
+  AZURE_OPENAI: 'azure_openai',
+  ANTHROPIC: 'anthropic',
+  Replicate: 'replicate',
+  HuggingfaceHub: 'huggingface_hub',
+  MiniMax: 'minimax',
+  Spark: 'spark',
+  Tongyi: 'tongyi',
+  ChatGLM: 'chatglm',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type ProviderName = typeof ProviderName[keyof typeof ProviderName]
+
 export type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
@@ -188,9 +192,13 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
-export enum DataSourceCategory {
-  website = 'website',
-}
+export const DataSourceCategory = {
+  website: 'website',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type DataSourceCategory = typeof DataSourceCategory[keyof typeof DataSourceCategory]
+
 export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
   jinaReader = 'jinareader',

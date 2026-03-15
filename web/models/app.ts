@@ -14,17 +14,23 @@ import type {
 import type { Dependency } from '@/app/components/plugins/types'
 import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 
-export enum DSLImportMode {
-  YAML_CONTENT = 'yaml-content',
-  YAML_URL = 'yaml-url',
-}
+export const DSLImportMode = {
+  YAML_CONTENT: 'yaml-content',
+  YAML_URL: 'yaml-url',
+} as const
 
-export enum DSLImportStatus {
-  COMPLETED = 'completed',
-  COMPLETED_WITH_WARNINGS = 'completed-with-warnings',
-  PENDING = 'pending',
-  FAILED = 'failed',
-}
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type DSLImportMode = typeof DSLImportMode[keyof typeof DSLImportMode]
+
+export const DSLImportStatus = {
+  COMPLETED: 'completed',
+  COMPLETED_WITH_WARNINGS: 'completed-with-warnings',
+  PENDING: 'pending',
+  FAILED: 'failed',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type DSLImportStatus = typeof DSLImportStatus[keyof typeof DSLImportStatus]
 
 export type AppListResponse = {
   data: App[]

@@ -145,10 +145,13 @@ export type ToolItem = {
   }
 } | AgentTool
 
-export enum AgentStrategy {
-  functionCall = 'function_call',
-  react = 'react',
-}
+export const AgentStrategy = {
+  functionCall: 'function_call',
+  react: 'react',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type AgentStrategy = typeof AgentStrategy[keyof typeof AgentStrategy]
 
 export type CompletionParams = {
   /** Maximum number of tokens in the answer message returned by Completion */
