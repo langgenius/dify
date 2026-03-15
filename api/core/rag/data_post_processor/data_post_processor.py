@@ -30,11 +30,10 @@ class DataPostProcessor:
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         if self.rerank_runner:
-            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user, query_type)
+            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, query_type)
 
         if self.reorder_runner:
             documents = self.reorder_runner.run(documents)

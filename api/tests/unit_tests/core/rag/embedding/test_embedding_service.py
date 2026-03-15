@@ -134,7 +134,7 @@ class TestCacheEmbeddingDocuments:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
+        cache_embedding = CacheEmbedding(mock_model_instance)
         texts = ["Python is a programming language"]
 
         # Mock database query to return no cached embedding (cache miss)
@@ -611,7 +611,7 @@ class TestCacheEmbeddingQuery:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
+        cache_embedding = CacheEmbedding(mock_model_instance)
         query = "What is Python?"
 
         # Create embedding result
@@ -1566,25 +1566,16 @@ class TestEmbeddingEdgeCases:
                 norm = np.linalg.norm(emb)
                 assert abs(norm - 1.0) < 0.01
 
-    def test_embed_query_with_user_context(self, mock_model_instance):
-        """Test query embedding with user context parameter.
+    def test_embed_query_uses_bound_model_instance(self, mock_model_instance):
+        """Test query embedding using the provided model instance.
 
         Verifies:
-        - User parameter is passed correctly to model
-        - User context is used for tracking/logging
-        - Embedding generation works with user context
-
-        Context:
-        --------
-        The user parameter is important for:
-        1. Usage tracking per user
-        2. Rate limiting per user
-        3. Audit logging
-        4. Personalization (in some models)
+        - Embedding generation works with the injected model instance
+        - Query input type is preserved
+        - No extra binding step is required at call time
         """
         # Arrange
-        user_id = "user-12345"
-        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
+        cache_embedding = CacheEmbedding(mock_model_instance)
         query = "What is machine learning?"
 
         # Create embedding
@@ -1618,23 +1609,20 @@ class TestEmbeddingEdgeCases:
             assert isinstance(result, list)
             assert len(result) == 1536
 
-            # Verify user parameter was passed to model
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
                 input_type=EmbeddingInputType.QUERY,
             )
 
-    def test_embed_documents_with_user_context(self, mock_model_instance):
-        """Test document embedding with user context parameter.
+    def test_embed_documents_uses_bound_model_instance(self, mock_model_instance):
+        """Test document embedding using the provided model instance.
 
         Verifies:
-        - User parameter is passed correctly for document embeddings
-        - Batch processing maintains user context
-        - User tracking works across batches
+        - Batch processing uses the injected model instance
+        - Document input type is preserved
         """
         # Arrange
-        user_id = "user-67890"
-        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
+        cache_embedding = CacheEmbedding(mock_model_instance)
         texts = ["Document 1", "Document 2"]
 
         # Create embeddings
@@ -1670,7 +1658,6 @@ class TestEmbeddingEdgeCases:
             # Assert
             assert len(result) == 2
 
-            # Verify user parameter was passed
             mock_model_instance.invoke_text_embedding.assert_called_once()
             call_args = mock_model_instance.invoke_text_embedding.call_args
             assert call_args.kwargs["input_type"] == EmbeddingInputType.DOCUMENT

@@ -352,14 +352,14 @@ class TestRerankModelRunner:
         # Assert: Empty result is returned
         assert len(result) == 0
 
-    def test_user_parameter_passed_to_model(
+    def test_run_uses_bound_model_instance(
         self, rerank_runner, mock_model_instance, sample_documents, mock_model_manager
     ):
-        """Test that user parameter is passed to model invocation.
+        """Test that rerank uses the bound model instance directly.
 
         Verifies:
-        - User ID is correctly forwarded to the model
-        - Model receives all expected parameters
+        - The injected model instance is used for invocation
+        - No late rebinding occurs through ModelManager.get_model_instance
         """
         # Arrange: Mock rerank result
         mock_rerank_result = RerankResult(
@@ -368,19 +368,19 @@ class TestRerankModelRunner:
                 RerankDocument(index=0, text=sample_documents[0].page_content, score=0.90),
             ],
         )
-        mock_model_manager.return_value.get_model_instance.return_value = mock_model_instance
         mock_model_instance.invoke_rerank.return_value = mock_rerank_result
 
-        # Act: Run reranking with user parameter
+        # Act: Run reranking
         result = rerank_runner.run(
             query="test",
             documents=sample_documents,
-            user="user123",
         )
 
-        # Assert: User context is bound through ModelManager and the rebound instance is invoked.
-        mock_model_manager.assert_any_call(tenant_id="test-tenant-id", user_id="user123")
+        # Assert: The injected model instance is invoked directly.
+        assert len(result) == 1
+        mock_model_manager.return_value.get_model_instance.assert_not_called()
         call_kwargs = mock_model_instance.invoke_rerank.call_args.kwargs
+        assert call_kwargs["query"] == "test"
         assert "user" not in call_kwargs
 
 
@@ -391,7 +391,6 @@ class _ForwardingBaseRerankRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         return super().run(
@@ -399,7 +398,6 @@ class _ForwardingBaseRerankRunner(BaseRerankRunner):
             documents=documents,
             score_threshold=score_threshold,
             top_n=top_n,
-            user=user,
             query_type=query_type,
         )
 
@@ -546,23 +544,19 @@ class TestRerankModelRunnerMultimodal:
         session = MagicMock()
         session.query.return_value = query_chain
         with (
-            patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_model_manager,
             patch("core.rag.rerank.rerank_model.db.session", session),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
         ):
-            mock_model_manager.return_value.get_model_instance.return_value = mock_model_instance
             result, unique_documents = rerank_runner.fetch_multimodal_rerank(
                 query="query-upload-id",
                 documents=[text_doc],
                 score_threshold=0.2,
                 top_n=2,
-                user="user-1",
                 query_type=QueryType.IMAGE_QUERY,
             )
 
         assert result == rerank_result
         assert unique_documents == [text_doc]
-        mock_model_manager.assert_any_call(tenant_id="test-tenant-id", user_id="user-1")
         invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
         assert invoke_kwargs["query"]["content_type"] == DocType.IMAGE
         assert invoke_kwargs["docs"][0]["content"] == "text-content"
