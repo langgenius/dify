@@ -3,6 +3,7 @@ from collections.abc import Mapping
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_runtime import resolve_dify_run_context
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -67,7 +68,7 @@ def test_node_hydrates_data_during_initialization():
 
     assert node.node_data.foo == "bar"
     assert node.title == "Sample"
-    dify_ctx = node.require_dify_context()
+    dify_ctx = resolve_dify_run_context(node.run_context)
     assert dify_ctx.user_from == "account"
     assert dify_ctx.invoke_from == "debugger"
 
@@ -91,7 +92,7 @@ def test_node_accepts_invoke_from_enum():
         graph_runtime_state=runtime_state,
     )
 
-    dify_ctx = node.require_dify_context()
+    dify_ctx = resolve_dify_run_context(node.run_context)
     assert dify_ctx.user_from == UserFrom.ACCOUNT
     assert dify_ctx.invoke_from == InvokeFrom.DEBUGGER
     assert node.get_run_context_value("missing") is None

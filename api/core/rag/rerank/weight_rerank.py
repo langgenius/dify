@@ -163,7 +163,7 @@ class WeightRerankRunner(BaseRerankRunner):
         """
         query_vector_scores = []
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=tenant_id,

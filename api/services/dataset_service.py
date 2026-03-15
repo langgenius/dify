@@ -228,7 +228,7 @@ class DatasetService:
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
         if indexing_technique == "high_quality":
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             if embedding_model_provider and embedding_model_name:
                 # check if embedding model setting is valid
                 DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model_name)
@@ -350,7 +350,7 @@ class DatasetService:
     def check_dataset_model_setting(dataset):
         if dataset.indexing_technique == "high_quality":
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=dataset.tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -367,7 +367,7 @@ class DatasetService:
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=embedding_model_provider,
@@ -384,7 +384,7 @@ class DatasetService:
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=model_provider,
@@ -405,7 +405,7 @@ class DatasetService:
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 provider=reranking_model_provider,
@@ -742,7 +742,7 @@ class DatasetService:
         """
         # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
             assert isinstance(current_user, Account)
             assert current_user.current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
@@ -860,7 +860,7 @@ class DatasetService:
         """
         # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
         try:
             assert isinstance(current_user, Account)
             assert current_user.current_tenant_id is not None
@@ -954,7 +954,7 @@ class DatasetService:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
             dataset.indexing_technique = knowledge_configuration.indexing_technique
             if knowledge_configuration.indexing_technique == "high_quality":
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,  # ignore type error
                     provider=knowledge_configuration.embedding_model_provider or "",
@@ -996,7 +996,7 @@ class DatasetService:
                     action = "add"
                     # get embedding model setting
                     try:
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                         embedding_model = model_manager.get_model_instance(
                             tenant_id=current_user.current_tenant_id,
                             provider=knowledge_configuration.embedding_model_provider,
@@ -1049,7 +1049,7 @@ class DatasetService:
                             or knowledge_configuration.embedding_model != dataset.embedding_model
                         ):
                             action = "update"
-                            model_manager = ModelManager()
+                            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                             embedding_model = None
                             try:
                                 embedding_model = model_manager.get_model_instance(
@@ -1908,7 +1908,7 @@ class DocumentService:
 
             dataset.indexing_technique = knowledge_config.indexing_technique
             if knowledge_config.indexing_technique == "high_quality":
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                 if knowledge_config.embedding_model and knowledge_config.embedding_model_provider:
                     dataset_embedding_model = knowledge_config.embedding_model
                     dataset_embedding_model_provider = knowledge_config.embedding_model_provider
@@ -2220,7 +2220,7 @@ class DocumentService:
 
     #         dataset.indexing_technique = knowledge_config.indexing_technique
     #         if knowledge_config.indexing_technique == "high_quality":
-    #             model_manager = ModelManager()
+    #             model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
     #             if knowledge_config.embedding_model and knowledge_config.embedding_model_provider:
     #                 dataset_embedding_model = knowledge_config.embedding_model
     #                 dataset_embedding_model_provider = knowledge_config.embedding_model_provider
@@ -3125,7 +3125,7 @@ class SegmentService:
         segment_hash = helper.generate_text_hash(content)
         tokens = 0
         if dataset.indexing_technique == "high_quality":
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=current_user.current_tenant_id,
                 provider=dataset.embedding_model_provider,
@@ -3208,7 +3208,7 @@ class SegmentService:
             with redis_client.lock(lock_name, timeout=600):
                 embedding_model = None
                 if dataset.indexing_technique == "high_quality":
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
                         provider=dataset.embedding_model_provider,
@@ -3346,7 +3346,7 @@ class SegmentService:
                     # get embedding model instance
                     if dataset.indexing_technique == "high_quality":
                         # check embedding model setting
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                         if dataset.embedding_model_provider:
                             embedding_model_instance = model_manager.get_model_instance(
@@ -3409,7 +3409,7 @@ class SegmentService:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
                 if dataset.indexing_technique == "high_quality":
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=current_user.current_tenant_id)
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
                         provider=dataset.embedding_model_provider,
@@ -3450,7 +3450,7 @@ class SegmentService:
                     # get embedding model instance
                     if dataset.indexing_technique == "high_quality":
                         # check embedding model setting
-                        model_manager = ModelManager()
+                        model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                         if dataset.embedding_model_provider:
                             embedding_model_instance = model_manager.get_model_instance(

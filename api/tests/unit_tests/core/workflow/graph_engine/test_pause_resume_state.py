@@ -3,6 +3,7 @@ import time
 from typing import Any
 from unittest.mock import MagicMock
 
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -112,6 +113,7 @@ def _build_human_input_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(params.run_context),
     )
 
     end_data = EndNodeData(

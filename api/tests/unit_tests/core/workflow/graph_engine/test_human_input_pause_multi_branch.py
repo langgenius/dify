@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from unittest import mock
 from unittest.mock import MagicMock
 
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
     GraphRunPausedEvent,
@@ -125,6 +126,7 @@ def _build_branching_graph(
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     llm_primary = _create_llm_node("llm_primary", "Primary LLM", "Primary stream output")

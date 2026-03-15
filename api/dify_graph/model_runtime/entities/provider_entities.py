@@ -93,10 +93,14 @@ class ModelCredentialSchema(BaseModel):
 
 class SimpleProviderEntity(BaseModel):
     """
-    Simple model class for provider.
+    Simplified provider schema exposed to callers.
+
+    `provider` is the canonical runtime identifier. `provider_name` is an optional
+    compatibility alias for short-name lookups and is empty when no alias exists.
     """
 
     provider: str
+    provider_name: str = ""
     label: I18nObject
     icon_small: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
@@ -115,10 +119,15 @@ class ProviderHelpEntity(BaseModel):
 
 class ProviderEntity(BaseModel):
     """
-    Model class for provider.
+    Runtime-native provider schema.
+
+    `provider` is the canonical runtime identifier. `provider_name` is a
+    compatibility alias for callers that still resolve providers by short name and
+    is empty when no alias exists.
     """
 
     provider: str
+    provider_name: str = ""
     label: I18nObject
     description: I18nObject | None = None
     icon_small: I18nObject | None = None
@@ -153,6 +162,7 @@ class ProviderEntity(BaseModel):
         """
         return SimpleProviderEntity(
             provider=self.provider,
+            provider_name=self.provider_name,
             label=self.label,
             icon_small=self.icon_small,
             supported_model_types=self.supported_model_types,

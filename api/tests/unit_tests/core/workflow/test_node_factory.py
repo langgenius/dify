@@ -3,11 +3,10 @@ from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
 
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
 from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.variables.segments import StringSegment
@@ -140,40 +139,22 @@ class TestDefaultWorkflowCodeExecutor:
         assert executor.is_execution_error(RuntimeError("boom")) is False
 
 
-class TestDefaultLLMTemplateRenderer:
-    def test_render_jinja2_delegates_to_code_executor(self, monkeypatch):
-        renderer = node_factory.DefaultLLMTemplateRenderer()
-        execute_workflow_code_template = MagicMock(return_value={"result": "hello world"})
-        monkeypatch.setattr(
-            node_factory.CodeExecutor,
-            "execute_workflow_code_template",
-            execute_workflow_code_template,
-        )
-
-        result = renderer.render_jinja2(
-            template="Hello {{ name }}",
-            inputs={"name": "world"},
-        )
-
-        assert result == "hello world"
-        execute_workflow_code_template.assert_called_once_with(
-            language=CodeLanguage.JINJA2,
-            code="Hello {{ name }}",
-            inputs={"name": "world"},
-        )
-
-
 class TestDifyNodeFactoryInit:
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state
-        dify_context = SimpleNamespace(tenant_id="tenant-id")
-        template_renderer = sentinel.template_renderer
+        dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id", user_id="user-id")
+        jinja2_template_renderer = sentinel.jinja2_template_renderer
         unstructured_api_config = sentinel.unstructured_api_config
         http_request_config = sentinel.http_request_config
+        file_reference_factory = sentinel.file_reference_factory
+        prompt_message_serializer = sentinel.prompt_message_serializer
+        retriever_attachment_loader = sentinel.retriever_attachment_loader
+        llm_file_saver = sentinel.llm_file_saver
         credentials_provider = sentinel.credentials_provider
         model_factory = sentinel.model_factory
-        llm_template_renderer = sentinel.llm_template_renderer
+        human_input_runtime = sentinel.human_input_runtime
+        tool_runtime = sentinel.tool_runtime
 
         with (
             patch.object(
@@ -184,7 +165,7 @@ class TestDifyNodeFactoryInit:
             patch.object(
                 node_factory,
                 "CodeExecutorJinja2TemplateRenderer",
-                return_value=template_renderer,
+                return_value=jinja2_template_renderer,
             ) as renderer_factory,
             patch.object(
                 node_factory,
@@ -198,9 +179,34 @@ class TestDifyNodeFactoryInit:
             ),
             patch.object(
                 node_factory,
-                "DefaultLLMTemplateRenderer",
-                return_value=llm_template_renderer,
-            ) as llm_renderer_factory,
+                "DifyFileReferenceFactory",
+                return_value=file_reference_factory,
+            ),
+            patch.object(
+                node_factory,
+                "DifyPromptMessageSerializer",
+                return_value=prompt_message_serializer,
+            ),
+            patch.object(
+                node_factory,
+                "DifyRetrieverAttachmentLoader",
+                return_value=retriever_attachment_loader,
+            ),
+            patch.object(
+                node_factory,
+                "build_dify_llm_file_saver",
+                return_value=llm_file_saver,
+            ),
+            patch.object(
+                node_factory,
+                "DifyHumanInputNodeRuntime",
+                return_value=human_input_runtime,
+            ),
+            patch.object(
+                node_factory,
+                "DifyToolNodeRuntime",
+                return_value=tool_runtime,
+            ),
             patch.object(
                 node_factory,
                 "build_dify_model_access",
@@ -213,18 +219,21 @@ class TestDifyNodeFactoryInit:
             )
 
         resolve_dify_context.assert_called_once_with(graph_init_params.run_context)
-        build_dify_model_access.assert_called_once_with("tenant-id")
+        build_dify_model_access.assert_called_once_with(dify_context)
         renderer_factory.assert_called_once()
-        llm_renderer_factory.assert_called_once()
         assert renderer_factory.call_args.kwargs["code_executor"] is factory._code_executor
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
         assert factory._dify_context is dify_context
-        assert factory._template_renderer is template_renderer
-
-        assert factory._llm_template_renderer is llm_template_renderer
+        assert factory._jinja2_template_renderer is jinja2_template_renderer
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
         assert factory._http_request_config is http_request_config
+        assert factory._file_reference_factory is file_reference_factory
+        assert factory._prompt_message_serializer is prompt_message_serializer
+        assert factory._retriever_attachment_loader is retriever_attachment_loader
+        assert factory._llm_file_saver is llm_file_saver
+        assert factory._human_input_runtime is human_input_runtime
+        assert factory._tool_runtime is tool_runtime
         assert factory._llm_credentials_provider is credentials_provider
         assert factory._llm_model_factory is model_factory
 
@@ -273,11 +282,16 @@ class TestDifyNodeFactoryCreateNode:
         factory._dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id")
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
-        factory._template_renderer = sentinel.template_renderer
-        factory._llm_template_renderer = sentinel.llm_template_renderer
+        factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
-        factory._http_request_tool_file_manager_factory = sentinel.tool_file_manager_factory
+        factory._bound_tool_file_manager_factory = sentinel.tool_file_manager_factory
+        factory._file_reference_factory = sentinel.file_reference_factory
+        factory._prompt_message_serializer = sentinel.prompt_message_serializer
+        factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
+        factory._llm_file_saver = sentinel.llm_file_saver
+        factory._human_input_runtime = sentinel.human_input_runtime
+        factory._tool_runtime = sentinel.tool_runtime
         factory._http_request_file_manager = sentinel.file_manager
         factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
         factory._http_request_config = sentinel.http_request_config
@@ -394,16 +408,18 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["code_executor"] is sentinel.code_executor
             assert kwargs["code_limits"] is sentinel.code_limits
         elif constructor_name == "TemplateTransformNode":
-            assert kwargs["template_renderer"] is sentinel.template_renderer
+            assert kwargs["jinja2_template_renderer"] is sentinel.jinja2_template_renderer
             assert kwargs["max_output_length"] == 2048
         elif constructor_name == "HttpRequestNode":
             assert kwargs["http_request_config"] is sentinel.http_request_config
             assert kwargs["http_client"] is sentinel.http_client
             assert kwargs["tool_file_manager_factory"] is sentinel.tool_file_manager_factory
             assert kwargs["file_manager"] is sentinel.file_manager
+            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
-            form_repository_impl.assert_called_once_with(tenant_id="tenant-id")
+            assert kwargs["runtime"] is sentinel.human_input_runtime
+            form_repository_impl.assert_called_once_with(tenant_id="tenant-id", app_id="app-id")
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client
@@ -416,7 +432,10 @@ class TestDifyNodeFactoryCreateNode:
                 "LLMNode",
                 {
                     "http_client": sentinel.http_client,
-                    "template_renderer": sentinel.llm_template_renderer,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    "retriever_attachment_loader": sentinel.retriever_attachment_loader,
+                    "jinja2_template_renderer": sentinel.jinja2_template_renderer,
                 },
             ),
             (
@@ -424,10 +443,17 @@ class TestDifyNodeFactoryCreateNode:
                 "QuestionClassifierNode",
                 {
                     "http_client": sentinel.http_client,
-                    "template_renderer": sentinel.llm_template_renderer,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
                 },
             ),
-            (BuiltinNodeTypes.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
+            (
+                BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+                "ParameterExtractorNode",
+                {
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                },
+            ),
         ],
     )
     def test_creates_model_backed_nodes(
@@ -464,7 +490,12 @@ class TestDifyNodeFactoryCreateNode:
         assert helper_kwargs["node_class"] is constructor
         assert isinstance(helper_kwargs["node_data"], BaseNodeData)
         assert helper_kwargs["node_data"].type == node_type
+        assert helper_kwargs["wrap_model_instance"] is True
         assert helper_kwargs["include_http_client"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+        assert helper_kwargs["include_llm_file_saver"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+        assert helper_kwargs["include_prompt_message_serializer"] is True
+        assert helper_kwargs["include_retriever_attachment_loader"] is (node_type == BuiltinNodeTypes.LLM)
+        assert helper_kwargs["include_jinja2_template_renderer"] is (node_type == BuiltinNodeTypes.LLM)
 
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["id"] == "node-id"
@@ -483,96 +514,45 @@ class TestDifyNodeFactoryModelInstance:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory._llm_credentials_provider = MagicMock()
-        factory._llm_model_factory = MagicMock()
+        factory._llm_credentials_provider = sentinel.credentials_provider
+        factory._llm_model_factory = sentinel.model_factory
         return factory
 
-    @pytest.fixture
-    def llm_model_setup(self, factory):
-        def _configure(
-            *,
-            completion_params=None,
-            has_provider_model=True,
-            model_schema=sentinel.model_schema,
-        ):
-            credentials = {"api_key": "secret"}
-            node_data_model = SimpleNamespace(
-                provider="provider",
-                name="model",
-                mode="chat",
-                completion_params=completion_params or {},
-            )
-            node_data = SimpleNamespace(model=node_data_model)
-            provider_model = MagicMock() if has_provider_model else None
-            provider_model_bundle = SimpleNamespace(
-                configuration=SimpleNamespace(get_provider_model=MagicMock(return_value=provider_model))
-            )
-            model_type_instance = MagicMock()
-            model_type_instance.get_model_schema.return_value = model_schema
-            model_instance = SimpleNamespace(
-                provider_model_bundle=provider_model_bundle,
-                model_type_instance=model_type_instance,
-                provider=None,
-                model_name=None,
-                credentials=None,
-                parameters=None,
-                stop=None,
-            )
-            factory._llm_credentials_provider.fetch.return_value = credentials
-            factory._llm_model_factory.init_model_instance.return_value = model_instance
-            return SimpleNamespace(
-                node_data=node_data,
-                credentials=credentials,
-                provider_model=provider_model,
-                model_type_instance=model_type_instance,
-                model_instance=model_instance,
-            )
-
-        return _configure
-
-    def test_requires_llm_mode(self, factory):
-        node_data = SimpleNamespace(
-            model=SimpleNamespace(
-                provider="provider",
-                name="model",
-                mode="",
-                completion_params={},
-            )
+    def test_delegates_to_fetch_model_config(self, monkeypatch, factory):
+        node_data_model = SimpleNamespace(
+            provider="provider",
+            name="model",
+            mode="chat",
+            completion_params={"temperature": 0.3, "stop": ["Human:"]},
         )
-
-        with pytest.raises(node_factory.LLMModeRequiredError, match="LLM mode is required"):
-            factory._build_model_instance_for_llm_node(node_data)
-
-    def test_raises_when_provider_model_is_missing(self, factory, llm_model_setup):
-        setup = llm_model_setup(has_provider_model=False)
-
-        with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
-            factory._build_model_instance_for_llm_node(setup.node_data)
-
-    def test_raises_when_model_schema_is_missing(self, factory, llm_model_setup):
-        setup = llm_model_setup(model_schema=None)
-
-        with pytest.raises(node_factory.ModelNotExistError, match="Model model not exist"):
-            factory._build_model_instance_for_llm_node(setup.node_data)
-
-        setup.provider_model.raise_for_status.assert_called_once()
-
-    def test_builds_model_instance_and_normalizes_stop_tokens(self, factory, llm_model_setup):
-        setup = llm_model_setup(
-            completion_params={"temperature": 0.3, "stop": "not-a-list"},
-            model_schema={"schema": "value"},
+        node_data = SimpleNamespace(model=node_data_model)
+        model_type_instance = MagicMock()
+        model_instance = SimpleNamespace(
+            model_type_instance=model_type_instance,
+            parameters={"temperature": 0.3},
+            stop=("Human:",),
         )
+        fetch_model_config = MagicMock(return_value=(model_instance, sentinel.model_config))
+        monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
 
-        result = factory._build_model_instance_for_llm_node(setup.node_data)
+        result = factory._build_model_instance_for_llm_node(node_data)
 
-        assert result is setup.model_instance
-        assert result.provider == "provider"
-        assert result.model_name == "model"
-        assert result.credentials == setup.credentials
+        assert result is model_instance
         assert result.parameters == {"temperature": 0.3}
-        assert result.stop == ()
-        assert result.model_type_instance is setup.model_type_instance
-        setup.provider_model.raise_for_status.assert_called_once()
+        assert result.stop == ("Human:",)
+        assert result.model_type_instance is model_type_instance
+        fetch_model_config.assert_called_once_with(
+            node_data_model=node_data_model,
+            credentials_provider=sentinel.credentials_provider,
+            model_factory=sentinel.model_factory,
+        )
+
+    def test_propagates_fetch_model_config_errors(self, monkeypatch, factory):
+        fetch_model_config = MagicMock(side_effect=ValueError("broken model config"))
+        monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
+
+        with pytest.raises(ValueError, match="broken model config"):
+            factory._build_model_instance_for_llm_node(SimpleNamespace(model=sentinel.node_data_model))
 
 
 class TestDifyNodeFactoryMemory:

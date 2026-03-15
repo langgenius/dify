@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
@@ -59,7 +60,7 @@ class AgentNode(Node[AgentNodeData]):
         return "1"
 
     def populate_start_event(self, event) -> None:
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         event.extras["agent_strategy"] = {
             "name": self.node_data.agent_strategy_name,
             "icon": self._presentation_provider.get_icon(
@@ -71,7 +72,7 @@ class AgentNode(Node[AgentNodeData]):
     def _run(self) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
 
         try:
             strategy = self._strategy_resolver.resolve(
@@ -97,6 +98,7 @@ class AgentNode(Node[AgentNodeData]):
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
+            user_id=dify_ctx.user_id,
             app_id=dify_ctx.app_id,
             invoke_from=dify_ctx.invoke_from,
         )
@@ -106,6 +108,7 @@ class AgentNode(Node[AgentNodeData]):
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
+            user_id=dify_ctx.user_id,
             app_id=dify_ctx.app_id,
             invoke_from=dify_ctx.invoke_from,
             for_log=True,

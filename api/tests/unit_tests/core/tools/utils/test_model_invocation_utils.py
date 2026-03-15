@@ -60,7 +60,7 @@ def test_get_max_llm_context_tokens_branches(model_instance, expected, error_mat
     manager = Mock()
     manager.get_default_model_instance.return_value = model_instance
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager):
         if error_match:
             with pytest.raises(InvokeModelError, match=error_match):
                 ModelInvocationUtils.get_max_llm_context_tokens("tenant")
@@ -71,7 +71,7 @@ def test_get_max_llm_context_tokens_branches(model_instance, expected, error_mat
 def test_calculate_tokens_handles_missing_model():
     manager = Mock()
     manager.get_default_model_instance.return_value = None
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager):
         with pytest.raises(InvokeModelError, match="Model not found"):
             ModelInvocationUtils.calculate_tokens("tenant", [])
 
@@ -98,7 +98,7 @@ def test_invoke_success_and_error_mappings():
 
     db_mock = SimpleNamespace(session=Mock())
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager):
         with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
             with patch("core.tools.utils.model_invocation_utils.db", db_mock):
                 response = ModelInvocationUtils.invoke(
@@ -145,7 +145,7 @@ def test_invoke_error_mappings(exc, expected):
 
     db_mock = SimpleNamespace(session=Mock())
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager", return_value=manager):
+    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager):
         with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
             with patch("core.tools.utils.model_invocation_utils.db", db_mock):
                 with pytest.raises(InvokeModelError, match=expected):

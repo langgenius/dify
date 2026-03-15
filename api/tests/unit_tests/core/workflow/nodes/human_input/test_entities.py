@@ -8,8 +8,9 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.node_events import PauseRequestedEvent
 from dify_graph.node_events.node import StreamCompletedEvent
 from dify_graph.nodes.human_input.entities import (
@@ -364,6 +365,7 @@ class TestHumanInputNodeVariableResolution:
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             form_repository=mock_repo,
+            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
 
         run_result = node._run()
@@ -427,6 +429,7 @@ class TestHumanInputNodeVariableResolution:
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             form_repository=mock_repo,
+            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
 
         run_result = node._run()
@@ -500,6 +503,7 @@ class TestHumanInputNodeVariableResolution:
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             form_repository=mock_repo,
+            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
 
         run_result = node._run()
@@ -597,6 +601,7 @@ class TestHumanInputNodeRenderedContent:
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             form_repository=form_repository,
+            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
 
         pause_gen = node._run()

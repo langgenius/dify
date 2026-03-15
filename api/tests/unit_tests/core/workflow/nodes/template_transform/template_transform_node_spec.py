@@ -5,9 +5,9 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
-from dify_graph.nodes.template_transform.template_renderer import TemplateRenderError
 from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
 from dify_graph.runtime import GraphRuntimeState
+from dify_graph.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -62,7 +62,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         assert node.node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM
@@ -78,7 +78,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         assert node._get_title() == "Template Transform"
@@ -91,7 +91,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         assert node._get_description() == "Transform data using template"
@@ -111,7 +111,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         assert node._get_error_strategy() == ErrorStrategy.FAIL_BRANCH
@@ -153,7 +153,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -181,7 +181,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -201,7 +201,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -221,7 +221,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": basic_node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
             max_output_length=10,
         )
 
@@ -263,7 +263,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -307,7 +307,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -346,7 +346,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -375,7 +375,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()
@@ -405,7 +405,7 @@ class TestTemplateTransformNode:
             config={"id": "test_node", "data": node_data},
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            template_renderer=mock_renderer,
+            jinja2_template_renderer=mock_renderer,
         )
 
         result = node._run()

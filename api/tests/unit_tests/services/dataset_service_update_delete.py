@@ -591,7 +591,7 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
             patch(
                 "services.dataset_service.current_user", create_autospec(Account, instance=True)
             ) as mock_current_user,
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,

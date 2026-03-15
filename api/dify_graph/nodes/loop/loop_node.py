@@ -31,9 +31,9 @@ from dify_graph.nodes.base import LLMUsageTrackingMixin
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from dify_graph.utils.condition.processor import ConditionProcessor
+from dify_graph.utils.datetime_utils import naive_utc_now
 from dify_graph.variables import Segment, SegmentType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
-from libs.datetime_utils import naive_utc_now
 
 if TYPE_CHECKING:
     from dify_graph.graph_engine import GraphEngine

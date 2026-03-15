@@ -14,7 +14,7 @@ from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
 )
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
@@ -139,10 +139,10 @@ class DatasetListApi(DatasetApiResource):
             query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -253,10 +253,10 @@ class DatasetApi(DatasetApiResource):
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)

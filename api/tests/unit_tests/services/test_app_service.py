@@ -136,7 +136,7 @@ class TestAppServiceCreate:
             patch("services.app_service.default_app_templates", app_template),
             patch("services.app_service.App", return_value=app_instance),
             patch("services.app_service.AppModelConfig", return_value=app_model_config),
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.db") as mock_db,
             patch("services.app_service.app_was_created") as mock_event,
             patch("services.app_service.FeatureService.get_system_features") as mock_features,
@@ -182,7 +182,7 @@ class TestAppServiceCreate:
         with (
             patch("services.app_service.default_app_templates", app_template),
             patch("services.app_service.App", return_value=app_instance),
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.db") as mock_db,
         ):
             manager = mock_model_manager.return_value
@@ -209,7 +209,7 @@ class TestAppServiceCreate:
             patch("services.app_service.default_app_templates", app_template),
             patch("services.app_service.App", return_value=app_instance),
             patch("services.app_service.AppModelConfig", return_value=app_model_config),
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.db") as mock_db,
             patch("services.app_service.app_was_created") as mock_event,
             patch("services.app_service.FeatureService.get_system_features") as mock_features,
@@ -247,7 +247,7 @@ class TestAppServiceCreate:
             patch("services.app_service.default_app_templates", app_template),
             patch("services.app_service.App", return_value=app_instance),
             patch("services.app_service.AppModelConfig", return_value=app_model_config),
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.db"),
             patch("services.app_service.app_was_created"),
             patch(

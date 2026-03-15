@@ -9,8 +9,10 @@ from core.llm_generator.output_parser.structured_output import _parse_structured
 from core.model_manager import ModelInstance
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamCompletedEvent
+from dify_graph.nodes.llm.file_saver import LLMFileSaver
 from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -66,6 +68,11 @@ def init_llm_node(config: dict) -> LLMNode:
     variable_pool.add(["abc", "output"], "sunny")
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    prompt_message_serializer = MagicMock(spec=PromptMessageSerializerProtocol)
+    prompt_message_serializer.serialize.side_effect = lambda *, model_mode, prompt_messages: [
+        message.model_dump(mode="json") for message in prompt_messages
+    ]
+    llm_file_saver = MagicMock(spec=LLMFileSaver)
 
     node = LLMNode(
         id=str(uuid.uuid4()),
@@ -75,7 +82,8 @@ def init_llm_node(config: dict) -> LLMNode:
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
-        template_renderer=MagicMock(spec=TemplateRenderer),
+        llm_file_saver=llm_file_saver,
+        prompt_message_serializer=prompt_message_serializer,
         http_client=MagicMock(spec=HttpClientProtocol),
     )
 
@@ -159,7 +167,7 @@ def test_execute_llm():
         return mock_model_instance
 
     # Mock fetch_prompt_messages to avoid database calls
-    def mock_fetch_prompt_messages_1(*_args, **_kwargs):
+    def mock_fetch_prompt_messages_1(**_kwargs):
         from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [

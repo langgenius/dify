@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
+from core.workflow.node_runtime import DifyPromptMessageSerializer
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
@@ -77,6 +78,7 @@ def init_parameter_extractor_node(config: dict, memory=None):
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
         memory=memory,
+        prompt_message_serializer=DifyPromptMessageSerializer(),
     )
     return node
 

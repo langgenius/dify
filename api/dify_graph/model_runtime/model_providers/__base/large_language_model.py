@@ -4,9 +4,6 @@ import uuid
 from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import Union
 
-from pydantic import ConfigDict
-
-from configs import dify_config
 from dify_graph.model_runtime.callbacks.base_callback import Callback
 from dify_graph.model_runtime.callbacks.logging_callback import LoggingCallback
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
@@ -140,11 +137,9 @@ def _build_llm_result_from_chunks(
     )
 
 
-def _invoke_llm_via_plugin(
+def _invoke_llm_via_runtime(
     *,
-    tenant_id: str,
-    user_id: str,
-    plugin_id: str,
+    llm_model: "LargeLanguageModel",
     provider: str,
     model: str,
     credentials: dict,
@@ -154,25 +149,19 @@ def _invoke_llm_via_plugin(
     stop: Sequence[str] | None,
     stream: bool,
 ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
-    from core.plugin.impl.model import PluginModelClient
-
-    plugin_model_manager = PluginModelClient()
-    return plugin_model_manager.invoke_llm(
-        tenant_id=tenant_id,
-        user_id=user_id,
-        plugin_id=plugin_id,
+    return llm_model.model_runtime.invoke_llm(
         provider=provider,
         model=model,
         credentials=credentials,
         model_parameters=model_parameters,
         prompt_messages=list(prompt_messages),
         tools=tools,
-        stop=list(stop) if stop else None,
+        stop=stop,
         stream=stream,
     )
 
 
-def _normalize_non_stream_plugin_result(
+def _normalize_non_stream_runtime_result(
     model: str,
     prompt_messages: Sequence[PromptMessage],
     result: Union[LLMResult, Iterator[LLMResultChunk]],
@@ -208,9 +197,6 @@ class LargeLanguageModel(AIModel):
 
     model_type: ModelType = ModelType.LLM
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
-
     def invoke(
         self,
         model: str,
@@ -220,7 +206,6 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
@@ -233,7 +218,6 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
         :param callbacks: callbacks
         :return: full response or stream response chunk generator result
         """
@@ -245,7 +229,7 @@ class LargeLanguageModel(AIModel):
 
         callbacks = callbacks or []
 
-        if dify_config.DEBUG:
+        if logger.isEnabledFor(logging.DEBUG):
             callbacks.append(LoggingCallback())
 
         # trigger before invoke callbacks
@@ -257,18 +241,15 @@ class LargeLanguageModel(AIModel):
             tools=tools,
             stop=stop,
             stream=stream,
-            user=user,
             callbacks=callbacks,
         )
 
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
-            result = _invoke_llm_via_plugin(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
+            result = _invoke_llm_via_runtime(
+                llm_model=self,
+                provider=self.provider,
                 model=model,
                 credentials=credentials,
                 model_parameters=model_parameters,
@@ -279,7 +260,7 @@ class LargeLanguageModel(AIModel):
             )
 
             if not stream:
-                result = _normalize_non_stream_plugin_result(
+                result = _normalize_non_stream_runtime_result(
                     model=model, prompt_messages=prompt_messages, result=result
                 )
         except Exception as e:
@@ -292,7 +273,6 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
                 callbacks=callbacks,
             )
 
@@ -309,7 +289,6 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
                 callbacks=callbacks,
             )
         elif isinstance(result, LLMResult):
@@ -322,7 +301,6 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
                 callbacks=callbacks,
             )
             # Following https://github.com/langgenius/dify/issues/17799,
@@ -435,22 +413,14 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :return:
         """
-        if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
-            from core.plugin.impl.model import PluginModelClient
-
-            plugin_model_manager = PluginModelClient()
-            return plugin_model_manager.get_llm_num_tokens(
-                tenant_id=self.tenant_id,
-                user_id="unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
-                model_type=self.model_type.value,
-                model=model,
-                credentials=credentials,
-                prompt_messages=prompt_messages,
-                tools=tools,
-            )
-        return 0
+        return self.model_runtime.get_llm_num_tokens(
+            provider=self.provider,
+            model_type=self.model_type,
+            model=model,
+            credentials=credentials,
+            prompt_messages=prompt_messages,
+            tools=tools,
+        )
 
     def calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int

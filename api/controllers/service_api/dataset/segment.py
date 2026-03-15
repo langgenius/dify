@@ -105,7 +105,7 @@ class SegmentApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -159,7 +159,7 @@ class SegmentApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -265,7 +265,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -360,7 +360,7 @@ class ChildChunkApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,

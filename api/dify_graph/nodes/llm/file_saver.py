@@ -2,10 +2,8 @@ import mimetypes
 import typing as tp
 
 from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
-from core.tools.signature import sign_tool_file
-from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.nodes.protocols import HttpClientProtocol
+from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 
 
 class LLMFileSaver(tp.Protocol):
@@ -57,16 +55,19 @@ class LLMFileSaver(tp.Protocol):
 
 
 class FileSaverImpl(LLMFileSaver):
-    _tenant_id: str
-    _user_id: str
+    _tool_file_manager: ToolFileManagerProtocol
+    _file_reference_factory: FileReferenceFactoryProtocol
 
-    def __init__(self, user_id: str, tenant_id: str, http_client: HttpClientProtocol):
-        self._user_id = user_id
-        self._tenant_id = tenant_id
+    def __init__(
+        self,
+        *,
+        tool_file_manager: ToolFileManagerProtocol,
+        file_reference_factory: FileReferenceFactoryProtocol,
+        http_client: HttpClientProtocol,
+    ):
+        self._tool_file_manager = tool_file_manager
+        self._file_reference_factory = file_reference_factory
         self._http_client = http_client
-
-    def _get_tool_file_manager(self):
-        return ToolFileManager()
 
     def save_remote_url(self, url: str, file_type: FileType) -> File:
         http_response = self._http_client.get(url)
@@ -83,10 +84,7 @@ class FileSaverImpl(LLMFileSaver):
         file_type: FileType,
         extension_override: str | None = None,
     ) -> File:
-        tool_file_manager = self._get_tool_file_manager()
-        tool_file = tool_file_manager.create_file_by_raw(
-            user_id=self._user_id,
-            tenant_id=self._tenant_id,
+        tool_file = self._tool_file_manager.create_file_by_raw(
             # TODO(QuantumGhost): what is conversation id?
             conversation_id=None,
             file_binary=data,
@@ -94,19 +92,18 @@ class FileSaverImpl(LLMFileSaver):
         )
         extension_override = _validate_extension_override(extension_override)
         extension = _get_extension(mime_type, extension_override)
-        url = sign_tool_file(tool_file.id, extension)
-
-        return File(
-            tenant_id=self._tenant_id,
-            type=file_type,
-            transfer_method=FileTransferMethod.TOOL_FILE,
-            filename=tool_file.name,
-            extension=extension,
-            mime_type=mime_type,
-            size=len(data),
-            related_id=tool_file.id,
-            url=url,
-            storage_key=tool_file.file_key,
+        return self._file_reference_factory.build_from_mapping(
+            mapping={
+                "type": file_type,
+                "transfer_method": FileTransferMethod.TOOL_FILE,
+                "filename": tool_file.name,
+                "extension": extension,
+                "mime_type": mime_type,
+                "size": len(data),
+                "tool_file_id": tool_file.id,
+                "related_id": tool_file.id,
+                "storage_key": tool_file.file_key,
+            }
         )
 
 

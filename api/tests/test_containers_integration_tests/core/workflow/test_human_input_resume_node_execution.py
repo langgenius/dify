@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from dify_graph.enums import WorkflowType
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -120,6 +121,7 @@ def _build_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
+        runtime=DifyHumanInputNodeRuntime(params.run_context),
     )
 
     end_data = EndNodeData(

@@ -1,8 +1,16 @@
 from decimal import Decimal
+from enum import StrEnum, auto
 
 from pydantic import BaseModel
 
 from dify_graph.model_runtime.entities.model_entities import ModelUsage
+
+
+class EmbeddingInputType(StrEnum):
+    """Embedding request input variants understood by the model runtime."""
+
+    DOCUMENT = auto()
+    QUERY = auto()
 
 
 class EmbeddingUsage(ModelUsage):

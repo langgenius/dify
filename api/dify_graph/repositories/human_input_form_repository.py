@@ -18,9 +18,6 @@ class FormNotFoundError(HumanInputError):
 
 @dataclasses.dataclass
 class FormCreateParams:
-    # app_id is the identifier for the app that the form belongs to.
-    # It is a string with uuid format.
-    app_id: str
     # None when creating a delivery test form; set for runtime forms.
     workflow_execution_id: str | None
 
@@ -44,6 +41,9 @@ class FormCreateParams:
     # For type = CONSTANT, the value is not stored inside `resolved_default_values`
     resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
+
+    # Optional application identifier. Implementations may bind this at construction time.
+    app_id: str | None = None
 
     # Force creating a console-only recipient for submission in Console.
     console_recipient_required: bool = False

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import DifyToolNodeRuntime
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.node_events import StreamCompletedEvent
@@ -64,6 +65,7 @@ def init_tool_node(config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
+        runtime=DifyToolNodeRuntime(init_params.run_context),
     )
     return node
 

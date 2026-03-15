@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -201,6 +202,7 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
     end_human_data = EndNodeData(title="End Human", outputs=[], desc=None)

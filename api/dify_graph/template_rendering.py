@@ -8,19 +8,17 @@ from dify_graph.nodes.code.entities import CodeLanguage
 
 
 class TemplateRenderError(ValueError):
-    """Raised when rendering a Jinja2 template fails."""
+    """Raised when rendering a template fails."""
 
 
 class Jinja2TemplateRenderer(Protocol):
-    """Render Jinja2 templates for template transform nodes."""
+    """Shared contract for rendering Jinja2 templates in graph nodes."""
 
-    def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
-        """Render a Jinja2 template with provided variables."""
-        raise NotImplementedError
+    def render_template(self, template: str, variables: Mapping[str, Any]) -> str: ...
 
 
 class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):
-    """Adapter that renders Jinja2 templates via CodeExecutor."""
+    """Adapter that renders Jinja2 templates via the workflow code executor."""
 
     _code_executor: WorkflowCodeExecutor
 

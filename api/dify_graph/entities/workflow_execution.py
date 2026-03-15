@@ -14,7 +14,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
-from libs.datetime_utils import naive_utc_now
+from dify_graph.utils.datetime_utils import naive_utc_now
 
 
 class WorkflowExecution(BaseModel):

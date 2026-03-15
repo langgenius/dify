@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
@@ -12,7 +12,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState

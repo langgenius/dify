@@ -2,6 +2,7 @@ import threading
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
@@ -9,6 +10,16 @@ from dify_graph.graph_engine.entities.commands import CommandType
 from dify_graph.graph_events.node import NodeRunSucceededEvent
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
+
+
+def _build_dify_context() -> DifyRunContext:
+    return DifyRunContext(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
 
 
 def _build_succeeded_event() -> NodeRunSucceededEvent:
@@ -32,7 +43,7 @@ def test_deduct_quota_called_for_successful_llm_node() -> None:
     node.execution_id = "execution-id"
     node.node_type = BuiltinNodeTypes.LLM
     node.tenant_id = "tenant-id"
-    node.require_dify_context.return_value.tenant_id = "tenant-id"
+    node.require_run_context_value.return_value = _build_dify_context()
     node.model_instance = object()
 
     result_event = _build_succeeded_event()
@@ -53,7 +64,7 @@ def test_deduct_quota_called_for_question_classifier_node() -> None:
     node.execution_id = "execution-id"
     node.node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
     node.tenant_id = "tenant-id"
-    node.require_dify_context.return_value.tenant_id = "tenant-id"
+    node.require_run_context_value.return_value = _build_dify_context()
     node.model_instance = object()
 
     result_event = _build_succeeded_event()
@@ -74,7 +85,7 @@ def test_non_llm_node_is_ignored() -> None:
     node.execution_id = "execution-id"
     node.node_type = BuiltinNodeTypes.START
     node.tenant_id = "tenant-id"
-    node.require_dify_context.return_value.tenant_id = "tenant-id"
+    node.require_run_context_value.return_value = _build_dify_context()
     node._model_instance = object()
 
     result_event = _build_succeeded_event()
@@ -91,7 +102,7 @@ def test_quota_error_is_handled_in_layer() -> None:
     node.execution_id = "execution-id"
     node.node_type = BuiltinNodeTypes.LLM
     node.tenant_id = "tenant-id"
-    node.require_dify_context.return_value.tenant_id = "tenant-id"
+    node.require_run_context_value.return_value = _build_dify_context()
     node.model_instance = object()
 
     result_event = _build_succeeded_event()
@@ -113,7 +124,7 @@ def test_quota_deduction_exceeded_aborts_workflow_immediately() -> None:
     node.execution_id = "execution-id"
     node.node_type = BuiltinNodeTypes.LLM
     node.tenant_id = "tenant-id"
-    node.require_dify_context.return_value.tenant_id = "tenant-id"
+    node.require_run_context_value.return_value = _build_dify_context()
     node.model_instance = object()
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.stop_event = stop_event

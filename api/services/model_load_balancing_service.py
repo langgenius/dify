@@ -10,13 +10,13 @@ from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_manager import LBModelManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
@@ -26,8 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoadBalancingService:
-    def __init__(self):
-        self.provider_manager = ProviderManager()
+    @staticmethod
+    def _get_provider_manager(tenant_id: str) -> ProviderManager:
+        return create_plugin_provider_manager(tenant_id=tenant_id)
 
     def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -40,7 +41,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -61,7 +62,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -83,7 +84,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -223,7 +224,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -310,7 +311,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -496,7 +497,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -581,7 +582,7 @@ class ModelLoadBalancingService:
                         credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:
-            model_provider_factory = ModelProviderFactory(tenant_id)
+            model_provider_factory = create_plugin_model_provider_factory(tenant_id=tenant_id)
             if isinstance(credential_schemas, ModelCredentialSchema):
                 credentials = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,

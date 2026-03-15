@@ -12,10 +12,12 @@ from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -487,11 +489,10 @@ class WorkflowService:
         """
         try:
             from core.model_manager import ModelManager
-            from core.provider_manager import ProviderManager
             from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get model instance to validate provider+model combination
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
             model_manager.get_model_instance(
                 tenant_id=tenant_id, provider=provider, model_type=ModelType.LLM, model=model_name
             )
@@ -501,7 +502,7 @@ class WorkflowService:
             # If it fails, an exception will be raised
 
             # Additionally, check the model status to ensure it's ACTIVE
-            provider_manager = ProviderManager()
+            provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
             provider_configurations = provider_manager.get_configurations(tenant_id)
             models = provider_configurations.get_models(provider=provider, model_type=ModelType.LLM)
 
@@ -607,11 +608,10 @@ class WorkflowService:
         :return: True if load balancing is enabled, False otherwise
         """
         try:
-            from core.provider_manager import ProviderManager
             from dify_graph.model_runtime.entities.model_entities import ModelType
 
             # Get provider configurations
-            provider_manager = ProviderManager()
+            provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
             provider_configurations = provider_manager.get_configurations(tenant_id)
             provider_configuration = provider_configurations.get(provider)
 
@@ -1139,6 +1139,7 @@ class WorkflowService:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
+            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
         return node
 

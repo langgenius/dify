@@ -4,6 +4,18 @@ class ToolNodeError(ValueError):
     pass
 
 
+class ToolRuntimeResolutionError(ToolNodeError):
+    """Raised when the workflow layer cannot construct a tool runtime."""
+
+    pass
+
+
+class ToolRuntimeInvocationError(ToolNodeError):
+    """Raised when the workflow layer fails while invoking a tool runtime."""
+
+    pass
+
+
 class ToolParameterError(ToolNodeError):
     """Exception raised for errors in tool parameters."""
 

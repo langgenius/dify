@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
 
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.llm import ModelConfig, VisionConfig
+from dify_graph.prompt_entities import MemoryConfig
 
 
 class ClassConfig(BaseModel):

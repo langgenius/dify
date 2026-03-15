@@ -4,15 +4,14 @@ import sys
 import types
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
+from dify_graph.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment
@@ -20,6 +19,39 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from dify_graph.nodes.tool.tool_node import ToolNode
+
+
+class _StubToolRuntime:
+    def get_runtime(self, *, node_id: str, node_data: Any, variable_pool: Any) -> ToolRuntimeHandle:
+        raise NotImplementedError
+
+    def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:
+        return []
+
+    def invoke(
+        self,
+        *,
+        tool_runtime: ToolRuntimeHandle,
+        tool_parameters: dict[str, Any],
+        workflow_call_depth: int,
+        conversation_id: str | None,
+        provider_name: str,
+    ) -> Generator[ToolRuntimeMessage, None, None]:
+        yield from ()
+
+    def get_usage(self, *, tool_runtime: ToolRuntimeHandle) -> LLMUsage:
+        return LLMUsage.empty_usage()
+
+    def build_file_reference(self, *, mapping: dict[str, Any]) -> Any:
+        return mapping
+
+    def resolve_provider_icons(
+        self,
+        *,
+        provider_name: str,
+        default_icon: str | None = None,
+    ) -> tuple[str | None, str | None]:
+        return default_icon, None
 
 
 @pytest.fixture
@@ -73,6 +105,7 @@ def tool_node(monkeypatch) -> ToolNode:
 
     # Provide a stub ToolFileManager to satisfy the updated ToolNode constructor
     tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+    runtime = _StubToolRuntime()
 
     node = ToolNode(
         id="node-instance",
@@ -80,6 +113,7 @@ def tool_node(monkeypatch) -> ToolNode:
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
+        runtime=runtime,
     )
     return node
 
@@ -93,24 +127,15 @@ def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
         return events, stop.value
 
 
-def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[list[Any], LLMUsage]:
-    def _identity_transform(messages, *_args, **_kwargs):
-        return messages
-
-    tool_runtime = MagicMock()
-    with patch.object(
-        ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform, autospec=True
-    ):
-        generator = tool_node._transform_message(
-            messages=iter([message]),
-            tool_info={"provider_type": "builtin", "provider_id": "provider"},
-            parameters_for_log={},
-            user_id="user-id",
-            tenant_id="tenant-id",
-            node_id=tool_node._node_id,
-            tool_runtime=tool_runtime,
-        )
-        return _collect_events(generator)
+def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
+    generator = tool_node._transform_message(
+        messages=iter([message]),
+        tool_info={"provider_type": "builtin", "provider_id": "provider"},
+        parameters_for_log={},
+        node_id=tool_node._node_id,
+        tool_runtime=ToolRuntimeHandle(raw=object()),
+    )
+    return _collect_events(generator)
 
 
 def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
@@ -125,9 +150,9 @@ def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
         size=123,
         storage_key="file-key",
     )
-    message = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.LINK,
-        message=ToolInvokeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.LINK,
+        message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
         meta={"file": file_obj},
     )
 
@@ -150,9 +175,9 @@ def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
 
 
 def test_plain_link_messages_remain_links(tool_node: ToolNode):
-    message = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.LINK,
-        message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.LINK,
+        message=ToolRuntimeMessage.TextMessage(text="https://dify.ai"),
         meta=None,
     )
 

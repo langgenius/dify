@@ -15,15 +15,16 @@ from dify_graph.node_events import (
 from dify_graph.node_events.base import NodeEventBase
 from dify_graph.node_events.node import StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.runtime import HumanInputNodeRuntimeProtocol
 from dify_graph.repositories.human_input_form_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
+from dify_graph.utils.datetime_utils import naive_utc_now
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.datetime_utils import naive_utc_now
 
-from .entities import DeliveryChannelConfig, HumanInputNodeData, apply_debug_email_recipient
+from .entities import DeliveryChannelConfig, HumanInputNodeData
 from .enums import DeliveryMethodType, HumanInputFormStatus, PlaceholderType
 
 if TYPE_CHECKING:
@@ -68,6 +69,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         form_repository: HumanInputFormRepository,
+        runtime: HumanInputNodeRuntimeProtocol | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -76,6 +78,9 @@ class HumanInputNode(Node[HumanInputNodeData]):
             graph_runtime_state=graph_runtime_state,
         )
         self._form_repository = form_repository
+        if runtime is None:
+            raise ValueError("runtime is required")
+        self._runtime = runtime
 
     @classmethod
     def version(cls) -> str:
@@ -171,25 +176,14 @@ class HumanInputNode(Node[HumanInputNodeData]):
         return self._node_data.is_webapp_enabled()
 
     def _effective_delivery_methods(self) -> Sequence[DeliveryChannelConfig]:
-        dify_ctx = self.require_dify_context()
         invoke_from = self._invoke_from_value()
         enabled_methods = [method for method in self._node_data.delivery_methods if method.enabled]
         if invoke_from in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}:
             enabled_methods = [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
-        return [
-            apply_debug_email_recipient(
-                method,
-                enabled=invoke_from == _INVOKE_FROM_DEBUGGER,
-                user_id=dify_ctx.user_id,
-            )
-            for method in enabled_methods
-        ]
+        return self._runtime.apply_delivery_runtime(methods=enabled_methods)
 
     def _invoke_from_value(self) -> str:
-        invoke_from = self.require_dify_context().invoke_from
-        if isinstance(invoke_from, str):
-            return invoke_from
-        return str(getattr(invoke_from, "value", invoke_from))
+        return self._runtime.invoke_source()
 
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
@@ -224,11 +218,9 @@ class HumanInputNode(Node[HumanInputNodeData]):
         """
         repo = self._form_repository
         form = repo.get_form(self._workflow_execution_id, self.id)
-        dify_ctx = self.require_dify_context()
         if form is None:
             display_in_ui = self._display_in_ui()
             params = FormCreateParams(
-                app_id=dify_ctx.app_id,
                 workflow_execution_id=self._workflow_execution_id,
                 node_id=self.id,
                 form_config=self._node_data,
@@ -238,7 +230,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 resolved_default_values=self.resolve_default_values(),
                 console_recipient_required=self._should_require_console_recipient(),
                 console_creator_account_id=(
-                    dify_ctx.user_id
+                    self._runtime.console_actor_id()
                     if self._invoke_from_value() in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}
                     else None
                 ),

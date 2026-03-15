@@ -1,8 +1,9 @@
 import datetime
 from types import SimpleNamespace
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
@@ -85,6 +86,7 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
 
@@ -149,6 +151,7 @@ def _build_timeout_node() -> HumanInputNode:
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         form_repository=repo,
+        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
     )
 
 
