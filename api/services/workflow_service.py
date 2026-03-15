@@ -15,8 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
-from core.workflow.node_factory import get_node_type_classes_mapping, is_start_node_type
-from core.workflow.node_resolution import LATEST_VERSION
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict

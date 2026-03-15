@@ -860,8 +860,8 @@ class TestWorkflowService:
         # Act
         try:
             result = workflow_service.get_default_block_config(node_type=invalid_node_type)
-            # If we get here, the service should return None for invalid types
-            assert result is None
+            # If we get here, the service should return an empty config for invalid types.
+            assert result == {}
         except ValueError:
             # It's also acceptable for the service to raise a ValueError for invalid types
             pass

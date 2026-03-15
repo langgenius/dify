@@ -36,8 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_factory import get_node_type_classes_mapping
-from core.workflow.node_resolution import LATEST_VERSION
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,

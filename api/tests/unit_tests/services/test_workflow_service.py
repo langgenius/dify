@@ -1001,7 +1001,7 @@ class TestWorkflowService:
         Used by the UI to populate the node palette and provide sensible defaults
         when users add new nodes to their workflow.
         """
-        with patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping:
+        with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
             # Mock node class with default config
             mock_node_class = MagicMock()
             mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
@@ -1025,7 +1025,7 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
                 "services.workflow_service.build_http_request_config",
@@ -1060,7 +1060,7 @@ class TestWorkflowService:
         This includes default values for all required and optional parameters.
         """
         with (
-            patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
             # Mock node class with default config
@@ -1078,7 +1078,7 @@ class TestWorkflowService:
 
     def test_get_default_block_config_invalid_node_type(self, workflow_service):
         """Test get_default_block_config returns empty dict for invalid node type."""
-        with patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping:
+        with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
             mock_mapping.return_value = {}
 
             # Use a valid NodeType but one that's not in the mapping
@@ -1098,7 +1098,7 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
                 "services.workflow_service.build_http_request_config",
@@ -1129,7 +1129,7 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.get_workflow_node_type_classes_mapping") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch("services.workflow_service.build_http_request_config") as mock_build_config,
         ):
@@ -1151,7 +1151,7 @@ class TestWorkflowService:
     def test_get_default_block_config_http_request_malformed_config_raises_value_error(self, workflow_service):
         with (
             patch(
-                "services.workflow_service.get_workflow_node_type_classes_mapping",
+                "services.workflow_service.get_node_type_classes_mapping",
                 return_value={BuiltinNodeTypes.HTTP_REQUEST: {"latest": HttpRequestNode}},
             ),
             patch("services.workflow_service.LATEST_VERSION", "latest"),

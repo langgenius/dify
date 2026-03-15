@@ -258,8 +258,8 @@ class TestDifyNodeFactoryCreateNode:
 
     def test_rejects_missing_class_mapping(self, monkeypatch, factory):
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(side_effect=ValueError("No class mapping found for node type: start")),
         )
 
@@ -268,8 +268,8 @@ class TestDifyNodeFactoryCreateNode:
 
     def test_rejects_missing_latest_class(self, monkeypatch, factory):
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(side_effect=ValueError("No latest version class found for node type: start")),
         )
 
@@ -281,8 +281,8 @@ class TestDifyNodeFactoryCreateNode:
         latest_node_class = MagicMock(return_value=sentinel.latest_node)
         matched_node_class = MagicMock(return_value=matched_node)
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(return_value=matched_node_class),
         )
 
@@ -301,8 +301,8 @@ class TestDifyNodeFactoryCreateNode:
         latest_node = sentinel.latest_node
         latest_node_class = MagicMock(return_value=latest_node)
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(return_value=latest_node_class),
         )
 
@@ -333,8 +333,8 @@ class TestDifyNodeFactoryCreateNode:
         created_node = object()
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(return_value=constructor),
         )
 
@@ -394,8 +394,8 @@ class TestDifyNodeFactoryCreateNode:
         created_node = object()
         constructor = MagicMock(name=constructor_name, return_value=created_node)
         monkeypatch.setattr(
-            node_factory,
-            "resolve_workflow_node_class",
+            factory,
+            "_resolve_node_class",
             MagicMock(return_value=constructor),
         )
         llm_init_kwargs = {

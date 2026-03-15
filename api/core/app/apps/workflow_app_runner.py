@@ -33,8 +33,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
-from core.workflow.node_resolution import resolve_workflow_node_class
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter

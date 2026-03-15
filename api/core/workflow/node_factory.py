@@ -91,6 +91,19 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
     return Node.get_node_type_classes_mapping()
 
 
+def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    node_mapping = get_node_type_classes_mapping().get(node_type)
+    if not node_mapping:
+        raise ValueError(f"No class mapping found for node type: {node_type}")
+
+    latest_node_class = node_mapping.get(LATEST_VERSION)
+    matched_node_class = node_mapping.get(node_version)
+    node_class = matched_node_class or latest_node_class
+    if not node_class:
+        raise ValueError(f"No latest version class found for node type: {node_type}")
+    return node_class
+
+
 def is_start_node_type(node_type: NodeType) -> bool:
     """Return True when the node type can serve as a workflow entry point."""
     return node_type in _START_NODE_TYPES
@@ -355,10 +368,6 @@ class DifyNodeFactory(NodeFactory):
 
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
-        # Import lazily to avoid a module cycle with `node_resolution`, which
-        # imports `get_node_type_classes_mapping` from this module at import time.
-        from core.workflow.node_resolution import resolve_workflow_node_class
-
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
     def _build_llm_compatible_node_init_kwargs(
