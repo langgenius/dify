@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast
 
 import sqlalchemy as sa
 from sqlalchemy import select
@@ -31,7 +31,7 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -62,7 +62,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,14 @@ logger = logging.getLogger(__name__)
 class ApiProviderControllerItem(TypedDict):
     provider: ApiToolProvider
     controller: ApiToolProviderController
+
+
+class WorkflowToolRuntimeSpec(Protocol):
+    provider_type: ToolProviderType
+    provider_id: str
+    tool_name: str
+    tool_configurations: dict[str, Any]
+    credential_id: str | None
 
 
 class ToolManager:
@@ -400,7 +408,7 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         node_id: str,
-        workflow_tool: "ToolEntity",
+        workflow_tool: WorkflowToolRuntimeSpec,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:

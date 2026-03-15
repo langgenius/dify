@@ -12,9 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.http import parse_options_header
 
-from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.helper import ssrf_proxy
 from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
+from dify_graph.file.file_factory import standardize_file_type
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
 
@@ -175,7 +175,7 @@ def _build_from_local_file(
     if row is None:
         raise ValueError("Invalid upload file")
 
-    detected_file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
+    detected_file_type = standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
     specified_type = mapping.get("type", "custom")
 
     if strict_type_validation and detected_file_type.value != specified_type:
@@ -223,7 +223,7 @@ def _build_from_remote_url(
         if upload_file is None:
             raise ValueError("Invalid upload file")
 
-        detected_file_type = _standardize_file_type(
+        detected_file_type = standardize_file_type(
             extension="." + upload_file.extension, mime_type=upload_file.mime_type
         )
 
@@ -257,7 +257,7 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    detected_file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    detected_file_type = standardize_file_type(extension=extension, mime_type=mime_type)
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
@@ -387,7 +387,7 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
+    detected_file_type = standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     specified_type = mapping.get("type")
 
@@ -438,7 +438,7 @@ def _build_from_datasource_file(
 
     extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
+    detected_file_type = standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
 
     specified_type = mapping.get("type")
 
@@ -503,49 +503,6 @@ def _is_file_valid_with_config(
         return False
 
     return True
-
-
-def _standardize_file_type(*, extension: str = "", mime_type: str = "") -> FileType:
-    """
-    Infer the possible actual type of the file based on the extension and mime_type
-    """
-    guessed_type = None
-    if extension:
-        guessed_type = _get_file_type_by_extension(extension)
-    if guessed_type is None and mime_type:
-        guessed_type = _get_file_type_by_mimetype(mime_type)
-    return guessed_type or FileType.CUSTOM
-
-
-def _get_file_type_by_extension(extension: str) -> FileType | None:
-    extension = extension.lstrip(".")
-    if extension in IMAGE_EXTENSIONS:
-        return FileType.IMAGE
-    elif extension in VIDEO_EXTENSIONS:
-        return FileType.VIDEO
-    elif extension in AUDIO_EXTENSIONS:
-        return FileType.AUDIO
-    elif extension in DOCUMENT_EXTENSIONS:
-        return FileType.DOCUMENT
-    return None
-
-
-def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:
-    if "image" in mime_type:
-        file_type = FileType.IMAGE
-    elif "video" in mime_type:
-        file_type = FileType.VIDEO
-    elif "audio" in mime_type:
-        file_type = FileType.AUDIO
-    elif "text" in mime_type or "pdf" in mime_type:
-        file_type = FileType.DOCUMENT
-    else:
-        file_type = FileType.CUSTOM
-    return file_type
-
-
-def get_file_type_by_mime_type(mime_type: str) -> FileType:
-    return _get_file_type_by_mimetype(mime_type) or FileType.CUSTOM
 
 
 class StorageKeyLoader:

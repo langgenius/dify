@@ -343,9 +343,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         provider_name: str,
         default_icon: str | None = None,
-    ) -> tuple[str | None, str | None]:
-        icon = default_icon
-        icon_dark = None
+    ) -> tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]:
+        icon: str | Mapping[str, str] | None = default_icon
+        icon_dark: str | Mapping[str, str] | None = None
 
         manager = PluginInstaller()
         plugins = manager.list_plugins(self._run_context.tenant_id)

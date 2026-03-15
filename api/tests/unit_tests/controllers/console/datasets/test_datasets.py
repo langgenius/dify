@@ -415,7 +415,7 @@ class TestDatasetApiGet:
                 "check_dataset_permission",
                 return_value=None,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             # embedding models exist → embedding_available stays True
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
@@ -519,7 +519,7 @@ class TestDatasetApiGet:
                 "check_dataset_permission",
                 return_value=None,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             # embedding model NOT configured
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
@@ -578,7 +578,7 @@ class TestDatasetApiGet:
                 "get_dataset_partial_member_list",
                 return_value=partial_members,
             ),
-            patch("controllers.console.datasets.datasets.ProviderManager") as provider_manager_mock,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
         ):
             provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
 

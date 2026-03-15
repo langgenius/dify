@@ -28,6 +28,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "vision-embedding-model"
+        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -316,6 +317,7 @@ class TestCacheEmbeddingMultimodalQuery:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "vision-embedding-model"
+        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -467,6 +469,7 @@ class TestCacheEmbeddingQueryErrors:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "text-embedding-ada-002"
+        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
@@ -536,20 +539,20 @@ class TestCacheEmbeddingInitialization:
         """Test CacheEmbedding initialization with user parameter."""
         model_instance = Mock()
         model_instance.model = "test-model"
+        model_instance.model_name = "test-model"
         model_instance.provider = "test-provider"
 
         cache_embedding = CacheEmbedding(model_instance, user="test-user")
 
         assert cache_embedding._model_instance == model_instance
-        assert cache_embedding._user == "test-user"
 
     def test_initialization_without_user(self):
         """Test CacheEmbedding initialization without user parameter."""
         model_instance = Mock()
         model_instance.model = "test-model"
+        model_instance.model_name = "test-model"
         model_instance.provider = "test-provider"
 
         cache_embedding = CacheEmbedding(model_instance)
 
         assert cache_embedding._model_instance == model_instance
-        assert cache_embedding._user is None
