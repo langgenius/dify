@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -1031,8 +1031,10 @@ class Conversation(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
-    message_annotations = db.relationship(
+    messages: Mapped[list[Message]] = relationship(
+        "Message", backref="conversation", lazy="select", passive_deletes="all"
+    )
+    message_annotations: Mapped[list[MessageAnnotation]] = relationship(
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
