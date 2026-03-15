@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from core.workflow.runtime import GraphRuntimeState
+from dify_graph.runtime import GraphRuntimeState
 
 if TYPE_CHECKING:
     from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline

@@ -37,7 +37,7 @@ class _TrackedSessionContext:
             self._closed_sessions.append(self._session)
             return original_close(*args, **kwargs)
 
-        self._close_patcher = patch.object(self._session, "close", side_effect=_tracked_close)
+        self._close_patcher = patch.object(self._session, "close", side_effect=_tracked_close, autospec=True)
         self._close_patcher.start()
         return self._session
 
@@ -69,7 +69,9 @@ def session_close_tracker():
         original_context_manager = original_create_session(*args, **kwargs)
         return _TrackedSessionContext(original_context_manager, opened_sessions, closed_sessions)
 
-    with patch.object(task_module.session_factory, "create_session", side_effect=_tracked_create_session):
+    with patch.object(
+        task_module.session_factory, "create_session", side_effect=_tracked_create_session, autospec=True
+    ):
         yield {"opened_sessions": opened_sessions, "closed_sessions": closed_sessions}
 
 
@@ -77,13 +79,11 @@ def session_close_tracker():
 def patched_external_dependencies():
     """Patch non-DB collaborators while keeping database behavior real."""
     with (
-        patch("tasks.document_indexing_task.IndexingRunner") as mock_indexing_runner,
-        patch("tasks.document_indexing_task.FeatureService") as mock_feature_service,
-        patch("tasks.document_indexing_task.generate_summary_index_task") as mock_summary_task,
+        patch("tasks.document_indexing_task.IndexingRunner", autospec=True) as mock_indexing_runner,
+        patch("tasks.document_indexing_task.FeatureService", autospec=True) as mock_feature_service,
+        patch("tasks.document_indexing_task.generate_summary_index_task", autospec=True) as mock_summary_task,
     ):
-        mock_runner_instance = MagicMock()
-        mock_indexing_runner.return_value = mock_runner_instance
-
+        mock_runner_instance = mock_indexing_runner.return_value
         mock_features = MagicMock()
         mock_features.billing.enabled = False
         mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
@@ -307,18 +307,29 @@ class TestDatasetIndexingTaskIntegration:
 
         # Act
         with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as set_waiting_spy,
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
+                return_value=[next_task],
+                autospec=True,
+            ),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time", autospec=True
+            ) as set_waiting_spy,
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key", autospec=True
+            ) as delete_key_spy,
         ):
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once_with(
-            tenant_id=next_task["tenant_id"],
-            dataset_id=next_task["dataset_id"],
-            document_ids=next_task["document_ids"],
-        )
+        # apply_async is used by implementation; assert it was called once with expected kwargs
+        assert task_dispatch_spy.apply_async.call_count == 1
+        call_kwargs = task_dispatch_spy.apply_async.call_args.kwargs.get("kwargs", {})
+        assert call_kwargs == {
+            "tenant_id": next_task["tenant_id"],
+            "dataset_id": next_task["dataset_id"],
+            "document_ids": next_task["document_ids"],
+        }
         set_waiting_spy.assert_called_once()
         delete_key_spy.assert_not_called()
 
@@ -336,13 +347,15 @@ class TestDatasetIndexingTaskIntegration:
 
         # Act
         with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[], autospec=True),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key", autospec=True
+            ) as delete_key_spy,
         ):
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_not_called()
+        task_dispatch_spy.apply_async.assert_not_called()
         delete_key_spy.assert_called_once()
 
     def test_validation_failure_sets_error_status_when_vector_space_at_limit(
@@ -426,14 +439,18 @@ class TestDatasetIndexingTaskIntegration:
 
         # Act
         with (
-            patch("tasks.document_indexing_task._document_indexing", side_effect=Exception("failed")),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[next_task]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
+            patch("tasks.document_indexing_task._document_indexing", side_effect=Exception("failed"), autospec=True),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
+                return_value=[next_task],
+                autospec=True,
+            ),
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time", autospec=True),
         ):
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        task_dispatch_spy.delay.assert_called_once()
+        task_dispatch_spy.apply_async.assert_called_once()
 
     def test_sessions_close_on_successful_indexing(
         self,
@@ -511,13 +528,16 @@ class TestDatasetIndexingTaskIntegration:
             patch(
                 "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
                 return_value=pending_tasks[:concurrency_limit],
+                autospec=True,
             ),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time") as set_waiting_spy,
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time", autospec=True
+            ) as set_waiting_spy,
         ):
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == concurrency_limit
+        assert task_dispatch_spy.apply_async.call_count == concurrency_limit
         assert set_waiting_spy.call_count == concurrency_limit
 
     def test_task_queue_fifo_ordering(self, db_session_with_containers, patched_external_dependencies):
@@ -538,15 +558,20 @@ class TestDatasetIndexingTaskIntegration:
         # Act
         with (
             patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", 3),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=ordered_tasks),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time"),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks",
+                return_value=ordered_tasks,
+                autospec=True,
+            ),
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.set_task_waiting_time", autospec=True),
         ):
             _document_indexing_with_tenant_queue(dataset.tenant_id, dataset.id, document_ids, task_dispatch_spy)
 
         # Assert
-        assert task_dispatch_spy.delay.call_count == 3
+        assert task_dispatch_spy.apply_async.call_count == 3
         for index, expected_task in enumerate(ordered_tasks):
-            assert task_dispatch_spy.delay.call_args_list[index].kwargs["document_ids"] == expected_task["document_ids"]
+            call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
+            assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
     def test_billing_disabled_skips_limit_checks(self, db_session_with_containers, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""
@@ -578,8 +603,10 @@ class TestDatasetIndexingTaskIntegration:
 
         # Act
         with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[], autospec=True),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key", autospec=True
+            ) as delete_key_spy,
         ):
             normal_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
@@ -599,8 +626,10 @@ class TestDatasetIndexingTaskIntegration:
 
         # Act
         with (
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[]),
-            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key") as delete_key_spy,
+            patch("tasks.document_indexing_task.TenantIsolatedTaskQueue.pull_tasks", return_value=[], autospec=True),
+            patch(
+                "tasks.document_indexing_task.TenantIsolatedTaskQueue.delete_task_key", autospec=True
+            ) as delete_key_spy,
         ):
             priority_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 

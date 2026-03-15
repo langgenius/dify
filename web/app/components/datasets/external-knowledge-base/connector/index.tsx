@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { useToastContext } from '@/app/components/base/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import { createExternalKnowledgeBase } from '@/service/datasets'
 

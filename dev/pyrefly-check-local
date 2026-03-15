@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+REPO_ROOT="$SCRIPT_DIR/.."
+cd "$REPO_ROOT"
+
+EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
+
+pyrefly_args=(
+  "--summary=none"
+  "--use-ignore-files=false"
+  "--disable-project-excludes-heuristics=true"
+  "--project-excludes=.venv"
+  "--project-excludes=migrations/"
+  "--project-excludes=tests/"
+)
+
+if [[ -f "$EXCLUDES_FILE" ]]; then
+  while IFS= read -r exclude; do
+    [[ -z "$exclude" || "${exclude:0:1}" == "#" ]] && continue
+    pyrefly_args+=("--project-excludes=$exclude")
+  done < "$EXCLUDES_FILE"
+fi
+
+tmp_output="$(mktemp)"
+set +e
+uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" >"$tmp_output" 2>&1
+pyrefly_status=$?
+set -e
+
+uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
+rm -f "$tmp_output"
+
+exit "$pyrefly_status"

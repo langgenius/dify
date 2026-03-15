@@ -17,11 +17,11 @@ from core.mcp.types import (
     TextContent,
     TextResourceContents,
 )
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
 

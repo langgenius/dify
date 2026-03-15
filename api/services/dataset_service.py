@@ -20,12 +20,12 @@ from core.db.session_factory import session_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.file import helpers as file_helpers
+from dify_graph.file import helpers as file_helpers
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -254,7 +254,7 @@ class DatasetService:
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model_name if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
-        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
+        dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting

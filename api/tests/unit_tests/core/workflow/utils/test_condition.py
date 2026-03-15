@@ -1,6 +1,6 @@
-from core.workflow.runtime import VariablePool
-from core.workflow.utils.condition.entities import Condition
-from core.workflow.utils.condition.processor import ConditionProcessor
+from dify_graph.runtime import VariablePool
+from dify_graph.utils.condition.entities import Condition
+from dify_graph.utils.condition.processor import ConditionProcessor
 
 
 def test_number_formatting():

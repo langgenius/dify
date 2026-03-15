@@ -17,39 +17,45 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
         with:
           enable-cache: true
 
       - name: Install dependencies
         run: uv sync --project api --dev
 
+      - name: Prepare diagnostics extractor
+        run: |
+          git show ${{ github.event.pull_request.head.sha }}:api/libs/pyrefly_diagnostics.py > /tmp/pyrefly_diagnostics.py
+
       - name: Run pyrefly on PR branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_pr.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python /tmp/pyrefly_diagnostics.py > /tmp/pyrefly_pr.txt || true
 
       - name: Checkout base branch
         run: git checkout ${{ github.base_ref }}
 
       - name: Run pyrefly on base branch
         run: |
-          uv run --directory api pyrefly check > /tmp/pyrefly_base.txt 2>&1 || true
+          uv run --directory api --dev pyrefly check 2>&1 \
+            | uv run --directory api python /tmp/pyrefly_diagnostics.py > /tmp/pyrefly_base.txt || true
 
       - name: Compute diff
         run: |
-          diff /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
+          diff -u /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
 
       - name: Save PR number
         run: |
           echo ${{ github.event.pull_request.number }} > pr_number.txt
 
       - name: Upload pyrefly diff
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: pyrefly_diff
           path: |
@@ -58,7 +64,7 @@ jobs:
 
       - name: Comment PR with pyrefly diff
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -74,14 +80,16 @@ jobs:
             }
 
             const body = diff.trim()
-              ? `### Pyrefly Diff
-<details>
-<summary>base → PR</summary>
-
-\`\`\`diff
-${diff}
-\`\`\`
-</details>`
+              ? [
+                  '### Pyrefly Diff',
+                  '<details>',
+                  '<summary>base → PR</summary>',
+                  '',
+                  '```diff',
+                  diff,
+                  '```',
+                  '</details>',
+                ].join('\n')
               : '### Pyrefly Diff\nNo changes detected.';
 
             await github.rest.issues.createComment({

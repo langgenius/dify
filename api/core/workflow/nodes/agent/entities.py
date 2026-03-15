@@ -5,13 +5,15 @@ from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
-from core.workflow.nodes.base.entities import BaseNodeData
+from dify_graph.entities.base_node_data import BaseNodeData
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 
 class AgentNodeData(BaseNodeData):
-    agent_strategy_provider_name: str  # redundancy
+    type: NodeType = BuiltinNodeTypes.AGENT
+    agent_strategy_provider_name: str
     agent_strategy_name: str
-    agent_strategy_label: str  # redundancy
+    agent_strategy_label: str
     memory: MemoryConfig | None = None
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version
