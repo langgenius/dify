@@ -214,6 +214,8 @@ class DatasetService:
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
         summary_index_setting: dict | None = None,
+        project_id: str | None = None,
+        space_type: str = "personal",
     ):
         # check if dataset name already exists
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
@@ -256,6 +258,8 @@ class DatasetService:
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
+        dataset.project_id = project_id
+        dataset.space_type = space_type or "personal"
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
         db.session.add(dataset)

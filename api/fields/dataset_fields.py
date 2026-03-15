@@ -107,6 +107,8 @@ dataset_detail_fields = {
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
     "is_multimodal": fields.Boolean,
+    "project_id": fields.String,
+    "space_type": fields.String,
 }
 
 file_info_fields = {

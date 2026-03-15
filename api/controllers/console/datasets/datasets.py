@@ -135,6 +135,8 @@ class DatasetCreatePayload(BaseModel):
     provider: str = "vendor"
     external_knowledge_api_id: str | None = None
     external_knowledge_id: str | None = None
+    project_id: str | None = None
+    space_type: str | None = "personal"
 
     @field_validator("indexing_technique")
     @classmethod
@@ -164,6 +166,8 @@ class DatasetUpdatePayload(BaseModel):
     external_knowledge_api_id: str | None = None
     icon_info: dict[str, Any] | None = None
     is_multimodal: bool | None = False
+    project_id: str | None = None
+    space_type: str | None = None
 
     @field_validator("indexing_technique")
     @classmethod
@@ -406,6 +410,8 @@ class DatasetListApi(Resource):
                 provider=payload.provider,
                 external_knowledge_api_id=payload.external_knowledge_api_id,
                 external_knowledge_id=payload.external_knowledge_id,
+                project_id=payload.project_id,
+                space_type=payload.space_type or "personal",
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
