@@ -58,15 +58,21 @@ export enum BlockEnum {
   TriggerPlugin = 'trigger-plugin',
 }
 
-export enum ControlMode {
-  Pointer = 'pointer',
-  Hand = 'hand',
-}
-export enum ErrorHandleMode {
-  Terminated = 'terminated',
-  ContinueOnError = 'continue-on-error',
-  RemoveAbnormalOutput = 'remove-abnormal-output',
-}
+export const ControlMode = {
+  Pointer: 'pointer',
+  Hand: 'hand',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type ControlMode = typeof ControlMode[keyof typeof ControlMode]
+export const ErrorHandleMode = {
+  Terminated: 'terminated',
+  ContinueOnError: 'continue-on-error',
+  RemoveAbnormalOutput: 'remove-abnormal-output',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type ErrorHandleMode = typeof ErrorHandleMode[keyof typeof ErrorHandleMode]
 export type Branch = {
   id: string
   name: string

@@ -15,11 +15,14 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-export enum DatasetPermission {
-  onlyMe = 'only_me',
-  allTeamMembers = 'all_team_members',
-  partialMembers = 'partial_members',
-}
+export const DatasetPermission = {
+  onlyMe: 'only_me',
+  allTeamMembers: 'all_team_members',
+  partialMembers: 'partial_members',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type DatasetPermission = typeof DatasetPermission[keyof typeof DatasetPermission]
 
 export enum ChunkingMode {
   text = 'text_model', // General text
@@ -734,16 +737,22 @@ export type SelectedDatasetsMode = {
   inconsistentEmbeddingModel: boolean
 }
 
-export enum WeightedScoreEnum {
-  SemanticFirst = 'semantic_first',
-  KeywordFirst = 'keyword_first',
-  Customized = 'customized',
-}
+export const WeightedScoreEnum = {
+  SemanticFirst: 'semantic_first',
+  KeywordFirst: 'keyword_first',
+  Customized: 'customized',
+} as const
 
-export enum RerankingModeEnum {
-  RerankingModel = 'reranking_model',
-  WeightedScore = 'weighted_score',
-}
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type WeightedScoreEnum = typeof WeightedScoreEnum[keyof typeof WeightedScoreEnum]
+
+export const RerankingModeEnum = {
+  RerankingModel: 'reranking_model',
+  WeightedScore: 'weighted_score',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type RerankingModeEnum = typeof RerankingModeEnum[keyof typeof RerankingModeEnum]
 
 export const DEFAULT_WEIGHTED_SCORE = {
   allHighQualityVectorSearch: {
@@ -787,14 +796,17 @@ export type UpdateDocumentParams = {
 }
 
 // Used in api url
-export enum DocumentActionType {
-  enable = 'enable',
-  disable = 'disable',
-  archive = 'archive',
-  unArchive = 'un_archive',
-  delete = 'delete',
-  summary = 'summary',
-}
+export const DocumentActionType = {
+  enable: 'enable',
+  disable: 'disable',
+  archive: 'archive',
+  unArchive: 'un_archive',
+  delete: 'delete',
+  summary: 'summary',
+} as const
+
+// eslint-disable-next-line ts/no-redeclare -- value-type pair
+export type DocumentActionType = typeof DocumentActionType[keyof typeof DocumentActionType]
 
 export type UpdateDocumentBatchParams = {
   datasetId: string
