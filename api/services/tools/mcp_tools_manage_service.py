@@ -703,7 +703,7 @@ class MCPToolManageService:
             raise ValueError(f"MCP tool {server_url} already exists")
         if "unique_mcp_provider_server_identifier" in error_msg:
             raise ValueError(f"MCP tool {server_identifier} already exists")
-        raise
+        raise error
 
     def _is_valid_url(self, url: str) -> bool:
         """Validate URL format."""
