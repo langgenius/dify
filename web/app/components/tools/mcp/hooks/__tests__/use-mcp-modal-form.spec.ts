@@ -348,6 +348,44 @@ describe('useMCPModalForm', () => {
   })
 
   describe('handleUrlBlur', () => {
+    it('should safely continue when AgentPay URL detection throws', async () => {
+      const { uploadRemoteFileInfo } = await import('@/service/common')
+      vi.mocked(uploadRemoteFileInfo).mockResolvedValueOnce({
+        id: 'file123',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/files/file123/file-preview/icon.png',
+      } as unknown as { id: string, name: string, size: number, mime_type: string, url: string })
+
+      const OriginalURL = globalThis.URL
+      let urlConstructorCalls = 0
+
+      class MockURL extends OriginalURL {
+        constructor(url: string | URL, base?: string | URL) {
+          urlConstructorCalls += 1
+          if (urlConstructorCalls === 2)
+            throw new Error('forced URL parse error')
+          super(url, base)
+        }
+      }
+
+      vi.stubGlobal('URL', MockURL)
+
+      const { result } = renderHook(() => useMCPModalForm())
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://example.com/mcp')
+      })
+
+      expect(result.current.state.name).toBe('')
+      expect(result.current.state.serverIdentifier).toBe('')
+      expect(result.current.state.appIcon.type).toBe('image')
+      expect(result.current.state.isFetchingIcon).toBe(false)
+
+      vi.unstubAllGlobals()
+    })
+
     it('should auto-fill AgentPay defaults when url matches and fields are empty', async () => {
       vi.mocked(await import('@/service/common').then(m => m.uploadRemoteFileInfo)).mockResolvedValueOnce({
         id: 'file123',

@@ -58,6 +58,8 @@ class AgentPayMCPClient:
         # auto mode: prefer HTTP, fallback to stdio.
         try:
             return self._http_call(tool_name, arguments)
+        except AgentPayAuthError:
+            raise
         except Exception:
             return self._stdio_call(tool_name, arguments)
 
