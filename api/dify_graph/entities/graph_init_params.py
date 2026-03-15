@@ -3,8 +3,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-DIFY_RUN_CONTEXT_KEY = "_dify"
-
 
 class GraphInitParams(BaseModel):
     """GraphInitParams encapsulates the configurations and contextual information

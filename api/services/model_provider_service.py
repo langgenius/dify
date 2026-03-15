@@ -1,9 +1,9 @@
 import logging
 
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.model_entities import ModelType, ParameterRule
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
@@ -25,8 +25,9 @@ class ModelProviderService:
     Model Provider Service
     """
 
-    def __init__(self):
-        self.provider_manager = ProviderManager()
+    @staticmethod
+    def _get_provider_manager(tenant_id: str) -> ProviderManager:
+        return create_plugin_provider_manager(tenant_id=tenant_id)
 
     def _get_provider_configuration(self, tenant_id: str, provider: str):
         """
@@ -43,7 +44,7 @@ class ModelProviderService:
             ProviderNotFoundError: If provider doesn't exist
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
         provider_configuration = provider_configurations.get(provider)
 
         if not provider_configuration:
@@ -60,7 +61,7 @@ class ModelProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         provider_responses = []
         for provider_configuration in provider_configurations.values():
@@ -138,13 +139,33 @@ class ModelProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider available models
         return [
             ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
             for model in provider_configurations.get_models(provider=provider)
         ]
+
+    def get_provider_available_credentials(self, tenant_id: str, provider: str):
+        return self._get_provider_manager(tenant_id).get_provider_available_credentials(
+            tenant_id=tenant_id,
+            provider_name=provider,
+        )
+
+    def get_provider_model_available_credentials(
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: str,
+        model: str,
+    ):
+        return self._get_provider_manager(tenant_id).get_provider_model_available_credentials(
+            tenant_id=tenant_id,
+            provider_name=provider,
+            model_type=model_type,
+            model_name=model,
+        )
 
     def get_provider_credential(self, tenant_id: str, provider: str, credential_id: str | None = None) -> dict | None:
         """
@@ -391,7 +412,7 @@ class ModelProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
 
         # Get provider available models
         models = provider_configurations.get_models(model_type=ModelType.value_of(model_type), only_active=True)
@@ -476,7 +497,9 @@ class ModelProviderService:
         model_type_enum = ModelType.value_of(model_type)
 
         try:
-            result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
+            result = self._get_provider_manager(tenant_id).get_default_model(
+                tenant_id=tenant_id, model_type=model_type_enum
+            )
             return (
                 DefaultModelResponse(
                     model=result.model,
@@ -507,7 +530,7 @@ class ModelProviderService:
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-        self.provider_manager.update_default_model_record(
+        self._get_provider_manager(tenant_id).update_default_model_record(
             tenant_id=tenant_id, model_type=model_type_enum, provider=provider, model=model
         )
 
@@ -523,7 +546,7 @@ class ModelProviderService:
         :param lang: language (zh_Hans or en_US)
         :return:
         """
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = create_plugin_model_provider_factory(tenant_id=tenant_id)
         byte_data, mime_type = model_provider_factory.get_provider_icon(provider, icon_type, lang)
 
         return byte_data, mime_type

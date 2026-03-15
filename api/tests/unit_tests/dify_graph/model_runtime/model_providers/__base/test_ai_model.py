@@ -2,9 +2,8 @@ import decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from redis import RedisError
+from pydantic import BaseModel
 
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -17,6 +16,7 @@ from dify_graph.model_runtime.entities.model_entities import (
     PriceConfig,
     PriceType,
 )
+from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -28,46 +28,72 @@ from dify_graph.model_runtime.errors.invoke import (
 from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
+class _ConcreteAIModel(AIModel):
+    model_type = ModelType.LLM
+
+
 class TestAIModel:
     @pytest.fixture
-    def mock_plugin_model_provider(self):
-        return MagicMock(spec=PluginModelProviderEntity)
-
-    @pytest.fixture
-    def ai_model(self, mock_plugin_model_provider):
-        return AIModel(
-            tenant_id="tenant_123",
-            model_type=ModelType.LLM,
-            plugin_id="plugin_123",
-            provider_name="test_provider",
-            plugin_model_provider=mock_plugin_model_provider,
+    def provider_schema(self) -> ProviderEntity:
+        return ProviderEntity(
+            provider="langgenius/openai/openai",
+            provider_name="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         )
 
-    def test_invoke_error_mapping(self, ai_model):
+    @pytest.fixture
+    def model_runtime(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def ai_model(self, provider_schema: ProviderEntity, model_runtime: MagicMock) -> AIModel:
+        return _ConcreteAIModel(
+            provider_schema=provider_schema,
+            model_runtime=model_runtime,
+        )
+
+    def test_init_stores_runtime_state_and_is_not_pydantic_model(
+        self, ai_model: AIModel, provider_schema: ProviderEntity, model_runtime: MagicMock
+    ) -> None:
+        assert ai_model.model_type == ModelType.LLM
+        assert ai_model.provider_schema is provider_schema
+        assert ai_model.model_runtime is model_runtime
+        assert ai_model.provider == "langgenius/openai/openai"
+        assert ai_model.provider_display_name == "OpenAI"
+        assert ai_model.started_at == 0
+        assert not isinstance(ai_model, BaseModel)
+
+    def test_direct_base_class_requires_subclass_model_type(
+        self, provider_schema: ProviderEntity, model_runtime: MagicMock
+    ) -> None:
+        with pytest.raises(TypeError, match="subclasses must define model_type"):
+            AIModel(provider_schema=provider_schema, model_runtime=model_runtime)
+
+    def test_subclass_uses_class_level_model_type(
+        self, provider_schema: ProviderEntity, model_runtime: MagicMock
+    ) -> None:
+        model = _ConcreteAIModel(provider_schema=provider_schema, model_runtime=model_runtime)
+        assert model.model_type == ModelType.LLM
+
+    def test_invoke_error_mapping(self, ai_model: AIModel) -> None:
         mapping = ai_model._invoke_error_mapping
         assert InvokeConnectionError in mapping
         assert InvokeServerUnavailableError in mapping
         assert InvokeRateLimitError in mapping
         assert InvokeAuthorizationError in mapping
         assert InvokeBadRequestError in mapping
-        assert PluginDaemonInnerError in mapping
         assert ValueError in mapping
 
-    def test_transform_invoke_error(self, ai_model):
-        # Case: mapped error (InvokeAuthorizationError)
+    def test_transform_invoke_error(self, ai_model: AIModel) -> None:
         err = Exception("Original error")
+
         with patch.object(AIModel, "_invoke_error_mapping", {InvokeAuthorizationError: [Exception]}):
             transformed = ai_model._transform_invoke_error(err)
             assert isinstance(transformed, InvokeAuthorizationError)
             assert "Incorrect model credentials provided" in str(transformed.description)
 
-        # Case: mapped error (InvokeError subclass)
-        with patch.object(AIModel, "_invoke_error_mapping", {InvokeRateLimitError("Rate limit"): [Exception]}):
-            transformed = ai_model._transform_invoke_error(err)
-            assert isinstance(transformed, InvokeError)
-            assert "[test_provider]" in transformed.description
-
-        # Case: mapped error (not InvokeError)
         class CustomNonInvokeError(Exception):
             pass
 
@@ -75,52 +101,43 @@ class TestAIModel:
             transformed = ai_model._transform_invoke_error(err)
             assert transformed == err
 
-        # Case: unmapped error
-        unmapped_err = Exception("Unmapped")
-        transformed = ai_model._transform_invoke_error(unmapped_err)
+        transformed = ai_model._transform_invoke_error(Exception("Unmapped"))
         assert isinstance(transformed, InvokeError)
-        assert "Error: Unmapped" in transformed.description
+        assert transformed.description == "[OpenAI] Error: Unmapped"
 
-    def test_get_price(self, ai_model):
+    def test_get_price(self, ai_model: AIModel) -> None:
         model_name = "test_model"
         credentials = {"key": "value"}
 
-        # Mock get_model_schema
         mock_schema = MagicMock(spec=AIModelEntity)
         mock_schema.pricing = PriceConfig(
             input=decimal.Decimal("0.002"),
             output=decimal.Decimal("0.004"),
-            unit=decimal.Decimal(1000),  # 1000 tokens per unit
+            unit=decimal.Decimal(1000),
             currency="USD",
         )
 
         with patch.object(AIModel, "get_model_schema", return_value=mock_schema):
-            # Test INPUT
             price_info = ai_model.get_price(model_name, credentials, PriceType.INPUT, 2000)
             assert price_info.unit_price == decimal.Decimal("0.002")
 
-            # Test OUTPUT
             price_info = ai_model.get_price(model_name, credentials, PriceType.OUTPUT, 2000)
             assert price_info.unit_price == decimal.Decimal("0.004")
 
-        # Case: unit_price is None (returns zeroed PriceInfo)
         mock_schema.pricing = None
         with patch.object(AIModel, "get_model_schema", return_value=mock_schema):
             price_info = ai_model.get_price(model_name, credentials, PriceType.INPUT, 1000)
             assert price_info.total_amount == decimal.Decimal("0.0")
 
-    def test_get_price_no_price_config_error(self, ai_model):
-        model_name = "test_model"
-
-        # We need it to be truthy at line 107 and 112 but falsy at line 127.
+    def test_get_price_no_price_config_error(self, ai_model: AIModel) -> None:
         class ChangingPriceConfig:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.input = decimal.Decimal("0.01")
                 self.unit = decimal.Decimal(1)
                 self.currency = "USD"
                 self.called = 0
 
-            def __bool__(self):
+            def __bool__(self) -> bool:
                 self.called += 1
                 return self.called <= 2
 
@@ -128,11 +145,12 @@ class TestAIModel:
         mock_schema.pricing = ChangingPriceConfig()
 
         with patch.object(AIModel, "get_model_schema", return_value=mock_schema):
-            with pytest.raises(ValueError) as excinfo:
-                ai_model.get_price(model_name, {}, PriceType.INPUT, 1000)
-            assert "Price config not found" in str(excinfo.value)
+            with pytest.raises(ValueError, match="Price config not found"):
+                ai_model.get_price("test_model", {}, PriceType.INPUT, 1000)
 
-    def test_get_model_schema_cache_hit(self, ai_model):
+    def test_get_model_schema_delegates_to_runtime(
+        self, ai_model: AIModel, model_runtime: MagicMock, provider_schema: ProviderEntity
+    ) -> None:
         model_name = "test_model"
         credentials = {"api_key": "abc"}
 
@@ -144,120 +162,21 @@ class TestAIModel:
             model_properties={ModelPropertyKey.CONTEXT_SIZE: 1024},
             parameter_rules=[],
         )
+        model_runtime.get_model_schema.return_value = mock_schema
 
-        with patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis:
-            mock_redis.get.return_value = mock_schema.model_dump_json().encode()
+        schema = ai_model.get_model_schema(model_name, credentials)
 
-            schema = ai_model.get_model_schema(model_name, credentials)
-
-            assert schema.model == "test_model"
-            mock_redis.get.assert_called_once()
-
-    def test_get_model_schema_cache_miss(self, ai_model):
-        model_name = "test_model"
-        credentials = {"api_key": "abc"}
-
-        mock_schema = AIModelEntity(
-            model="test_model",
-            label=I18nObject(en_US="Test Model"),
+        assert schema == mock_schema
+        model_runtime.get_model_schema.assert_called_once_with(
+            provider=provider_schema.provider,
             model_type=ModelType.LLM,
-            fetch_from=FetchFrom.PREDEFINED_MODEL,
-            model_properties={ModelPropertyKey.CONTEXT_SIZE: 1024},
-            parameter_rules=[],
+            model=model_name,
+            credentials=credentials,
         )
 
-        with (
-            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
-            patch("core.plugin.impl.model.PluginModelClient") as mock_client,
-        ):
-            mock_redis.get.return_value = None
-            mock_manager = mock_client.return_value
-            mock_manager.get_model_schema.return_value = mock_schema
-
-            schema = ai_model.get_model_schema(model_name, credentials)
-
-            assert schema == mock_schema
-            mock_manager.get_model_schema.assert_called_once()
-            mock_redis.setex.assert_called_once()
-
-    def test_get_model_schema_redis_error(self, ai_model):
-        model_name = "test_model"
-
-        with (
-            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
-            patch("core.plugin.impl.model.PluginModelClient") as mock_client,
-        ):
-            mock_redis.get.side_effect = RedisError("Connection refused")
-            mock_manager = mock_client.return_value
-            mock_manager.get_model_schema.return_value = None
-
-            schema = ai_model.get_model_schema(model_name, {})
-
-            assert schema is None
-            mock_manager.get_model_schema.assert_called_once()
-
-    def test_get_model_schema_validation_error(self, ai_model):
-        model_name = "test_model"
-
-        with (
-            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
-            patch("core.plugin.impl.model.PluginModelClient") as mock_client,
-        ):
-            mock_redis.get.return_value = b"invalid json"
-            mock_manager = mock_client.return_value
-            mock_manager.get_model_schema.return_value = None
-
-            # This should trigger ValidationError at line 166 and go to delete()
-            schema = ai_model.get_model_schema(model_name, {})
-
-            assert schema is None
-            mock_redis.delete.assert_called()
-
-    def test_get_model_schema_redis_delete_error(self, ai_model):
-        model_name = "test_model"
-
-        with (
-            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
-            patch("core.plugin.impl.model.PluginModelClient") as mock_client,
-        ):
-            mock_redis.get.return_value = b'{"invalid": "schema"}'
-            mock_redis.delete.side_effect = RedisError("Delete failed")
-            mock_manager = mock_client.return_value
-            mock_manager.get_model_schema.return_value = None
-
-            schema = ai_model.get_model_schema(model_name, {})
-
-            assert schema is None
-            mock_redis.delete.assert_called()
-
-    def test_get_model_schema_redis_setex_error(self, ai_model):
-        model_name = "test_model"
-        mock_schema = AIModelEntity(
-            model="test_model",
-            label=I18nObject(en_US="Test Model"),
-            model_type=ModelType.LLM,
-            fetch_from=FetchFrom.PREDEFINED_MODEL,
-            model_properties={ModelPropertyKey.CONTEXT_SIZE: 1024},
-            parameter_rules=[],
-        )
-
-        with (
-            patch("dify_graph.model_runtime.model_providers.__base.ai_model.redis_client") as mock_redis,
-            patch("core.plugin.impl.model.PluginModelClient") as mock_client,
-        ):
-            mock_redis.get.return_value = None
-            mock_redis.setex.side_effect = RuntimeError("Setex failed")
-            mock_manager = mock_client.return_value
-            mock_manager.get_model_schema.return_value = mock_schema
-
-            schema = ai_model.get_model_schema(model_name, {})
-
-            assert schema == mock_schema
-            mock_redis.setex.assert_called()
-
-    def test_get_customizable_model_schema_from_credentials_template_mapping_value_error(self, ai_model):
-        model_name = "test_model"
-
+    def test_get_customizable_model_schema_from_credentials_template_mapping_value_error(
+        self, ai_model: AIModel
+    ) -> None:
         mock_schema = AIModelEntity(
             model="test_model",
             label=I18nObject(en_US="Test Model"),
@@ -275,12 +194,11 @@ class TestAIModel:
         )
 
         with patch.object(AIModel, "get_customizable_model_schema", return_value=mock_schema):
-            schema = ai_model.get_customizable_model_schema_from_credentials(model_name, {})
+            schema = ai_model.get_customizable_model_schema_from_credentials("test_model", {})
+            assert schema is not None
             assert schema.parameter_rules[0].use_template == "invalid_template_name"
 
-    def test_get_customizable_model_schema_from_credentials(self, ai_model):
-        model_name = "test_model"
-
+    def test_get_customizable_model_schema_from_credentials(self, ai_model: AIModel) -> None:
         mock_schema = AIModelEntity(
             model="test_model",
             label=I18nObject(en_US="Test Model"),
@@ -310,27 +228,27 @@ class TestAIModel:
         )
 
         with patch.object(AIModel, "get_customizable_model_schema", return_value=mock_schema):
-            schema = ai_model.get_customizable_model_schema_from_credentials(model_name, {})
+            schema = ai_model.get_customizable_model_schema_from_credentials("test_model", {})
 
+            assert schema is not None
             assert schema.parameter_rules[0].max == 1.0
+            assert schema.parameter_rules[1].help is not None
             assert schema.parameter_rules[1].help.en_US != ""
+            assert schema.parameter_rules[2].help is not None
             assert schema.parameter_rules[2].help.zh_Hans != ""
             assert schema.parameter_rules[3].use_template is None
 
-    def test_get_customizable_model_schema_from_credentials_none(self, ai_model):
+    def test_get_customizable_model_schema_from_credentials_none(self, ai_model: AIModel) -> None:
         with patch.object(AIModel, "get_customizable_model_schema", return_value=None):
             schema = ai_model.get_customizable_model_schema_from_credentials("model", {})
             assert schema is None
 
-    def test_get_customizable_model_schema_default(self, ai_model):
+    def test_get_customizable_model_schema_default(self, ai_model: AIModel) -> None:
         assert ai_model.get_customizable_model_schema("model", {}) is None
 
-    def test_get_default_parameter_rule_variable_map(self, ai_model):
-        # Valid
-        res = ai_model._get_default_parameter_rule_variable_map(DefaultParameterName.TEMPERATURE)
-        assert res["default"] == 0.0
+    def test_get_default_parameter_rule_variable_map(self, ai_model: AIModel) -> None:
+        result = ai_model._get_default_parameter_rule_variable_map(DefaultParameterName.TEMPERATURE)
+        assert result["default"] == 0.0
 
-        # Invalid
-        with pytest.raises(Exception) as excinfo:
+        with pytest.raises(Exception, match="Invalid model parameter rule name"):
             ai_model._get_default_parameter_rule_variable_map("invalid_name")
-        assert "Invalid model parameter rule name" in str(excinfo.value)

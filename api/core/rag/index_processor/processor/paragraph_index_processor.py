@@ -12,7 +12,7 @@ from core.app.llm import deduct_llm_quota
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -409,7 +409,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # If default prompt doesn't have {language} placeholder, use it as-is
                 pass
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id, model_provider_name, ModelType.LLM
         )

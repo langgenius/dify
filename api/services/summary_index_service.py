@@ -189,7 +189,7 @@ class SummaryIndexService:
         # Calculate embedding tokens for summary (for logging and statistics)
         embedding_tokens = 0
         try:
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
             embedding_model = model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,

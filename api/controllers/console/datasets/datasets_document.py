@@ -447,7 +447,7 @@ class DatasetInitApi(Resource):
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=knowledge_config.embedding_model_provider,

@@ -1,8 +1,5 @@
-from pydantic import ConfigDict
-
-from core.entities.embedding_type import EmbeddingInputType
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
 
 
@@ -13,16 +10,12 @@ class TextEmbeddingModel(AIModel):
 
     model_type: ModelType = ModelType.TEXT_EMBEDDING
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
-
     def invoke(
         self,
         model: str,
         credentials: dict,
         texts: list[str] | None = None,
         multimodel_documents: list[dict] | None = None,
-        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> EmbeddingResult:
         """
@@ -32,31 +25,21 @@ class TextEmbeddingModel(AIModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param files: files to embed
-        :param user: unique user id
         :param input_type: input type
         :return: embeddings result
         """
-        from core.plugin.impl.model import PluginModelClient
-
         try:
-            plugin_model_manager = PluginModelClient()
             if texts:
-                return plugin_model_manager.invoke_text_embedding(
-                    tenant_id=self.tenant_id,
-                    user_id=user or "unknown",
-                    plugin_id=self.plugin_id,
-                    provider=self.provider_name,
+                return self.model_runtime.invoke_text_embedding(
+                    provider=self.provider,
                     model=model,
                     credentials=credentials,
                     texts=texts,
                     input_type=input_type,
                 )
             if multimodel_documents:
-                return plugin_model_manager.invoke_multimodal_embedding(
-                    tenant_id=self.tenant_id,
-                    user_id=user or "unknown",
-                    plugin_id=self.plugin_id,
-                    provider=self.provider_name,
+                return self.model_runtime.invoke_multimodal_embedding(
+                    provider=self.provider,
                     model=model,
                     credentials=credentials,
                     documents=multimodel_documents,
@@ -75,14 +58,8 @@ class TextEmbeddingModel(AIModel):
         :param texts: texts to embed
         :return:
         """
-        from core.plugin.impl.model import PluginModelClient
-
-        plugin_model_manager = PluginModelClient()
-        return plugin_model_manager.get_text_embedding_num_tokens(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=self.plugin_id,
-            provider=self.provider_name,
+        return self.model_runtime.get_text_embedding_num_tokens(
+            provider=self.provider,
             model=model,
             credentials=credentials,
             texts=texts,

@@ -3835,7 +3835,7 @@ class TestDatasetRetrievalAdditionalHelpers:
         model_instance.model_type_instance.get_model_schema.return_value = Mock()
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_manager,
             patch("core.rag.retrieval.dataset_retrieval.ModelConfigWithCredentialsEntity") as mock_cfg_entity,
         ):
             mock_manager.return_value.get_model_instance.return_value = model_instance
@@ -4221,7 +4221,7 @@ class TestKnowledgeRetrievalCoverage:
         with (
             patch.object(retrieval, "_check_knowledge_rate_limit"),
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="dataset-1")]),
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
             with pytest.raises(Exception) as exc_info:
@@ -4279,7 +4279,7 @@ class TestRetrieveCoverage:
         )
         model_config = self._build_model_config()
         model_config.provider_model_bundle.model_type_instance.get_model_schema.return_value = None
-        with patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager:
+        with patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager:
             mock_model_manager.return_value.get_model_instance.return_value = Mock()
             result = retrieval.retrieve(
                 app_id="app-1",
@@ -4311,7 +4311,7 @@ class TestRetrieveCoverage:
             extra={"title": "External", "dataset_name": "External DS"},
         )
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
             patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             patch.object(retrieval, "single_retrieve", return_value=[external_doc]),
@@ -4401,7 +4401,7 @@ class TestRetrieveCoverage:
         hit_callback = Mock()
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.ModelManager") as mock_model_manager,
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
             patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             patch.object(retrieval, "multiple_retrieve", return_value=[external_doc, dify_doc]),

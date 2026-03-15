@@ -521,7 +521,7 @@ class TestVectorService:
         assert call_args[1]["keywords_list"] == keywords_list
 
     @patch("services.vector_service.VectorService.generate_child_chunks")
-    @patch("services.vector_service.ModelManager")
+    @patch("services.vector_service.ModelManager.for_tenant")
     @patch("services.vector_service.db")
     def test_create_segments_vector_parent_child_indexing(
         self, mock_db, mock_model_manager, mock_generate_child_chunks
@@ -1754,7 +1754,7 @@ class TestVector:
     # ========================================================================
 
     @patch("core.rag.datasource.vdb.vector_factory.CacheEmbedding")
-    @patch("core.rag.datasource.vdb.vector_factory.ModelManager")
+    @patch("core.rag.datasource.vdb.vector_factory.ModelManager.for_tenant")
     @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
     def test_vector_get_embeddings(self, mock_init_vector, mock_model_manager, mock_cache_embedding):
         """

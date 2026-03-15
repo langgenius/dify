@@ -37,7 +37,7 @@ class ModelInvocationUtils:
         """
         get max llm context tokens of the model
         """
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -65,7 +65,7 @@ class ModelInvocationUtils:
         """
 
         # get model instance
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
 
         if not model_instance:
@@ -92,7 +92,7 @@ class ModelInvocationUtils:
         """
 
         # get model manager
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         # get model instance
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
@@ -136,7 +136,6 @@ class ModelInvocationUtils:
                 tools=[],
                 stop=[],
                 stream=False,
-                user=user_id,
                 callbacks=[],
             )
         except InvokeRateLimitError as e:

@@ -1,6 +1,7 @@
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
@@ -50,8 +51,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         """
         Run the datasource node
         """
-
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])

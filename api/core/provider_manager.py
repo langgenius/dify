@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import contextlib
 import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -53,15 +55,22 @@ from models.provider import (
 from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
+if TYPE_CHECKING:
+    from dify_graph.model_runtime.runtime import ModelRuntime
+
 
 class ProviderManager:
     """
-    ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
+    ProviderManager manages tenant-scoped model provider configuration.
+
+    The runtime adapter is injected by the composition layer so this class stays
+    focused on configuration assembly instead of constructing plugin runtimes.
     """
 
-    def __init__(self):
+    def __init__(self, model_runtime: ModelRuntime):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
+        self._model_runtime = model_runtime
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -127,7 +136,7 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -319,7 +328,7 @@ class ProviderManager:
         if not default_model:
             return None
 
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
         provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(

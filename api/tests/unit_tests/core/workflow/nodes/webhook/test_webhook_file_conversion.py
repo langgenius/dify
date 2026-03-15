@@ -8,7 +8,7 @@ when passing files to downstream LLM nodes.
 
 from unittest.mock import Mock, patch
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -16,7 +16,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool

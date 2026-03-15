@@ -19,6 +19,7 @@ from core.entities.provider_entities import (
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -27,7 +28,6 @@ from dify_graph.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from dify_graph.model_runtime.model_providers.__base.ai_model import AIModel
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.provider import (
@@ -342,7 +342,7 @@ class ProviderConfiguration(BaseModel):
                                 tenant_id=self.tenant_id, token=original_credentials[key]
                             )
 
-            model_provider_factory = ModelProviderFactory(self.tenant_id)
+            model_provider_factory = create_plugin_model_provider_factory(tenant_id=self.tenant_id)
             validated_credentials = model_provider_factory.provider_credentials_validate(
                 provider=self.provider.provider, credentials=credentials
             )
@@ -889,7 +889,7 @@ class ProviderConfiguration(BaseModel):
                                 tenant_id=self.tenant_id, token=original_credentials[key]
                             )
 
-            model_provider_factory = ModelProviderFactory(self.tenant_id)
+            model_provider_factory = create_plugin_model_provider_factory(tenant_id=self.tenant_id)
             validated_credentials = model_provider_factory.model_credentials_validate(
                 provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
             )
@@ -1375,7 +1375,7 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_provider_factory = ModelProviderFactory(self.tenant_id)
+        model_provider_factory = create_plugin_model_provider_factory(tenant_id=self.tenant_id)
 
         # Get model instance of LLM
         return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
@@ -1384,7 +1384,7 @@ class ProviderConfiguration(BaseModel):
         """
         Get model schema
         """
-        model_provider_factory = ModelProviderFactory(self.tenant_id)
+        model_provider_factory = create_plugin_model_provider_factory(tenant_id=self.tenant_id)
         return model_provider_factory.get_model_schema(
             provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
         )
@@ -1486,7 +1486,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        model_provider_factory = ModelProviderFactory(self.tenant_id)
+        model_provider_factory = create_plugin_model_provider_factory(tenant_id=self.tenant_id)
         provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
 
         model_types: list[ModelType] = []

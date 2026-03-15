@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
 from core.model_manager import ModelInstance
+from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -20,16 +21,15 @@ from dify_graph.nodes.code import CodeNode
 from dify_graph.nodes.document_extractor import DocumentExtractorNode
 from dify_graph.nodes.http_request import HttpRequestNode
 from dify_graph.nodes.llm import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
+from dify_graph.nodes.llm.file_saver import LLMFileSaver
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
-from dify_graph.nodes.protocols import HttpClientProtocol, ToolFileManagerProtocol
+from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 from dify_graph.nodes.question_classifier import QuestionClassifierNode
 from dify_graph.nodes.template_transform import TemplateTransformNode
-from dify_graph.nodes.template_transform.template_renderer import (
-    Jinja2TemplateRenderer,
-    TemplateRenderError,
-)
 from dify_graph.nodes.tool import ToolNode
+from dify_graph.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
@@ -66,20 +66,26 @@ class MockNodeMixin:
             kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
             kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
             kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
+            kwargs.setdefault("prompt_message_serializer", MagicMock(spec=PromptMessageSerializerProtocol))
             # LLM-like nodes now require an http_client; provide a mock by default for tests.
             kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
-            if isinstance(self, (LLMNode, QuestionClassifierNode)):
-                kwargs.setdefault("template_renderer", MagicMock(spec=TemplateRenderer))
+
+        if isinstance(self, (LLMNode, QuestionClassifierNode)):
+            kwargs.setdefault("llm_file_saver", MagicMock(spec=LLMFileSaver))
+
+        if isinstance(self, HttpRequestNode):
+            kwargs.setdefault("file_reference_factory", MagicMock(spec=FileReferenceFactoryProtocol))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
-            kwargs.setdefault("template_renderer", _TestJinja2Renderer())
+            kwargs.setdefault("jinja2_template_renderer", _TestJinja2Renderer())
 
         # Provide default tool_file_manager_factory for ToolNode subclasses
         from dify_graph.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager_factory", MagicMock(spec=ToolFileManagerProtocol))
+            kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()

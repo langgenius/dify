@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -159,7 +160,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
-        dify_ctx = self.require_dify_context()
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")

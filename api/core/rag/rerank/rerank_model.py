@@ -16,6 +16,18 @@ class RerankModelRunner(BaseRerankRunner):
     def __init__(self, rerank_model_instance: ModelInstance):
         self.rerank_model_instance = rerank_model_instance
 
+    def _get_invoke_model_instance(self, user: str | None) -> ModelInstance:
+        if user is None:
+            return self.rerank_model_instance
+
+        tenant_id = self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
+        return ModelManager.for_tenant(tenant_id=tenant_id, user_id=user).get_model_instance(
+            tenant_id=tenant_id,
+            provider=self.rerank_model_instance.provider,
+            model_type=ModelType.RERANK,
+            model=self.rerank_model_instance.model_name,
+        )
+
     def run(
         self,
         query: str,
@@ -34,7 +46,9 @@ class RerankModelRunner(BaseRerankRunner):
         :param user: unique user id if needed
         :return:
         """
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(
+            tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
+        )
         is_support_vision = model_manager.check_model_support_vision(
             tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
             provider=self.rerank_model_instance.provider,
@@ -102,8 +116,8 @@ class RerankModelRunner(BaseRerankRunner):
                     docs.append(document.page_content)
                     unique_documents.append(document)
 
-        rerank_result = self.rerank_model_instance.invoke_rerank(
-            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
+        rerank_result = self._get_invoke_model_instance(user).invoke_rerank(
+            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n
         )
         return rerank_result, unique_documents
 
@@ -180,8 +194,8 @@ class RerankModelRunner(BaseRerankRunner):
                     "content": file_query,
                     "content_type": DocType.IMAGE,
                 }
-                rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
+                rerank_result = self._get_invoke_model_instance(user).invoke_multimodal_rerank(
+                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n
                 )
                 return rerank_result, unique_documents
             else:

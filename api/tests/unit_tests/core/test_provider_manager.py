@@ -1,12 +1,17 @@
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.common_entities import I18nObject
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting
+
+
+def _build_provider_manager(mocker: MockerFixture) -> ProviderManager:
+    return ProviderManager(model_runtime=mocker.Mock())
 
 
 @pytest.fixture
@@ -28,7 +33,7 @@ def mock_provider_entity():
     return mock_entity
 
 
-def test__to_model_settings(mock_provider_entity):
+def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -69,7 +74,7 @@ def test__to_model_settings(mock_provider_entity):
         "core.helper.model_provider_cache.ProviderCredentialsCache.get",
         return_value={"openai_api_key": "fake_key"},
     ):
-        provider_manager = ProviderManager()
+        provider_manager = _build_provider_manager(mocker)
 
         # Running the method
         result = provider_manager._to_model_settings(
@@ -89,7 +94,7 @@ def test__to_model_settings(mock_provider_entity):
     assert result[0].load_balancing_configs[1].name == "first"
 
 
-def test__to_model_settings_only_one_lb(mock_provider_entity):
+def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
 
     ps = ProviderModelSetting(
@@ -119,7 +124,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity):
         "core.helper.model_provider_cache.ProviderCredentialsCache.get",
         return_value={"openai_api_key": "fake_key"},
     ):
-        provider_manager = ProviderManager()
+        provider_manager = _build_provider_manager(mocker)
 
         # Running the method
         result = provider_manager._to_model_settings(
@@ -137,7 +142,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity):
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test__to_model_settings_lb_disabled(mock_provider_entity):
+def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -176,7 +181,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity):
         "core.helper.model_provider_cache.ProviderCredentialsCache.get",
         return_value={"openai_api_key": "fake_key"},
     ):
-        provider_manager = ProviderManager()
+        provider_manager = _build_provider_manager(mocker)
 
         # Running the method
         result = provider_manager._to_model_settings(
@@ -194,7 +199,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity):
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test_get_default_model_uses_first_available_active_model():
+def test_get_default_model_uses_first_available_active_model(mocker: MockerFixture):
     mock_session = Mock()
     mock_session.scalar.return_value = None
 
@@ -204,7 +209,7 @@ def test_get_default_model_uses_first_available_active_model():
         Mock(model="gpt-4", provider=Mock(provider="openai")),
     ]
 
-    manager = ProviderManager()
+    manager = _build_provider_manager(mocker)
     with (
         patch("core.provider_manager.db.session", mock_session),
         patch.object(manager, "get_configurations", return_value=provider_configurations),

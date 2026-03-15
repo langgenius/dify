@@ -25,7 +25,7 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
@@ -330,7 +330,7 @@ class DatasetListApi(Resource):
             )
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -444,7 +444,7 @@ class DatasetApi(Resource):
             data.update({"partial_member_list": part_users_list})
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)

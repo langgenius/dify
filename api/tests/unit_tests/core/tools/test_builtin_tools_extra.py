@@ -186,13 +186,19 @@ def test_asr_invalid_file():
 
 def test_asr_valid_file_invocation(monkeypatch):
     asr = _build_builtin_tool(ASRTool)
-    model_instance = type("M", (), {"invoke_speech2text": lambda self, file, user: "transcript"})()
+    model_instance = type("M", (), {"invoke_speech2text": lambda self, file: "transcript"})()
     model_manager = type("Mgr", (), {"get_model_instance": lambda *a, **k: model_instance})()
     monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.download", lambda file: b"audio-bytes")
-    monkeypatch.setattr("core.tools.builtin_tool.providers.audio.tools.asr.ModelManager", lambda: model_manager)
+    captured_manager_kwargs = {}
+
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.audio.tools.asr.ModelManager.for_tenant",
+        lambda **kwargs: captured_manager_kwargs.update(kwargs) or model_manager,
+    )
     audio_file = SimpleNamespace(type=FileType.AUDIO)
     ok = list(asr.invoke(user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"}))[0].message.text
     assert ok == "transcript"
+    assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 
 def test_asr_available_models_and_runtime_parameters(monkeypatch):
@@ -208,6 +214,7 @@ def test_asr_available_models_and_runtime_parameters(monkeypatch):
 
 def test_tts_invoke_returns_messages(monkeypatch):
     tts = _build_builtin_tool(TTSTool)
+    captured_manager_kwargs = {}
     voices_model_instance = type(
         "TTSM",
         (),
@@ -217,11 +224,15 @@ def test_tts_invoke_returns_messages(monkeypatch):
         },
     )()
     monkeypatch.setattr(
-        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("M", (), {"get_model_instance": lambda *a, **k: voices_model_instance})(),
+        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager.for_tenant",
+        lambda **kwargs: (
+            captured_manager_kwargs.update(kwargs)
+            or type("M", (), {"get_model_instance": lambda *a, **k: voices_model_instance})()
+        ),
     )
     messages = list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.BLOB]
+    assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 
 def test_tts_get_available_models_requires_runtime():
@@ -254,8 +265,8 @@ def test_tts_tool_raises_when_voice_unavailable(monkeypatch, voices):
         },
     )()
     monkeypatch.setattr(
-        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager",
-        lambda: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voice})(),
+        "core.tools.builtin_tool.providers.audio.tools.tts.ModelManager.for_tenant",
+        lambda **_: type("Manager", (), {"get_model_instance": lambda *args, **kwargs: model_without_voice})(),
     )
     with pytest.raises(ValueError, match="no voice available"):
         list(tts.invoke(user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))

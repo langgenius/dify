@@ -33,20 +33,6 @@ ignore_imports =
     # TODO(QuantumGhost): fix the import violation later
     dify_graph.entities.pause_reason -> dify_graph.nodes.human_input.entities
 
-[importlinter:contract:workflow-infrastructure-dependencies]
-name = Workflow Infrastructure Dependencies
-type = forbidden
-source_modules =
-    dify_graph
-forbidden_modules =
-    extensions.ext_database
-    extensions.ext_redis
-allow_indirect_imports = True
-ignore_imports =
-    dify_graph.nodes.llm.node -> extensions.ext_database
-    dify_graph.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
-    dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
-
 [importlinter:contract:workflow-external-imports]
 name = Workflow External Imports
 type = forbidden
@@ -89,45 +75,7 @@ forbidden_modules =
     core.trigger
     core.variables
 ignore_imports =
-    dify_graph.nodes.llm.llm_utils -> core.model_manager
-    dify_graph.nodes.llm.protocols -> core.model_manager
     dify_graph.nodes.llm.llm_utils -> dify_graph.model_runtime.model_providers.__base.large_language_model
-    dify_graph.nodes.llm.node -> core.tools.signature
-    dify_graph.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
-    dify_graph.nodes.tool.tool_node -> core.tools.tool_engine
-    dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> dify_graph.model_runtime.model_providers.__base.large_language_model
-    dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
-    dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
-    dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
-    dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
-    dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
-    dify_graph.nodes.llm.node -> core.model_manager
-    dify_graph.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
-    dify_graph.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
-    dify_graph.nodes.llm.node -> core.prompt.utils.prompt_message_util
-    dify_graph.nodes.parameter_extractor.entities -> core.prompt.entities.advanced_prompt_entities
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.entities.advanced_prompt_entities
-    dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.utils.prompt_message_util
-    dify_graph.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
-    dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
-    dify_graph.nodes.llm.node -> models.dataset
-    dify_graph.nodes.llm.file_saver -> core.tools.signature
-    dify_graph.nodes.llm.file_saver -> core.tools.tool_file_manager
-    dify_graph.nodes.tool.tool_node -> core.tools.errors
-    dify_graph.nodes.llm.node -> extensions.ext_database
-    dify_graph.nodes.llm.node -> models.model
-    dify_graph.nodes.tool.tool_node -> services
-    dify_graph.model_runtime.model_providers.__base.ai_model -> configs
-    dify_graph.model_runtime.model_providers.__base.ai_model -> extensions.ext_redis
-    dify_graph.model_runtime.model_providers.__base.large_language_model -> configs
-    dify_graph.model_runtime.model_providers.__base.text_embedding_model -> core.entities.embedding_type
-    dify_graph.model_runtime.model_providers.model_provider_factory -> configs
-    dify_graph.model_runtime.model_providers.model_provider_factory -> extensions.ext_redis
-    dify_graph.model_runtime.model_providers.model_provider_factory -> models.provider_ids
 
 [importlinter:contract:rsc]
 name = RSC

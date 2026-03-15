@@ -5,11 +5,17 @@ from unittest import mock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
-from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory, fetch_model_config
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.llm.model_access import (
+    DifyCredentialsProvider,
+    DifyModelFactory,
+    build_dify_model_access,
+    fetch_model_config,
+)
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities import GraphInitParams
 from dify_graph.file import File, FileTransferMethod, FileType
@@ -34,8 +40,9 @@ from dify_graph.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
+from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
@@ -107,7 +114,7 @@ def llm_node(
     mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
+    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
     node_config = {
         "id": "1",
         "data": llm_node_data.model_dump(),
@@ -122,7 +129,7 @@ def llm_node(
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
-        template_renderer=mock_template_renderer,
+        prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
     )
     return node
@@ -132,28 +139,31 @@ def llm_node(
 def model_config(monkeypatch):
     from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
 
-    def mock_plugin_model_providers(_self):
-        providers = MockModelClass().fetch_model_providers("test")
-        for provider in providers:
-            provider.declaration.provider = f"{provider.plugin_id}/{provider.declaration.provider}"
+    def mock_model_providers(_self):
+        providers = []
+        for provider in MockModelClass().fetch_model_providers("test"):
+            provider_schema = provider.declaration.model_copy(deep=True)
+            provider_schema.provider = f"{provider.plugin_id}/{provider.provider}"
+            provider_schema.provider_name = provider.provider
+            providers.append(provider_schema)
         return providers
 
     monkeypatch.setattr(
         ModelProviderFactory,
-        "get_plugin_model_providers",
-        mock_plugin_model_providers,
+        "get_model_providers",
+        mock_model_providers,
     )
 
     # Create actual provider and model type instances
-    model_provider_factory = ModelProviderFactory(tenant_id="test")
-    provider_instance = model_provider_factory.get_plugin_model_provider("openai")
+    model_provider_factory = ModelProviderFactory(model_runtime=create_plugin_model_runtime(tenant_id="test"))
+    provider_instance = model_provider_factory.get_model_provider("openai")
     model_type_instance = model_provider_factory.get_model_type_instance("openai", ModelType.LLM)
 
     # Create a ProviderModelBundle
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
             tenant_id="1",
-            provider=provider_instance.declaration,
+            provider=provider_instance,
             preferred_provider_type=ProviderType.CUSTOM,
             using_provider_type=ProviderType.CUSTOM,
             system_configuration=SystemConfiguration(enabled=False),
@@ -181,13 +191,18 @@ def model_config(monkeypatch):
     )
 
 
-def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsEntity):
+def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_config: ModelConfigWithCredentialsEntity):
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
 
     provider_model_bundle = model_config.provider_model_bundle
     model_type_instance = provider_model_bundle.model_type_instance
     provider_model = mock.MagicMock()
+    completion_params = {
+        "temperature": 0.7,
+        "max_tokens": 256,
+        "stop": ["Observation:", "Human:"],
+    }
 
     model_instance = mock.MagicMock(
         model_type_instance=model_type_instance,
@@ -208,12 +223,36 @@ def test_fetch_model_config_uses_ports(model_config: ModelConfigWithCredentialsE
             model_type_instance.__class__, "get_model_schema", return_value=model_config.model_schema, autospec=True
         ),
     ):
-        fetch_model_config(
-            node_data_model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
+        hydrated_model_instance, model_config_with_credentials = fetch_model_config(
+            node_data_model=ModelConfig(
+                provider="openai",
+                name="gpt-3.5-turbo",
+                mode="chat",
+                completion_params=completion_params,
+            ),
             credentials_provider=mock_credentials_provider,
             model_factory=mock_model_factory,
         )
 
+    assert hydrated_model_instance is model_instance
+    assert hydrated_model_instance.provider == "openai"
+    assert hydrated_model_instance.model_name == "gpt-3.5-turbo"
+    assert hydrated_model_instance.credentials == {"api_key": "test"}
+    assert hydrated_model_instance.parameters == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+    }
+    assert hydrated_model_instance.stop == ("Observation:", "Human:")
+    assert model_config_with_credentials.parameters == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+    }
+    assert model_config_with_credentials.stop == ["Observation:", "Human:"]
+    assert completion_params == {
+        "temperature": 0.7,
+        "max_tokens": 256,
+        "stop": ["Observation:", "Human:"],
+    }
     mock_credentials_provider.fetch.assert_called_once_with("openai", "gpt-3.5-turbo")
     mock_model_factory.init_model_instance.assert_called_once_with("openai", "gpt-3.5-turbo")
     provider_model.raise_for_status.assert_called_once()
@@ -230,12 +269,20 @@ def test_dify_model_access_adapters_call_managers():
     mock_provider_configuration.get_provider_model.return_value = mock_provider_model
     mock_provider_configuration.get_current_credentials.return_value = {"api_key": "test"}
 
-    credentials_provider = DifyCredentialsProvider(
+    run_context = DifyRunContext(
         tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    credentials_provider = DifyCredentialsProvider(
+        run_context=run_context,
         provider_manager=mock_provider_manager,
     )
     model_factory = DifyModelFactory(
-        tenant_id="tenant",
+        run_context=run_context,
         model_manager=mock_model_manager,
     )
 
@@ -255,12 +302,13 @@ def test_dify_model_access_adapters_call_managers():
         model="gpt-3.5-turbo",
     )
     mock_provider_model.raise_for_status.assert_called_once()
-    mock_model_manager.get_model_instance.assert_called_once_with(
-        tenant_id="tenant",
-        provider="openai",
-        model_type=ModelType.LLM,
-        model="gpt-3.5-turbo",
-    )
+    mock_model_manager.get_model_instance.assert_called_once()
+    assert mock_model_manager.get_model_instance.call_args.kwargs == {
+        "tenant_id": "tenant",
+        "provider": "openai",
+        "model_type": ModelType.LLM,
+        "model": "gpt-3.5-turbo",
+    }
 
 
 def test_fetch_files_with_file_segment():
@@ -592,33 +640,6 @@ def test_handle_list_messages_basic(llm_node):
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
 
 
-def test_handle_list_messages_jinja2_uses_template_renderer(llm_node):
-    llm_node._template_renderer.render_jinja2.return_value = "Hello, world"
-    messages = [
-        LLMNodeChatModelMessage(
-            text="",
-            jinja2_text="Hello, {{ name }}",
-            role=PromptMessageRole.USER,
-            edition_type="jinja2",
-        )
-    ]
-
-    result = llm_node.handle_list_messages(
-        messages=messages,
-        context=None,
-        jinja2_variables=[],
-        variable_pool=llm_node.graph_runtime_state.variable_pool,
-        vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-        template_renderer=llm_node._template_renderer,
-    )
-
-    assert result == [UserPromptMessage(content=[TextPromptMessageContent(data="Hello, world")])]
-    llm_node._template_renderer.render_jinja2.assert_called_once_with(
-        template="Hello, {{ name }}",
-        inputs={},
-    )
-
-
 def test_handle_memory_completion_mode_uses_prompt_message_interface():
     memory = mock.MagicMock(spec=MockTokenBufferMemory)
     memory.get_history_prompt_messages.return_value = [
@@ -642,8 +663,8 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         window=MemoryConfig.WindowConfig(enabled=True, size=3),
     )
 
-    with mock.patch("dify_graph.nodes.llm.llm_utils.calculate_rest_token", return_value=2000) as mock_rest_token:
-        memory_text = llm_utils.handle_memory_completion_mode(
+    with mock.patch("dify_graph.nodes.llm.node._calculate_rest_token", return_value=2000) as mock_rest_token:
+        memory_text = _handle_memory_completion_mode(
             memory=memory,
             memory_config=memory_config,
             model_instance=model_instance,
@@ -659,7 +680,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_template_renderer = mock.MagicMock(spec=TemplateRenderer)
+    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
     node_config = {
         "id": "1",
         "data": llm_node_data.model_dump(),
@@ -674,7 +695,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         model_factory=mock_model_factory,
         model_instance=mock.MagicMock(spec=ModelInstance),
         llm_file_saver=mock_file_saver,
-        template_renderer=mock_template_renderer,
+        prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
     )
     return node, mock_file_saver
@@ -906,3 +927,42 @@ class TestReasoningFormat:
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
+
+
+def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected():
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    with mock.patch("core.app.llm.model_access.create_plugin_provider_manager") as mock_provider_manager_factory:
+        DifyCredentialsProvider(run_context=run_context, provider_manager=mock.MagicMock())
+        DifyModelFactory(run_context=run_context, model_manager=mock.MagicMock())
+
+    mock_provider_manager_factory.assert_not_called()
+
+
+def test_build_dify_model_access_binds_run_context_user_id_once():
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    with mock.patch("core.app.llm.model_access.create_plugin_provider_manager") as mock_provider_manager:
+        build_dify_model_access(run_context)
+
+    mock_provider_manager.assert_called_once_with(tenant_id="tenant", user_id="user")
+
+
+def test_dify_model_access_requires_run_context_argument():
+    with pytest.raises(TypeError):
+        DifyCredentialsProvider()
+
+    with pytest.raises(TypeError):
+        DifyModelFactory()

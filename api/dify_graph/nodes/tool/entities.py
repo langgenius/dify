@@ -1,11 +1,25 @@
+from enum import StrEnum, auto
 from typing import Any, Literal, Union
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from core.tools.entities.tool_entities import ToolProviderType
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, NodeType
+
+
+class ToolProviderType(StrEnum):
+    """
+    Graph-owned enum for persisted tool provider kinds.
+    """
+
+    PLUGIN = auto()
+    BUILT_IN = "builtin"
+    WORKFLOW = auto()
+    API = auto()
+    APP = auto()
+    DATASET_RETRIEVAL = "dataset-retrieval"
+    MCP = auto()
 
 
 class ToolEntity(BaseModel):

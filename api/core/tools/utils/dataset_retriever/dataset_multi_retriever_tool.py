@@ -65,7 +65,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         for thread in threads:
             thread.join()
         # do rerank for searched documents
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id)
         rerank_model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=self.reranking_provider_name,

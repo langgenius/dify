@@ -61,7 +61,7 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
         model_instance = model_manager.get_default_model_instance(
             tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
         )
@@ -71,7 +71,7 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = "temp.mp3"
 
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
+        return {"text": model_instance.invoke_speech2text(file=buffer)}
 
     @classmethod
     def transcript_tts(
@@ -109,7 +109,7 @@ class AudioService:
 
                         voice = cast(str | None, text_to_speech_dict.get("voice"))
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id, user_id=end_user)
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=app_model.tenant_id, model_type=ModelType.TTS
             )
@@ -123,9 +123,7 @@ class AudioService:
                     else:
                         raise ValueError("Sorry, no voice available.")
 
-                return model_instance.invoke_tts(
-                    content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice
-                )
+                return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
             except Exception as e:
                 raise e
 
@@ -155,7 +153,7 @@ class AudioService:
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.TTS)
         if model_instance is None:
             raise ProviderNotSupportTextToSpeechServiceError()

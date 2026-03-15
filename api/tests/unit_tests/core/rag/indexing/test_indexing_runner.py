@@ -445,7 +445,7 @@ class TestIndexingRunnerTransform:
         """Mock all external dependencies for transform tests."""
         with (
             patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.ModelManager") as mock_model_manager,
+            patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
         ):
             yield {
                 "db": mock_db,
@@ -586,7 +586,7 @@ class TestIndexingRunnerLoad:
         """Mock all external dependencies for load tests."""
         with (
             patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.ModelManager") as mock_model_manager,
+            patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
             patch("core.indexing_runner.current_app") as mock_app,
             patch("core.indexing_runner.threading.Thread") as mock_thread,
             patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
@@ -754,7 +754,7 @@ class TestIndexingRunnerRun:
         with (
             patch("core.indexing_runner.db") as mock_db,
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
-            patch("core.indexing_runner.ModelManager") as mock_model_manager,
+            patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
             patch("core.indexing_runner.storage") as mock_storage,
             patch("core.indexing_runner.threading.Thread") as mock_thread,
         ):

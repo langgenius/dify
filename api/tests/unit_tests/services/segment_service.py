@@ -265,7 +265,7 @@ class TestSegmentServiceCreateSegment:
             patch(
                 "services.dataset_service.VectorService.create_segments_vector", autospec=True
             ) as mock_vector_service,
-            patch("services.dataset_service.ModelManager", autospec=True) as mock_model_manager_class,
+            patch("services.dataset_service.ModelManager.for_tenant", autospec=True) as mock_model_manager_class,
             patch("services.dataset_service.helper.generate_text_hash", autospec=True) as mock_hash,
             patch("services.dataset_service.naive_utc_now", autospec=True) as mock_now,
         ):

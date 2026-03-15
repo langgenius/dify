@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, Protocol
 
 import httpx
@@ -35,8 +35,6 @@ class ToolFileManagerProtocol(Protocol):
     def create_file_by_raw(
         self,
         *,
-        user_id: str,
-        tenant_id: str,
         conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
@@ -44,3 +42,7 @@ class ToolFileManagerProtocol(Protocol):
     ) -> Any: ...
 
     def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]: ...
+
+
+class FileReferenceFactoryProtocol(Protocol):
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File: ...

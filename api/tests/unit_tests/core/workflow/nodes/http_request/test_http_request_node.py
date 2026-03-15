@@ -7,6 +7,7 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.node_runtime import DifyFileReferenceFactory
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
@@ -121,6 +122,7 @@ def _build_http_node(
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
     )
 
 

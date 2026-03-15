@@ -285,7 +285,7 @@ class RetrievalService:
                             str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
                         if dataset.is_multimodal:
-                            model_manager = ModelManager()
+                            model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
                             is_support_vision = model_manager.check_model_support_vision(
                                 tenant_id=dataset.tenant_id,
                                 provider=reranking_model.get("reranking_provider_name") or "",

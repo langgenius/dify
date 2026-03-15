@@ -47,7 +47,7 @@ class VectorService:
                 # get embedding model instance
                 if dataset.indexing_technique == "high_quality":
                     # check embedding model setting
-                    model_manager = ModelManager()
+                    model_manager = ModelManager.for_tenant(tenant_id=dataset.tenant_id)
 
                     if dataset.embedding_model_provider:
                         embedding_model_instance = model_manager.get_model_instance(

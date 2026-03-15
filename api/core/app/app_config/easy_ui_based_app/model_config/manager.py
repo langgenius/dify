@@ -2,9 +2,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
@@ -55,7 +54,7 @@ class ModelConfigManager:
             raise ValueError("model must be of object type")
 
         # model.provider
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = create_plugin_model_provider_factory(tenant_id=tenant_id)
         provider_entities = model_provider_factory.get_providers()
         model_provider_names = [provider.provider for provider in provider_entities]
         if "provider" not in config["model"]:
@@ -71,7 +70,7 @@ class ModelConfigManager:
         if "name" not in config["model"]:
             raise ValueError("model.name is required")
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
         models = provider_manager.get_configurations(tenant_id).get_models(
             provider=config["model"]["provider"], model_type=ModelType.LLM
         )

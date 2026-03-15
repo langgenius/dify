@@ -48,7 +48,10 @@ logger = logging.getLogger(__name__)
 class IndexingRunner:
     def __init__(self):
         self.storage = storage
-        self.model_manager = ModelManager()
+
+    @staticmethod
+    def _get_model_manager(tenant_id: str) -> ModelManager:
+        return ModelManager.for_tenant(tenant_id=tenant_id)
 
     def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
         """Handle indexing errors by updating document status."""
@@ -289,20 +292,20 @@ class IndexingRunner:
                 raise ValueError("Dataset not found.")
             if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
                 if dataset.embedding_model_provider:
-                    embedding_model_instance = self.model_manager.get_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_model_instance(
                         tenant_id=tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
                     )
                 else:
-                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                    embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                         tenant_id=tenant_id,
                         model_type=ModelType.TEXT_EMBEDDING,
                     )
         else:
             if indexing_technique == "high_quality":
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+                embedding_model_instance = self._get_model_manager(tenant_id).get_default_model_instance(
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
@@ -571,7 +574,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset.indexing_technique == "high_quality":
-            embedding_model_instance = self.model_manager.get_model_instance(
+            embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
                 model_type=ModelType.TEXT_EMBEDDING,
@@ -763,14 +766,14 @@ class IndexingRunner:
         embedding_model_instance = None
         if dataset.indexing_technique == "high_quality":
             if dataset.embedding_model_provider:
-                embedding_model_instance = self.model_manager.get_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
                     tenant_id=dataset.tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
             else:
-                embedding_model_instance = self.model_manager.get_default_model_instance(
+                embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_default_model_instance(
                     tenant_id=dataset.tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )

@@ -160,7 +160,7 @@ class DatasetRetrieval:
             if request.model_provider is None or request.model_name is None or request.query is None:
                 raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=request.tenant_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=request.tenant_id,
                 model_type=ModelType.LLM,
@@ -387,7 +387,7 @@ class DatasetRetrieval:
         model_type_instance = model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=model_config.provider, model=model_config.model
         )
@@ -1399,7 +1399,7 @@ class DatasetRetrieval:
             raise ValueError("metadata_model_config is required")
         # get metadata model instance
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config)
+        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config, user_id=user_id)
 
         # fetch prompt messages
         prompt_messages, stop = self._get_prompt_template(
@@ -1418,7 +1418,6 @@ class DatasetRetrieval:
                     model_parameters=model_config.parameters,
                     stop=stop,
                     stream=True,
-                    user=user_id,
                 ),
             )
 
@@ -1521,7 +1520,7 @@ class DatasetRetrieval:
         return filters
 
     def _fetch_model_config(
-        self, tenant_id: str, model: ModelConfig
+        self, tenant_id: str, model: ModelConfig, user_id: str | None = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
@@ -1531,7 +1530,7 @@ class DatasetRetrieval:
         model_name = model.name
         provider_name = model.provider
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=provider_name, model=model_name
         )

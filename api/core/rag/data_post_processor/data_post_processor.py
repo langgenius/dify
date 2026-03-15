@@ -82,7 +82,7 @@ class DataPostProcessor:
     def _get_rerank_model_instance(self, tenant_id: str, reranking_model: dict | None) -> ModelInstance | None:
         if reranking_model:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
                 reranking_provider_name = reranking_model.get("reranking_provider_name")
                 reranking_model_name = reranking_model.get("reranking_model_name")
                 if not reranking_provider_name or not reranking_model_name:

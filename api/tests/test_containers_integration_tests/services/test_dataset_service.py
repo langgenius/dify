@@ -172,7 +172,7 @@ class TestDatasetServiceCreateDataset:
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model()
 
         # Act
-        with patch("services.dataset_service.ModelManager") as mock_model_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager:
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
 
             result = DatasetService.create_empty_dataset(
@@ -262,7 +262,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_reranking_model_setting") as mock_check_reranking,
         ):
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
@@ -295,7 +295,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_embedding_model_setting") as mock_check_embedding,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model

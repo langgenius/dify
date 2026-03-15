@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from core.model_manager import ModelInstance
+from dify_graph.nodes.llm.runtime_protocols import PreparedLLMProtocol
 
 
 class CredentialsProvider(Protocol):
@@ -15,10 +15,10 @@ class CredentialsProvider(Protocol):
 
 
 class ModelFactory(Protocol):
-    """Port for creating initialized LLM model instances for execution."""
+    """Port for creating prepared graph-facing LLM runtimes for execution."""
 
-    def init_model_instance(self, provider_name: str, model_name: str) -> ModelInstance:
-        """Create a model instance that is ready for schema lookup and invocation."""
+    def init_model_instance(self, provider_name: str, model_name: str) -> PreparedLLMProtocol:
+        """Create a prepared LLM runtime that is ready for graph execution."""
         ...
 
 

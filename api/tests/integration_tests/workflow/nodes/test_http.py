@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import DifyFileReferenceFactory
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph import Graph
@@ -81,6 +82,7 @@ def init_http_node(config: dict):
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(init_params.run_context),
     )
 
     return node
@@ -728,6 +730,7 @@ def test_nested_object_variable_selector(setup_http_mock):
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
+        file_reference_factory=DifyFileReferenceFactory(init_params.run_context),
     )
 
     result = node._run()

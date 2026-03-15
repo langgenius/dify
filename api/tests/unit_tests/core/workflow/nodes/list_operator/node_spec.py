@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.nodes.list_operator.node import ListOperatorNode
 from dify_graph.runtime import GraphRuntimeState

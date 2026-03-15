@@ -214,7 +214,7 @@ def factory():
 class TestAudioServiceASR:
     """Test speech-to-text (ASR) operations."""
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_chat_mode(self, mock_model_manager_class, factory):
         """Test successful ASR transcription in CHAT mode."""
         # Arrange
@@ -240,7 +240,7 @@ class TestAudioServiceASR:
         call_args = mock_model_instance.invoke_speech2text.call_args
         assert call_args.kwargs["user"] == "user-123"
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(self, mock_model_manager_class, factory):
         """Test successful ASR transcription in ADVANCED_CHAT mode."""
         # Arrange
@@ -347,7 +347,7 @@ class TestAudioServiceASR:
         with pytest.raises(AudioTooLargeServiceError, match="Audio size larger than 30 mb"):
             AudioService.transcript_asr(app_model=app, file=file)
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_raises_error_when_no_model_instance(self, mock_model_manager_class, factory):
         """Test that ASR raises error when no model instance is available."""
         # Arrange
@@ -370,7 +370,7 @@ class TestAudioServiceASR:
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_with_text_success(self, mock_model_manager_class, factory):
         """Test successful TTS with text input."""
         # Arrange
@@ -406,7 +406,7 @@ class TestAudioServiceTTS:
         )
 
     @patch("services.audio_service.db.session", autospec=True)
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_with_message_id_success(self, mock_model_manager_class, mock_db_session, factory):
         """Test successful TTS with message ID."""
         # Arrange
@@ -445,7 +445,7 @@ class TestAudioServiceTTS:
         assert result == b"audio from message"
         mock_model_instance.invoke_tts.assert_called_once()
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_with_default_voice(self, mock_model_manager_class, factory):
         """Test TTS uses default voice when none specified."""
         # Arrange
@@ -475,7 +475,7 @@ class TestAudioServiceTTS:
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "default-voice"
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_gets_first_available_voice_when_none_configured(self, mock_model_manager_class, factory):
         """Test TTS gets first available voice when none is configured."""
         # Arrange
@@ -506,7 +506,7 @@ class TestAudioServiceTTS:
         assert call_args.kwargs["voice"] == "auto-voice"
 
     @patch("services.audio_service.WorkflowService", autospec=True)
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
         self, mock_model_manager_class, mock_workflow_service_class, factory
     ):
@@ -611,7 +611,7 @@ class TestAudioServiceTTS:
         # Assert
         assert result is None
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(self, mock_model_manager_class, factory):
         """Test that TTS raises error when no voices are available."""
         # Arrange
@@ -637,7 +637,7 @@ class TestAudioServiceTTS:
 class TestAudioServiceTTSVoices:
     """Test TTS voice listing operations."""
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_voices_success(self, mock_model_manager_class, factory):
         """Test successful retrieval of TTS voices."""
         # Arrange
@@ -662,7 +662,7 @@ class TestAudioServiceTTSVoices:
         assert result == expected_voices
         mock_model_instance.get_tts_voices.assert_called_once_with(language)
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_voices_raises_error_when_no_model_instance(self, mock_model_manager_class, factory):
         """Test that TTS voices raises error when no model instance is available."""
         # Arrange
@@ -677,7 +677,7 @@ class TestAudioServiceTTSVoices:
         with pytest.raises(ProviderNotSupportTextToSpeechServiceError):
             AudioService.transcript_tts_voices(tenant_id=tenant_id, language=language)
 
-    @patch("services.audio_service.ModelManager", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_voices_propagates_exceptions(self, mock_model_manager_class, factory):
         """Test that TTS voices propagates exceptions from model instance."""
         # Arrange

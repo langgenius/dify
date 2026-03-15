@@ -201,8 +201,10 @@ class HumanInputFormRepositoryImpl:
         self,
         *,
         tenant_id: str,
+        app_id: str | None = None,
     ):
         self._tenant_id = tenant_id
+        self._app_id = app_id
 
     def _delivery_method_to_model(
         self,
@@ -340,6 +342,9 @@ class HumanInputFormRepositoryImpl:
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         form_config: HumanInputNodeData = params.form_config
+        app_id = params.app_id or self._app_id
+        if not app_id:
+            raise ValueError("app_id is required to create a human input form")
 
         with session_factory.create_session() as session, session.begin():
             # Generate unique form ID
@@ -359,7 +364,7 @@ class HumanInputFormRepositoryImpl:
             form_model = HumanInputForm(
                 id=form_id,
                 tenant_id=self._tenant_id,
-                app_id=params.app_id,
+                app_id=app_id,
                 workflow_run_id=params.workflow_execution_id,
                 form_kind=params.form_kind,
                 node_id=params.node_id,

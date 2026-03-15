@@ -361,7 +361,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -456,7 +456,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -542,7 +542,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 

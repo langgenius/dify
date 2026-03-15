@@ -2,8 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.nodes.list_operator.entities import (

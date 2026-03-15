@@ -19,7 +19,7 @@ class TestSavedMessageService:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_account_feature_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.saved_message_service.MessageService") as mock_message_service,
         ):
             # Setup default mock returns

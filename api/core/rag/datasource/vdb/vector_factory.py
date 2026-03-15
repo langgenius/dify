@@ -303,7 +303,7 @@ class Vector:
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=self._dataset.tenant_id,

@@ -24,7 +24,7 @@ class TestMessageService:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_account_feature_service,
-            patch("services.message_service.ModelManager") as mock_model_manager,
+            patch("services.message_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
             patch("services.message_service.LLMGenerator") as mock_llm_generator,

@@ -34,10 +34,10 @@ from dify_graph.nodes.base import LLMUsageTrackingMixin
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from dify_graph.runtime import VariablePool
+from dify_graph.utils.datetime_utils import naive_utc_now
 from dify_graph.variables import IntegerVariable, NoneSegment
 from dify_graph.variables.segments import ArrayAnySegment, ArraySegment
 from dify_graph.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
 
 from .exc import (
     InvalidIteratorValueError,

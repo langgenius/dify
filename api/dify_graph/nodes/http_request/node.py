@@ -11,9 +11,13 @@ from dify_graph.nodes.base import variable_template_parser
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.http_request.executor import Executor
-from dify_graph.nodes.protocols import FileManagerProtocol, HttpClientProtocol, ToolFileManagerProtocol
+from dify_graph.nodes.protocols import (
+    FileManagerProtocol,
+    FileReferenceFactoryProtocol,
+    HttpClientProtocol,
+    ToolFileManagerProtocol,
+)
 from dify_graph.variables.segments import ArrayFileSegment
-from factories import file_factory
 
 from .config import build_http_request_config, resolve_http_request_config
 from .entities import (
@@ -46,6 +50,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         http_client: HttpClientProtocol,
         tool_file_manager_factory: Callable[[], ToolFileManagerProtocol],
         file_manager: FileManagerProtocol,
+        file_reference_factory: FileReferenceFactoryProtocol,
     ) -> None:
         super().__init__(
             id=id,
@@ -58,6 +63,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         self._http_client = http_client
         self._tool_file_manager_factory = tool_file_manager_factory
         self._file_manager = file_manager
+        self._file_reference_factory = file_reference_factory
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -210,7 +216,6 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         """
         Extract files from response by checking both Content-Type header and URL
         """
-        dify_ctx = self.require_dify_context()
         files: list[File] = []
         is_file = response.is_file
         content_type = response.content_type
@@ -235,20 +240,16 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
-            user_id=dify_ctx.user_id,
-            tenant_id=dify_ctx.tenant_id,
             conversation_id=None,
             file_binary=content,
             mimetype=mime_type,
         )
 
-        mapping = {
-            "tool_file_id": tool_file.id,
-            "transfer_method": FileTransferMethod.TOOL_FILE,
-        }
-        file = file_factory.build_from_mapping(
-            mapping=mapping,
-            tenant_id=dify_ctx.tenant_id,
+        file = self._file_reference_factory.build_from_mapping(
+            mapping={
+                "tool_file_id": tool_file.id,
+                "transfer_method": FileTransferMethod.TOOL_FILE,
+            }
         )
         files.append(file)
 

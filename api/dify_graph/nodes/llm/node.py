@@ -7,16 +7,8 @@ import logging
 import re
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
-from sqlalchemy import select
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_manager import ModelInstance
-from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
-from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.tools.signature import sign_upload_file
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -27,10 +19,11 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.file import File, FileType, file_manager
 from dify_graph.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContentType,
     TextPromptMessageContent,
 )
 from dify_graph.model_runtime.entities.llm_entities import (
@@ -41,7 +34,14 @@ from dify_graph.model_runtime.entities.llm_entities import (
     LLMStructuredOutput,
     LLMUsage,
 )
-from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from dify_graph.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageContentUnionTypes,
+    PromptMessageRole,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from dify_graph.model_runtime.memory import PromptMessageMemory
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
@@ -55,19 +55,23 @@ from dify_graph.node_events import (
 from dify_graph.nodes.base.entities import VariableSelector
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
+from dify_graph.nodes.llm.runtime_protocols import (
+    PreparedLLMProtocol,
+    PromptMessageSerializerProtocol,
+    RetrieverAttachmentLoaderProtocol,
+)
 from dify_graph.nodes.protocols import HttpClientProtocol
+from dify_graph.prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from dify_graph.runtime import VariablePool
+from dify_graph.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from dify_graph.variables import (
     ArrayFileSegment,
     ArraySegment,
+    FileSegment,
     NoneSegment,
     ObjectSegment,
     StringSegment,
 )
-from extensions.ext_database import db
-from models.dataset import SegmentAttachmentBinding
-from models.model import UploadFile
 
 from . import llm_utils
 from .entities import (
@@ -79,9 +83,12 @@ from .exc import (
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMNodeError,
+    MemoryRolePrefixRequiredError,
+    NoPromptFoundError,
+    TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
-from .file_saver import FileSaverImpl, LLMFileSaver
+from .file_saver import LLMFileSaver
 
 if TYPE_CHECKING:
     from dify_graph.file.models import File
@@ -101,11 +108,11 @@ class LLMNode(Node[LLMNodeData]):
     _file_outputs: list[File]
 
     _llm_file_saver: LLMFileSaver
-    _credentials_provider: CredentialsProvider
-    _model_factory: ModelFactory
-    _model_instance: ModelInstance
+    _retriever_attachment_loader: RetrieverAttachmentLoaderProtocol | None
+    _prompt_message_serializer: PromptMessageSerializerProtocol
+    _jinja2_template_renderer: Jinja2TemplateRenderer | None
+    _model_instance: PreparedLLMProtocol
     _memory: PromptMessageMemory | None
-    _template_renderer: TemplateRenderer
 
     def __init__(
         self,
@@ -114,13 +121,15 @@ class LLMNode(Node[LLMNodeData]):
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
-        credentials_provider: CredentialsProvider,
-        model_factory: ModelFactory,
-        model_instance: ModelInstance,
+        credentials_provider: object | None = None,
+        model_factory: object | None = None,
+        model_instance: PreparedLLMProtocol,
         http_client: HttpClientProtocol,
-        template_renderer: TemplateRenderer,
         memory: PromptMessageMemory | None = None,
-        llm_file_saver: LLMFileSaver | None = None,
+        llm_file_saver: LLMFileSaver,
+        prompt_message_serializer: PromptMessageSerializerProtocol,
+        retriever_attachment_loader: RetrieverAttachmentLoaderProtocol | None = None,
+        jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
     ):
         super().__init__(
             id=id,
@@ -131,20 +140,14 @@ class LLMNode(Node[LLMNodeData]):
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
 
-        self._credentials_provider = credentials_provider
-        self._model_factory = model_factory
+        _ = credentials_provider, model_factory, http_client
         self._model_instance = model_instance
         self._memory = memory
-        self._template_renderer = template_renderer
 
-        if llm_file_saver is None:
-            dify_ctx = self.require_dify_context()
-            llm_file_saver = FileSaverImpl(
-                user_id=dify_ctx.user_id,
-                tenant_id=dify_ctx.tenant_id,
-                http_client=http_client,
-            )
         self._llm_file_saver = llm_file_saver
+        self._prompt_message_serializer = prompt_message_serializer
+        self._retriever_attachment_loader = retriever_attachment_loader
+        self._jinja2_template_renderer = jinja2_template_renderer
 
     @classmethod
     def version(cls) -> str:
@@ -230,7 +233,7 @@ class LLMNode(Node[LLMNodeData]):
                 variable_pool=variable_pool,
                 jinja2_variables=self.node_data.prompt_config.jinja2_variables,
                 context_files=context_files,
-                template_renderer=self._template_renderer,
+                jinja2_template_renderer=self._jinja2_template_renderer,
             )
 
             # handle invoke result
@@ -238,7 +241,6 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
-                user_id=self.require_dify_context().user_id,
                 structured_output_enabled=self.node_data.structured_output_enabled,
                 structured_output=self.node_data.structured_output,
                 file_saver=self._llm_file_saver,
@@ -281,7 +283,7 @@ class LLMNode(Node[LLMNodeData]):
 
             process_data = {
                 "model_mode": self.node_data.model.mode,
-                "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+                "prompts": self._prompt_message_serializer.serialize(
                     model_mode=self.node_data.model.mode, prompt_messages=prompt_messages
                 ),
                 "usage": jsonable_encoder(usage),
@@ -349,10 +351,9 @@ class LLMNode(Node[LLMNodeData]):
     @staticmethod
     def invoke_llm(
         *,
-        model_instance: ModelInstance,
+        model_instance: PreparedLLMProtocol,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None = None,
-        user_id: str,
         structured_output_enabled: bool,
         structured_output: Mapping[str, Any] | None = None,
         file_saver: LLMFileSaver,
@@ -363,35 +364,28 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_parameters = model_instance.parameters
         invoke_model_parameters = dict(model_parameters)
-
-        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
-
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
                 structured_output=structured_output or {},
             )
             request_start_time = time.perf_counter()
 
-            invoke_result = invoke_llm_with_structured_output(
-                provider=model_instance.provider,
-                model_schema=model_schema,
-                model_instance=model_instance,
+            invoke_result = model_instance.invoke_llm_with_structured_output(
                 prompt_messages=prompt_messages,
                 json_schema=output_schema,
                 model_parameters=invoke_model_parameters,
-                stop=list(stop or []),
+                stop=stop,
                 stream=True,
-                user=user_id,
             )
         else:
             request_start_time = time.perf_counter()
 
             invoke_result = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
+                prompt_messages=prompt_messages,
                 model_parameters=invoke_model_parameters,
-                stop=list(stop or []),
+                tools=None,
+                stop=stop,
                 stream=True,
-                user=user_id,
             )
 
         return LLMNode.handle_invoke_result(
@@ -400,6 +394,7 @@ class LLMNode(Node[LLMNodeData]):
             file_outputs=file_outputs,
             node_id=node_id,
             node_type=node_type,
+            model_instance=model_instance,
             reasoning_format=reasoning_format,
             request_start_time=request_start_time,
         )
@@ -412,6 +407,7 @@ class LLMNode(Node[LLMNodeData]):
         file_outputs: list[File],
         node_id: str,
         node_type: NodeType,
+        model_instance: PreparedLLMProtocol | object,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
         request_start_time: float | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
@@ -483,8 +479,14 @@ class LLMNode(Node[LLMNodeData]):
                         usage = result.delta.usage
                     if finish_reason is None and result.delta.finish_reason:
                         finish_reason = result.delta.finish_reason
-        except OutputParserError as e:
-            raise LLMNodeError(f"Failed to parse structured output: {e}")
+        except Exception as e:
+            if hasattr(model_instance, "is_structured_output_parse_error") and cast(
+                PreparedLLMProtocol, model_instance
+            ).is_structured_output_parse_error(e):
+                raise LLMNodeError(f"Failed to parse structured output: {e}") from e
+            if type(e).__name__ == "OutputParserError":
+                raise LLMNodeError(f"Failed to parse structured output: {e}") from e
+            raise
 
         # Extract reasoning content from <think> tags in the main text
         full_text = full_text_buffer.getvalue()
@@ -687,30 +689,8 @@ class LLMNode(Node[LLMNodeData]):
                             segment_id = retriever_resource.get("segment_id")
                             if not segment_id:
                                 continue
-                            attachments_with_bindings = db.session.execute(
-                                select(SegmentAttachmentBinding, UploadFile)
-                                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-                                .where(
-                                    SegmentAttachmentBinding.segment_id == segment_id,
-                                )
-                            ).all()
-                            if attachments_with_bindings:
-                                for _, upload_file in attachments_with_bindings:
-                                    attachment_info = File(
-                                        id=upload_file.id,
-                                        filename=upload_file.name,
-                                        extension="." + upload_file.extension,
-                                        mime_type=upload_file.mime_type,
-                                        tenant_id=self.require_dify_context().tenant_id,
-                                        type=FileType.IMAGE,
-                                        transfer_method=FileTransferMethod.LOCAL_FILE,
-                                        remote_url=upload_file.source_url,
-                                        related_id=upload_file.id,
-                                        size=upload_file.size,
-                                        storage_key=upload_file.key,
-                                        url=sign_upload_file(upload_file.id, upload_file.extension),
-                                    )
-                                    context_files.append(attachment_info)
+                            if self._retriever_attachment_loader is not None:
+                                context_files.extend(self._retriever_attachment_loader.load(segment_id=segment_id))
                 yield RunRetrieverResourceEvent(
                     retriever_resources=original_retriever_resource,
                     context=context_str.strip(),
@@ -755,7 +735,7 @@ class LLMNode(Node[LLMNodeData]):
         sys_files: Sequence[File],
         context: str | None = None,
         memory: PromptMessageMemory | None = None,
-        model_instance: ModelInstance,
+        model_instance: PreparedLLMProtocol,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         stop: Sequence[str] | None = None,
         memory_config: MemoryConfig | None = None,
@@ -764,24 +744,186 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         context_files: list[File] | None = None,
-        template_renderer: TemplateRenderer | None = None,
+        jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
-        return llm_utils.fetch_prompt_messages(
-            sys_query=sys_query,
-            sys_files=sys_files,
-            context=context,
-            memory=memory,
-            model_instance=model_instance,
-            prompt_template=prompt_template,
-            stop=stop,
-            memory_config=memory_config,
-            vision_enabled=vision_enabled,
-            vision_detail=vision_detail,
-            variable_pool=variable_pool,
-            jinja2_variables=jinja2_variables,
-            context_files=context_files,
-            template_renderer=template_renderer,
-        )
+        prompt_messages: list[PromptMessage] = []
+        model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+
+        if isinstance(prompt_template, list):
+            # For chat model
+            prompt_messages.extend(
+                LLMNode.handle_list_messages(
+                    messages=prompt_template,
+                    context=context,
+                    jinja2_variables=jinja2_variables,
+                    variable_pool=variable_pool,
+                    vision_detail_config=vision_detail,
+                    jinja2_template_renderer=jinja2_template_renderer,
+                )
+            )
+
+            # Get memory messages for chat mode
+            memory_messages = _handle_memory_chat_mode(
+                memory=memory,
+                memory_config=memory_config,
+                model_instance=model_instance,
+            )
+            # Extend prompt_messages with memory messages
+            prompt_messages.extend(memory_messages)
+
+            # Add current query to the prompt messages
+            if sys_query:
+                message = LLMNodeChatModelMessage(
+                    text=sys_query,
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+                prompt_messages.extend(
+                    LLMNode.handle_list_messages(
+                        messages=[message],
+                        context="",
+                        jinja2_variables=[],
+                        variable_pool=variable_pool,
+                        vision_detail_config=vision_detail,
+                        jinja2_template_renderer=jinja2_template_renderer,
+                    )
+                )
+
+        elif isinstance(prompt_template, LLMNodeCompletionModelPromptTemplate):
+            # For completion model
+            prompt_messages.extend(
+                _handle_completion_template(
+                    template=prompt_template,
+                    context=context,
+                    jinja2_variables=jinja2_variables,
+                    variable_pool=variable_pool,
+                    jinja2_template_renderer=jinja2_template_renderer,
+                )
+            )
+
+            # Get memory text for completion model
+            memory_text = _handle_memory_completion_mode(
+                memory=memory,
+                memory_config=memory_config,
+                model_instance=model_instance,
+            )
+            # Insert histories into the prompt
+            prompt_content = prompt_messages[0].content
+            # For issue #11247 - Check if prompt content is a string or a list
+            if isinstance(prompt_content, str):
+                prompt_content = str(prompt_content)
+                if "#histories#" in prompt_content:
+                    prompt_content = prompt_content.replace("#histories#", memory_text)
+                else:
+                    prompt_content = memory_text + "\n" + prompt_content
+                prompt_messages[0].content = prompt_content
+            elif isinstance(prompt_content, list):
+                for content_item in prompt_content:
+                    if isinstance(content_item, TextPromptMessageContent):
+                        if "#histories#" in content_item.data:
+                            content_item.data = content_item.data.replace("#histories#", memory_text)
+                        else:
+                            content_item.data = memory_text + "\n" + content_item.data
+            else:
+                raise ValueError("Invalid prompt content type")
+
+            # Add current query to the prompt message
+            if sys_query:
+                if isinstance(prompt_content, str):
+                    prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
+                    prompt_messages[0].content = prompt_content
+                elif isinstance(prompt_content, list):
+                    for content_item in prompt_content:
+                        if isinstance(content_item, TextPromptMessageContent):
+                            content_item.data = sys_query + "\n" + content_item.data
+                else:
+                    raise ValueError("Invalid prompt content type")
+        else:
+            raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
+
+        # The sys_files will be deprecated later
+        if vision_enabled and sys_files:
+            file_prompts = []
+            for file in sys_files:
+                file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
+                file_prompts.append(file_prompt)
+            # If last prompt is a user prompt, add files into its contents,
+            # otherwise append a new user prompt
+            if (
+                len(prompt_messages) > 0
+                and isinstance(prompt_messages[-1], UserPromptMessage)
+                and isinstance(prompt_messages[-1].content, list)
+            ):
+                prompt_messages[-1] = UserPromptMessage(content=file_prompts + prompt_messages[-1].content)
+            else:
+                prompt_messages.append(UserPromptMessage(content=file_prompts))
+
+        # The context_files
+        if vision_enabled and context_files:
+            file_prompts = []
+            for file in context_files:
+                file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
+                file_prompts.append(file_prompt)
+            # If last prompt is a user prompt, add files into its contents,
+            # otherwise append a new user prompt
+            if (
+                len(prompt_messages) > 0
+                and isinstance(prompt_messages[-1], UserPromptMessage)
+                and isinstance(prompt_messages[-1].content, list)
+            ):
+                prompt_messages[-1] = UserPromptMessage(content=file_prompts + prompt_messages[-1].content)
+            else:
+                prompt_messages.append(UserPromptMessage(content=file_prompts))
+
+        # Remove empty messages and filter unsupported content
+        filtered_prompt_messages = []
+        for prompt_message in prompt_messages:
+            if isinstance(prompt_message.content, list):
+                prompt_message_content: list[PromptMessageContentUnionTypes] = []
+                for content_item in prompt_message.content:
+                    # Skip content if features are not defined
+                    if not model_schema.features:
+                        if content_item.type != PromptMessageContentType.TEXT:
+                            continue
+                        prompt_message_content.append(content_item)
+                        continue
+
+                    # Skip content if corresponding feature is not supported
+                    if (
+                        (
+                            content_item.type == PromptMessageContentType.IMAGE
+                            and ModelFeature.VISION not in model_schema.features
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.DOCUMENT
+                            and ModelFeature.DOCUMENT not in model_schema.features
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.VIDEO
+                            and ModelFeature.VIDEO not in model_schema.features
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.AUDIO
+                            and ModelFeature.AUDIO not in model_schema.features
+                        )
+                    ):
+                        continue
+                    prompt_message_content.append(content_item)
+                if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
+                    prompt_message.content = prompt_message_content[0].data
+                else:
+                    prompt_message.content = prompt_message_content
+            if prompt_message.is_empty():
+                continue
+            filtered_prompt_messages.append(prompt_message)
+
+        if len(filtered_prompt_messages) == 0:
+            raise NoPromptFoundError(
+                "No prompt found in the LLM configuration. "
+                "Please ensure a prompt is properly configured before proceeding."
+            )
+
+        return filtered_prompt_messages, stop
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -881,16 +1023,61 @@ class LLMNode(Node[LLMNodeData]):
         jinja2_variables: Sequence[VariableSelector],
         variable_pool: VariablePool,
         vision_detail_config: ImagePromptMessageContent.DETAIL,
-        template_renderer: TemplateRenderer | None = None,
+        jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
     ) -> Sequence[PromptMessage]:
-        return llm_utils.handle_list_messages(
-            messages=messages,
-            context=context,
-            jinja2_variables=jinja2_variables,
-            variable_pool=variable_pool,
-            vision_detail_config=vision_detail_config,
-            template_renderer=template_renderer,
-        )
+        prompt_messages: list[PromptMessage] = []
+        for message in messages:
+            if message.edition_type == "jinja2":
+                result_text = _render_jinja2_message(
+                    template=message.jinja2_text or "",
+                    jinja2_variables=jinja2_variables,
+                    variable_pool=variable_pool,
+                    jinja2_template_renderer=jinja2_template_renderer,
+                )
+                prompt_message = _combine_message_content_with_role(
+                    contents=[TextPromptMessageContent(data=result_text)], role=message.role
+                )
+                prompt_messages.append(prompt_message)
+            else:
+                # Get segment group from basic message
+                if context:
+                    template = message.text.replace("{#context#}", context)
+                else:
+                    template = message.text
+                segment_group = variable_pool.convert_template(template)
+
+                # Process segments for images
+                file_contents = []
+                for segment in segment_group.value:
+                    if isinstance(segment, ArrayFileSegment):
+                        for file in segment.value:
+                            if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                                file_content = file_manager.to_prompt_message_content(
+                                    file, image_detail_config=vision_detail_config
+                                )
+                                file_contents.append(file_content)
+                    elif isinstance(segment, FileSegment):
+                        file = segment.value
+                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                            file_content = file_manager.to_prompt_message_content(
+                                file, image_detail_config=vision_detail_config
+                            )
+                            file_contents.append(file_content)
+
+                # Create message with text from all segments
+                plain_text = segment_group.text
+                if plain_text:
+                    prompt_message = _combine_message_content_with_role(
+                        contents=[TextPromptMessageContent(data=plain_text)], role=message.role
+                    )
+                    prompt_messages.append(prompt_message)
+
+                if file_contents:
+                    # Create message with image contents
+                    prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
+                    prompt_messages.append(prompt_message)
+
+        return prompt_messages
 
     @staticmethod
     def handle_blocking_result(
@@ -1027,5 +1214,153 @@ class LLMNode(Node[LLMNodeData]):
         return self.node_data.retry_config.retry_enabled
 
     @property
-    def model_instance(self) -> ModelInstance:
+    def model_instance(self) -> PreparedLLMProtocol:
         return self._model_instance
+
+
+def _combine_message_content_with_role(
+    *, contents: str | list[PromptMessageContentUnionTypes] | None = None, role: PromptMessageRole
+):
+    match role:
+        case PromptMessageRole.USER:
+            return UserPromptMessage(content=contents)
+        case PromptMessageRole.ASSISTANT:
+            return AssistantPromptMessage(content=contents)
+        case PromptMessageRole.SYSTEM:
+            return SystemPromptMessage(content=contents)
+        case _:
+            raise NotImplementedError(f"Role {role} is not supported")
+
+
+def _render_jinja2_message(
+    *,
+    template: str,
+    jinja2_variables: Sequence[VariableSelector],
+    variable_pool: VariablePool,
+    jinja2_template_renderer: Jinja2TemplateRenderer | None,
+):
+    if not template:
+        return ""
+
+    jinja2_inputs = {}
+    for jinja2_variable in jinja2_variables:
+        variable = variable_pool.get(jinja2_variable.value_selector)
+        jinja2_inputs[jinja2_variable.variable] = variable.to_object() if variable else ""
+    if jinja2_template_renderer is None:
+        raise TemplateRenderError("LLMNode requires an injected jinja2_template_renderer for jinja2 prompts.")
+    return jinja2_template_renderer.render_template(template, jinja2_inputs)
+
+
+def _calculate_rest_token(
+    *,
+    prompt_messages: list[PromptMessage],
+    model_instance: PreparedLLMProtocol,
+) -> int:
+    rest_tokens = 2000
+    runtime_model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
+    runtime_model_parameters = model_instance.parameters
+
+    model_context_tokens = runtime_model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    if model_context_tokens:
+        curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
+
+        max_tokens = 0
+        for parameter_rule in runtime_model_schema.parameter_rules:
+            if parameter_rule.name == "max_tokens" or (
+                parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
+            ):
+                max_tokens = (
+                    runtime_model_parameters.get(parameter_rule.name)
+                    or runtime_model_parameters.get(str(parameter_rule.use_template))
+                    or 0
+                )
+
+        rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
+        rest_tokens = max(rest_tokens, 0)
+
+    return rest_tokens
+
+
+def _handle_memory_chat_mode(
+    *,
+    memory: PromptMessageMemory | None,
+    memory_config: MemoryConfig | None,
+    model_instance: PreparedLLMProtocol,
+) -> Sequence[PromptMessage]:
+    memory_messages: Sequence[PromptMessage] = []
+    # Get messages from memory for chat model
+    if memory and memory_config:
+        rest_tokens = _calculate_rest_token(
+            prompt_messages=[],
+            model_instance=model_instance,
+        )
+        memory_messages = memory.get_history_prompt_messages(
+            max_token_limit=rest_tokens,
+            message_limit=memory_config.window.size if memory_config.window.enabled else None,
+        )
+    return memory_messages
+
+
+def _handle_memory_completion_mode(
+    *,
+    memory: PromptMessageMemory | None,
+    memory_config: MemoryConfig | None,
+    model_instance: PreparedLLMProtocol,
+) -> str:
+    memory_text = ""
+    # Get history text from memory for completion model
+    if memory and memory_config:
+        rest_tokens = _calculate_rest_token(
+            prompt_messages=[],
+            model_instance=model_instance,
+        )
+        if not memory_config.role_prefix:
+            raise MemoryRolePrefixRequiredError("Memory role prefix is required for completion model.")
+        memory_text = llm_utils.fetch_memory_text(
+            memory=memory,
+            max_token_limit=rest_tokens,
+            message_limit=memory_config.window.size if memory_config.window.enabled else None,
+            human_prefix=memory_config.role_prefix.user,
+            ai_prefix=memory_config.role_prefix.assistant,
+        )
+    return memory_text
+
+
+def _handle_completion_template(
+    *,
+    template: LLMNodeCompletionModelPromptTemplate,
+    context: str | None,
+    jinja2_variables: Sequence[VariableSelector],
+    variable_pool: VariablePool,
+    jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
+) -> Sequence[PromptMessage]:
+    """Handle completion template processing outside of LLMNode class.
+
+    Args:
+        template: The completion model prompt template
+        context: Optional context string
+        jinja2_variables: Variables for jinja2 template rendering
+        variable_pool: Variable pool for template conversion
+
+    Returns:
+        Sequence of prompt messages
+    """
+    prompt_messages = []
+    if template.edition_type == "jinja2":
+        result_text = _render_jinja2_message(
+            template=template.jinja2_text or "",
+            jinja2_variables=jinja2_variables,
+            variable_pool=variable_pool,
+            jinja2_template_renderer=jinja2_template_renderer,
+        )
+    else:
+        if context:
+            template_text = template.text.replace("{#context#}", context)
+        else:
+            template_text = template.text
+        result_text = variable_pool.convert_template(template_text).text
+    prompt_message = _combine_message_content_with_role(
+        contents=[TextPromptMessageContent(data=result_text)], role=PromptMessageRole.USER
+    )
+    prompt_messages.append(prompt_message)
+    return prompt_messages

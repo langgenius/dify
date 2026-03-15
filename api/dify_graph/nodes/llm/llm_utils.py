@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Any, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol, TypeAlias, cast
 
-from core.model_manager import ModelInstance
 from dify_graph.file import FileType, file_manager
 from dify_graph.file.models import File
 from dify_graph.model_runtime.entities import (
@@ -35,15 +34,36 @@ from .exc import (
     TemplateTypeNotSupportError,
 )
 from .protocols import TemplateRenderer
+from .runtime_protocols import PreparedLLMProtocol
 
 
-def fetch_model_schema(*, model_instance: ModelInstance) -> AIModelEntity:
-    model_schema = cast(LargeLanguageModel, model_instance.model_type_instance).get_model_schema(
-        model_instance.model_name,
-        dict(model_instance.credentials),
-    )
+class _LegacyModelInstance(Protocol):
+    model_type_instance: object
+    model_name: str
+    credentials: object
+    parameters: Mapping[str, Any]
+
+    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int: ...
+
+
+PreparedModelInstance: TypeAlias = PreparedLLMProtocol | _LegacyModelInstance
+
+
+def fetch_model_schema(*, model_instance: PreparedModelInstance) -> AIModelEntity:
+    get_model_schema = getattr(model_instance, "get_model_schema", None)
+    if callable(get_model_schema):
+        model_schema = cast(PreparedLLMProtocol, model_instance).get_model_schema()
+    else:
+        legacy_model_instance = cast(_LegacyModelInstance, model_instance)
+        credentials = legacy_model_instance.credentials
+        if isinstance(credentials, Mapping):
+            credentials = dict(credentials)
+        model_schema = cast(LargeLanguageModel, legacy_model_instance.model_type_instance).get_model_schema(
+            legacy_model_instance.model_name,
+            credentials,
+        )
     if not model_schema:
-        raise ValueError(f"Model schema not found for {model_instance.model_name}")
+        raise ValueError(f"Model schema not found for {getattr(model_instance, 'model_name', 'unknown model')}")
     return model_schema
 
 
@@ -116,7 +136,7 @@ def fetch_prompt_messages(
     sys_files: Sequence[File],
     context: str | None = None,
     memory: PromptMessageMemory | None = None,
-    model_instance: ModelInstance,
+    model_instance: PreparedModelInstance,
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
     stop: Sequence[str] | None = None,
     memory_config: MemoryConfig | None = None,
@@ -387,7 +407,7 @@ def combine_message_content_with_role(
             raise NotImplementedError(f"Role {role} is not supported")
 
 
-def calculate_rest_token(*, prompt_messages: list[PromptMessage], model_instance: ModelInstance) -> int:
+def calculate_rest_token(*, prompt_messages: list[PromptMessage], model_instance: PreparedModelInstance) -> int:
     rest_tokens = 2000
     runtime_model_schema = fetch_model_schema(model_instance=model_instance)
     runtime_model_parameters = model_instance.parameters
@@ -417,7 +437,7 @@ def handle_memory_chat_mode(
     *,
     memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_instance: PreparedModelInstance,
 ) -> Sequence[PromptMessage]:
     if not memory or not memory_config:
         return []
@@ -432,7 +452,7 @@ def handle_memory_completion_mode(
     *,
     memory: PromptMessageMemory | None,
     memory_config: MemoryConfig | None,
-    model_instance: ModelInstance,
+    model_instance: PreparedModelInstance,
 ) -> str:
     if not memory or not memory_config:
         return ""

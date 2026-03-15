@@ -932,7 +932,7 @@ class TestMessageServiceSuggestedQuestions:
             )
 
     # Test 28: get_suggested_questions_after_answer - Advanced Chat success
-    @patch("services.message_service.ModelManager")
+    @patch("services.message_service.ModelManager.for_tenant")
     @patch("services.message_service.WorkflowService")
     @patch("services.message_service.AdvancedChatAppConfigManager")
     @patch("services.message_service.TokenBufferMemory")
@@ -982,7 +982,7 @@ class TestMessageServiceSuggestedQuestions:
 
     # Test 29: get_suggested_questions_after_answer - Chat app success (no override)
     @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager")
+    @patch("services.message_service.ModelManager.for_tenant")
     @patch("services.message_service.TokenBufferMemory")
     @patch("services.message_service.LLMGenerator")
     @patch("services.message_service.TraceQueueManager")

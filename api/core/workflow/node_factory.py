@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from typing_extensions import override
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext
-from core.app.llm.model_access import build_dify_model_access
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -20,8 +20,17 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyRetrieverAttachmentLoader,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    build_dify_llm_file_saver,
+)
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
@@ -30,11 +39,9 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph.graph import NodeFactory
-from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.memory import PromptMessageMemory
 from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from dify_graph.nodes.base.node import Node
@@ -44,13 +51,10 @@ from dify_graph.nodes.code.limits import CodeNodeLimits
 from dify_graph.nodes.document_extractor import UnstructuredApiConfig
 from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from dify_graph.nodes.llm.protocols import TemplateRenderer
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.template_transform.template_renderer import (
-    CodeExecutorJinja2TemplateRenderer,
-)
+from dify_graph.template_rendering import CodeExecutorJinja2TemplateRenderer
 from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
@@ -264,11 +268,22 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
+        self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
         self._llm_template_renderer: TemplateRenderer = DefaultLLMTemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
-        self._http_request_tool_file_manager_factory = ToolFileManager
+        self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(self._dify_context)
+        self._file_reference_factory = DifyFileReferenceFactory(self._dify_context)
+        self._prompt_message_serializer = DifyPromptMessageSerializer()
+        self._retriever_attachment_loader = DifyRetrieverAttachmentLoader(
+            file_reference_factory=self._file_reference_factory,
+        )
+        self._llm_file_saver = build_dify_llm_file_saver(
+            run_context=self._dify_context,
+            http_client=self._http_request_http_client,
+        )
+        self._human_input_runtime = DifyHumanInputNodeRuntime(self._dify_context)
+        self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
@@ -284,7 +299,7 @@ class DifyNodeFactory(NodeFactory):
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
         )
 
-        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context.tenant_id)
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context)
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
         self._agent_runtime_support = AgentRuntimeSupport()
@@ -321,22 +336,32 @@ class DifyNodeFactory(NodeFactory):
                 "code_limits": self._code_limits,
             },
             BuiltinNodeTypes.TEMPLATE_TRANSFORM: lambda: {
-                "template_renderer": self._template_renderer,
+                "jinja2_template_renderer": self._jinja2_template_renderer,
                 "max_output_length": self._template_transform_max_output_length,
             },
             BuiltinNodeTypes.HTTP_REQUEST: lambda: {
                 "http_request_config": self._http_request_config,
                 "http_client": self._http_request_http_client,
-                "tool_file_manager_factory": self._http_request_tool_file_manager_factory,
+                "tool_file_manager_factory": self._bound_tool_file_manager_factory,
                 "file_manager": self._http_request_file_manager,
+                "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "form_repository": HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
+                "form_repository": HumanInputFormRepositoryImpl(
+                    tenant_id=self._dify_context.tenant_id,
+                    app_id=self._dify_context.app_id,
+                ),
+                "runtime": self._human_input_runtime,
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
+                wrap_model_instance=True,
                 include_http_client=True,
+                include_llm_file_saver=True,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=True,
+                include_jinja2_template_renderer=True,
             ),
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
@@ -345,15 +370,26 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
+                wrap_model_instance=True,
                 include_http_client=True,
+                include_llm_file_saver=True,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
             ),
             BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=node_data,
+                wrap_model_instance=True,
                 include_http_client=False,
+                include_llm_file_saver=False,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
             ),
             BuiltinNodeTypes.TOOL: lambda: {
-                "tool_file_manager_factory": self._http_request_tool_file_manager_factory(),
+                "tool_file_manager_factory": self._bound_tool_file_manager_factory(),
+                "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: {
                 "strategy_resolver": self._agent_strategy_resolver,
@@ -387,7 +423,12 @@ class DifyNodeFactory(NodeFactory):
         *,
         node_class: type[Node],
         node_data: BaseNodeData,
+        wrap_model_instance: bool,
         include_http_client: bool,
+        include_llm_file_saver: bool,
+        include_prompt_message_serializer: bool,
+        include_retriever_attachment_loader: bool,
+        include_jinja2_template_renderer: bool,
     ) -> dict[str, object]:
         validated_node_data = cast(
             LLMCompatibleNodeData,
@@ -397,49 +438,33 @@ class DifyNodeFactory(NodeFactory):
         node_init_kwargs: dict[str, object] = {
             "credentials_provider": self._llm_credentials_provider,
             "model_factory": self._llm_model_factory,
-            "model_instance": model_instance,
+            "model_instance": DifyPreparedLLM(model_instance) if wrap_model_instance else model_instance,
             "memory": self._build_memory_for_llm_node(
                 node_data=validated_node_data,
                 model_instance=model_instance,
             ),
         }
-        if validated_node_data.type in {BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
+        if validated_node_data.type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
             node_init_kwargs["template_renderer"] = self._llm_template_renderer
         if include_http_client:
             node_init_kwargs["http_client"] = self._http_request_http_client
+        if include_llm_file_saver:
+            node_init_kwargs["llm_file_saver"] = self._llm_file_saver
+        if include_prompt_message_serializer:
+            node_init_kwargs["prompt_message_serializer"] = self._prompt_message_serializer
+        if include_retriever_attachment_loader:
+            node_init_kwargs["retriever_attachment_loader"] = self._retriever_attachment_loader
+        if include_jinja2_template_renderer:
+            node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
         return node_init_kwargs
 
     def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
         node_data_model = node_data.model
-        if not node_data_model.mode:
-            raise LLMModeRequiredError("LLM mode is required.")
-
-        credentials = self._llm_credentials_provider.fetch(node_data_model.provider, node_data_model.name)
-        model_instance = self._llm_model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
-        provider_model_bundle = model_instance.provider_model_bundle
-
-        provider_model = provider_model_bundle.configuration.get_provider_model(
-            model=node_data_model.name,
-            model_type=ModelType.LLM,
+        model_instance, _ = fetch_model_config(
+            node_data_model=node_data_model,
+            credentials_provider=self._llm_credentials_provider,
+            model_factory=self._llm_model_factory,
         )
-        if provider_model is None:
-            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-        provider_model.raise_for_status()
-
-        completion_params = dict(node_data_model.completion_params)
-        stop = completion_params.pop("stop", [])
-        if not isinstance(stop, list):
-            stop = []
-
-        model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
-        if not model_schema:
-            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-
-        model_instance.provider = node_data_model.provider
-        model_instance.model_name = node_data_model.name
-        model_instance.credentials = credentials
-        model_instance.parameters = completion_params
-        model_instance.stop = tuple(stop)
         model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
         return model_instance
 

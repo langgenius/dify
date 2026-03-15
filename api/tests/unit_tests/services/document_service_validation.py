@@ -430,7 +430,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_dataset_model_setting_high_quality_success(self, mock_model_manager):
@@ -579,7 +579,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_embedding_model_setting_success(self, mock_model_manager):
@@ -701,7 +701,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
         Provides a mocked ModelManager that can be used to verify
         model instance retrieval and error handling.
         """
-        with patch("services.dataset_service.ModelManager") as mock_manager:
+        with patch("services.dataset_service.ModelManager.for_tenant") as mock_manager:
             yield mock_manager
 
     def test_check_reranking_model_setting_success(self, mock_model_manager):

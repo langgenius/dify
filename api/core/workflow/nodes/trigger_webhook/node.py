@@ -9,9 +9,9 @@ from dify_graph.enums import NodeExecutionType
 from dify_graph.file import FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.protocols import FileReferenceFactoryProtocol
 from dify_graph.variables.types import SegmentType
 from dify_graph.variables.variables import FileVariable
-from factories import file_factory
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ContentType, WebhookData
@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 class TriggerWebhookNode(Node[WebhookData]):
     node_type = TRIGGER_WEBHOOK_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
+
+    _file_reference_factory: FileReferenceFactoryProtocol
+
+    def post_init(self) -> None:
+        from core.workflow.node_runtime import DifyFileReferenceFactory
+
+        self._file_reference_factory = DifyFileReferenceFactory(self.graph_init_params.run_context)
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -70,7 +77,6 @@ class TriggerWebhookNode(Node[WebhookData]):
         )
 
     def generate_file_var(self, param_name: str, file: dict):
-        dify_ctx = self.require_dify_context()
         related_id = file.get("related_id")
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -84,10 +90,7 @@ class TriggerWebhookNode(Node[WebhookData]):
                     file["datasource_file_id"] = related_id
 
             try:
-                file_obj = file_factory.build_from_mapping(
-                    mapping=file,
-                    tenant_id=dify_ctx.tenant_id,
-                )
+                file_obj = self._file_reference_factory.build_from_mapping(mapping=file)
                 file_segment = build_segment_with_type(SegmentType.FILE, file_obj)
                 return FileVariable(name=param_name, value=file_segment.value, selector=[self.id, param_name])
             except ValueError:

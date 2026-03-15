@@ -14,7 +14,7 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.entities.request import InvokeCredentials
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from dify_graph.enums import SystemVariableKey
@@ -38,6 +38,7 @@ class AgentRuntimeSupport:
         node_data: AgentNodeData,
         strategy: ResolvedAgentStrategy,
         tenant_id: str,
+        user_id: str,
         app_id: str,
         invoke_from: Any,
         for_log: bool = False,
@@ -174,7 +175,11 @@ class AgentRuntimeSupport:
                     value = tool_value
                 if parameter.type == AgentStrategyParameter.AgentStrategyParameterType.MODEL_SELECTOR:
                     value = cast(dict[str, Any], value)
-                    model_instance, model_schema = self.fetch_model(tenant_id=tenant_id, value=value)
+                    model_instance, model_schema = self.fetch_model(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        value=value,
+                    )
                     history_prompt_messages = []
                     if node_data.memory:
                         memory = self.fetch_memory(
@@ -232,8 +237,14 @@ class AgentRuntimeSupport:
 
         return TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
-    def fetch_model(self, *, tenant_id: str, value: dict[str, Any]) -> tuple[ModelInstance, AIModelEntity | None]:
-        provider_manager = ProviderManager()
+    def fetch_model(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        value: dict[str, Any],
+    ) -> tuple[ModelInstance, AIModelEntity | None]:
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id,
             provider=value.get("provider", ""),
@@ -246,7 +257,7 @@ class AgentRuntimeSupport:
         )
         provider_name = provider_model_bundle.configuration.provider.provider
         model_type_instance = provider_model_bundle.model_type_instance
-        model_instance = ModelManager().get_model_instance(
+        model_instance = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
             tenant_id=tenant_id,
             provider=provider_name,
             model_type=ModelType(value.get("model_type", "")),

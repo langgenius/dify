@@ -27,7 +27,7 @@ class TestAgentService:
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
-            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
