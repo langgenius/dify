@@ -6,8 +6,8 @@ from decimal import Decimal
 from uuid import uuid4
 
 from dify_graph.nodes.human_input.entities import FormDefinition, UserAction
-from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import ConversationFromSource, InvokeFrom
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormStatus
 from models.model import App, Conversation, Message
@@ -78,7 +78,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         summary="",
         introduction="",
         system_instruction="",
-        status="normal",
+        status=ConversationStatus.NORMAL,
         invoke_from=InvokeFrom.EXPLORE,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account.id,

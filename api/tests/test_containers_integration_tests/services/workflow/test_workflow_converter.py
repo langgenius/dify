@@ -98,7 +98,7 @@ class TestWorkflowConverter:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -107,13 +107,13 @@ class TestWorkflowConverter:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
         # Create tenant-account join
-        from models.account import TenantAccountJoin, TenantAccountRole
+        from models.account import TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,

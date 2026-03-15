@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.workspace_service import WorkspaceService
+from models.account import AccountStatus, TenantStatus
 
 
 class TestWorkspaceService:
@@ -48,7 +49,7 @@ class TestWorkspaceService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -57,7 +58,7 @@ class TestWorkspaceService:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
             plan="basic",
             custom_config='{"replace_webapp_logo": true, "remove_webapp_brand": false}',
         )

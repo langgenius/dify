@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from models import Account
-from models.enums import ConversationFromSource, InvokeFrom
+from models.account import TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -136,7 +137,7 @@ class TestAnnotationService:
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.EXPLORE,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,

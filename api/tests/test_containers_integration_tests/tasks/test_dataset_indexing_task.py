@@ -13,6 +13,7 @@ from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
+from models.account import AccountStatus, TenantStatus
     _document_indexing,
     _document_indexing_with_tenant_queue,
     document_indexing_task,
@@ -118,12 +119,12 @@ class TestDatasetIndexingTaskIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 

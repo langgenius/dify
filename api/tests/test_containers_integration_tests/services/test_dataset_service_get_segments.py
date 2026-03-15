@@ -16,6 +16,7 @@ from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import SegmentService
+from models.account import AccountStatus, TenantStatus
 
 
 class SegmentServiceTestDataFactory:
@@ -34,13 +35,13 @@ class SegmentServiceTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 

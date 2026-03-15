@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import Message
 from services import message_service
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (
@@ -36,7 +36,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
         provider_response_latency=0,
         total_price=Decimal(0),
         currency="USD",
-        status="normal",
+        status=MessageStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=fixture.account.id,
     )

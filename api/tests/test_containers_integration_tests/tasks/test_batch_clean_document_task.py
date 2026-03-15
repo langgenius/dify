@@ -21,6 +21,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
+from models.account import AccountStatus, TenantStatus
 
 
 class TestBatchCleanDocumentTask:
@@ -69,7 +70,7 @@ class TestBatchCleanDocumentTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -78,7 +79,7 @@ class TestBatchCleanDocumentTask:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

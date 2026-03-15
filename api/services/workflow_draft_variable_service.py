@@ -40,6 +40,7 @@ from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariab
 from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
+from models.enums import ConversationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -599,7 +600,7 @@ class WorkflowDraftVariableService:
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.DEBUGGER,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,

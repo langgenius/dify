@@ -4,7 +4,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource
+from models.account import TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, MessageStatus
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
@@ -143,7 +144,7 @@ class TestSavedMessageService:
             from_account_id=user.id if is_account else None,
             name=fake.sentence(nb_words=3),
             inputs={},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             mode="chat",
         )
 
@@ -167,7 +168,7 @@ class TestSavedMessageService:
             answer_unit_price=0.002,
             total_price=0.003,
             currency="USD",
-            status="normal",
+            status=MessageStatus.NORMAL,
         )
 
         db_session_with_containers.add(message)

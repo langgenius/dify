@@ -49,7 +49,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -57,12 +57,12 @@ class TestWorkflowService:
         account.updated_at = account.created_at
 
         # Create a tenant for the account
-        from models.account import Tenant
+        from models.account import Tenant, AccountStatus, TenantStatus
 
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()

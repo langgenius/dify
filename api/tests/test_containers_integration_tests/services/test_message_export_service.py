@@ -6,8 +6,8 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import Session
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -50,12 +50,12 @@ class TestAppMessageExportServiceIntegration:
             email=f"test-{uuid.uuid4()}@example.com",
             name="tester",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         session.add(account)
         session.flush()
 
-        tenant = Tenant(name=f"tenant-{uuid.uuid4()}", status="normal")
+        tenant = Tenant(name=f"tenant-{uuid.uuid4()}", status=TenantStatus.NORMAL)
         session.add(tenant)
         session.flush()
 
@@ -93,7 +93,7 @@ class TestAppMessageExportServiceIntegration:
             mode="chat",
             name="conv",
             inputs={"seed": 1},
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
         )

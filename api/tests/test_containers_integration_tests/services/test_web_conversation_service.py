@@ -14,6 +14,8 @@ from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.web_conversation_service import WebConversationService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
+from models.account import TenantStatus
+from models.enums import ConversationStatus
 
 
 class TestWebConversationService:
@@ -144,7 +146,7 @@ class TestWebConversationService:
             introduction=fake.text(max_nb_chars=200),
             system_instruction=fake.text(max_nb_chars=300),
             system_instruction_tokens=50,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.WEB_APP,
             from_source=ConversationFromSource.CONSOLE if isinstance(user, Account) else ConversationFromSource.API,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,

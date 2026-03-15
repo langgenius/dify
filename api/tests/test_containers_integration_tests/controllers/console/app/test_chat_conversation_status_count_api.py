@@ -12,8 +12,8 @@ from dify_graph.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, DifySetup, Tenant, TenantAccountJoin
-from models.account import AccountStatus, TenantAccountRole
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.account import AccountStatus, TenantAccountRole, TenantStatus
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole, MessageStatus
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
 from services.account_service import AccountService
@@ -30,7 +30,7 @@ def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
     db_session.add(account)
     db_session.commit()
 
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     db_session.add(tenant)
     db_session.commit()
 
@@ -73,7 +73,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
         app_id=app_id,
         name="Test Conversation",
         inputs={},
-        status="normal",
+        status=ConversationStatus.NORMAL,
         mode=AppMode.CHAT,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
@@ -123,7 +123,7 @@ def _create_message(
         message_price_unit=0.001,
         answer_price_unit=0.001,
         currency="USD",
-        status="normal",
+        status=MessageStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,

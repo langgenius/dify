@@ -16,6 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
+from models.account import AccountStatus, TenantStatus
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
-        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="normal")
+        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status=TenantStatus.NORMAL)
         tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
@@ -75,7 +76,7 @@ class TestDeleteSegmentFromIndexTask:
             name=fake.name(),
             email=fake.email(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",
         )
         account.id = fake.uuid4()
