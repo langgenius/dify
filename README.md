@@ -148,6 +148,12 @@ SUGGESTED_QUESTIONS_TEMPERATURE=0.3
 
 See the [Suggested Questions Configuration Guide](docs/suggested-questions-configuration.md) for detailed examples and usage instructions.
 
+#### External MCP Payment Integration (AgentPay Example)
+
+If you want your agents to execute payment-capable workflows, follow the
+[AgentPay MCP Integration Guide](docs/agentpay-mcp-integration.md).
+The guide is beginner-friendly and uses Dify's existing MCP provider flow.
+
 ### Metrics Monitoring with Grafana
 
 Import the dashboard to Grafana, using Dify's PostgreSQL database as data source, to monitor metrics in granularity of apps, tenants, messages, and more.

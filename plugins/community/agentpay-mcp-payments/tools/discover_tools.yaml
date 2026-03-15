@@ -1,0 +1,32 @@
+identity:
+  name: discover_tools
+  author: AI Agent Economy Community
+  label:
+    en_US: Discover Tools
+  description:
+    human:
+      en_US: Search available paid tools by keyword.
+    llm: Search available paid tools by keyword and return pricing metadata.
+parameters:
+  - name: query
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Query
+    human_description:
+      en_US: Search keyword such as security, seo, or scraping.
+    llm_description: Keyword to search in tool marketplace.
+  - name: limit
+    type: number
+    required: false
+    form: llm
+    label:
+      en_US: Limit
+    human_description:
+      en_US: Max number of results to return.
+    llm_description: Maximum number of results to return.
+    default: 10
+extra:
+  python:
+    source: tools/discover_tools.py

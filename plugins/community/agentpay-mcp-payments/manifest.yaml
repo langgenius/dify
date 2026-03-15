@@ -1,0 +1,33 @@
+version: 0.0.1
+type: plugin
+author: AI Agent Economy Community
+name: agentpay_mcp_payments
+label:
+  en_US: AgentPay MCP Payments
+  zh_Hans: AgentPay MCP 支付层
+description:
+  en_US: MCP-based payment layer for discovering and invoking metered tools through AgentPay.
+created_at: "2026-03-14T12:00:00Z"
+icon: _assets/icon.svg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+    app:
+      enabled: true
+    storage:
+      enabled: false
+plugins:
+  tools:
+    - provider/agentpay_mcp_payments.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+privacy: ./privacy.md

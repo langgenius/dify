@@ -10,6 +10,8 @@ import { MCPAuthMethod } from '@/app/components/tools/types'
 import { uploadRemoteFileInfo } from '@/service/common'
 
 const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
+const AGENTPAY_DEFAULT_NAME = 'AgentPay'
+const AGENTPAY_DEFAULT_SERVER_ID = 'agentpay'
 
 const extractFileId = (url: string) => {
   const match = /files\/(.+?)\/file-preview/.exec(url)
@@ -30,6 +32,18 @@ const getIcon = (data?: ToolWithProvider): AppIconSelection => {
 
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
   return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value }))
+}
+
+const isAgentPayUrl = (urlValue: string) => {
+  try {
+    const parsed = new URL(urlValue)
+    const host = parsed.hostname.toLowerCase()
+    const path = parsed.pathname.toLowerCase()
+    return host.includes('agentpay') || path.includes('agentpay')
+  }
+  catch {
+    return false
+  }
 }
 
 export const isValidUrl = (string: string) => {
@@ -112,11 +126,29 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
 
+  const applyAgentPayDefaults = useCallback((urlValue: string) => {
+    if (!isAgentPayUrl(urlValue))
+      return
+
+    // Set smart defaults only when fields are still empty.
+    setName((prev) => {
+      if (prev.trim())
+        return prev
+      return AGENTPAY_DEFAULT_NAME
+    })
+    setServerIdentifier((prev) => {
+      if (prev.trim())
+        return prev
+      return AGENTPAY_DEFAULT_SERVER_ID
+    })
+  }, [])
+
   const handleUrlBlur = useCallback(async (urlValue: string) => {
     if (data)
       return
     if (!isValidUrl(urlValue))
       return
+    applyAgentPayDefaults(urlValue)
     const domain = getDomain(urlValue)
     const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
     setIsFetchingIcon(true)
@@ -145,7 +177,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
     finally {
       setIsFetchingIcon(false)
     }
-  }, [data])
+  }, [applyAgentPayDefaults, data])
 
   const resetIcon = useCallback(() => {
     setAppIcon(getIcon(data))

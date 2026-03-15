@@ -348,6 +348,49 @@ describe('useMCPModalForm', () => {
   })
 
   describe('handleUrlBlur', () => {
+    it('should auto-fill AgentPay defaults when url matches and fields are empty', async () => {
+      vi.mocked(await import('@/service/common').then(m => m.uploadRemoteFileInfo)).mockResolvedValueOnce({
+        id: 'file123',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/files/file123/file-preview/icon.png',
+      } as unknown as { id: string, name: string, size: number, mime_type: string, url: string })
+
+      const { result } = renderHook(() => useMCPModalForm())
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://api.agentpay.ai/mcp')
+      })
+
+      expect(result.current.state.name).toBe('AgentPay')
+      expect(result.current.state.serverIdentifier).toBe('agentpay')
+    })
+
+    it('should not override existing name and server identifier when url matches AgentPay', async () => {
+      vi.mocked(await import('@/service/common').then(m => m.uploadRemoteFileInfo)).mockResolvedValueOnce({
+        id: 'file123',
+        name: 'icon.png',
+        size: 1024,
+        mime_type: 'image/png',
+        url: 'https://example.com/files/file123/file-preview/icon.png',
+      } as unknown as { id: string, name: string, size: number, mime_type: string, url: string })
+
+      const { result } = renderHook(() => useMCPModalForm())
+
+      act(() => {
+        result.current.actions.setName('Custom Name')
+        result.current.actions.setServerIdentifier('custom-id')
+      })
+
+      await act(async () => {
+        await result.current.actions.handleUrlBlur('https://api.agentpay.ai/mcp')
+      })
+
+      expect(result.current.state.name).toBe('Custom Name')
+      expect(result.current.state.serverIdentifier).toBe('custom-id')
+    })
+
     it('should not fetch icon in edit mode (when data is provided)', async () => {
       const mockData = {
         id: 'test',
