@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock, PropertyMock, patch
+
+import pytest
 
 from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
