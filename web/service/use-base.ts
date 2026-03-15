@@ -5,7 +5,7 @@ import {
 import { useCallback } from 'react'
 
 /**
- * @deprecated Thin wrapper with no added value.
+ * @deprecated Convenience wrapper scheduled for removal.
  * Prefer `useQueryClient()` + `useCallback(() => queryClient.invalidateQueries(...), [...])` directly.
  */
 export const useInvalid = (key?: QueryKey) => {
@@ -18,7 +18,7 @@ export const useInvalid = (key?: QueryKey) => {
 }
 
 /**
- * @deprecated Thin wrapper with no added value.
+ * @deprecated Convenience wrapper scheduled for removal.
  * Prefer `useQueryClient()` + `useCallback(() => queryClient.resetQueries(...), [...])` directly.
  */
 export const useReset = (key?: QueryKey) => {
