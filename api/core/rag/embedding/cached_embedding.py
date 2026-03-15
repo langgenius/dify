@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
 from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
 from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
@@ -21,21 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance, user: str | None = None):
-        self._model_instance = self._bind_model_instance(model_instance, user)
-
-    @staticmethod
-    def _bind_model_instance(model_instance: ModelInstance, user: str | None) -> ModelInstance:
-        if user is None or not isinstance(model_instance, ModelInstance):
-            return model_instance
-
-        tenant_id = model_instance.provider_model_bundle.configuration.tenant_id
-        return ModelManager.for_tenant(tenant_id=tenant_id, user_id=user).get_model_instance(
-            tenant_id=tenant_id,
-            provider=model_instance.provider,
-            model_type=model_instance.model_type_instance.model_type,
-            model=model_instance.model_name,
-        )
+    def __init__(self, model_instance: ModelInstance):
+        self._model_instance = model_instance
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
