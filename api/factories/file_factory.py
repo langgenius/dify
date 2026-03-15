@@ -14,18 +14,11 @@ from werkzeug.http import parse_options_header
 
 from core.helper import ssrf_proxy
 from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
-from dify_graph.file.file_factory import (
-    get_file_type_by_mime_type as _get_file_type_by_mime_type,
-)
-from dify_graph.file.file_factory import (
-    standardize_file_type,
-)
+from dify_graph.file.file_factory import standardize_file_type
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
 
 logger = logging.getLogger(__name__)
-
-get_file_type_by_mime_type = _get_file_type_by_mime_type
 
 
 def build_from_message_files(

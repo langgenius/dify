@@ -428,9 +428,7 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
             return fake_tool_file
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
-    mocker.patch(
-        "core.datasource.datasource_manager.file_factory.get_file_type_by_mime_type", return_value=FileType.IMAGE
-    )
+    mocker.patch("core.datasource.datasource_manager.get_file_type_by_mime_type", return_value=FileType.IMAGE)
     built = File(
         tenant_id="t1",
         type=FileType.IMAGE,
