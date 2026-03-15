@@ -27,7 +27,7 @@ from core.plugin.impl.datasource import PluginDatasourceManager
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey
-from dify_graph.file import File
+from dify_graph.file import File, get_file_type_by_mime_type
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from factories import file_factory
@@ -279,7 +279,7 @@ class DatasourceManager:
                     if datasource_file is not None:
                         mapping = {
                             "tool_file_id": datasource_file_id,
-                            "type": file_factory.get_file_type_by_mime_type(mime_type),
+                            "type": get_file_type_by_mime_type(mime_type),
                             "transfer_method": FileTransferMethod.TOOL_FILE,
                             "url": url,
                         }

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.file import File, FileTransferMethod
+from dify_graph.file import File, FileTransferMethod, get_file_type_by_mime_type
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.node_events import (
@@ -83,7 +83,7 @@ class AgentMessageTransformer:
 
                 mapping = {
                     "tool_file_id": tool_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
+                    "type": get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
