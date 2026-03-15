@@ -30,9 +30,12 @@ web/service/client.ts
    - Use `base.route({...}).output(type<...>())` as baseline.
    - Add `.input(type<...>())` only when request has `params/query/body`.
    - For `GET` without input, omit `.input(...)` (do not use `.input(type<unknown>())`).
+   - **Verify**: confirm contract compiles and types infer correctly (`pnpm type-check:tsgo`) before proceeding.
 2. Register contract in `web/contract/router.ts`
    - Import directly from domain files and nest by API prefix.
+   - **Verify**: run `pnpm type-check:tsgo` to confirm router composition is type-safe.
 3. Consume from UI call sites via oRPC query utils.
+   - **Verify**: confirm `data` is correctly inferred (not `unknown`) at the call site.
 
 ```typescript
 import { useQuery } from '@tanstack/react-query'
