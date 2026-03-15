@@ -53,7 +53,7 @@ class DatasetConfigManager:
             for tool in agent_dict.get("tools", []):
                 if len(tool) == 1:
                     # old standard
-                    key = list(tool.keys())[0]
+                    key = next(iter(tool))
 
                     if key != "dataset":
                         continue
@@ -208,7 +208,9 @@ class DatasetConfigManager:
             PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
-                key = list(tool.keys())[0]
+                if not tool:
+                    continue
+                key = next(iter(tool))
                 if key == "dataset":
                     # old style, use tool name as key
                     tool_item = tool[key]

@@ -163,7 +163,7 @@ class MCPAppApi(Resource):
 
     def _create_variable_entity(self, item: dict) -> VariableEntity:
         """Create a single VariableEntity from raw form item"""
-        variable_type = item.get("type", "") or list(item.keys())[0]
+        variable_type = item.get("type", "") or next(iter(item), "")
         variable = item[variable_type]
 
         return VariableEntity(
