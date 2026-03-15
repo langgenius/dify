@@ -384,6 +384,7 @@ describe('Model Config Utilities', () => {
           type: 'string',
           max_length: 100,
           options: [],
+          default: 'John',
         },
       ]
 
@@ -396,7 +397,7 @@ describe('Model Config Utilities', () => {
           variable: 'user_name',
           required: true,
           max_length: 100,
-          default: '',
+          default: 'John',
           hide: undefined,
         },
       })
@@ -442,6 +443,7 @@ describe('Model Config Utilities', () => {
           required: true,
           type: 'number',
           options: [],
+          default: 25,
         },
       ]
 
@@ -452,7 +454,7 @@ describe('Model Config Utilities', () => {
           label: 'Age',
           variable: 'age',
           required: true,
-          default: '',
+          default: 25,
           hide: undefined,
         },
       })
@@ -814,6 +816,74 @@ describe('Model Config Utilities', () => {
       expect((backToUserInputs[0] as any)['text-input']?.variable).toBe('name')
       expect((backToUserInputs[1] as any).select?.variable).toBe('type')
       expect((backToUserInputs[1] as any).select?.options).toEqual(['A', 'B', 'C'])
+    })
+
+    /**
+     * Test that default values are preserved through round-trip conversion
+     * This is critical for Agent variables persistence (issue #33460)
+     */
+    it('should preserve default values through round-trip conversion', () => {
+      const originalUserInputs: UserInputFormItem[] = [
+        {
+          'text-input': {
+            label: 'Query',
+            variable: 'query',
+            required: true,
+            max_length: 200,
+            default: 'default query text',
+            hide: false,
+          },
+        },
+        {
+          number: {
+            label: 'Count',
+            variable: 'count',
+            required: false,
+            default: 10,
+            hide: false,
+          },
+          // eslint-disable-next-line ts/no-explicit-any
+        } as any,
+        {
+          checkbox: {
+            label: 'Enabled',
+            variable: 'enabled',
+            required: true,
+            default: true,
+            hide: false,
+          },
+          // eslint-disable-next-line ts/no-explicit-any
+        } as any,
+        {
+          select: {
+            label: 'Priority',
+            variable: 'priority',
+            required: true,
+            options: ['Low', 'Medium', 'High'],
+            default: 'Medium',
+            hide: false,
+          },
+        },
+      ]
+
+      const promptVars = userInputsFormToPromptVariables(originalUserInputs)
+      const backToUserInputs = promptVariablesToUserInputsForm(promptVars)
+
+      // Verify text-input default is preserved
+      // eslint-disable-next-line ts/no-explicit-any
+      expect((backToUserInputs[0] as any)['text-input']?.default).toBe('default query text')
+
+      // Verify number default is preserved
+      // eslint-disable-next-line ts/no-explicit-any
+      expect((backToUserInputs[1] as any).number?.default).toBe(10)
+
+      // Verify checkbox default is preserved
+      // eslint-disable-next-line ts/no-explicit-any
+      expect((backToUserInputs[2] as any).checkbox?.default).toBe(true)
+
+      // Verify select default is preserved
+      // eslint-disable-next-line ts/no-explicit-any
+      expect((backToUserInputs[3] as any).select?.default).toBe('Medium')
     })
   })
 })
