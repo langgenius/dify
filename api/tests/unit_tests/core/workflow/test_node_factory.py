@@ -139,6 +139,29 @@ class TestDefaultWorkflowCodeExecutor:
         assert executor.is_execution_error(RuntimeError("boom")) is False
 
 
+class TestDefaultLLMTemplateRenderer:
+    def test_render_jinja2_delegates_to_code_executor(self, monkeypatch):
+        renderer = node_factory.DefaultLLMTemplateRenderer()
+        execute_workflow_code_template = MagicMock(return_value={"result": "hello world"})
+        monkeypatch.setattr(
+            node_factory.CodeExecutor,
+            "execute_workflow_code_template",
+            execute_workflow_code_template,
+        )
+
+        result = renderer.render_jinja2(
+            template="Hello {{ name }}",
+            inputs={"name": "world"},
+        )
+
+        assert result == "hello world"
+        execute_workflow_code_template.assert_called_once_with(
+            language=CodeLanguage.JINJA2,
+            code="Hello {{ name }}",
+            inputs={"name": "world"},
+        )
+
+
 class TestDifyNodeFactoryInit:
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
@@ -150,6 +173,7 @@ class TestDifyNodeFactoryInit:
         http_request_config = sentinel.http_request_config
         credentials_provider = sentinel.credentials_provider
         model_factory = sentinel.model_factory
+        llm_template_renderer = sentinel.llm_template_renderer
 
         with (
             patch.object(
@@ -175,6 +199,11 @@ class TestDifyNodeFactoryInit:
             ),
             patch.object(
                 node_factory,
+                "DefaultLLMTemplateRenderer",
+                return_value=llm_template_renderer,
+            ) as llm_renderer_factory,
+            patch.object(
+                node_factory,
                 "build_dify_model_access",
                 return_value=(credentials_provider, model_factory),
             ) as build_dify_model_access,
@@ -187,11 +216,13 @@ class TestDifyNodeFactoryInit:
         resolve_dify_context.assert_called_once_with(graph_init_params.run_context)
         build_dify_model_access.assert_called_once_with("tenant-id")
         renderer_factory.assert_called_once()
+        llm_renderer_factory.assert_called_once()
         assert renderer_factory.call_args.kwargs["code_executor"] is factory._code_executor
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
         assert factory._dify_context is dify_context
         assert factory._template_renderer is template_renderer
+        assert factory._llm_template_renderer is llm_template_renderer
         assert factory._rag_retrieval is rag_retrieval
         assert factory._document_extractor_unstructured_api_config is unstructured_api_config
         assert factory._http_request_config is http_request_config
@@ -244,6 +275,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._template_renderer = sentinel.template_renderer
+        factory._llm_template_renderer = sentinel.llm_template_renderer
         factory._template_transform_max_output_length = 2048
         factory._http_request_http_client = sentinel.http_client
         factory._http_request_tool_file_manager_factory = sentinel.tool_file_manager_factory
@@ -393,8 +425,22 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),
         [
-            (NodeType.LLM, "LLMNode", {"http_client": sentinel.http_client}),
-            (NodeType.QUESTION_CLASSIFIER, "QuestionClassifierNode", {"http_client": sentinel.http_client}),
+            (
+                NodeType.LLM,
+                "LLMNode",
+                {
+                    "http_client": sentinel.http_client,
+                    "template_renderer": sentinel.llm_template_renderer,
+                },
+            ),
+            (
+                NodeType.QUESTION_CLASSIFIER,
+                "QuestionClassifierNode",
+                {
+                    "http_client": sentinel.http_client,
+                    "template_renderer": sentinel.llm_template_renderer,
+                },
+            ),
             (NodeType.PARAMETER_EXTRACTOR, "ParameterExtractorNode", {}),
         ],
     )

@@ -20,7 +20,7 @@ from dify_graph.nodes.document_extractor import DocumentExtractorNode
 from dify_graph.nodes.http_request import HttpRequestNode
 from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from dify_graph.nodes.llm import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
 from dify_graph.nodes.protocols import HttpClientProtocol, ToolFileManagerProtocol
 from dify_graph.nodes.question_classifier import QuestionClassifierNode
@@ -68,6 +68,8 @@ class MockNodeMixin:
             kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
             # LLM-like nodes now require an http_client; provide a mock by default for tests.
             kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+            if isinstance(self, (LLMNode, QuestionClassifierNode)):
+                kwargs.setdefault("template_renderer", MagicMock(spec=TemplateRenderer))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
