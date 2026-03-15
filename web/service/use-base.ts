@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 
 /**
  * @deprecated Convenience wrapper scheduled for removal.
- * Prefer `useQueryClient()` + `useCallback(() => queryClient.invalidateQueries(...), [...])` directly.
+ * Prefer binding invalidation in `useMutation` callbacks at the service layer.
  */
 export const useInvalid = (key?: QueryKey) => {
   const queryClient = useQueryClient()
@@ -19,7 +19,7 @@ export const useInvalid = (key?: QueryKey) => {
 
 /**
  * @deprecated Convenience wrapper scheduled for removal.
- * Prefer `useQueryClient()` + `useCallback(() => queryClient.resetQueries(...), [...])` directly.
+ * Prefer binding reset in `useMutation` callbacks at the service layer.
  */
 export const useReset = (key?: QueryKey) => {
   const queryClient = useQueryClient()
