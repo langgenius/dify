@@ -64,6 +64,8 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
         <Field
