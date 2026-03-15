@@ -14,16 +14,23 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.trigger.constants import is_trigger_node_type
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import (
+    ErrorStrategy,
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file import File
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from dify_graph.nodes.human_input.entities import (
@@ -34,7 +41,6 @@ from dify_graph.nodes.human_input.entities import (
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormKind
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -310,7 +316,7 @@ class WorkflowService:
                     for _, node_data in draft_workflow.walk_nodes()
                     if (node_type_str := node_data.get("type"))
                     and isinstance(node_type_str, str)
-                    and NodeType(node_type_str).is_trigger_node
+                    and is_trigger_node_type(node_type_str)
                 )
                 if trigger_node_count > 2:
                     raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
@@ -619,10 +625,10 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs: list[Mapping[str, object]] = []
-        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
+        for node_type, node_class_mapping in get_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
-            if node_type is NodeType.HTTP_REQUEST:
+            if node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 filters = {
                     HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
                         max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -650,14 +656,15 @@ class WorkflowService:
         :return:
         """
         node_type_enum = NodeType(node_type)
+        node_mapping = get_node_type_classes_mapping()
 
         # return default block config
-        if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
+        if node_type_enum not in node_mapping:
             return {}
 
-        node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
+        node_class = node_mapping[node_type_enum][LATEST_VERSION]
         resolved_filters = dict(filters) if filters else {}
-        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
+        if node_type_enum == BuiltinNodeTypes.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in resolved_filters:
             resolved_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
                 max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
                 max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
@@ -695,7 +702,7 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config["data"]
-        if node_type.is_start_node:
+        if is_start_node_type(node_type):
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
                 conversation_id = draft_var_srv.get_or_create_conversation(
@@ -703,7 +710,7 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                if node_type is NodeType.START:
+                if node_type == BuiltinNodeTypes.START:
                     start_data = StartNodeData.model_validate(node_data, from_attributes=True)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
@@ -782,7 +789,7 @@ class WorkflowService:
                 session=session,
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
-                node_type=NodeType(workflow_node_execution.node_type),
+                node_type=workflow_node_execution.node_type,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=node_execution.id,
                 user=account,
@@ -815,7 +822,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        if node_type is not NodeType.HUMAN_INPUT:
+        if node_type != BuiltinNodeTypes.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
         # inputs: values used to fill missing upstream variables referenced in form_content.
@@ -874,7 +881,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        if node_type is not NodeType.HUMAN_INPUT:
+        if node_type != BuiltinNodeTypes.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
         # inputs: values used to fill missing upstream variables referenced in form_content.
@@ -914,7 +921,7 @@ class WorkflowService:
                 session=session,
                 app_id=app_model.id,
                 node_id=node_id,
-                node_type=NodeType.HUMAN_INPUT,
+                node_type=BuiltinNodeTypes.HUMAN_INPUT,
                 node_execution_id=str(uuid.uuid4()),
                 user=account,
                 enclosing_node_id=enclosing_node_id,
@@ -939,7 +946,7 @@ class WorkflowService:
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
-        if node_type is not NodeType.HUMAN_INPUT:
+        if node_type != BuiltinNodeTypes.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
         node_data = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
@@ -1327,18 +1334,18 @@ class WorkflowService:
         for node in node_configs:
             node_type = node.get("data", {}).get("type")
             if node_type:
-                node_types.add(NodeType(node_type))
+                node_types.add(node_type)
 
         # start node and trigger node cannot coexist
-        if NodeType.START in node_types:
-            if any(nt.is_trigger_node for nt in node_types):
+        if BuiltinNodeTypes.START in node_types:
+            if any(is_trigger_node_type(nt) for nt in node_types):
                 raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
 
         for node in node_configs:
             node_data = node.get("data", {})
             node_type = node_data.get("type")
 
-            if node_type == NodeType.HUMAN_INPUT:
+            if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
     def validate_features_structure(self, app_model: App, features: dict):
@@ -1460,7 +1467,7 @@ def _setup_variable_pool(
     conversation_variables: list[VariableBase],
 ):
     # Only inject system variables for START node type.
-    if node_type == NodeType.START or node_type.is_trigger_node:
+    if is_start_node_type(node_type):
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,

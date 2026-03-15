@@ -2,12 +2,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.graph import Graph
 from dify_graph.nodes.base.node import Node
 
 
-def _make_node(node_id: str, node_type: NodeType = NodeType.START) -> Node:
+def _make_node(node_id: str, node_type: NodeType = BuiltinNodeTypes.START) -> Node:
     node = MagicMock(spec=Node)
     node.id = node_id
     node.node_type = node_type
@@ -17,9 +17,9 @@ def _make_node(node_id: str, node_type: NodeType = NodeType.START) -> Node:
 
 def test_graph_builder_creates_linear_graph():
     builder = Graph.new()
-    root = _make_node("root", NodeType.START)
-    mid = _make_node("mid", NodeType.LLM)
-    end = _make_node("end", NodeType.END)
+    root = _make_node("root", BuiltinNodeTypes.START)
+    mid = _make_node("mid", BuiltinNodeTypes.LLM)
+    end = _make_node("end", BuiltinNodeTypes.END)
 
     graph = builder.add_root(root).add_node(mid).add_node(end).build()
 

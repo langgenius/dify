@@ -12,13 +12,13 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginNotFoundError
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType
-from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App
@@ -179,7 +179,7 @@ class TriggerService:
 
         # Walk nodes to find plugin triggers
         nodes_in_graph: list[Mapping[str, Any]] = []
-        for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+        for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
             # Extract plugin trigger configuration from node
             plugin_id = node_config.get("plugin_id", "")
             provider_id = node_config.get("provider_id", "")

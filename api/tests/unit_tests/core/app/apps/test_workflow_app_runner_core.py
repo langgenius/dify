@@ -17,7 +17,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
@@ -105,10 +105,10 @@ class TestWorkflowBasedAppRunner:
 
         from core.app.apps import workflow_app_runner
 
-        monkeypatch.setitem(
-            workflow_app_runner.NODE_TYPE_CLASSES_MAPPING,
-            NodeType.START,
-            {"1": _NodeCls},
+        monkeypatch.setattr(
+            workflow_app_runner,
+            "resolve_workflow_node_class",
+            lambda **_kwargs: _NodeCls,
         )
         monkeypatch.setattr(
             "core.app.apps.workflow_app_runner.load_into_variable_pool",
@@ -193,7 +193,7 @@ class TestWorkflowBasedAppRunner:
             NodeRunStartedEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_title="Start",
                 start_at=datetime.utcnow(),
             ),
@@ -203,7 +203,7 @@ class TestWorkflowBasedAppRunner:
             NodeRunStreamChunkEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 selector=["node", "text"],
                 chunk="hi",
                 is_final=False,
@@ -214,7 +214,7 @@ class TestWorkflowBasedAppRunner:
             NodeRunAgentLogEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 message_id="msg",
                 label="label",
                 node_execution_id="exec",
@@ -230,7 +230,7 @@ class TestWorkflowBasedAppRunner:
             NodeRunIterationSucceededEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 node_title="Iter",
                 start_at=datetime.utcnow(),
                 inputs={},
@@ -244,7 +244,7 @@ class TestWorkflowBasedAppRunner:
             NodeRunLoopFailedEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 node_title="Loop",
                 start_at=datetime.utcnow(),
                 inputs={},
