@@ -667,6 +667,33 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
     assert model_calls == [True]
 
 
+@pytest.mark.parametrize(
+    ("icon_type", "icon", "icon_background"),
+    [
+        (IconType.EMOJI, "🚀", "#123456"),
+        (IconType.IMAGE, "https://example.com/icon.png", "#abcdef"),
+    ],
+)
+def test_export_dsl_preserves_icon_metadata(icon_type, icon, icon_background):
+    app_model = SimpleNamespace(
+        mode=AppMode.CHAT.value,
+        tenant_id="tenant-1",
+        name="n",
+        icon=icon,
+        icon_type=icon_type,
+        icon_background=icon_background,
+        description="d",
+        use_icon_as_answer_icon=False,
+        app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
+    )
+
+    exported = yaml.safe_load(AppDslService.export_dsl(app_model))
+
+    assert exported["app"]["icon_type"] == icon_type.value
+    assert exported["app"]["icon"] == icon
+    assert exported["app"]["icon_background"] == icon_background
+
+
 def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
     workflow_dict = {
         "graph": {

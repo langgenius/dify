@@ -544,15 +544,16 @@ class AppDslService:
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
-
+        icon_type = app_model.icon_type.value if isinstance(app_model.icon_type, IconType) else app_model.icon_type
         export_data = {
             "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
-                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
-                "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
+                "icon_type": icon_type,
+                "icon": app_model.icon,
+                "icon_background": app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
             },
