@@ -154,7 +154,6 @@ If you want your agents to execute payment-capable workflows, follow the
 [AgentPay MCP Integration Guide](docs/agentpay-mcp-integration.md).
 The guide is beginner-friendly and uses Dify's existing MCP provider flow.
 
-
 ### Metrics Monitoring with Grafana
 
 Import the dashboard to Grafana, using Dify's PostgreSQL database as data source, to monitor metrics in granularity of apps, tenants, messages, and more.

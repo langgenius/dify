@@ -79,8 +79,8 @@ Optional credential overrides:
 Minimal flow:
 
 1. `Start`
-2. `check_balance` tool node
-3. `Answer` node
+1. `check_balance` tool node
+1. `Answer` node
 
 Answer template:
 
@@ -95,7 +95,7 @@ Insert variable from picker (`CHECK_BALANCE -> text`) so node ID stays correct.
 Success requires both:
 
 1. Tool node last run status = `SUCCESS`
-2. Supergateway log shows `"method":"tools/call"` with `"name":"check_balance"`
+1. Supergateway log shows `"method":"tools/call"` with `"name":"check_balance"`
 
 If you only see `initialize` and `tools/list`, execution did not reach tool invoke path.
 
