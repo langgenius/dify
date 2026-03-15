@@ -73,11 +73,20 @@ class ApiProviderControllerItem(TypedDict):
 
 
 class WorkflowToolRuntimeSpec(Protocol):
-    provider_type: ToolProviderType
-    provider_id: str
-    tool_name: str
-    tool_configurations: dict[str, Any]
-    credential_id: str | None
+    @property
+    def provider_type(self) -> ToolProviderType: ...
+
+    @property
+    def provider_id(self) -> str: ...
+
+    @property
+    def tool_name(self) -> str: ...
+
+    @property
+    def tool_configurations(self) -> Mapping[str, Any]: ...
+
+    @property
+    def credential_id(self) -> str | None: ...
 
 
 class ToolManager:
@@ -1018,7 +1027,7 @@ class ToolManager:
         cls,
         parameters: list[ToolParameter],
         variable_pool: Optional["VariablePool"],
-        tool_configurations: dict[str, Any],
+        tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:
         """

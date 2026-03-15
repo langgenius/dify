@@ -248,17 +248,17 @@ class ToolNode(Node[ToolNodeData]):
 
                 tool_file_id = str(url).split("/")[-1].split(".")[0]
 
-                _, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
+                _stream, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not found")
 
-                mapping: dict[str, Any] = {
+                file_mapping: dict[str, Any] = {
                     "tool_file_id": tool_file_id,
                     "type": get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
-                file = self._runtime.build_file_reference(mapping=mapping)
+                file = self._runtime.build_file_reference(mapping=file_mapping)
                 files.append(file)
             elif message.type == ToolRuntimeMessage.MessageType.BLOB:
                 # get tool file id
@@ -266,16 +266,16 @@ class ToolNode(Node[ToolNodeData]):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
-                _, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
+                _stream, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not exists")
 
-                mapping: dict[str, Any] = {
+                blob_file_mapping: dict[str, Any] = {
                     "tool_file_id": tool_file_id,
                     "transfer_method": FileTransferMethod.TOOL_FILE,
                 }
 
-                files.append(self._runtime.build_file_reference(mapping=mapping))
+                files.append(self._runtime.build_file_reference(mapping=blob_file_mapping))
             elif message.type == ToolRuntimeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolRuntimeMessage.TextMessage)
                 text += message.message.text
