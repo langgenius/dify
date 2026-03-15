@@ -191,6 +191,10 @@ class Vector:
                 from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
 
                 return IrisVectorFactory
+            case VectorType.HOLOGRES:
+                from core.rag.datasource.vdb.hologres.hologres_vector import HologresVectorFactory
+
+                return HologresVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
