@@ -9,8 +9,8 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeExecutionType,
-    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 
 
 class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
-    node_type = NodeType.QUESTION_CLASSIFIER
+    node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
     execution_type = NodeExecutionType.BRANCH
 
     _file_outputs: list["File"]

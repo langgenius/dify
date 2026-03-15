@@ -2,14 +2,15 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.summary_index.summary_index import SummaryIndex
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType, SystemVariableKey
+from dify_graph.enums import NodeExecutionType, SystemVariableKey
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.template import Template
-from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol
-from dify_graph.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -25,7 +26,7 @@ _INVOKE_FROM_DEBUGGER = "debugger"
 
 
 class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
-    node_type = NodeType.KNOWLEDGE_INDEX
+    node_type = KNOWLEDGE_INDEX_NODE_TYPE
     execution_type = NodeExecutionType.RESPONSE
 
     def __init__(
@@ -34,12 +35,10 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        index_processor: IndexProcessorProtocol,
-        summary_index_service: SummaryIndexServiceProtocol,
     ) -> None:
         super().__init__(id, config, graph_init_params, graph_runtime_state)
-        self.index_processor = index_processor
-        self.summary_index_service = summary_index_service
+        self.index_processor = IndexProcessor()
+        self.summary_index_service = SummaryIndex()
 
     def _run(self) -> NodeRunResult:  # type: ignore
         node_data = self.node_data

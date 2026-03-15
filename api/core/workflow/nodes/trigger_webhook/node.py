@@ -2,9 +2,10 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import NodeExecutionType, NodeType
+from dify_graph.enums import NodeExecutionType
 from dify_graph.file import FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class TriggerWebhookNode(Node[WebhookData]):
-    node_type = NodeType.TRIGGER_WEBHOOK
+    node_type = TRIGGER_WEBHOOK_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
 
     @classmethod

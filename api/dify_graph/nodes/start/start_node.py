@@ -3,7 +3,7 @@ from typing import Any
 from jsonschema import Draft7Validator, ValidationError
 
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.start.entities import StartNodeData
@@ -11,7 +11,7 @@ from dify_graph.variables.input_entities import VariableEntityType
 
 
 class StartNode(Node[StartNodeData]):
-    node_type = NodeType.START
+    node_type = BuiltinNodeTypes.START
     execution_type = NodeExecutionType.ROOT
 
     @classmethod

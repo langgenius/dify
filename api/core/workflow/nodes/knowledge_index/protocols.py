@@ -5,21 +5,21 @@ from pydantic import BaseModel, Field
 
 
 class PreviewItem(BaseModel):
-    content: str | None = Field(None)
-    child_chunks: list[str] | None = Field(None)
-    summary: str | None = Field(None)
+    content: str | None = Field(default=None)
+    child_chunks: list[str] | None = Field(default=None)
+    summary: str | None = Field(default=None)
 
 
 class QaPreview(BaseModel):
-    answer: str | None = Field(None)
-    question: str | None = Field(None)
+    answer: str | None = Field(default=None)
+    question: str | None = Field(default=None)
 
 
 class Preview(BaseModel):
     chunk_structure: str
-    parent_mode: str | None = Field(None)
-    preview: list[PreviewItem] = Field([])
-    qa_preview: list[QaPreview] = Field([])
+    parent_mode: str | None = Field(default=None)
+    preview: list[PreviewItem] = Field(default_factory=list)
+    qa_preview: list[QaPreview] = Field(default_factory=list)
     total_segments: int
 
 
@@ -39,3 +39,9 @@ class IndexProcessorProtocol(Protocol):
     def get_preview_output(
         self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
     ) -> Preview: ...
+
+
+class SummaryIndexServiceProtocol(Protocol):
+    def generate_and_vectorize_summary(
+        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict | None = None
+    ) -> None: ...

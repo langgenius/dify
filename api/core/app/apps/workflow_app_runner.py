@@ -32,8 +32,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_resolution import resolve_workflow_node_class
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -139,6 +139,9 @@ class WorkflowBasedAppRunner:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+
+        if root_node_id is None:
+            root_node_id = get_default_root_node_id(graph_config)
 
         # init graph
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
@@ -505,7 +508,9 @@ class WorkflowBasedAppRunner:
         elif isinstance(event, NodeRunRetrieverResourceEvent):
             self._publish_event(
                 QueueRetrieverResourcesEvent(
-                    retriever_resources=event.retriever_resources,
+                    retriever_resources=[
+                        RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+                    ],
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                 )

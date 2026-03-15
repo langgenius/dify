@@ -56,18 +56,18 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.nodes.knowledge_retrieval import exc
-from dify_graph.repositories.rag_retrieval_protocol import (
+from core.workflow.nodes.knowledge_retrieval import exc
+from core.workflow.nodes.knowledge_retrieval.retrieval import (
     KnowledgeRetrievalRequest,
     Source,
     SourceChildChunk,
     SourceMetadata,
 )
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown

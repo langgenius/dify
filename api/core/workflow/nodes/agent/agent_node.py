@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, SystemVariableKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class AgentNode(Node[AgentNodeData]):
-    node_type = NodeType.AGENT
+    node_type = BuiltinNodeTypes.AGENT
 
     _strategy_resolver: AgentStrategyResolver
     _presentation_provider: AgentStrategyPresentationProvider

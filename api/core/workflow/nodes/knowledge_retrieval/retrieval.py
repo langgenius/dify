@@ -3,8 +3,9 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from dify_graph.model_runtime.entities import LLMUsage
-from dify_graph.nodes.knowledge_retrieval.entities import MetadataFilteringCondition
 from dify_graph.nodes.llm.entities import ModelConfig
+
+from .entities import MetadataFilteringCondition
 
 
 class SourceChildChunk(BaseModel):
@@ -28,7 +29,7 @@ class SourceMetadata(BaseModel):
     segment_id: str | None = Field(default=None, description="Segment unique identifier")
     retriever_from: str = Field(default="workflow", description="Retriever source context")
     score: float = Field(default=0.0, description="Retrieval relevance score")
-    child_chunks: list[SourceChildChunk] = Field(default=[], description="List of child chunks")
+    child_chunks: list[SourceChildChunk] = Field(default_factory=list, description="List of child chunks")
     segment_hit_count: int | None = Field(default=0, description="Number of times segment was retrieved")
     segment_word_count: int | None = Field(default=0, description="Word count of the segment")
     segment_position: int | None = Field(default=0, description="Position of segment in document")
@@ -81,28 +82,7 @@ class KnowledgeRetrievalRequest(BaseModel):
 
 
 class RAGRetrievalProtocol(Protocol):
-    """Protocol for RAG-based knowledge retrieval implementations.
-
-    Implementations of this protocol handle knowledge retrieval from datasets
-    including rate limiting, dataset filtering, and document retrieval.
-    """
-
     @property
-    def llm_usage(self) -> LLMUsage:
-        """Return accumulated LLM usage for retrieval operations."""
-        ...
+    def llm_usage(self) -> LLMUsage: ...
 
-    def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]:
-        """Retrieve knowledge from datasets based on the provided request.
-
-        Args:
-            request: Knowledge retrieval request with search parameters
-
-        Returns:
-            List of sources matching the search criteria
-
-        Raises:
-            RateLimitExceededError: If rate limit is exceeded
-            ModelNotExistError: If specified model doesn't exist
-        """
-        ...
+    def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]: ...

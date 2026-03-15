@@ -12,13 +12,13 @@ from unittest.mock import MagicMock
 
 from core.model_manager import ModelInstance
 from core.workflow.nodes.agent import AgentNode
+from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.code import CodeNode
 from dify_graph.nodes.document_extractor import DocumentExtractorNode
 from dify_graph.nodes.http_request import HttpRequestNode
-from dify_graph.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from dify_graph.nodes.llm import LLMNode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor import ParameterExtractorNode
