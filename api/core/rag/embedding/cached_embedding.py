@@ -26,7 +26,7 @@ class CacheEmbedding(Embeddings):
 
     @staticmethod
     def _bind_model_instance(model_instance: ModelInstance, user: str | None) -> ModelInstance:
-        if user is None:
+        if user is None or not isinstance(model_instance, ModelInstance):
             return model_instance
 
         tenant_id = model_instance.provider_model_bundle.configuration.tenant_id

@@ -60,7 +60,7 @@ class ToolNodeRuntimeProtocol(Protocol):
         *,
         provider_name: str,
         default_icon: str | None = None,
-    ) -> tuple[str | None, str | None]: ...
+    ) -> tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]: ...
 
 
 class HumanInputNodeRuntimeProtocol(Protocol):

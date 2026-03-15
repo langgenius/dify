@@ -1,10 +1,12 @@
 import threading
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
+from core.model_manager import ModelInstance
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.entities.commands import CommandType
 from dify_graph.graph_events.node import NodeRunSucceededEvent
@@ -36,6 +38,11 @@ def _build_succeeded_event() -> NodeRunSucceededEvent:
     )
 
 
+def _build_wrapped_model_instance() -> tuple[SimpleNamespace, ModelInstance]:
+    raw_model_instance = ModelInstance.__new__(ModelInstance)
+    return SimpleNamespace(_model_instance=raw_model_instance), raw_model_instance
+
+
 def test_deduct_quota_called_for_successful_llm_node() -> None:
     layer = LLMQuotaLayer()
     node = MagicMock()
@@ -44,7 +51,7 @@ def test_deduct_quota_called_for_successful_llm_node() -> None:
     node.node_type = BuiltinNodeTypes.LLM
     node.tenant_id = "tenant-id"
     node.require_run_context_value.return_value = _build_dify_context()
-    node.model_instance = object()
+    node.model_instance, raw_model_instance = _build_wrapped_model_instance()
 
     result_event = _build_succeeded_event()
     with patch("core.app.workflow.layers.llm_quota.deduct_llm_quota", autospec=True) as mock_deduct:
@@ -52,7 +59,7 @@ def test_deduct_quota_called_for_successful_llm_node() -> None:
 
     mock_deduct.assert_called_once_with(
         tenant_id="tenant-id",
-        model_instance=node.model_instance,
+        model_instance=raw_model_instance,
         usage=result_event.node_run_result.llm_usage,
     )
 
@@ -65,7 +72,7 @@ def test_deduct_quota_called_for_question_classifier_node() -> None:
     node.node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
     node.tenant_id = "tenant-id"
     node.require_run_context_value.return_value = _build_dify_context()
-    node.model_instance = object()
+    node.model_instance, raw_model_instance = _build_wrapped_model_instance()
 
     result_event = _build_succeeded_event()
     with patch("core.app.workflow.layers.llm_quota.deduct_llm_quota", autospec=True) as mock_deduct:
@@ -73,7 +80,7 @@ def test_deduct_quota_called_for_question_classifier_node() -> None:
 
     mock_deduct.assert_called_once_with(
         tenant_id="tenant-id",
-        model_instance=node.model_instance,
+        model_instance=raw_model_instance,
         usage=result_event.node_run_result.llm_usage,
     )
 
@@ -125,7 +132,7 @@ def test_quota_deduction_exceeded_aborts_workflow_immediately() -> None:
     node.node_type = BuiltinNodeTypes.LLM
     node.tenant_id = "tenant-id"
     node.require_run_context_value.return_value = _build_dify_context()
-    node.model_instance = object()
+    node.model_instance, _ = _build_wrapped_model_instance()
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.stop_event = stop_event
 
@@ -152,7 +159,7 @@ def test_quota_precheck_failure_aborts_workflow_immediately() -> None:
     node = MagicMock()
     node.id = "llm-node-id"
     node.node_type = BuiltinNodeTypes.LLM
-    node.model_instance = object()
+    node.model_instance, _ = _build_wrapped_model_instance()
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.stop_event = stop_event
 
@@ -178,7 +185,7 @@ def test_quota_precheck_passes_without_abort() -> None:
     node = MagicMock()
     node.id = "llm-node-id"
     node.node_type = BuiltinNodeTypes.LLM
-    node.model_instance = object()
+    node.model_instance, raw_model_instance = _build_wrapped_model_instance()
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.stop_event = stop_event
 
@@ -186,5 +193,5 @@ def test_quota_precheck_passes_without_abort() -> None:
         layer.on_node_run_start(node)
 
     assert not stop_event.is_set()
-    mock_check.assert_called_once_with(model_instance=node.model_instance)
+    mock_check.assert_called_once_with(model_instance=raw_model_instance)
     layer.command_channel.send_command.assert_not_called()

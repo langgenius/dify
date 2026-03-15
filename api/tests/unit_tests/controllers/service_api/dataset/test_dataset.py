@@ -941,11 +941,11 @@ class TestDatasetListApiGet:
     """Test suite for DatasetListApi.get() endpoint.
 
     ``get`` has no billing decorators but calls ``current_user``,
-    ``DatasetService``, ``ProviderManager``, and ``marshal``.
+    ``DatasetService``, ``create_plugin_provider_manager``, and ``marshal``.
     """
 
     @patch("controllers.service_api.dataset.dataset.marshal")
-    @patch("controllers.service_api.dataset.dataset.ProviderManager")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_list_datasets_success(
@@ -1043,12 +1043,12 @@ class TestDatasetApiGet:
     """Test suite for DatasetApi.get() endpoint.
 
     ``get`` has no billing decorators but calls ``DatasetService``,
-    ``ProviderManager``, ``marshal``, and ``current_user``.
+    ``create_plugin_provider_manager``, ``marshal``, and ``current_user``.
     """
 
     @patch("controllers.service_api.dataset.dataset.DatasetPermissionService")
     @patch("controllers.service_api.dataset.dataset.marshal")
-    @patch("controllers.service_api.dataset.dataset.ProviderManager")
+    @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_success(

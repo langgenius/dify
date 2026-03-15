@@ -8,7 +8,7 @@ from dify_graph.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.file import File, FileTransferMethod
+from dify_graph.file import File, FileTransferMethod, get_file_type_by_mime_type
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
@@ -252,9 +252,9 @@ class ToolNode(Node[ToolNodeData]):
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not found")
 
-                mapping = {
+                mapping: dict[str, Any] = {
                     "tool_file_id": tool_file_id,
-                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
+                    "type": get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
@@ -270,7 +270,7 @@ class ToolNode(Node[ToolNodeData]):
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not exists")
 
-                mapping = {
+                mapping: dict[str, Any] = {
                     "tool_file_id": tool_file_id,
                     "transfer_method": FileTransferMethod.TOOL_FILE,
                 }

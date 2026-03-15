@@ -115,11 +115,11 @@ class LLMQuotaLayer(GraphEngineLayer):
         try:
             match node.node_type:
                 case BuiltinNodeTypes.LLM:
-                    return cast("LLMNode", node).model_instance
+                    model_instance = cast("LLMNode", node).model_instance
                 case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-                    return cast("ParameterExtractorNode", node).model_instance
+                    model_instance = cast("ParameterExtractorNode", node).model_instance
                 case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    return cast("QuestionClassifierNode", node).model_instance
+                    model_instance = cast("QuestionClassifierNode", node).model_instance
                 case _:
                     return None
         except AttributeError:
@@ -128,3 +128,12 @@ class LLMQuotaLayer(GraphEngineLayer):
                 node.id,
             )
             return None
+
+        if isinstance(model_instance, ModelInstance):
+            return model_instance
+
+        raw_model_instance = getattr(model_instance, "_model_instance", None)
+        if isinstance(raw_model_instance, ModelInstance):
+            return raw_model_instance
+
+        return None
