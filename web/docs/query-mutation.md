@@ -26,10 +26,11 @@ function useAccessMode(appId: string | undefined) {
   }))
 }
 
-// ❌ do not fake input just to satisfy the type
+// ❌ non-null assertion + enabled guard — runtime-only, bypasses type checking
 function useBadAccessMode(appId: string | undefined) {
   return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
-    input: { params: { appId: appId || '' } },
+    input: { params: { appId: appId! } },
+    enabled: !!appId,
   }))
 }
 ```
