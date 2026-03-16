@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "private": true,
   "packageManager": "pnpm@10.32.1",
   "imports": {
