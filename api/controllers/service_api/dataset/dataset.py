@@ -20,7 +20,7 @@ from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import DataSetTag
 from libs.login import current_user
 from models.account import Account
-from models.dataset import DatasetPermissionEnum
+from models.dataset import DatasetPermissionEnum, DatasetSpaceType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
@@ -47,6 +47,18 @@ class DatasetCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     summary_index_setting: dict | None = None
+    project_id: str | None = None
+    space_type: str | None = Field(default=DatasetSpaceType.PERSONAL)
+
+    @field_validator("space_type")
+    @classmethod
+    def validate_space_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return DatasetSpaceType(value).value
+        except ValueError:
+            raise ValueError("Invalid space_type. Allowed values: personal, project, public.")
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -61,6 +73,18 @@ class DatasetUpdatePayload(BaseModel):
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
+    project_id: str | None = None
+    space_type: str | None = None
+
+    @field_validator("space_type")
+    @classmethod
+    def validate_space_type(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return DatasetSpaceType(value).value
+        except ValueError:
+            raise ValueError("Invalid space_type. Allowed values: personal, project, public.")
 
 
 class TagNamePayload(BaseModel):
@@ -230,6 +254,8 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
                 summary_index_setting=payload.summary_index_setting,
+                project_id=payload.project_id,
+                space_type=payload.space_type or DatasetSpaceType.PERSONAL,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

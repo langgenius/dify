@@ -43,6 +43,12 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
+class DatasetSpaceType(enum.StrEnum):
+    PERSONAL = "personal"
+    PROJECT = "project"
+    PUBLIC = "public"
+
+
 class Dataset(Base):
     __tablename__ = "datasets"
     __table_args__ = (

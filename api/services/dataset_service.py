@@ -45,6 +45,7 @@ from models.dataset import (
     DatasetPermissionEnum,
     DatasetProcessRule,
     DatasetQuery,
+    DatasetSpaceType,
     Document,
     DocumentSegment,
     ExternalKnowledgeBindings,
@@ -236,6 +237,11 @@ class DatasetService:
         # check if dataset name already exists
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
+
+        try:
+            validated_space_type = DatasetSpaceType(space_type or DatasetSpaceType.PERSONAL)
+        except ValueError:
+            raise ValueError("Invalid space_type. Allowed values: personal, project, public.")
         embedding_model = None
         if indexing_technique == "high_quality":
             model_manager = ModelManager()
@@ -275,7 +281,7 @@ class DatasetService:
         dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         dataset.project_id = project_id
-        dataset.space_type = space_type or "personal"
+        dataset.space_type = validated_space_type.value
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
         db.session.add(dataset)

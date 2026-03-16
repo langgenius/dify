@@ -53,7 +53,7 @@ from fields.dataset_fields import (
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetSpaceType
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -127,6 +127,15 @@ def _validate_doc_form(value: str | None) -> str | None:
     return value
 
 
+def _validate_space_type(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        return DatasetSpaceType(value).value
+    except ValueError:
+        raise ValueError("Invalid space_type. Allowed values: personal, project, public.")
+
+
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field("", max_length=400)
@@ -149,6 +158,11 @@ class DatasetCreatePayload(BaseModel):
         if value not in Dataset.PROVIDER_LIST:
             raise ValueError("Invalid provider.")
         return value
+
+    @field_validator("space_type")
+    @classmethod
+    def validate_space_type(cls, value: str | None) -> str | None:
+        return _validate_space_type(value)
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -173,6 +187,11 @@ class DatasetUpdatePayload(BaseModel):
     @classmethod
     def validate_indexing(cls, value: str | None) -> str | None:
         return _validate_indexing_technique(value)
+
+    @field_validator("space_type")
+    @classmethod
+    def validate_space_type(cls, value: str | None) -> str | None:
+        return _validate_space_type(value)
 
 
 class IndexingEstimatePayload(BaseModel):
