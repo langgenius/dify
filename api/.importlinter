@@ -1,6 +1,7 @@
 [importlinter]
 root_packages =
     core
+    constants
     dify_graph
     configs
     controllers
@@ -41,6 +42,7 @@ type = forbidden
 source_modules =
     dify_graph
 forbidden_modules =
+    constants
     configs
     controllers
     extensions
@@ -80,6 +82,17 @@ forbidden_modules =
     core.variables
 ignore_imports =
     dify_graph.nodes.llm.llm_utils -> dify_graph.model_runtime.model_providers.__base.large_language_model
+
+[importlinter:contract:workflow-third-party-imports]
+name = Workflow Third-Party Imports
+type = forbidden
+source_modules =
+    dify_graph
+forbidden_modules =
+    sqlalchemy
+ignore_imports =
+    dify_graph.repositories.draft_variable_repository -> sqlalchemy
+    dify_graph.nodes.llm.llm_utils -> core.model_manager
 
 [importlinter:contract:rsc]
 name = RSC
