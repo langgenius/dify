@@ -1,7 +1,7 @@
 """add indexes for human_input_forms query patterns
 
 Revision ID: 0ec65df55790
-Revises: fce013ca180e
+Revises: e288952f2994
 Create Date: 2026-03-02 18:05:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0ec65df55790"
-down_revision = "fce013ca180e"
+down_revision = "e288952f2994"
 branch_labels = None
 depends_on = None
 
