@@ -123,12 +123,16 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
     assert mail.sent[0]["html"] == "<p>Body OK</p>"
 
 
-def test_dispatch_human_input_email_task_sanitizes_subject(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("line_break", ["\r\n", "\r", "\n"])
+def test_dispatch_human_input_email_task_sanitizes_subject(
+    monkeypatch: pytest.MonkeyPatch,
+    line_break: str,
+):
     mail = _DummyMail()
     form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
     job = task_module._EmailDeliveryJob(
         form_id="form-1",
-        subject="Notice\r\nBCC:attacker@example.com <b>Alert</b>",
+        subject=f"Notice{line_break}BCC:attacker@example.com <b>Alert</b>",
         body="Body",
         form_content="content",
         recipients=[task_module._EmailRecipient(email="user@example.com", token="token-1")],
