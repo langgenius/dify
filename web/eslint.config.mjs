@@ -165,7 +165,14 @@ export default antfu(
     ],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'next',
+          message: 'Import Next APIs from @/next instead of next.',
+        }],
         patterns: [{
+          group: ['next/*'],
+          message: 'Import Next APIs from @/next/* instead of next/*.',
+        }, {
           group: [
             '**/portal-to-follow-elem',
             '**/portal-to-follow-elem/index',

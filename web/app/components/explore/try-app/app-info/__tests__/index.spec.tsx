@@ -11,7 +11,7 @@ vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
 }))
 
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: ({
     src,
     alt,

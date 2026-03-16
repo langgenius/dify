@@ -1,11 +1,11 @@
 'use client'
 
-import Link from 'next/link'
-import { useSelectedLayoutSegment } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Indicator from '@/app/components/header/indicator'
 import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
+import Link from '@/next/link'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import DownloadingIcon from './downloading-icon'
 
@@ -33,7 +33,7 @@ const PluginsNav = ({
       )}
     >
       <div
-        className={cn('system-sm-medium relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5', activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md', !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
+        className={cn('relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5 system-sm-medium', activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md', !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
       >
         {
           (isFailed || isInstallingWithError) && !activated && (

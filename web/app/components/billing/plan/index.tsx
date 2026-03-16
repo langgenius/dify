@@ -7,7 +7,6 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
-import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +18,7 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import { Loading } from '../../base/icons/src/public/thought'
@@ -103,9 +103,9 @@ const PlanComp: FC<Props> = ({
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
-              <div className="system-md-semibold-uppercase text-text-primary">{t(`plans.${type}.name`, { ns: 'billing' })}</div>
+              <div className="text-text-primary system-md-semibold-uppercase">{t(`plans.${type}.name`, { ns: 'billing' })}</div>
             </div>
-            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
+            <div className="text-util-colors-gray-gray-600 system-xs-regular">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { WithIconCardItemProps } from './markdown-with-directive-schema'
-import Image from 'next/image'
+import Image from '@/next/image'
 import { cn } from '@/utils/classnames'
 
 type WithIconItemProps = WithIconCardItemProps & {

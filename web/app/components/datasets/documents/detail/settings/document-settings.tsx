@@ -10,7 +10,6 @@ import type {
   WebsiteCrawlInfo,
 } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +21,7 @@ import AccountSetting from '@/app/components/header/account-setting'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { useRouter } from '@/next/navigation'
 import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {

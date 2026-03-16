@@ -4,7 +4,6 @@ import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { RiSearchEyeLine } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -14,6 +13,7 @@ import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
+import Image from '@/next/image'
 import FileList from '../../assets/file-list-3-fill.svg'
 import Note from '../../assets/note-mod.svg'
 import BlueEffect from '../../assets/option-card-effect-blue.svg'
@@ -26,7 +26,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="system-sm-semibold text-text-secondary">{children}</label>
+  return <label className="text-text-secondary system-sm-semibold">{children}</label>
 }
 
 type ParentChildOptionsProps = {
@@ -186,7 +186,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                   {getRuleName(rule.id)}
                 </label>
               </div>

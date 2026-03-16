@@ -38,7 +38,7 @@ describe('ContentSwitch', () => {
     expect(switchSibling).toHaveBeenCalledWith('prev')
   })
 
-  it('calls switchSibling with "next" when right button is clicked', async () => {
+  it('calls switchSibling with "@/next" when right button is clicked', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
     render(<ContentSwitch {...defaultProps} switchSibling={switchSibling} />)
@@ -46,7 +46,7 @@ describe('ContentSwitch', () => {
     const nextButton = screen.getByRole('button', { name: /next/i })
     await user.click(nextButton)
 
-    expect(switchSibling).toHaveBeenCalledWith('next')
+    expect(switchSibling).toHaveBeenCalledWith('@/next')
   })
 
   it('applies disabled styles and prevents clicks when prevDisabled is true', async () => {

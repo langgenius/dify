@@ -23,7 +23,7 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   }
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
     replace: vi.fn(),

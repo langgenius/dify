@@ -1,10 +1,10 @@
 'use client'
-import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import Link from '@/next/link'
 import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
 
 const CODE_EXP = /[A-Z\d]{6}/gi
@@ -36,14 +36,14 @@ export default function VerifyEmail(props: DeleteAccountProps) {
   }, [emailToken, verificationCode, confirmDeleteAccount, props])
   return (
     <>
-      <div className="body-md-medium pt-1 text-text-destructive">
+      <div className="pt-1 text-text-destructive body-md-medium">
         {t('account.deleteTip', { ns: 'common' })}
       </div>
-      <div className="body-md-regular pb-2 pt-1 text-text-secondary">
+      <div className="pb-2 pt-1 text-text-secondary body-md-regular">
         {t('account.deletePrivacyLinkTip', { ns: 'common' })}
         <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
       </div>
-      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('account.verificationLabel', { ns: 'common' })}</label>
+      <label className="mb-1 mt-3 flex h-6 items-center text-text-secondary system-sm-semibold">{t('account.verificationLabel', { ns: 'common' })}</label>
       <Input
         minLength={6}
         maxLength={6}

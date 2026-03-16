@@ -5,7 +5,7 @@ import { retrievalIcon } from '../../../create/icons'
 import RetrievalMethodInfo, { getIcon } from '../index'
 
 // Override global next/image auto-mock: tests assert on rendered <img> src attributes via data-testid
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: ({ src, alt, className }: { src: string, alt: string, className?: string }) => (
     <img src={src} alt={alt || ''} className={className} data-testid="method-icon" />
   ),

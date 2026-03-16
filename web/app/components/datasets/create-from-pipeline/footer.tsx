@@ -1,8 +1,8 @@
 import { RiFileUploadLine } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import Divider from '../../base/divider'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-options/create-from-dsl-modal'
@@ -43,7 +43,7 @@ const Footer = () => {
       <Divider type="horizontal" className="my-0 w-8" />
       <button
         type="button"
-        className="system-md-medium flex items-center gap-x-3 text-text-accent"
+        className="flex items-center gap-x-3 text-text-accent system-md-medium"
         onClick={openImportFromDSL}
       >
         <RiFileUploadLine className="size-5" />

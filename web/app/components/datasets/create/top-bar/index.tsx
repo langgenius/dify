@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { StepperProps } from '../stepper'
 import { RiArrowLeftLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { Stepper } from '../stepper'
 
@@ -32,7 +32,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
         <div className="p-2">
           <RiArrowLeftLine className="size-4 text-text-primary" />
         </div>
-        <p className="system-sm-semibold-uppercase text-text-primary">
+        <p className="text-text-primary system-sm-semibold-uppercase">
           {t('steps.header.fallbackRoute', { ns: 'datasetCreation' })}
         </p>
       </Link>

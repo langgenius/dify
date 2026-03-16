@@ -1,10 +1,10 @@
 'use client'
 
 import type { IConfirm } from '@/app/components/base/confirm'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useNotionBinding } from '@/service/use-common'
 
 export type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>

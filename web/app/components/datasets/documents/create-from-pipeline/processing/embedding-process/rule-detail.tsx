@@ -1,5 +1,4 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +6,7 @@ import { indexMethodIcon, retrievalIcon } from '@/app/components/datasets/create
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import { ProcessMode } from '@/models/datasets'
+import Image from '@/next/image'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 type RuleDetailProps = {

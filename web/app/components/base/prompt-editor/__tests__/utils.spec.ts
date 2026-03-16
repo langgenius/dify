@@ -252,7 +252,7 @@ describe('prompt-editor/utils', () => {
       const nextSibling = {
         __isTextNode: true,
         isTextEntity: vi.fn(() => true),
-        getTextContent: vi.fn(() => 'next'),
+        getTextContent: vi.fn(() => '@/next'),
         getFormat: vi.fn(() => 0),
         replace: vi.fn(),
       }
@@ -728,7 +728,7 @@ describe('prompt-editor/utils', () => {
       // Line 115: isTargetNode(nextSibling) === true → replaceWithSimpleText(nextSibling)
       class TargetNode {
         __isTextNode = true
-        getTextContent = vi.fn(() => 'next')
+        getTextContent = vi.fn(() => '@/next')
         getFormat = vi.fn(() => 0)
         replace = vi.fn()
         splitText = vi.fn()

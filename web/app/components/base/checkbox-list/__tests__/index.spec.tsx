@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CheckboxList from '..'
 
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
 

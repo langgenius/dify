@@ -11,7 +11,7 @@ export default function ContentSwitch({
   currentIndex?: number
   prevDisabled: boolean
   nextDisabled: boolean
-  switchSibling: (direction: 'prev' | 'next') => void
+  switchSibling: (direction: 'prev' | '@/next') => void
 }) {
   return (
     count && count > 1 && currentIndex !== undefined && (
@@ -36,7 +36,7 @@ export default function ContentSwitch({
           aria-label="Next" // Added for accessibility and testing
           className={`${nextDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={nextDisabled}
-          onClick={() => !nextDisabled && switchSibling('next')}
+          onClick={() => !nextDisabled && switchSibling('@/next')}
         >
           <ChevronRight className="h-[14px] w-[14px] text-text-primary" />
         </button>

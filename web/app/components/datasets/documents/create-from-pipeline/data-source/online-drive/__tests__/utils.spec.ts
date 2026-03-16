@@ -87,7 +87,7 @@ describe('online-drive utils', () => {
             { id: 'f2', name: 'folder', size: 0, type: 'folder' as const },
           ],
           is_truncated: true,
-          next_page_parameters: { token: 'next' },
+          next_page_parameters: { token: '@/next' },
         },
       ] as OnlineDriveData[]
 
@@ -98,7 +98,7 @@ describe('online-drive utils', () => {
       expect(result.fileList[1].type).toBe(OnlineDriveFileType.folder)
       expect(result.fileList[1].size).toBeUndefined()
       expect(result.isTruncated).toBe(true)
-      expect(result.nextPageParameters).toEqual({ token: 'next' })
+      expect(result.nextPageParameters).toEqual({ token: '@/next' })
       expect(result.hasBucket).toBe(true)
     })
   })

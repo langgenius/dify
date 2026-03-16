@@ -23,7 +23,7 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropd
 }))
 
 // Mock next/image to render a normal img tag for testing
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   __esModule: true,
   default: (props: ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => {
     const { unoptimized: _, ...rest } = props

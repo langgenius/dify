@@ -121,7 +121,7 @@ const Question: FC<QuestionProps> = ({
     }, 50)
   }, [clearCompositionEndTimer])
 
-  const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
+  const handleSwitchSibling = useCallback((direction: 'prev' | '@/next') => {
     if (direction === 'prev') {
       if (item.prevSibling)
         switchSibling?.(item.prevSibling)

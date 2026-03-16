@@ -116,10 +116,10 @@ describe('PrePopulate', () => {
     )
 
     await user.clear(screen.getByRole('textbox'))
-    await user.type(screen.getByRole('textbox'), 'next')
+    await user.type(screen.getByRole('textbox'), '@/next')
     await user.click(screen.getByText('Use Variable Instead'))
 
-    expect(onValueChange).toHaveBeenLastCalledWith('next')
+    expect(onValueChange).toHaveBeenLastCalledWith('@/next')
     expect(onIsVariableChange).toHaveBeenCalledWith(true)
   })
 

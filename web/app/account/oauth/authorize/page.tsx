@@ -7,7 +7,6 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 

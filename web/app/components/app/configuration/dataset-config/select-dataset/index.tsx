@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { useInfiniteScroll } from 'ahooks'
-import Link from 'next/link'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +13,7 @@ import Modal from '@/app/components/base/modal'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 import { useKnowledge } from '@/hooks/use-knowledge'
+import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 
@@ -126,7 +126,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
       {hasNoData && (
         <div
-          className="mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]"
+          className="mt-6 flex h-[128px] items-center justify-center space-x-1 rounded-lg border text-[13px]"
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',
@@ -195,7 +195,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
       {!isLoading && (
         <div className="mt-8 flex items-center justify-between">
-          <div className="text-sm  font-medium text-text-secondary">
+          <div className="text-sm font-medium text-text-secondary">
             {selected.length > 0 && `${selected.length} ${t('feature.dataSet.selected', { ns: 'appDebug' })}`}
           </div>
           <div className="flex space-x-2">

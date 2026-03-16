@@ -3,7 +3,6 @@ import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/r
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
@@ -11,6 +10,7 @@ import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter } from '@/next/navigation'
 import { useLogout, useUserProfile } from '@/service/use-common'
 
 export type IAppSelector = {
@@ -77,7 +77,7 @@ export default function AppSelector() {
                   <div className="p-1">
                     <div className="flex flex-nowrap items-center px-3 py-2">
                       <div className="grow">
-                        <div className="system-md-medium break-all text-text-primary">
+                        <div className="break-all text-text-primary system-md-medium">
                           {userProfile.name}
                           {isEducationAccount && (
                             <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
@@ -86,7 +86,7 @@ export default function AppSelector() {
                             </PremiumBadge>
                           )}
                         </div>
-                        <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
+                        <div className="break-all text-text-tertiary system-xs-regular">{userProfile.email}</div>
                       </div>
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
                     </div>

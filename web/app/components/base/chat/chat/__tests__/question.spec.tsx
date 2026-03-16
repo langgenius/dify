@@ -18,7 +18,7 @@ vi.mock('../content-switch', () => ({
   default: ({ count, currentIndex, switchSibling, prevDisabled, nextDisabled }: {
     count?: number
     currentIndex?: number
-    switchSibling: (direction: 'prev' | 'next') => void
+    switchSibling: (direction: 'prev' | '@/next') => void
     prevDisabled: boolean
     nextDisabled: boolean
   }) => {
@@ -38,7 +38,7 @@ vi.mock('../content-switch', () => ({
         <button
           type="button"
           aria-label="Next"
-          onClick={() => switchSibling('next')}
+          onClick={() => switchSibling('@/next')}
           disabled={nextDisabled}
         >
           Next
@@ -915,7 +915,7 @@ describe('Question component', () => {
 
   it('should handle missing switchSibling prop', async () => {
     const user = userEvent.setup()
-    const item = makeItem({ prevSibling: 'prev', nextSibling: 'next', siblingIndex: 1, siblingCount: 3 })
+    const item = makeItem({ prevSibling: 'prev', nextSibling: '@/next', siblingIndex: 1, siblingCount: 3 })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling: undefined })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })

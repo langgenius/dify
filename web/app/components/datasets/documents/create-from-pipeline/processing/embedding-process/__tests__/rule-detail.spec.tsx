@@ -7,7 +7,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RuleDetail from '../rule-detail'
 
 // Override global next/image auto-mock: tests assert on data-testid="next-image" and src attributes
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: function MockImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
     // eslint-disable-next-line next/no-img-element
     return <img src={src} alt={alt} className={className} data-testid="next-image" />

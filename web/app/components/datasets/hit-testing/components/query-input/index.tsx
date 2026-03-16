@@ -14,7 +14,6 @@ import {
   RiEqualizer2Line,
   RiPlayCircleLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +23,7 @@ import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/im
 import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import Image from '@/next/image'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import Textarea from './textarea'
@@ -206,7 +206,7 @@ const QueryInput = ({
     <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
       <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
-          <span className="system-sm-semibold-uppercase text-text-secondary">
+          <span className="text-text-secondary system-sm-semibold-uppercase">
             {t('input.title', { ns: 'datasetHitTesting' })}
           </span>
           {isExternal
@@ -218,7 +218,7 @@ const QueryInput = ({
                 >
                   <RiEqualizer2Line className="h-3.5 w-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
-                    <span className="system-xs-medium text-components-button-secondary-text">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
+                    <span className="text-components-button-secondary-text system-xs-medium">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
                   </div>
                 </Button>
               )

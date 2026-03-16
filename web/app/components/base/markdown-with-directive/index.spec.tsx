@@ -7,7 +7,7 @@ import { MarkdownWithDirective } from './index'
 
 const FOUR_COLON_RE = /:{4}/
 
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
 

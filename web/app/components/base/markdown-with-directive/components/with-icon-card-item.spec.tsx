@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import WithIconCardItem from './with-icon-card-item'
 
-vi.mock('next/image', () => ({
+vi.mock('@/next/image', () => ({
   default: ({ unoptimized: _unoptimized, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => <img {...props} />,
 }))
 

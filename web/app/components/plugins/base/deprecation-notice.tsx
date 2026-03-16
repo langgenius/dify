@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import { useTranslation } from '#i18n'
 import { RiAlertFill } from '@remixicon/react'
 import { camelCase } from 'es-toolkit/string'
-import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Trans } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 
 type DeprecationNoticeProps = {
@@ -66,7 +66,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
           <RiAlertFill className="size-4 text-text-warning-secondary" />
         </div>
-        <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
+        <div className={cn('grow py-1 text-text-primary system-xs-regular', textClassName)}>
           {
             hasValidDeprecatedReason && alternativePluginId && (
               <Trans

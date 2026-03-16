@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import Image from 'next/image'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
+import Image from '@/next/image'
 import { cn } from '@/utils/classnames'
 import useGetRequirements from './use-get-requirements'
 

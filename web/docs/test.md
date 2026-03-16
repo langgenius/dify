@@ -30,7 +30,7 @@ pnpm test path/to/file.spec.tsx
 ## Project Test Setup
 
 - **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
-- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `@/next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
 - **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
@@ -134,7 +134,7 @@ Choose based on directory complexity:
 When using a single spec file:
 
 - ✅ **Import real project components** directly (including base components and siblings)
-- ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
+- ✅ **Only mock**: API services (`@/service/*`), `@/next/navigation`, complex context providers
 - ❌ **DO NOT mock** base components (`@/app/components/base/*`)
 - ❌ **DO NOT mock** sibling/child components in the same directory
 
@@ -308,7 +308,7 @@ import Component from './index'
 
 // ✅ Mock external dependencies only
 vi.mock('@/service/api')
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))

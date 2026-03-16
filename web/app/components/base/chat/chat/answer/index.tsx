@@ -127,7 +127,7 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [])
 
-  const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
+  const handleSwitchSibling = useCallback((direction: 'prev' | '@/next') => {
     if (direction === 'prev') {
       if (item.prevSibling)
         switchSibling?.(item.prevSibling)

@@ -19,7 +19,7 @@ vi.mock('../plans/self-hosted-plan-item/list', () => ({
   ),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, className, target }: { children: React.ReactNode, href: string, className?: string, target?: string }) => (
     <a href={href} className={className} target={target} data-testid="pricing-link">
       {children}

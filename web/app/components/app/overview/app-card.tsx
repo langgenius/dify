@@ -14,7 +14,6 @@ import {
   RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
-import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,6 +33,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
+import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { useAppWorkflow } from '@/service/use-workflow'
@@ -266,7 +266,7 @@ function AppCard({
           </div>
           {!isMinimalState && (
             <div className="flex flex-col items-start justify-center self-stretch">
-              <div className="system-xs-medium pb-1 text-text-tertiary">
+              <div className="pb-1 text-text-tertiary system-xs-medium">
                 {isApp
                   ? t('overview.appInfo.accessibleAddress', { ns: 'appOverview' })
                   : t('overview.apiInfo.accessibleAddress', { ns: 'appOverview' })}
@@ -319,9 +319,9 @@ function AppCard({
           )}
           {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && (
             <div className="flex flex-col items-start justify-center self-stretch">
-              <div className="system-xs-medium pb-1 text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
+              <div className="pb-1 text-text-tertiary system-xs-medium">{t('publishApp.title', { ns: 'app' })}</div>
               <div
-                className="flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
+                className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
                 onClick={handleClickAccessControl}
               >
                 <div className="flex grow items-center gap-x-1.5 pr-1">
@@ -329,32 +329,32 @@ function AppCard({
                     && (
                       <>
                         <RiBuildingLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.organization', { ns: 'app' })}</p>
+                        <p className="text-text-secondary system-sm-medium">{t('accessControlDialog.accessItems.organization', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
                     && (
                       <>
                         <RiLockLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+                        <p className="text-text-secondary system-sm-medium">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.PUBLIC
                     && (
                       <>
                         <RiGlobalLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
+                        <p className="text-text-secondary system-sm-medium">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
                     && (
                       <>
                         <RiVerifiedBadgeLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.external', { ns: 'app' })}</p>
+                        <p className="text-text-secondary system-sm-medium">{t('accessControlDialog.accessItems.external', { ns: 'app' })}</p>
                       </>
                     )}
                 </div>
-                {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+                {!isAppAccessSet && <p className="shrink-0 text-text-tertiary system-xs-regular">{t('publishApp.notSet', { ns: 'app' })}</p>}
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center">
                   <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                 </div>
@@ -389,7 +389,7 @@ function AppCard({
                   >
                     <div className="flex items-center justify-center gap-[1px]">
                       <op.opIcon className="h-3.5 w-3.5" />
-                      <div className={`${(runningStatus || !disabled) ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
+                      <div className={`${(runningStatus || !disabled) ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} px-[3px] system-xs-medium`}>{op.opName}</div>
                     </div>
                   </Tooltip>
                 </Button>

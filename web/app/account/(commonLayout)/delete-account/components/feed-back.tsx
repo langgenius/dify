@@ -1,5 +1,4 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -7,6 +6,7 @@ import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
 
@@ -54,7 +54,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       className="max-w-[480px]"
       footer={false}
     >
-      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+      <label className="mb-1 mt-3 flex items-center text-text-secondary system-sm-semibold">{t('account.feedbackLabel', { ns: 'common' })}</label>
       <Textarea
         rows={6}
         value={userFeedback}

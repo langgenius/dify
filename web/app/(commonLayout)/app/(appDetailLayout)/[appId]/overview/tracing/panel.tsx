@@ -7,7 +7,6 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
+import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import { cn } from '@/utils/classnames'
 import ConfigButton from './config-button'
@@ -254,7 +254,7 @@ const Panel: FC = () => {
             )}
           >
             <TracingIcon size="md" />
-            <div className="system-sm-semibold mx-2 text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="mx-2 text-text-secondary system-sm-semibold">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
               <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
             </div>
@@ -294,7 +294,7 @@ const Panel: FC = () => {
           >
             <div className="ml-4 mr-1 flex items-center">
               <Indicator color={enabled ? 'green' : 'gray'} />
-              <div className="system-xs-semibold-uppercase ml-1.5 text-text-tertiary">
+              <div className="ml-1.5 text-text-tertiary system-xs-semibold-uppercase">
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>
             </div>

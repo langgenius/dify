@@ -30,9 +30,9 @@ describe('Input', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('API Key'), { target: { value: 'next' } })
+    fireEvent.change(screen.getByPlaceholderText('API Key'), { target: { value: '@/next' } })
 
-    expect(onChange).toHaveBeenCalledWith('next')
+    expect(onChange).toHaveBeenCalledWith('@/next')
   })
 
   // Edge cases: min/max enforcement

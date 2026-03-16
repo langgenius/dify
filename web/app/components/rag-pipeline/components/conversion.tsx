@@ -1,10 +1,10 @@
-import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Toast from '@/app/components/base/toast'
+import { useParams } from '@/next/navigation'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useConvertDatasetToPipeline } from '@/service/use-pipeline'
@@ -57,7 +57,7 @@ const Conversion = () => {
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
-            <div className="title-4xl-semi-bold text-text-primary">
+            <div className="text-text-primary title-4xl-semi-bold">
               {t('conversion.title', { ns: 'datasetPipeline' })}
             </div>
             <div className="body-md-medium">
@@ -73,7 +73,7 @@ const Conversion = () => {
             >
               {t('operations.convert', { ns: 'datasetPipeline' })}
             </Button>
-            <span className="system-xs-regular text-text-warning">
+            <span className="text-text-warning system-xs-regular">
               {t('conversion.warning', { ns: 'datasetPipeline' })}
             </span>
           </div>

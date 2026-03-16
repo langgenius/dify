@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
+import Image from '@/next/image'
 import { basePath } from '@/utils/var'
 
 const PipelineScreenShot = () => {

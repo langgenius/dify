@@ -3,12 +3,12 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppData, AppMeta } from '@/models/share'
-import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
 import { AccessMode } from '@/models/access-control'
+import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 import { useIsSystemFeaturesPending } from './global-public-context'
 

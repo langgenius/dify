@@ -1,7 +1,5 @@
 'use client'
 import { RiExternalLinkLine } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -9,6 +7,8 @@ import Modal from '@/app/components/base/modal'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
@@ -48,7 +48,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
       closable
       className="max-w-[600px]"
     >
-      <div className="body-md-regular mt-5 space-y-5 text-text-secondary">
+      <div className="mt-5 space-y-5 text-text-secondary body-md-regular">
         <div>
           {expired
             ? (
@@ -60,16 +60,16 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             : t(`${i18nPrefix}.isAboutToExpire.summary`, { ns: 'education' })}
         </div>
         <div>
-          <strong className="title-md-semi-bold block">{t(`${i18nPrefix}.stillInEducation.title`, { ns: 'education' })}</strong>
+          <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.stillInEducation.title`, { ns: 'education' })}</strong>
           {t(`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
         </div>
         <div>
-          <strong className="title-md-semi-bold block">{t(`${i18nPrefix}.alreadyGraduated.title`, { ns: 'education' })}</strong>
+          <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.alreadyGraduated.title`, { ns: 'education' })}</strong>
           {t(`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
         </div>
       </div>
       <div className="mt-7 flex items-center justify-between space-x-2">
-        <Link className="system-xs-regular flex items-center space-x-1 text-text-accent" href={eduDocLink} target="_blank" rel="noopener noreferrer">
+        <Link className="flex items-center space-x-1 text-text-accent system-xs-regular" href={eduDocLink} target="_blank" rel="noopener noreferrer">
           <div>{t('learn', { ns: 'education' })}</div>
           <RiExternalLinkLine className="size-3" />
         </Link>

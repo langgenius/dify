@@ -6,7 +6,6 @@ import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -15,6 +14,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
+import Image from '@/next/image'
 import SettingCog from '../../assets/setting-gear-mod.svg'
 import s from '../index.module.css'
 import LanguageSelect from '../language-select'
@@ -26,7 +26,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="system-sm-semibold text-text-secondary">{children}</label>
+  return <label className="text-text-secondary system-sm-semibold">{children}</label>
 }
 
 type GeneralChunkingOptionsProps = {
@@ -148,7 +148,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                   {getRuleName(rule.id)}
                 </label>
               </div>
@@ -183,7 +183,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
                     />
-                    <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                    <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
                       {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
                     </label>
                   </div>
@@ -202,7 +202,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
-                    <span className="system-xs-medium text-text-primary">
+                    <span className="text-text-primary system-xs-medium">
                       {t('stepTwo.QATip', { ns: 'datasetCreation' })}
                     </span>
                   </div>

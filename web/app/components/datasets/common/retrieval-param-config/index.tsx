@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
-
 import * as React from 'react'
+
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
@@ -22,6 +21,7 @@ import {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import Image from '@/next/image'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
@@ -127,7 +127,7 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
@@ -157,7 +157,7 @@ const RetrievalParamConfig: FC<Props> = ({
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
-                    <span className="system-xs-medium text-text-primary">
+                    <span className="text-text-primary system-xs-medium">
                       {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                     </span>
                   </div>
@@ -281,7 +281,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
-                      <span className="system-xs-medium text-text-primary">
+                      <span className="text-text-primary system-xs-medium">
                         {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                       </span>
                     </div>
