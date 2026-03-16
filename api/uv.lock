@@ -3332,7 +3332,7 @@ wheels = [
 
 [[package]]
 name = "langsmith"
-version = "0.7.16"
+version = "0.7.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -3345,9 +3345,9 @@ dependencies = [
     { name = "xxhash" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/18/b240d33e32d3f71a3c3375781cb11f3be6b27c275acdcf18c08a65a560cc/langsmith-0.7.16.tar.gz", hash = "sha256:87267d32c1220ec34bd0074d3d04b57c7394328a39a02182b62ab4ae09d28144", size = 1115428, upload-time = "2026-03-09T21:11:16.985Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/79/81041dde07a974e728db7def23c1c7255950b8874102925cc77093bc847d/langsmith-0.7.17.tar.gz", hash = "sha256:6c1b0c2863cdd6636d2a58b8d5b1b80060703d98cac2593f4233e09ac25b5a9d", size = 1132228, upload-time = "2026-03-12T20:41:10.808Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/a8/4202ca65561213ec84ca3800b1d4e5d37a1441cddeec533367ecbca7f408/langsmith-0.7.16-py3-none-any.whl", hash = "sha256:c84a7a06938025fe0aad992acc546dd75ce3f757ba8ee5b00ad914911d4fc02e", size = 347538, upload-time = "2026-03-09T21:11:15.02Z" },
+    { url = "https://files.pythonhosted.org/packages/34/31/62689d57f4d25792bd6a3c05c868771899481be2f3e31f9e71d31e1ac4ab/langsmith-0.7.17-py3-none-any.whl", hash = "sha256:cbec10460cb6c6ecc94c18c807be88a9984838144ae6c4693c9f859f378d7d02", size = 359147, upload-time = "2026-03-12T20:41:08.758Z" },
 ]
 
 [[package]]
@@ -4412,7 +4412,7 @@ wheels = [
 
 [[package]]
 name = "opik"
-version = "1.10.37"
+version = "1.10.39"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3-stubs", extra = ["bedrock-runtime"] },
@@ -4431,9 +4431,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "uuid6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/1a/89816f503ffdfa32756732bba6c1b98863db0ef0477b3fd458b34858166f/opik-1.10.37.tar.gz", hash = "sha256:410ccec8fd9710ea9a006b83ccff176704745d9a78c87b828108c9bc6fbf0502", size = 776960, upload-time = "2026-03-11T13:38:14.717Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/0f/b1e00a18cac16b4f36bf6cecc2de962fda810a9416d1159c48f46b81f5ec/opik-1.10.39.tar.gz", hash = "sha256:4d808eb2137070fc5d92a3bed3c3100d9cccfb35f4f0b71ea9990733f293dbb2", size = 780312, upload-time = "2026-03-12T14:08:25.746Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/39/01580bb6249e0c0db26b8abc3e5f4975b57565944d8d5eeb1c1beaa8d43d/opik-1.10.37-py3-none-any.whl", hash = "sha256:84d85bc0429fa4d0ef43babc720bb1dddcf275d348fe0e6deb82bdf3010ec87e", size = 1312332, upload-time = "2026-03-11T13:38:12.924Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/24/0f4404907a98b4aec4508504570a78a61a3a8b5e451c67326632695ba8e6/opik-1.10.39-py3-none-any.whl", hash = "sha256:a72d735b9afac62e5262294b2f704aca89ec31f5c9beda17504815f7423870c3", size = 1317833, upload-time = "2026-03-12T14:08:23.954Z" },
 ]
 
 [[package]]
