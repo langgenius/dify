@@ -2,14 +2,12 @@ import type { Viewport } from 'next'
 import { Agentation } from 'agentation'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
-import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { IS_DEV } from '@/config'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { cn } from '@/utils/classnames'
 import { ToastProvider } from './components/base/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
@@ -28,13 +26,6 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-const instrumentSerif = Instrument_Serif({
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-  variable: '--font-instrument-serif',
-})
-
 const LocaleLayout = async ({
   children,
 }: {
@@ -44,7 +35,7 @@ const LocaleLayout = async ({
   const datasetMap = getDatasetMap()
 
   return (
-    <html lang={locale ?? 'en'} className={cn('h-full', instrumentSerif.variable)} suppressHydrationWarning>
+    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1C64F2" />

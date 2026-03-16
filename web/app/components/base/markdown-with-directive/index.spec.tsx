@@ -7,10 +7,6 @@ import { MarkdownWithDirective } from './index'
 
 const FOUR_COLON_RE = /:{4}/
 
-vi.mock('next/image', () => ({
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
-}))
-
 function expectDecorativeIcon(container: HTMLElement, src: string) {
   const icon = container.querySelector('img')
   expect(icon).toBeInTheDocument()

@@ -186,7 +186,7 @@ class DifyTestContainers:
         # Start Dify Plugin Daemon container for plugin management
         # Dify Plugin Daemon provides plugin lifecycle management and execution
         logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.3.0-local").with_network(
+        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.4-local").with_network(
             self.network
         )
         self.dify_plugin_daemon.with_exposed_ports(5002)
