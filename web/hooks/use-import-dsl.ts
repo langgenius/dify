@@ -16,6 +16,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import {
+  getImportDSLFailureMessage,
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
@@ -59,7 +60,7 @@ export const useImportDSL = () => {
     setIsFetching(true)
 
     try {
-      const response = await importDSL(payload)
+      const response = await importDSL(payload, { silent: true })
 
       if (!response)
         return
@@ -100,8 +101,9 @@ export const useImportDSL = () => {
         onFailed?.()
       }
     }
-    catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+    catch (error) {
+      const importErrorMessage = await getImportDSLFailureMessage(error)
+      notify({ type: 'error', message: importErrorMessage || t('newApp.appCreateFailed', { ns: 'app' }) })
       onFailed?.()
     }
     finally {

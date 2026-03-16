@@ -1024,7 +1024,7 @@
   },
   "app/components/app/create-from-dsl-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
+      "count": 1
     },
     "react-refresh/only-export-components": {
       "count": 1

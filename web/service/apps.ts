@@ -1,3 +1,4 @@
+import type { ResponseError } from './fetch'
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { ApiKeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WebhookTriggerResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
@@ -92,8 +93,31 @@ export const exportAppConfig = ({ appID, include = false, workflowID }: { appID:
   return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
 }
 
-export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string }): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>('apps/imports', { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } })
+export const importDSL = (
+  { mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string },
+  { silent = false }: { silent?: boolean } = {},
+): Promise<DSLImportResponse> => {
+  return post<DSLImportResponse>(
+    'apps/imports',
+    { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } },
+    { silent },
+  )
+}
+
+export const getImportDSLFailureMessage = async (error: unknown): Promise<string | null> => {
+  if (!(error instanceof Response))
+    return null
+
+  if (error.status !== 400 && error.status !== 422)
+    return null
+
+  try {
+    const payload = await error.clone().json() as Partial<ResponseError> & { error?: string }
+    return payload.error || payload.message || null
+  }
+  catch {
+    return null
+  }
 }
 
 export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<DSLImportResponse> => {

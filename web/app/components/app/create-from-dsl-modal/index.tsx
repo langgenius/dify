@@ -1,7 +1,6 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -23,6 +22,7 @@ import {
   DSLImportStatus,
 } from '@/models/app'
 import {
+  getImportDSLFailureMessage,
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
@@ -82,8 +82,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const isCreatingRef = useRef(false)
 
   useEffect(() => {
-    if (droppedFile)
-      handleFile(droppedFile)
+    if (!droppedFile)
+      return
+
+    setDSLFile(droppedFile)
+    readFile(droppedFile)
   }, [droppedFile])
 
   const onCreate = async (_e?: React.MouseEvent) => {
@@ -101,13 +104,13 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         response = await importDSL({
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: fileContent || '',
-        })
+        }, { silent: true })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
           mode: DSLImportMode.YAML_URL,
           yaml_url: dslUrlValue || '',
-        })
+        }, { silent: true })
       }
 
       if (!response)
@@ -150,9 +153,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+    catch (error) {
+      const importErrorMessage = await getImportDSLFailureMessage(error)
+      notify({ type: 'error', message: importErrorMessage || t('newApp.appCreateFailed', { ns: 'app' }) })
     }
     isCreatingRef.current = false
   }
@@ -238,7 +241,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             className="flex h-8 w-8 cursor-pointer items-center"
             onClick={() => onClose()}
           >
-            <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+            <i className="i-ri-close-line h-5 w-5 text-text-tertiary" />
           </div>
         </div>
         <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
