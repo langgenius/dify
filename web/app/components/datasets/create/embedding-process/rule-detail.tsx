@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { ProcessRuleResponse } from '@/models/datasets'
-import Image from 'next/image'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
@@ -119,12 +118,12 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
       <FieldInfo
         label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         displayedValue={indexModeLabel}
-        valueIcon={<Image className="size-4" src={indexMethodIconSrc} alt="" />}
+        valueIcon={<img className="size-4" src={indexMethodIconSrc} alt="" />}
       />
       <FieldInfo
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         displayedValue={retrievalLabel}
-        valueIcon={<Image className="size-4" src={retrievalIconSrc} alt="" />}
+        valueIcon={<img className="size-4" src={retrievalIconSrc} alt="" />}
       />
     </div>
   )

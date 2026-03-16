@@ -1119,9 +1119,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 11
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2993,9 +2990,6 @@
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3139,33 +3133,17 @@
   "app/components/datasets/create/step-two/components/general-chunking-options.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/datasets/create/step-two/components/indexing-mode-section.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
     }
   },
   "app/components/datasets/create/step-two/components/inputs.tsx": {
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/step-two/components/option-card.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/step-two/components/parent-child-options.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -3882,11 +3860,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/datasets/hit-testing/components/query-input/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/datasets/hit-testing/components/query-input/textarea.tsx": {
