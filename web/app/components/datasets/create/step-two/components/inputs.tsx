@@ -71,6 +71,7 @@ function CompoundNumberInput({
 
   return (
     <NumberField
+      allowOutOfRange
       value={value}
       defaultValue={defaultValue}
       min={min}

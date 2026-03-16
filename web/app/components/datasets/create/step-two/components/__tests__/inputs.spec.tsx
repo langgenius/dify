@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
@@ -68,6 +69,18 @@ describe('MaxLengthInput', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
     expect(onChange).toHaveBeenCalledWith(0)
   })
+
+  it('should report out-of-range text edits before blur', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} max={1000} onChange={onChange} />)
+
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, '1200')
+
+    expect(onChange).toHaveBeenLastCalledWith(1200)
+  })
 })
 
 describe('OverlapInput', () => {
@@ -102,5 +115,17 @@ describe('OverlapInput', () => {
     render(<OverlapInput value={50} onChange={onChange} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
     expect(onChange).toHaveBeenCalledWith(0)
+  })
+
+  it('should report out-of-range text edits before blur', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} max={100} onChange={onChange} />)
+
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, '150')
+
+    expect(onChange).toHaveBeenLastCalledWith(150)
   })
 })

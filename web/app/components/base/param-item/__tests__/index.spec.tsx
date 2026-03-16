@@ -142,6 +142,33 @@ describe('ParamItem', () => {
       expect(input).toHaveValue('0')
     })
 
+    it('should report out-of-range text edits before blur', async () => {
+      const user = userEvent.setup()
+      const StatefulParamItem = () => {
+        const [value, setValue] = useState(defaultProps.value)
+
+        return (
+          <ParamItem
+            {...defaultProps}
+            value={value}
+            onChange={(key: string, nextValue: number) => {
+              defaultProps.onChange(key, nextValue)
+              setValue(nextValue)
+            }}
+          />
+        )
+      }
+
+      render(<StatefulParamItem />)
+
+      const input = screen.getByRole('textbox')
+      await user.clear(input)
+      await user.type(input, '1.5')
+
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 1.5)
+      expect(input).toHaveValue('1.5')
+    })
+
     it('should pass scaled value to slider when max < 5', () => {
       render(<ParamItem {...defaultProps} value={0.5} />)
       const slider = screen.getByRole('slider')
