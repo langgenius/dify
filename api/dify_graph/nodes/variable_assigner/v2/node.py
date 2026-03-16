@@ -1,11 +1,10 @@
 import json
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.node_events import NodeRunResult
+from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent, VariableUpdatedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.common.exc import VariableOperatorNodeError
@@ -29,9 +28,6 @@ if TYPE_CHECKING:
 
 
 def _target_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
-    selector_node_id = item.variable_selector[0]
-    if selector_node_id != CONVERSATION_VARIABLE_NODE_ID:
-        return
     selector_str = ".".join(item.variable_selector)
     key = f"{node_id}.#{selector_str}#"
     mapping[key] = item.variable_selector
@@ -103,15 +99,18 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
             _source_mapping_from_item(var_mapping, node_id, item)
         return var_mapping
 
-    def _run(self) -> NodeRunResult:
+    def _run(self) -> Generator[NodeEventBase, None, None]:
         inputs = self.node_data.model_dump()
         process_data: dict[str, Any] = {}
         # NOTE: This node has no outputs
         updated_variable_selectors: list[Sequence[str]] = []
+        # Preserve intra-node read-after-write behavior without mutating the shared pool
+        # until the engine processes the emitted VariableUpdatedEvent instances.
+        working_variable_pool = self.graph_runtime_state.variable_pool.model_copy(deep=True)
 
         try:
             for item in self.node_data.items:
-                variable = self.graph_runtime_state.variable_pool.get(item.variable_selector)
+                variable = working_variable_pool.get(item.variable_selector)
 
                 # ==================== Validation Part
 
@@ -136,60 +135,64 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
                     raise InputTypeNotSupportedError(input_type=InputType.CONSTANT, operation=item.operation)
 
                 # Get value from variable pool
+                input_value = item.value
                 if (
                     item.input_type == InputType.VARIABLE
                     and item.operation not in {Operation.CLEAR, Operation.REMOVE_FIRST, Operation.REMOVE_LAST}
                     and item.value is not None
                 ):
-                    value = self.graph_runtime_state.variable_pool.get(item.value)
+                    value = working_variable_pool.get(item.value)
                     if value is None:
                         raise VariableNotFoundError(variable_selector=item.value)
                     # Skip if value is NoneSegment
                     if value.value_type == SegmentType.NONE:
                         continue
-                    item.value = value.value
+                    input_value = value.value
 
                 # If set string / bytes / bytearray to object, try convert string to object.
                 if (
                     item.operation == Operation.SET
                     and variable.value_type == SegmentType.OBJECT
-                    and isinstance(item.value, str | bytes | bytearray)
+                    and isinstance(input_value, str | bytes | bytearray)
                 ):
                     try:
-                        item.value = json.loads(item.value)
+                        input_value = json.loads(input_value)
                     except json.JSONDecodeError:
-                        raise InvalidInputValueError(value=item.value)
+                        raise InvalidInputValueError(value=input_value)
 
                 # Check if input value is valid
                 if not helpers.is_input_value_valid(
-                    variable_type=variable.value_type, operation=item.operation, value=item.value
+                    variable_type=variable.value_type, operation=item.operation, value=input_value
                 ):
-                    raise InvalidInputValueError(value=item.value)
+                    raise InvalidInputValueError(value=input_value)
 
                 # ==================== Execution Part
 
                 updated_value = self._handle_item(
                     variable=variable,
                     operation=item.operation,
-                    value=item.value,
+                    value=input_value,
                 )
-                variable = variable.model_copy(update={"value": updated_value})
-                self.graph_runtime_state.variable_pool.add(variable.selector, variable)
-                updated_variable_selectors.append(variable.selector)
+                updated_variable = variable.model_copy(update={"value": updated_value})
+                working_variable_pool.add(updated_variable.selector, updated_variable)
+                updated_variable_selectors.append(updated_variable.selector)
         except VariableOperatorNodeError as e:
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=inputs,
-                process_data=process_data,
-                error=str(e),
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=inputs,
+                    process_data=process_data,
+                    error=str(e),
+                )
             )
+            return
 
         # The `updated_variable_selectors` is a list contains list[str] which not hashable,
-        # remove the duplicated items first.
-        updated_variable_selectors = list(set(map(tuple, updated_variable_selectors)))
+        # remove duplicated items while preserving the first update order.
+        updated_variable_selectors = list(dict.fromkeys(map(tuple, updated_variable_selectors)))
 
         for selector in updated_variable_selectors:
-            variable = self.graph_runtime_state.variable_pool.get(selector)
+            variable = working_variable_pool.get(selector)
             if not isinstance(variable, VariableBase):
                 raise VariableNotFoundError(variable_selector=selector)
             process_data[variable.name] = variable.value
@@ -197,15 +200,23 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         updated_variables = [
             common_helpers.variable_to_processed_data(selector, seg)
             for selector in updated_variable_selectors
-            if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
+            if (seg := working_variable_pool.get(selector)) is not None
         ]
 
         process_data = common_helpers.set_updated_variables(process_data, updated_variables)
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=inputs,
-            process_data=process_data,
-            outputs={},
+        for selector in updated_variable_selectors:
+            variable = working_variable_pool.get(selector)
+            if not isinstance(variable, VariableBase):
+                raise VariableNotFoundError(variable_selector=selector)
+            yield VariableUpdatedEvent(variable=variable)
+
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={},
+            )
         )
 
     def _handle_item(

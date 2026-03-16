@@ -1,39 +1,18 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, Protocol
-
-from dify_graph.nodes.code.code_node import WorkflowCodeExecutor
-from dify_graph.nodes.code.entities import CodeLanguage
+from typing import Any
 
 
 class TemplateRenderError(ValueError):
     """Raised when rendering a template fails."""
 
 
-class Jinja2TemplateRenderer(Protocol):
-    """Shared contract for rendering Jinja2 templates in graph nodes."""
+class Jinja2TemplateRenderer(ABC):
+    """Nominal renderer contract for Jinja2 template rendering in graph nodes."""
 
-    def render_template(self, template: str, variables: Mapping[str, Any]) -> str: ...
-
-
-class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):
-    """Adapter that renders Jinja2 templates via the workflow code executor."""
-
-    _code_executor: WorkflowCodeExecutor
-
-    def __init__(self, code_executor: WorkflowCodeExecutor) -> None:
-        self._code_executor = code_executor
-
+    @abstractmethod
     def render_template(self, template: str, variables: Mapping[str, Any]) -> str:
-        try:
-            result = self._code_executor.execute(language=CodeLanguage.JINJA2, code=template, inputs=variables)
-        except Exception as exc:
-            if self._code_executor.is_execution_error(exc):
-                raise TemplateRenderError(str(exc)) from exc
-            raise
-
-        rendered = result.get("result")
-        if not isinstance(rendered, str):
-            raise TemplateRenderError("Template render result must be a string.")
-        return rendered
+        """Render the template into plain text."""
+        raise NotImplementedError

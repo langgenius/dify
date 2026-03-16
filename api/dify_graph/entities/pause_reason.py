@@ -18,7 +18,6 @@ class HumanInputRequired(BaseModel):
     form_content: str
     inputs: list[FormInput] = Field(default_factory=list)
     actions: list[UserAction] = Field(default_factory=list)
-    display_in_ui: bool = False
     node_id: str
     node_title: str
 
@@ -32,13 +31,6 @@ class HumanInputRequired(BaseModel):
     #
     # Only form inputs with default value type `VARIABLE` will be resolved and stored in `resolved_default_values`.
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
-
-    # The `form_token` is the token used to submit the form via UI surfaces. It corresponds to
-    # `HumanInputFormRecipient.access_token`.
-    #
-    # This field is `None` if webapp delivery is not set and not
-    # in orchestrating mode.
-    form_token: str | None = None
 
 
 class SchedulingPause(BaseModel):

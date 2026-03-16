@@ -8,6 +8,7 @@ from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.file import File
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import NodeRunResult
+from dify_graph.variables.variables import Variable
 
 from .base import NodeEventBase
 
@@ -43,6 +44,12 @@ class StreamChunkEvent(NodeEventBase):
 
 class StreamCompletedEvent(NodeEventBase):
     node_run_result: NodeRunResult = Field(..., description="run result")
+
+
+class VariableUpdatedEvent(NodeEventBase):
+    """Notify the engine that a single variable should be applied to the shared pool."""
+
+    variable: Variable = Field(..., description="Updated variable payload to apply.")
 
 
 class PauseRequestedEvent(NodeEventBase):

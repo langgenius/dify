@@ -5,18 +5,43 @@ This module provides a Django-like settings system for repository implementation
 allowing users to configure different repository backends through string paths.
 """
 
-from typing import Union
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Literal, Protocol, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+
+@dataclass
+class OrderConfig:
+    """Configuration for ordering node execution instances."""
+
+    order_by: list[str]
+    order_direction: Literal["asc", "desc"] | None = None
+
+
+class WorkflowExecutionRepository(Protocol):
+    def save(self, execution: WorkflowExecution): ...
+
+
+class WorkflowNodeExecutionRepository(Protocol):
+    def save(self, execution: WorkflowNodeExecution): ...
+
+    def save_execution_data(self, execution: WorkflowNodeExecution): ...
+
+    def get_by_workflow_execution(
+        self,
+        workflow_execution_id: str,
+        order_config: OrderConfig | None = None,
+    ) -> Sequence[WorkflowNodeExecution]: ...
 
 
 class RepositoryImportError(Exception):

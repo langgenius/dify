@@ -8,6 +8,7 @@ from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import SchedulingPause
@@ -29,7 +30,6 @@ from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.end.entities import EndNodeData
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -162,11 +162,11 @@ def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> G
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
+        system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],
     )
-    variable_pool.system_variables.workflow_execution_id = run_id
+    variable_pool.add(("sys", "workflow_run_id"), run_id)
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 

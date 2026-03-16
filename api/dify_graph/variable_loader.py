@@ -13,14 +13,6 @@ class VariableLoader(Protocol):
     A `VariableLoader` is responsible for retrieving additional variables required during the execution
     of a single node, which are not provided as user inputs.
 
-    NOTE(QuantumGhost): Typically, all variables loaded by a `VariableLoader` should belong to the same
-    application and share the same `app_id`. However, this interface does not enforce that constraint,
-    and the `app_id` parameter is intentionally omitted from `load_variables` to achieve separation of
-    concern and allow for flexible implementations.
-
-    Implementations of `VariableLoader` should almost always have an `app_id` parameter in
-    their constructor.
-
     TODO(QuantumGhost): this is a temporally workaround. If we can move the creation of node instance into
     `WorkflowService.single_step_run`, we may get rid of this interface.
     """

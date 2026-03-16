@@ -118,7 +118,6 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         return File(
             id=str(uuid4()),  # Generate new UUID for File.id
-            tenant_id=tenant_id,
             type=FileType.DOCUMENT,
             transfer_method=transfer_method,
             related_id=file_related_id,

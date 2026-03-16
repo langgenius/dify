@@ -13,12 +13,23 @@ from sqlalchemy.orm import Session
 from werkzeug.http import parse_options_header
 
 from core.helper import ssrf_proxy
+from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
 from dify_graph.file.file_factory import standardize_file_type
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_mapping_file_id(mapping: Mapping[str, Any], *keys: str) -> str | None:
+    for key in (*keys, "reference", "related_id"):
+        raw_value = mapping.get(key)
+        if isinstance(raw_value, str) and raw_value:
+            resolved_value = resolve_file_record_id(raw_value)
+            if resolved_value:
+                return resolved_value
+    return None
 
 
 def build_from_message_files(
@@ -158,7 +169,7 @@ def _build_from_local_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    upload_file_id = mapping.get("upload_file_id")
+    upload_file_id = _resolve_mapping_file_id(mapping, "upload_file_id")
     if not upload_file_id:
         raise ValueError("Invalid upload file id")
     # check if upload_file_id is a valid uuid
@@ -191,13 +202,11 @@ def _build_from_local_file(
         filename=row.name,
         extension="." + row.extension,
         mime_type=row.mime_type,
-        tenant_id=tenant_id,
         type=file_type,
         transfer_method=transfer_method,
         remote_url=row.source_url,
-        related_id=mapping.get("upload_file_id"),
+        reference=build_file_reference(record_id=str(row.id), storage_key=row.key),
         size=row.size,
-        storage_key=row.key,
     )
 
 
@@ -208,7 +217,7 @@ def _build_from_remote_url(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    upload_file_id = mapping.get("upload_file_id")
+    upload_file_id = _resolve_mapping_file_id(mapping, "upload_file_id")
     if upload_file_id:
         try:
             uuid.UUID(upload_file_id)
@@ -242,13 +251,11 @@ def _build_from_remote_url(
             filename=upload_file.name,
             extension="." + upload_file.extension,
             mime_type=upload_file.mime_type,
-            tenant_id=tenant_id,
             type=file_type,
             transfer_method=transfer_method,
             remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
-            related_id=mapping.get("upload_file_id"),
+            reference=build_file_reference(record_id=str(upload_file.id), storage_key=upload_file.key),
             size=upload_file.size,
-            storage_key=upload_file.key,
         )
     url = mapping.get("url") or mapping.get("remote_url")
     if not url:
@@ -271,14 +278,12 @@ def _build_from_remote_url(
     return File(
         id=mapping.get("id"),
         filename=filename,
-        tenant_id=tenant_id,
         type=file_type,
         transfer_method=transfer_method,
         remote_url=url,
         mime_type=mime_type,
         extension=extension,
         size=file_size,
-        storage_key="",
     )
 
 
@@ -370,8 +375,7 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    # Backward/interop compatibility: allow tool_file_id to come from related_id or URL
-    tool_file_id = mapping.get("tool_file_id")
+    tool_file_id = _resolve_mapping_file_id(mapping, "tool_file_id")
 
     if not tool_file_id:
         raise ValueError(f"ToolFile {tool_file_id} not found")
@@ -401,16 +405,14 @@ def _build_from_tool_file(
 
     return File(
         id=mapping.get("id"),
-        tenant_id=tenant_id,
         filename=tool_file.name,
         type=file_type,
         transfer_method=transfer_method,
         remote_url=tool_file.original_url,
-        related_id=tool_file.id,
+        reference=build_file_reference(record_id=str(tool_file.id), storage_key=tool_file.file_key),
         extension=extension,
         mime_type=tool_file.mimetype,
         size=tool_file.size,
-        storage_key=tool_file.file_key,
     )
 
 
@@ -421,7 +423,7 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    datasource_file_id = mapping.get("datasource_file_id")
+    datasource_file_id = _resolve_mapping_file_id(mapping, "datasource_file_id")
     if not datasource_file_id:
         raise ValueError(f"DatasourceFile {datasource_file_id} not found")
     datasource_file = (
@@ -452,16 +454,14 @@ def _build_from_datasource_file(
 
     return File(
         id=mapping.get("datasource_file_id"),
-        tenant_id=tenant_id,
         filename=datasource_file.name,
         type=file_type,
         transfer_method=FileTransferMethod.TOOL_FILE,
         remote_url=datasource_file.source_url,
-        related_id=datasource_file.id,
+        reference=build_file_reference(record_id=str(datasource_file.id), storage_key=datasource_file.key),
         extension=extension,
         mime_type=datasource_file.mime_type,
         size=datasource_file.size,
-        storage_key=datasource_file.key,
         url=datasource_file.source_url,
     )
 
@@ -535,6 +535,8 @@ class StorageKeyLoader:
 
         This method doesn't modify the input sequence structure but updates the `_storage_key`
         property of each file object by extracting the relevant key from its database record.
+        Tenant scoping is enforced by this loader's context rather than by embedding tenant
+        identity inside graph-layer ``File`` values.
 
         Performance note: This is a batched operation where database query count remains constant
         regardless of input size. However, for optimal performance, input sequences should contain
@@ -545,16 +547,10 @@ class StorageKeyLoader:
         upload_file_ids: list[uuid.UUID] = []
         tool_file_ids: list[uuid.UUID] = []
         for file in files:
-            related_model_id = file.related_id
-            if file.related_id is None:
+            parsed_reference = parse_file_reference(file.reference)
+            if parsed_reference is None:
                 raise ValueError("file id should not be None.")
-            if file.tenant_id != self._tenant_id:
-                err_msg = (
-                    f"invalid file, expected tenant_id={self._tenant_id}, "
-                    f"got tenant_id={file.tenant_id}, file_id={file.id}, related_model_id={related_model_id}"
-                )
-                raise ValueError(err_msg)
-            model_id = uuid.UUID(related_model_id)
+            model_id = uuid.UUID(parsed_reference.record_id)
 
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
                 upload_file_ids.append(model_id)
@@ -564,14 +560,23 @@ class StorageKeyLoader:
         tool_files = self._load_tool_files(tool_file_ids)
         upload_files = self._load_upload_files(upload_file_ids)
         for file in files:
-            model_id = uuid.UUID(file.related_id)
+            parsed_reference = parse_file_reference(file.reference)
+            if parsed_reference is None:
+                raise ValueError("file id should not be None.")
+            model_id = uuid.UUID(parsed_reference.record_id)
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
                     raise ValueError(f"Upload file not found for id: {model_id}")
-                file.storage_key = upload_file_row.key
+                file.reference = build_file_reference(
+                    record_id=str(upload_file_row.id),
+                    storage_key=upload_file_row.key,
+                )
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
                     raise ValueError(f"Tool file not found for id: {model_id}")
-                file.storage_key = tool_file_row.file_key
+                file.reference = build_file_reference(
+                    record_id=str(tool_file_row.id),
+                    storage_key=tool_file_row.file_key,
+                )

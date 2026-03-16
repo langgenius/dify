@@ -23,7 +23,8 @@ from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_INFO_METADATA_KEY, TRIGGER_PLUGIN_NODE_TYPE
-from dify_graph.constants import (
+from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
@@ -253,7 +254,7 @@ class Workflow(Base):  # bug
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
-        return NodeConfigDictAdapter.validate_python(node_config)
+        return NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
 
     @staticmethod
     def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
@@ -1485,13 +1486,23 @@ class WorkflowDraftVariable(Base):
         if isinstance(value, dict):
             if not maybe_file_object(value):
                 return cast(Any, value)
-            return File.model_validate(value)
+            # Older serialized File payloads may still carry the removed
+            # graph-level tenant_id field. Strip it at this deserialization edge.
+            normalized_file = dict(value)
+            normalized_file.pop("tenant_id", None)
+            return File.model_validate(normalized_file)
         elif isinstance(value, list) and value:
             value_list = cast(list[Any], value)
             first: Any = value_list[0]
             if not maybe_file_object(first):
                 return cast(Any, value)
-            file_list: list[File] = [File.model_validate(cast(dict[str, Any], i)) for i in value_list]
+            file_list: list[File] = []
+            for item in value_list:
+                # Keep the compatibility handling local to the payload rebuild
+                # path instead of weakening the File model itself.
+                normalized_file = dict(cast(dict[str, Any], item))
+                normalized_file.pop("tenant_id", None)
+                file_list.append(File.model_validate(normalized_file))
             return cast(Any, file_list)
         else:
             return cast(Any, value)

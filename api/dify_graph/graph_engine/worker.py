@@ -9,12 +9,12 @@ import queue
 import threading
 import time
 from collections.abc import Sequence
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
-from dify_graph.context import IExecutionContext
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import GraphNodeEventBase, NodeRunFailedEvent, is_node_result_event
@@ -43,7 +43,7 @@ class Worker(threading.Thread):
         graph: Graph,
         layers: Sequence[GraphEngineLayer],
         worker_id: int = 0,
-        execution_context: IExecutionContext | None = None,
+        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         """
         Initialize worker thread.

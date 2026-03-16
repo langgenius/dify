@@ -20,3 +20,7 @@ class GraphInitParams(BaseModel):
     graph_config: Mapping[str, Any] = Field(..., description="graph config")
     run_context: Mapping[str, Any] = Field(..., description="runtime context")
     call_depth: int = Field(..., description="call depth")
+    child_sync_variable_node_ids: frozenset[str] = Field(
+        default_factory=frozenset,
+        description="Variable node IDs whose values must be synced back from child graph executions.",
+    )

@@ -14,6 +14,7 @@ from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -65,14 +66,14 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.workflow.file_reference import parse_file_reference
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
 from dify_graph.runtime import GraphRuntimeState
-from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
@@ -81,6 +82,21 @@ from models.execution_extra_content import HumanInputContent
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
+    reference = file_mapping.get("reference")
+    if isinstance(reference, str) and reference:
+        parsed_reference = parse_file_reference(reference)
+        if parsed_reference is not None:
+            return parsed_reference.record_id
+
+    related_id = file_mapping.get("related_id")
+    if isinstance(related_id, str) and related_id:
+        parsed_reference = parse_file_reference(related_id)
+        if parsed_reference is not None:
+            return parsed_reference.record_id
+    return None
 
 
 class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
@@ -117,7 +133,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
-        self._workflow_system_variables = SystemVariable(
+        self._workflow_system_variables = build_system_variables(
             query=message.query,
             files=application_generate_entity.files,
             conversation_id=conversation.id,
@@ -741,8 +757,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _load_human_input_form_id(self, *, node_id: str) -> str | None:
         form_repository = HumanInputFormRepositoryImpl(
             tenant_id=self._workflow_tenant_id,
+            workflow_execution_id=self._workflow_run_id,
         )
-        form = form_repository.get_form(self._workflow_run_id, node_id)
+        form = form_repository.get_form(node_id)
         if form is None:
             return None
         return form.id
@@ -940,7 +957,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 transfer_method=file["transfer_method"],
                 url=file["remote_url"],
                 belongs_to="assistant",
-                upload_file_id=file["related_id"],
+                upload_file_id=_resolve_file_record_id(file),
                 created_by_role=CreatorUserRole.ACCOUNT
                 if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                 else CreatorUserRole.END_USER,
@@ -1003,13 +1020,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return message
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
-        with Session(db.engine) as session, session.begin():
-            saver = self._draft_var_saver_factory(
-                session=session,
-                app_id=self._application_generate_entity.app_config.app_id,
-                node_id=event.node_id,
-                node_type=event.node_type,
-                node_execution_id=node_execution_id,
-                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
-            )
-            saver.save(event.process_data, event.outputs)
+        saver = self._draft_var_saver_factory(
+            app_id=self._application_generate_entity.app_config.app_id,
+            node_id=event.node_id,
+            node_type=event.node_type,
+            node_execution_id=node_execution_id,
+            enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+        )
+        saver.save(event.process_data, event.outputs)

@@ -7,8 +7,9 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
 from libs.uuid_utils import uuidv7

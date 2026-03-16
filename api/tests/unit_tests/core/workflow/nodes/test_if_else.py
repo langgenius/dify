@@ -6,13 +6,13 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.graph import Graph
 from dify_graph.nodes.if_else.entities import IfElseNodeData
 from dify_graph.nodes.if_else.if_else_node import IfElseNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from dify_graph.variables import ArrayFileSegment
 from extensions.ext_database import db
@@ -34,7 +34,7 @@ def test_execute_if_else_result_true():
     )
 
     # construct variable pool
-    pool = VariablePool(system_variables=SystemVariable(user_id="aaa", files=[]), user_inputs={})
+    pool = VariablePool(system_variables=build_system_variables(user_id="aaa", files=[]), user_inputs={})
     pool.add(["start", "array_contains"], ["ab", "def"])
     pool.add(["start", "array_not_contains"], ["ac", "def"])
     pool.add(["start", "contains"], "cabcde")
@@ -141,7 +141,7 @@ def test_execute_if_else_result_false():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
     )
@@ -252,7 +252,6 @@ def test_array_file_contains_file_name():
     node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
         value=[
             File(
-                tenant_id="1",
                 type=FileType.IMAGE,
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 related_id="1",
@@ -315,7 +314,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
@@ -370,7 +369,7 @@ def test_execute_if_else_boolean_false_conditions():
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
@@ -439,7 +438,7 @@ def test_execute_if_else_boolean_cases_structure():
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)

@@ -14,7 +14,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable impor
     RagPipelineVariableResetApi,
 )
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.variables.types import SegmentType
 from models.account import Account
 

@@ -240,7 +240,6 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
-            conversation_id=None,
             file_binary=content,
             mimetype=mime_type,
         )

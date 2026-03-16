@@ -14,10 +14,17 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
+from core.workflow.human_input_compat import (
+    DeliveryChannelConfig,
+    normalize_human_input_node_data_for_graph,
+    parse_human_input_delivery_methods,
+)
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams, WorkflowNodeExecution
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -35,18 +42,11 @@ from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from dify_graph.nodes.human_input.entities import (
-    DeliveryChannelConfig,
-    HumanInputNodeData,
-    apply_debug_email_recipient,
-    validate_human_input_submission,
-)
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
 from dify_graph.nodes.human_input.enums import HumanInputFormKind
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.repositories.human_input_form_repository import FormCreateParams
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import load_into_variable_pool
 from dify_graph.variables import VariableBase
 from dify_graph.variables.input_entities import VariableEntityType
@@ -722,6 +722,7 @@ class WorkflowService:
                     user_id=account.id,
                     user_inputs=user_inputs,
                     workflow=draft_workflow,
+                    node_id=node_id,
                     # NOTE(QuantumGhost): We rely on `DraftVarLoader` to load conversation variables.
                     conversation_variables=[],
                     node_type=node_type,
@@ -729,11 +730,13 @@ class WorkflowService:
                 )
 
         else:
-            variable_pool = VariablePool(
-                system_variables=SystemVariable.default(),
-                user_inputs=user_inputs,
-                environment_variables=draft_workflow.environment_variables,
-                conversation_variables=[],
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=default_system_variables(),
+                    environment_variables=draft_workflow.environment_variables,
+                ),
             )
 
         variable_loader = DraftVarLoader(
@@ -952,17 +955,20 @@ class WorkflowService:
         if node_type != BuiltinNodeTypes.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
-        node_data = HumanInputNodeData.model_validate(node_config["data"], from_attributes=True)
+        node_data = HumanInputNodeData.model_validate(
+            normalize_human_input_node_data_for_graph(node_config["data"]),
+            from_attributes=True,
+        )
         delivery_method = self._resolve_human_input_delivery_method(
             node_data=node_data,
             delivery_method_id=delivery_method_id,
         )
         if delivery_method is None:
             raise ValueError("Delivery method not found.")
-        delivery_method = apply_debug_email_recipient(
+        delivery_method = apply_dify_debug_email_recipient(
             delivery_method,
             enabled=True,
-            user_id=account.id,
+            actor_id=account.id,
         )
 
         variable_pool = self._build_human_input_variable_pool(
@@ -1012,7 +1018,7 @@ class WorkflowService:
         node_data: HumanInputNodeData,
         delivery_method_id: str,
     ) -> DeliveryChannelConfig | None:
-        for method in node_data.delivery_methods:
+        for method in parse_human_input_delivery_methods(node_data):
             if str(method.id) == delivery_method_id:
                 return method
         return None
@@ -1027,9 +1033,8 @@ class WorkflowService:
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
-        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id=app_model.tenant_id, app_id=app_model.id)
         params = FormCreateParams(
-            app_id=app_model.id,
             workflow_execution_id=None,
             node_id=node_id,
             form_config=node_data,
@@ -1095,7 +1100,6 @@ class WorkflowService:
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
-            form_repository=HumanInputFormRepositoryImpl(tenant_id=workflow.tenant_id),
             runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
         )
         return node
@@ -1113,11 +1117,13 @@ class WorkflowService:
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user_id)
 
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
-            user_inputs={},
-            environment_variables=workflow.environment_variables,
-            conversation_variables=[],
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=default_system_variables(),
+                environment_variables=workflow.environment_variables,
+            ),
         )
 
         variable_loader = DraftVarLoader(
@@ -1380,7 +1386,7 @@ class WorkflowService:
         from dify_graph.nodes.human_input.entities import HumanInputNodeData
 
         try:
-            HumanInputNodeData.model_validate(node_data)
+            HumanInputNodeData.model_validate(normalize_human_input_node_data_for_graph(node_data))
         except Exception as e:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
@@ -1469,38 +1475,48 @@ def _setup_variable_pool(
     user_id: str,
     user_inputs: Mapping[str, Any],
     workflow: Workflow,
+    node_id: str,
     node_type: NodeType,
     conversation_id: str,
     conversation_variables: list[VariableBase],
 ):
     # Only inject system variables for START node type.
     if is_start_node_type(node_type):
-        system_variable = SystemVariable(
-            user_id=user_id,
-            app_id=workflow.app_id,
-            timestamp=int(naive_utc_now().timestamp()),
-            workflow_id=workflow.id,
-            files=files or [],
-            workflow_execution_id=str(uuid.uuid4()),
-        )
+        system_variable_values: dict[str, Any] = {
+            "user_id": user_id,
+            "app_id": workflow.app_id,
+            "timestamp": int(naive_utc_now().timestamp()),
+            "workflow_id": workflow.id,
+            "files": files or [],
+            "workflow_execution_id": str(uuid.uuid4()),
+        }
 
-        # Only add chatflow-specific variables for non-workflow types
+        # Only add chatflow-specific variables for non-workflow types.
         if workflow.type != WorkflowType.WORKFLOW:
-            system_variable.query = query
-            system_variable.conversation_id = conversation_id
-            system_variable.dialogue_count = 1
+            system_variable_values.update(
+                {
+                    "query": query,
+                    "conversation_id": conversation_id,
+                    "dialogue_count": 1,
+                }
+            )
+
+        system_variable = build_system_variables(system_variable_values)
     else:
-        system_variable = SystemVariable.default()
+        system_variable = default_system_variables()
 
     # init variable pool
-    variable_pool = VariablePool(
-        system_variables=system_variable,
-        user_inputs=user_inputs,
-        environment_variables=workflow.environment_variables,
-        # Based on the definition of `Variable`,
-        # `VariableBase` instances can be safely used as `Variable` since they are compatible.
-        conversation_variables=cast(list[Variable], conversation_variables),  #
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_bootstrap_variables(
+            system_variables=system_variable,
+            environment_variables=workflow.environment_variables,
+            conversation_variables=cast(list[Variable], conversation_variables),
+        ),
     )
+    if is_start_node_type(node_type):
+        add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
 
     return variable_pool
 

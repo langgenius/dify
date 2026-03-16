@@ -13,6 +13,7 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.workflow.system_variables import SystemVariableKey
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.graph_engine.entities.commands import GraphEngineCommand
 from dify_graph.graph_engine.layers.base import GraphEngineLayerNotInitializedError
@@ -51,17 +52,6 @@ class TestDataFactory:
         return GraphRunFailedEvent(error=error, exceptions_count=exceptions_count)
 
 
-class MockSystemVariableReadOnlyView:
-    """Minimal read-only system variable view for testing."""
-
-    def __init__(self, workflow_execution_id: str | None = None) -> None:
-        self._workflow_execution_id = workflow_execution_id
-
-    @property
-    def workflow_execution_id(self) -> str | None:
-        return self._workflow_execution_id
-
-
 class MockReadOnlyVariablePool:
     """Mock implementation of ReadOnlyVariablePool for testing."""
 
@@ -76,13 +66,14 @@ class MockReadOnlyVariablePool:
             return None
         mock_segment = Mock(spec=Segment)
         mock_segment.value = value
+        mock_segment.text = value if isinstance(value, str) else None
         return mock_segment
 
     def get_all_by_node(self, node_id: str) -> dict[str, object]:
         return {key: value for (nid, key), value in self._variables.items() if nid == node_id}
 
     def get_by_prefix(self, prefix: str) -> dict[str, object]:
-        return {f"{nid}.{key}": value for (nid, key), value in self._variables.items() if nid.startswith(prefix)}
+        return {key: value for (nid, key), value in self._variables.items() if nid == prefix}
 
 
 class MockReadOnlyGraphRuntimeState:
@@ -105,12 +96,10 @@ class MockReadOnlyGraphRuntimeState:
         self._ready_queue_size = ready_queue_size
         self._exceptions_count = exceptions_count
         self._outputs = outputs or {}
-        self._variable_pool = MockReadOnlyVariablePool(variables)
-        self._system_variable = MockSystemVariableReadOnlyView(workflow_execution_id)
-
-    @property
-    def system_variable(self) -> MockSystemVariableReadOnlyView:
-        return self._system_variable
+        resolved_variables = dict(variables or {})
+        if workflow_execution_id is not None:
+            resolved_variables[("sys", SystemVariableKey.WORKFLOW_EXECUTION_ID.value)] = workflow_execution_id
+        self._variable_pool = MockReadOnlyVariablePool(resolved_variables)
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePool:
@@ -161,7 +150,9 @@ class MockReadOnlyGraphRuntimeState:
                 "exceptions_count": self._exceptions_count,
                 "outputs": self._outputs,
                 "variables": {f"{k[0]}.{k[1]}": v for k, v in self._variable_pool._variables.items()},
-                "workflow_execution_id": self._system_variable.workflow_execution_id,
+                "workflow_execution_id": self._variable_pool._variables.get(
+                    ("sys", SystemVariableKey.WORKFLOW_EXECUTION_ID.value)
+                ),
             }
         )
 

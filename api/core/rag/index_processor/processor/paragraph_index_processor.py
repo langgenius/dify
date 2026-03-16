@@ -26,6 +26,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.workflow.file_reference import build_file_reference
 from dify_graph.file import File, FileTransferMethod, FileType, file_manager
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from dify_graph.model_runtime.entities.message_entities import (
@@ -603,13 +604,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     filename=upload_file.name,
                     extension="." + upload_file.extension,
                     mime_type=upload_file.mime_type,
-                    tenant_id=tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.LOCAL_FILE,
                     remote_url=upload_file.source_url,
-                    related_id=upload_file.id,
+                    reference=build_file_reference(
+                        record_id=str(upload_file.id),
+                        storage_key=upload_file.key,
+                    ),
                     size=upload_file.size,
-                    storage_key=upload_file.key,
                 )
                 file_objects.append(file_obj)
             except Exception as e:

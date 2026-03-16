@@ -4,15 +4,29 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from dify_graph.entities import GraphInitParams
 from dify_graph.graph import Graph
+from dify_graph.graph_events import NodeRunVariableUpdatedEvent
 from dify_graph.nodes.variable_assigner.v2 import VariableAssignerNode
 from dify_graph.nodes.variable_assigner.v2.enums import InputType, Operation
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayStringVariable
 
 DEFAULT_NODE_ID = "node_id"
+
+
+def _build_variable_pool(*, conversation_variables: list[ArrayStringVariable]) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_bootstrap_variables(
+            system_variables=build_system_variables(conversation_id="conversation_id"),
+            conversation_variables=conversation_variables,
+        ),
+    )
+    return variable_pool
 
 
 def test_handle_item_directly():
@@ -105,12 +119,7 @@ def test_remove_first_from_array():
         selector=["conversation", "test_conversation_variable"],
     )
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id="conversation_id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[conversation_variable],
-    )
+    variable_pool = _build_variable_pool(conversation_variables=[conversation_variable])
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
@@ -145,11 +154,8 @@ def test_remove_first_from_array():
     # Run the node
     result = list(node.run())
 
-    # Completed run
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == ["second", "third"]
+    updated_event = next(event for event in result if isinstance(event, NodeRunVariableUpdatedEvent))
+    assert updated_event.variable.value == ["second", "third"]
 
 
 def test_remove_last_from_array():
@@ -193,12 +199,7 @@ def test_remove_last_from_array():
         selector=["conversation", "test_conversation_variable"],
     )
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id="conversation_id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[conversation_variable],
-    )
+    variable_pool = _build_variable_pool(conversation_variables=[conversation_variable])
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
@@ -230,11 +231,9 @@ def test_remove_last_from_array():
         config=node_config,
     )
 
-    list(node.run())
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == ["first", "second"]
+    result = list(node.run())
+    updated_event = next(event for event in result if isinstance(event, NodeRunVariableUpdatedEvent))
+    assert updated_event.variable.value == ["first", "second"]
 
 
 def test_remove_first_from_empty_array():
@@ -278,12 +277,7 @@ def test_remove_first_from_empty_array():
         selector=["conversation", "test_conversation_variable"],
     )
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id="conversation_id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[conversation_variable],
-    )
+    variable_pool = _build_variable_pool(conversation_variables=[conversation_variable])
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
@@ -315,11 +309,9 @@ def test_remove_first_from_empty_array():
         config=node_config,
     )
 
-    list(node.run())
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == []
+    result = list(node.run())
+    updated_event = next(event for event in result if isinstance(event, NodeRunVariableUpdatedEvent))
+    assert updated_event.variable.value == []
 
 
 def test_remove_last_from_empty_array():
@@ -363,12 +355,7 @@ def test_remove_last_from_empty_array():
         selector=["conversation", "test_conversation_variable"],
     )
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id="conversation_id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[conversation_variable],
-    )
+    variable_pool = _build_variable_pool(conversation_variables=[conversation_variable])
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
@@ -400,11 +387,9 @@ def test_remove_last_from_empty_array():
         config=node_config,
     )
 
-    list(node.run())
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == []
+    result = list(node.run())
+    updated_event = next(event for event in result if isinstance(event, NodeRunVariableUpdatedEvent))
+    assert updated_event.variable.value == []
 
 
 def test_node_factory_creates_variable_assigner_node():
@@ -432,12 +417,7 @@ def test_node_factory_creates_variable_assigner_node():
         },
         call_depth=0,
     )
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id="conversation_id"),
-        user_inputs={},
-        environment_variables=[],
-        conversation_variables=[],
-    )
+    variable_pool = _build_variable_pool(conversation_variables=[])
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
     node_factory = DifyNodeFactory(

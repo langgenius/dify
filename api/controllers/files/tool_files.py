@@ -70,22 +70,25 @@ class ToolFileApi(Resource):
         except Exception:
             raise UnsupportedFileTypeError()
 
+        mime_type = tool_file.mime_type
+        filename = tool_file.filename
+
         response = Response(
             stream,
-            mimetype=tool_file.mimetype,
+            mimetype=mime_type,
             direct_passthrough=True,
             headers={},
         )
         if tool_file.size > 0:
             response.headers["Content-Length"] = str(tool_file.size)
-        if args.as_attachment:
-            encoded_filename = quote(tool_file.name)
+        if args.as_attachment and filename:
+            encoded_filename = quote(filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,
-            mime_type=tool_file.mimetype,
-            filename=tool_file.name,
+            mime_type=mime_type,
+            filename=filename,
             extension=extension,
         )
 

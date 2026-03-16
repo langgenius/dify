@@ -24,6 +24,7 @@ from core.datasource.utils.message_transformer import DatasourceFileMessageTrans
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
 from core.db.session_factory import session_factory
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.entities import DatasourceParameter, OnlineDriveDownloadFileParam
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import WorkflowNodeExecutionMetadataKey
@@ -351,13 +352,11 @@ class DatasourceManager:
             filename=upload_file.name,
             extension="." + upload_file.extension,
             mime_type=upload_file.mime_type,
-            tenant_id=tenant_id,
             type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
-            related_id=upload_file.id,
+            reference=build_file_reference(record_id=str(upload_file.id), storage_key=upload_file.key),
             size=upload_file.size,
-            storage_key=upload_file.key,
             url=upload_file.source_url,
         )
         return file_info

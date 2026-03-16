@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from configs import dify_config
-from dify_graph.constants import (
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )

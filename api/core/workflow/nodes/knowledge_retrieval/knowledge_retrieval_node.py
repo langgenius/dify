@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import parse_file_reference
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
@@ -254,7 +255,13 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_model_config=node_data.metadata_model_config,
                     metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
-                    attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
+                    attachment_ids=[
+                        parsed_reference.record_id
+                        for attachment in attachments
+                        if (parsed_reference := parse_file_reference(attachment.reference)) is not None
+                    ]
+                    if attachments
+                    else None,
                 )
             )
 

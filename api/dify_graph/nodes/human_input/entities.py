@@ -1,228 +1,25 @@
-"""
-Human Input node entities.
+"""Human Input node entities.
+
+The graph package owns the workflow-facing form schema and keeps it transportable
+across runtimes. Dify-specific delivery surface and recipient translation stay
+outside `dify_graph`.
 """
 
 import re
-import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Annotated, Any, ClassVar, Literal, Self
+from typing import Any, Self
 
-import bleach
-import markdown
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
-from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH
 
-from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
+from .enums import ButtonStyle, FormInputType, PlaceholderType, TimeoutUnit
 
 _OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
-
-
-class _WebAppDeliveryConfig(BaseModel):
-    """Configuration for webapp delivery method."""
-
-    pass  # Empty for webapp delivery
-
-
-class MemberRecipient(BaseModel):
-    """Member recipient for email delivery."""
-
-    type: Literal[EmailRecipientType.MEMBER] = EmailRecipientType.MEMBER
-    user_id: str
-
-
-class ExternalRecipient(BaseModel):
-    """External recipient for email delivery."""
-
-    type: Literal[EmailRecipientType.EXTERNAL] = EmailRecipientType.EXTERNAL
-    email: str
-
-
-EmailRecipient = Annotated[MemberRecipient | ExternalRecipient, Field(discriminator="type")]
-
-
-class EmailRecipients(BaseModel):
-    """Email recipients configuration."""
-
-    # When true, recipients are the union of all workspace members and external items.
-    # Member items are ignored because they are already covered by the workspace scope.
-    # De-duplication is applied by email, with member recipients taking precedence.
-    whole_workspace: bool = False
-    items: list[EmailRecipient] = Field(default_factory=list)
-
-
-class EmailDeliveryConfig(BaseModel):
-    """Configuration for email delivery method."""
-
-    URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
-    _SUBJECT_NEWLINE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[\r\n]+")
-    _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
-        "a",
-        "blockquote",
-        "br",
-        "code",
-        "em",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "hr",
-        "li",
-        "ol",
-        "p",
-        "pre",
-        "strong",
-        "table",
-        "tbody",
-        "td",
-        "th",
-        "thead",
-        "tr",
-        "ul",
-    ]
-    _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
-        "a": ["href", "title"],
-        "td": ["align"],
-        "th": ["align"],
-    }
-    _ALLOWED_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto"]
-
-    recipients: EmailRecipients
-
-    # the subject of email
-    subject: str
-
-    # Body is the content of email.It may contain the speical placeholder `{{#url#}}`, which
-    # represent the url to submit the form.
-    #
-    # It may also reference the output variable of the previous node with the syntax
-    # `{{#<node_id>.<field_name>#}}`.
-    body: str
-    debug_mode: bool = False
-
-    def with_debug_recipient(self, user_id: str | None) -> "EmailDeliveryConfig":
-        if user_id is None:
-            debug_recipients = EmailRecipients(whole_workspace=False, items=[])
-            return self.model_copy(update={"recipients": debug_recipients})
-        debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
-        return self.model_copy(update={"recipients": debug_recipients})
-
-    @classmethod
-    def replace_url_placeholder(cls, body: str, url: str | None) -> str:
-        """Replace the url placeholder with provided value."""
-        return body.replace(cls.URL_PLACEHOLDER, url or "")
-
-    @classmethod
-    def render_body_template(
-        cls,
-        *,
-        body: str,
-        url: str | None,
-        variable_pool: VariablePool | None = None,
-    ) -> str:
-        """Render email body by replacing placeholders with runtime values."""
-        templated_body = cls.replace_url_placeholder(body, url)
-        if variable_pool is None:
-            return templated_body
-        return variable_pool.convert_template(templated_body).text
-
-    @classmethod
-    def render_markdown_body(cls, body: str) -> str:
-        """Render markdown to safe HTML for email delivery."""
-        sanitized_markdown = bleach.clean(
-            body,
-            tags=[],
-            attributes={},
-            strip=True,
-            strip_comments=True,
-        )
-        rendered_html = markdown.markdown(
-            sanitized_markdown,
-            extensions=["nl2br", "tables"],
-            extension_configs={"tables": {"use_align_attribute": True}},
-        )
-        return bleach.clean(
-            rendered_html,
-            tags=cls._ALLOWED_HTML_TAGS,
-            attributes=cls._ALLOWED_HTML_ATTRIBUTES,
-            protocols=cls._ALLOWED_PROTOCOLS,
-            strip=True,
-            strip_comments=True,
-        )
-
-    @classmethod
-    def sanitize_subject(cls, subject: str) -> str:
-        """Sanitize email subject to plain text and prevent CRLF injection."""
-        sanitized_subject = bleach.clean(
-            subject,
-            tags=[],
-            attributes={},
-            strip=True,
-            strip_comments=True,
-        )
-        sanitized_subject = cls._SUBJECT_NEWLINE_PATTERN.sub(" ", sanitized_subject)
-        return " ".join(sanitized_subject.split())
-
-
-class _DeliveryMethodBase(BaseModel):
-    """Base delivery method configuration."""
-
-    enabled: bool = True
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-
-    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
-        return ()
-
-
-class WebAppDeliveryMethod(_DeliveryMethodBase):
-    """Webapp delivery method configuration."""
-
-    type: Literal[DeliveryMethodType.WEBAPP] = DeliveryMethodType.WEBAPP
-    # The config field is not used currently.
-    config: _WebAppDeliveryConfig = Field(default_factory=_WebAppDeliveryConfig)
-
-
-class EmailDeliveryMethod(_DeliveryMethodBase):
-    """Email delivery method configuration."""
-
-    type: Literal[DeliveryMethodType.EMAIL] = DeliveryMethodType.EMAIL
-    config: EmailDeliveryConfig
-
-    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
-        variable_template_parser = VariableTemplateParser(template=self.config.body)
-        selectors: list[Sequence[str]] = []
-        for variable_selector in variable_template_parser.extract_variable_selectors():
-            value_selector = list(variable_selector.value_selector)
-            if len(value_selector) < SELECTORS_LENGTH:
-                continue
-            selectors.append(value_selector[:SELECTORS_LENGTH])
-        return selectors
-
-
-DeliveryChannelConfig = Annotated[WebAppDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
-
-
-def apply_debug_email_recipient(
-    method: DeliveryChannelConfig,
-    *,
-    enabled: bool,
-    user_id: str | None,
-) -> DeliveryChannelConfig:
-    if not enabled:
-        return method
-    if not isinstance(method, EmailDeliveryMethod):
-        return method
-    if not method.config.debug_mode:
-        return method
-    debug_config = method.config.with_debug_recipient(user_id)
-    return method.model_copy(update={"config": debug_config})
 
 
 class FormInputDefault(BaseModel):
@@ -288,7 +85,6 @@ class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
-    delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
     form_content: str = ""
     inputs: list[FormInput] = Field(default_factory=list)
     user_actions: list[UserAction] = Field(default_factory=list)
@@ -316,14 +112,6 @@ class HumanInputNodeData(BaseNodeData):
                 raise ValueError(f"duplicated user action id '{action_id}'")
             seen_ids.add(action_id)
         return user_actions
-
-    def is_webapp_enabled(self) -> bool:
-        for dm in self.delivery_methods:
-            if not dm.enabled:
-                continue
-            if dm.type == DeliveryMethodType.WEBAPP:
-                return True
-        return False
 
     def expiration_time(self, start_time: datetime) -> datetime:
         if self.timeout_unit == TimeoutUnit.HOUR:
@@ -353,10 +141,6 @@ class HumanInputNodeData(BaseNodeData):
         _add_variable_selectors(
             [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
         )
-        for delivery_method in self.delivery_methods:
-            if not delivery_method.enabled:
-                continue
-            _add_variable_selectors(delivery_method.extract_variable_selectors())
 
         for input in self.inputs:
             default_value = input.default

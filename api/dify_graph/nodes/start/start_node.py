@@ -2,7 +2,6 @@ from typing import Any
 
 from jsonschema import Draft7Validator, ValidationError
 
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -19,14 +18,8 @@ class StartNode(Node[StartNodeData]):
         return "1"
 
     def _run(self) -> NodeRunResult:
-        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
         self._validate_and_normalize_json_object_inputs(node_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
-
-        # TODO: System variables should be directly accessible, no need for special handling
-        # Set system variables as node outputs.
-        for var in system_inputs:
-            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
         outputs = dict(node_inputs)
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=outputs)

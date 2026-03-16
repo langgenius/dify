@@ -11,7 +11,8 @@ from dify_graph.nodes.tool_runtime_entities import (
 )
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.human_input.entities import DeliveryChannelConfig
+    from dify_graph.nodes.human_input.entities import HumanInputNodeData
+    from dify_graph.nodes.human_input.enums import HumanInputFormStatus
     from dify_graph.nodes.tool.entities import ToolNodeData
     from dify_graph.runtime import VariablePool
 
@@ -43,7 +44,6 @@ class ToolNodeRuntimeProtocol(Protocol):
         tool_runtime: ToolRuntimeHandle,
         tool_parameters: Mapping[str, Any],
         workflow_call_depth: int,
-        conversation_id: str | None,
         provider_name: str,
     ) -> Generator[ToolRuntimeMessage, None, None]: ...
 
@@ -64,12 +64,42 @@ class ToolNodeRuntimeProtocol(Protocol):
 
 
 class HumanInputNodeRuntimeProtocol(Protocol):
-    def invoke_source(self) -> str: ...
+    """Workflow-layer adapter for human-input runtime persistence and delivery."""
 
-    def apply_delivery_runtime(
+    def get_form(
         self,
         *,
-        methods: Sequence[DeliveryChannelConfig],
-    ) -> Sequence[DeliveryChannelConfig]: ...
+        node_id: str,
+    ) -> HumanInputFormStateProtocol | None: ...
 
-    def console_actor_id(self) -> str | None: ...
+    def create_form(
+        self,
+        *,
+        node_id: str,
+        node_data: HumanInputNodeData,
+        rendered_content: str,
+        resolved_default_values: Mapping[str, Any],
+    ) -> HumanInputFormStateProtocol: ...
+
+
+class HumanInputFormStateProtocol(Protocol):
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def rendered_content(self) -> str: ...
+
+    @property
+    def selected_action_id(self) -> str | None: ...
+
+    @property
+    def submitted_data(self) -> Mapping[str, Any] | None: ...
+
+    @property
+    def submitted(self) -> bool: ...
+
+    @property
+    def status(self) -> HumanInputFormStatus: ...
+
+    @property
+    def expiration_time(self): ...

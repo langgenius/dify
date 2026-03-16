@@ -4,8 +4,9 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
@@ -115,14 +116,14 @@ class AgentNode(Node[AgentNodeData]):
         )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(
                 params=parameters,
                 user_id=dify_ctx.user_id,
                 app_id=dify_ctx.app_id,
-                conversation_id=conversation_id.text if conversation_id else None,
+                conversation_id=conversation_id,
                 credentials=credentials,
             )
         except Exception as e:
@@ -149,6 +150,7 @@ class AgentNode(Node[AgentNodeData]):
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,
                 tenant_id=dify_ctx.tenant_id,
+                conversation_id=conversation_id,
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,

@@ -7,11 +7,12 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from dify_graph.runtime import GraphRuntimeState
 from models.account import Account
 from models.model import AppMode
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 def _build_workflow_app_config() -> WorkflowUIBasedAppConfig:
@@ -37,11 +38,7 @@ def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
 
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(workflow_execution_id=run_id),
-        user_inputs={},
-        conversation_variables=[],
-    )
+    variable_pool = build_test_variable_pool(variables=build_system_variables(workflow_execution_id=run_id))
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 

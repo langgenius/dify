@@ -1,11 +1,10 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from dify_graph.node_events import NodeRunResult
+from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent, VariableUpdatedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.common.exc import VariableOperatorNodeError
@@ -56,18 +55,16 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         node_data: VariableAssignerData,
     ) -> Mapping[str, Sequence[str]]:
         mapping = {}
-        assigned_variable_node_id = node_data.assigned_variable_selector[0]
-        if assigned_variable_node_id == CONVERSATION_VARIABLE_NODE_ID:
-            selector_key = ".".join(node_data.assigned_variable_selector)
-            key = f"{node_id}.#{selector_key}#"
-            mapping[key] = node_data.assigned_variable_selector
+        selector_key = ".".join(node_data.assigned_variable_selector)
+        key = f"{node_id}.#{selector_key}#"
+        mapping[key] = node_data.assigned_variable_selector
 
         selector_key = ".".join(node_data.input_variable_selector)
         key = f"{node_id}.#{selector_key}#"
         mapping[key] = node_data.input_variable_selector
         return mapping
 
-    def _run(self) -> NodeRunResult:
+    def _run(self) -> Generator[NodeEventBase, None, None]:
         assigned_variable_selector = self.node_data.assigned_variable_selector
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
         original_variable = self.graph_runtime_state.variable_pool.get(assigned_variable_selector)
@@ -92,18 +89,18 @@ class VariableAssignerNode(Node[VariableAssignerData]):
                 income_value = SegmentType.get_zero_value(original_variable.value_type)
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
 
-        # Over write the variable.
-        self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
-
         updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs={
-                "value": income_value.to_object(),
-            },
-            # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
-            # we still set `output_variables` as a list to ensure the schema of output is
-            # compatible with `v2.VariableAssignerNode`.
-            process_data=common_helpers.set_updated_variables({}, updated_variables),
-            outputs={},
+        yield VariableUpdatedEvent(variable=updated_variable)
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs={
+                    "value": income_value.to_object(),
+                },
+                # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
+                # we still set `output_variables` as a list to ensure the schema of output is
+                # compatible with `v2.VariableAssignerNode`.
+                process_data=common_helpers.set_updated_variables({}, updated_variables),
+                outputs={},
+            )
         )

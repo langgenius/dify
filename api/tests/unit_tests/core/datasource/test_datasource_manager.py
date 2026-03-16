@@ -430,7 +430,6 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_Session())
     mocker.patch("core.datasource.datasource_manager.get_file_type_by_mime_type", return_value=FileType.IMAGE)
     built = File(
-        tenant_id="t1",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="tool_file_1",
@@ -531,7 +530,6 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     file_in = File(
-        tenant_id="t1",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="tf",

@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -50,25 +51,25 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
+from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import (
     BuiltinNodeTypes,
-    SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.file import FILE_MODEL_IDENTITY, File
 from dify_graph.runtime import GraphRuntimeState
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
+from dify_graph.variables.variables import Variable
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
@@ -97,11 +98,11 @@ class WorkflowResponseConverter:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
-        system_variables: SystemVariable,
+        system_variables: Sequence[Variable],
     ):
         self._application_generate_entity = application_generate_entity
         self._user = user
-        self._system_variables = system_variables
+        self._system_variables = system_variables_to_mapping(system_variables)
         self._workflow_inputs = self._prepare_workflow_inputs()
 
         # Disable truncation for SERVICE_API calls to keep backward compatibility.
@@ -119,7 +120,7 @@ class WorkflowResponseConverter:
     # ------------------------------------------------------------------
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
         inputs = dict(self._application_generate_entity.inputs)
-        for field_name, value in self._system_variables.to_dict().items():
+        for field_name, value in self._system_variables.items():
             # TODO(@future-refactor): store system variables separately from user inputs so we don't
             # need to flatten `sys.*` entries into the input payload just for rerun/export tooling.
             if field_name == SystemVariableKey.CONVERSATION_ID:
@@ -304,13 +305,37 @@ class WorkflowResponseConverter:
         pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
+        display_in_ui_by_form_id: dict[str, bool] = {}
+        form_token_by_form_id: dict[str, tuple[int, str]] = {}
         if human_input_form_ids:
-            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
-                HumanInputForm.id.in_(human_input_form_ids)
+            stmt = select(
+                HumanInputForm.id,
+                HumanInputForm.expiration_time,
+                HumanInputForm.form_definition,
+            ).where(HumanInputForm.id.in_(human_input_form_ids))
+            recipient_stmt = select(HumanInputFormRecipient).where(
+                HumanInputFormRecipient.form_id.in_(human_input_form_ids)
             )
+            token_priority = {
+                RecipientType.BACKSTAGE: 0,
+                RecipientType.CONSOLE: 1,
+                RecipientType.STANDALONE_WEB_APP: 2,
+            }
             with Session(bind=db.engine) as session:
-                for form_id, expiration_time in session.execute(stmt):
+                for form_id, expiration_time, form_definition in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
+                    try:
+                        definition_payload = json.loads(form_definition) if form_definition else {}
+                    except (TypeError, json.JSONDecodeError):
+                        definition_payload = {}
+                    display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+                for recipient in session.scalars(recipient_stmt):
+                    if recipient.recipient_type not in token_priority or not recipient.access_token:
+                        continue
+                    candidate = (token_priority[recipient.recipient_type], recipient.access_token)
+                    current = form_token_by_form_id.get(recipient.form_id)
+                    if current is None or candidate[0] < current[0]:
+                        form_token_by_form_id[recipient.form_id] = candidate
 
         responses: list[StreamResponse] = []
 
@@ -330,8 +355,8 @@ class WorkflowResponseConverter:
                             form_content=reason.form_content,
                             inputs=reason.inputs,
                             actions=reason.actions,
-                            display_in_ui=reason.display_in_ui,
-                            form_token=reason.form_token,
+                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
+                            form_token=form_token_by_form_id.get(reason.form_id, (99, None))[1],
                             resolved_default_values=reason.resolved_default_values,
                             expiration_time=int(expiration_time.timestamp()),
                         ),

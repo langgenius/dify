@@ -3,10 +3,15 @@ from collections import defaultdict
 
 import pytest
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import FileSegment, StringSegment
 from dify_graph.variables.segments import (
     ArrayAnySegment,
@@ -34,16 +39,21 @@ from factories.variable_factory import build_segment, segment_to_variable
 
 @pytest.fixture
 def pool():
-    return VariablePool(
-        system_variables=SystemVariable(user_id="test_user_id", app_id="test_app_id", workflow_id="test_workflow_id"),
-        user_inputs={},
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_system_variables(
+            user_id="test_user_id",
+            app_id="test_app_id",
+            workflow_id="test_workflow_id",
+        ),
     )
+    return variable_pool
 
 
 @pytest.fixture
 def file():
     return File(
-        tenant_id="test_tenant_id",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_related_id",
@@ -70,46 +80,35 @@ def test_get_file_attribute(pool, file):
 
 class TestVariablePool:
     def test_constructor(self):
-        # Test with minimal required SystemVariable
-        minimal_system_vars = SystemVariable(
+        pool = VariablePool()
+        assert pool.variable_dictionary == defaultdict(dict)
+
+        complex_system_vars = build_system_variables(
             user_id="test_user_id", app_id="test_app_id", workflow_id="test_workflow_id"
         )
-        pool = VariablePool(system_variables=minimal_system_vars)
-
-        # Test with all parameters
-        pool = VariablePool(
-            variable_dictionary={},
-            user_inputs={},
-            system_variables=minimal_system_vars,
-            environment_variables=[],
-            conversation_variables=[],
-        )
-
-        # Test with more complex SystemVariable
-        complex_system_vars = SystemVariable(
-            user_id="test_user_id", app_id="test_app_id", workflow_id="test_workflow_id"
-        )
-        pool = VariablePool(
-            user_inputs={"key": "value"},
-            system_variables=complex_system_vars,
-            environment_variables=[
+        add_variables_to_pool(pool, complex_system_vars)
+        add_variables_to_pool(
+            pool,
+            [
                 segment_to_variable(
                     segment=build_segment(1),
                     selector=[ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"],
                     name="env_var_1",
-                )
-            ],
-            conversation_variables=[
+                ),
                 segment_to_variable(
                     segment=build_segment("1"),
                     selector=[CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"],
                     name="conv_var_1",
-                )
+                ),
             ],
         )
 
+        assert pool.get([SYSTEM_VARIABLE_NODE_ID, "user_id"]) is not None
+        assert pool.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"]) is not None
+        assert pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"]) is not None
+
     def test_get_system_variables(self):
-        sys_var = SystemVariable(
+        sys_var = build_system_variables(
             user_id="test_user_id",
             app_id="test_app_id",
             workflow_id="test_workflow_id",
@@ -118,16 +117,18 @@ class TestVariablePool:
             conversation_id="test_conv_id",
             dialogue_count=5,
         )
-        pool = VariablePool(system_variables=sys_var)
+        pool = VariablePool()
+        add_variables_to_pool(pool, sys_var)
+        system_values = system_variables_to_mapping(sys_var)
 
         kv = [
-            ("user_id", sys_var.user_id),
-            ("app_id", sys_var.app_id),
-            ("workflow_id", sys_var.workflow_id),
-            ("workflow_run_id", sys_var.workflow_execution_id),
-            ("query", sys_var.query),
-            ("conversation_id", sys_var.conversation_id),
-            ("dialogue_count", sys_var.dialogue_count),
+            ("user_id", system_values["user_id"]),
+            ("app_id", system_values["app_id"]),
+            ("workflow_id", system_values["workflow_id"]),
+            ("workflow_run_id", system_values["workflow_run_id"]),
+            ("query", system_values["query"]),
+            ("conversation_id", system_values["conversation_id"]),
+            ("dialogue_count", system_values["dialogue_count"]),
         ]
         for key, expected_value in kv:
             segment = pool.get([SYSTEM_VARIABLE_NODE_ID, key])
@@ -149,7 +150,7 @@ class TestVariablePoolSerialization:
 
     def _create_pool_without_file(self):
         # Create comprehensive system variables
-        system_vars = SystemVariable(
+        system_vars = build_system_variables(
             user_id="test_user_id",
             app_id="test_app_id",
             workflow_id="test_workflow_id",
@@ -236,17 +237,14 @@ class TestVariablePoolSerialization:
         }
 
         # Create VariablePool
-        pool = VariablePool(
-            system_variables=system_vars,
-            user_inputs=user_inputs,
-            environment_variables=env_vars,
-            conversation_variables=conv_vars,
-        )
+        pool = VariablePool()
+        add_variables_to_pool(pool, system_vars)
+        add_variables_to_pool(pool, env_vars)
+        add_variables_to_pool(pool, conv_vars)
         return pool
 
     def _add_node_data_to_pool(self, pool: VariablePool, with_file=False):
         test_file = File(
-            tenant_id="test_tenant_id",
             type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="test_related_id",
@@ -273,7 +271,7 @@ class TestVariablePoolSerialization:
         pool.add((self._NODE2_ID, "array_any"), ArrayAnySegment(value=["mixed", 123, {"key": "value"}]))
 
     def test_system_variables(self):
-        sys_vars = SystemVariable(
+        sys_vars = build_system_variables(
             user_id="test_user_id",
             app_id="test_app_id",
             workflow_id="test_workflow_id",
@@ -282,24 +280,21 @@ class TestVariablePoolSerialization:
             conversation_id="test_conv_id",
             dialogue_count=5,
         )
-        pool = VariablePool(system_variables=sys_vars)
+        pool = VariablePool()
+        add_variables_to_pool(pool, sys_vars)
         json = pool.model_dump_json()
         pool2 = VariablePool.model_validate_json(json)
-        assert pool2.system_variables == sys_vars
+        assert pool2.variable_dictionary == pool.variable_dictionary
 
         for mode in ["json", "python"]:
             dict_ = pool.model_dump(mode=mode)
             pool2 = VariablePool.model_validate(dict_)
-            assert pool2.system_variables == sys_vars
+            assert pool2.variable_dictionary == pool.variable_dictionary
 
     def test_pool_without_file_vars(self):
         pool = self._create_pool_without_file()
         json = pool.model_dump_json()
         pool2 = pool.model_validate_json(json)
-        assert pool2.system_variables == pool.system_variables
-        assert pool2.conversation_variables == pool.conversation_variables
-        assert pool2.environment_variables == pool.environment_variables
-        assert pool2.user_inputs == pool.user_inputs
         assert pool2.variable_dictionary == pool.variable_dictionary
         assert pool2 == pool
 
@@ -314,10 +309,6 @@ class TestVariablePoolSerialization:
 
         # Verify serialized data structure
         assert isinstance(serialized_data, dict)
-        assert "system_variables" in serialized_data
-        assert "user_inputs" in serialized_data
-        assert "environment_variables" in serialized_data
-        assert "conversation_variables" in serialized_data
         assert "variable_dictionary" in serialized_data
 
         # Deserialize back using Pydantic's model_validate()
@@ -365,17 +356,7 @@ class TestVariablePoolSerialization:
     def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool):
         """Assert that two VariablePools contain equivalent data"""
 
-        # Compare system variables
-        assert pool1.system_variables == pool2.system_variables
-
-        # Compare user inputs
-        assert dict(pool1.user_inputs) == dict(pool2.user_inputs)
-
-        # Compare environment variables count
-        assert pool1.environment_variables == pool2.environment_variables
-
-        # Compare conversation variables count
-        assert pool1.conversation_variables == pool2.conversation_variables
+        assert pool1.variable_dictionary == pool2.variable_dictionary
 
         # Test key variable retrievals to ensure functionality is preserved
         test_selectors = [
@@ -406,13 +387,18 @@ class TestVariablePoolSerialization:
 
     def test_variable_pool_deserialization_default_dict(self):
         variable_pool = VariablePool(
-            user_inputs={"a": 1, "b": "2"},
-            system_variables=SystemVariable(workflow_id=str(uuid.uuid4())),
-            environment_variables=[
-                StringVariable(name="str_var", value="a"),
-            ],
-            conversation_variables=[IntegerVariable(name="int_var", value=1)],
+            variable_dictionary=defaultdict(dict),
         )
+        add_variables_to_pool(variable_pool, build_system_variables(workflow_id=str(uuid.uuid4())))
+        add_variables_to_pool(
+            variable_pool,
+            [
+                StringVariable(name="str_var", value="a", selector=[ENVIRONMENT_VARIABLE_NODE_ID, "str_var"]),
+                IntegerVariable(name="int_var", value=1, selector=[CONVERSATION_VARIABLE_NODE_ID, "int_var"]),
+            ],
+        )
+        variable_pool.add(["start", "a"], 1)
+        variable_pool.add(["start", "b"], "2")
         assert isinstance(variable_pool.variable_dictionary, defaultdict)
         json = variable_pool.model_dump_json()
         loaded = VariablePool.model_validate_json(json)

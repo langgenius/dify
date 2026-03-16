@@ -4,6 +4,7 @@ import logging
 import operator
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
+from datetime import UTC, datetime
 from functools import singledispatchmethod
 from types import MappingProxyType
 from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
@@ -38,6 +39,7 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
 )
 from dify_graph.node_events import (
     AgentLogEvent,
@@ -57,9 +59,9 @@ from dify_graph.node_events import (
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    VariableUpdatedEvent,
 )
 from dify_graph.runtime import GraphRuntimeState
-from dify_graph.utils.datetime_utils import naive_utc_now
 
 NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
 _MISSING_RUN_CONTEXT_VALUE = object()
@@ -246,7 +248,7 @@ class Node(Generic[NodeDataT]):
 
         self._node_id = node_id
         self._node_execution_id: str = ""
-        self._start_at = naive_utc_now()
+        self._start_at = datetime.now(UTC).replace(tzinfo=None)
 
         self._node_data = self.validate_node_data(config["data"])
 
@@ -328,7 +330,7 @@ class Node(Generic[NodeDataT]):
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
-        self._start_at = naive_utc_now()
+        self._start_at = datetime.now(UTC).replace(tzinfo=None)
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(
@@ -592,6 +594,15 @@ class Node(Generic[NodeDataT]):
                 raise NotImplementedError(
                     f"Node {self._node_id} does not support status {event.node_run_result.status}"
                 )
+
+    @_dispatch.register
+    def _(self, event: VariableUpdatedEvent) -> NodeRunVariableUpdatedEvent:
+        return NodeRunVariableUpdatedEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            variable=event.variable,
+        )
 
     @_dispatch.register
     def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:

@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -15,17 +16,11 @@ from dify_graph.node_events import (
 from dify_graph.node_events.base import NodeEventBase
 from dify_graph.node_events.node import StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.runtime import HumanInputNodeRuntimeProtocol
-from dify_graph.repositories.human_input_form_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
-from dify_graph.utils.datetime_utils import naive_utc_now
+from dify_graph.nodes.runtime import HumanInputFormStateProtocol, HumanInputNodeRuntimeProtocol
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 
-from .entities import DeliveryChannelConfig, HumanInputNodeData
-from .enums import DeliveryMethodType, HumanInputFormStatus, PlaceholderType
+from .entities import HumanInputNodeData
+from .enums import HumanInputFormStatus, PlaceholderType
 
 if TYPE_CHECKING:
     from dify_graph.entities.graph_init_params import GraphInitParams
@@ -33,8 +28,6 @@ if TYPE_CHECKING:
 
 
 _SELECTED_BRANCH_KEY = "selected_branch"
-_INVOKE_FROM_DEBUGGER = "debugger"
-_INVOKE_FROM_EXPLORE = "explore"
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +50,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
     )
 
     _node_data: HumanInputNodeData
-    _form_repository: HumanInputFormRepository
     _OUTPUT_FIELD_ACTION_ID = "__action_id"
     _OUTPUT_FIELD_RENDERED_CONTENT = "__rendered_content"
     _TIMEOUT_HANDLE = _TIMEOUT_ACTION_ID = "__timeout"
@@ -68,7 +60,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
         config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        form_repository: HumanInputFormRepository,
         runtime: HumanInputNodeRuntimeProtocol | None = None,
     ) -> None:
         super().__init__(
@@ -77,7 +68,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._form_repository = form_repository
         if runtime is None:
             raise ValueError("runtime is required")
         self._runtime = runtime
@@ -133,13 +123,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
         return None
 
-    @property
-    def _workflow_execution_id(self) -> str:
-        workflow_exec_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
-        assert workflow_exec_id is not None
-        return workflow_exec_id
-
-    def _form_to_pause_event(self, form_entity: HumanInputFormEntity):
+    def _form_to_pause_event(self, form_entity: HumanInputFormStateProtocol):
         required_event = self._human_input_required_event(form_entity)
         pause_requested_event = PauseRequestedEvent(reason=required_event)
         return pause_requested_event
@@ -162,45 +146,16 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
         return resolved_defaults
 
-    def _should_require_console_recipient(self) -> bool:
-        invoke_from = self._invoke_from_value()
-        if invoke_from == _INVOKE_FROM_DEBUGGER:
-            return True
-        if invoke_from == _INVOKE_FROM_EXPLORE:
-            return self._node_data.is_webapp_enabled()
-        return False
-
-    def _display_in_ui(self) -> bool:
-        if self._invoke_from_value() == _INVOKE_FROM_DEBUGGER:
-            return True
-        return self._node_data.is_webapp_enabled()
-
-    def _effective_delivery_methods(self) -> Sequence[DeliveryChannelConfig]:
-        invoke_from = self._invoke_from_value()
-        enabled_methods = [method for method in self._node_data.delivery_methods if method.enabled]
-        if invoke_from in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}:
-            enabled_methods = [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
-        return self._runtime.apply_delivery_runtime(methods=enabled_methods)
-
-    def _invoke_from_value(self) -> str:
-        return self._runtime.invoke_source()
-
-    def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
+    def _human_input_required_event(self, form_entity: HumanInputFormStateProtocol) -> HumanInputRequired:
         node_data = self._node_data
         resolved_default_values = self.resolve_default_values()
-        display_in_ui = self._display_in_ui()
-        form_token = form_entity.web_app_token
-        if display_in_ui and form_token is None:
-            raise AssertionError("Form token should be available for UI execution.")
         return HumanInputRequired(
             form_id=form_entity.id,
             form_content=form_entity.rendered_content,
             inputs=node_data.inputs,
             actions=node_data.user_actions,
-            display_in_ui=display_in_ui,
             node_id=self.id,
             node_title=node_data.title,
-            form_token=form_token,
             resolved_default_values=resolved_default_values,
         )
 
@@ -211,47 +166,32 @@ class HumanInputNode(Node[HumanInputNodeData]):
         This method will:
         1. Generate a unique form ID
         2. Create form content with variable substitution
-        3. Create form in database
+        3. Persist the form through the configured repository
         4. Send form via configured delivery methods
         5. Suspend workflow execution
         6. Wait for form submission to resume
         """
-        repo = self._form_repository
-        form = repo.get_form(self._workflow_execution_id, self.id)
+        form = self._runtime.get_form(node_id=self.id)
         if form is None:
-            display_in_ui = self._display_in_ui()
-            params = FormCreateParams(
-                workflow_execution_id=self._workflow_execution_id,
+            form_entity = self._runtime.create_form(
                 node_id=self.id,
-                form_config=self._node_data,
+                node_data=self._node_data,
                 rendered_content=self.render_form_content_before_submission(),
-                delivery_methods=self._effective_delivery_methods(),
-                display_in_ui=display_in_ui,
                 resolved_default_values=self.resolve_default_values(),
-                console_recipient_required=self._should_require_console_recipient(),
-                console_creator_account_id=(
-                    self._runtime.console_actor_id()
-                    if self._invoke_from_value() in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}
-                    else None
-                ),
-                backstage_recipient_required=True,
             )
-            form_entity = self._form_repository.create_form(params)
-            # Create human input required event
 
             logger.info(
-                "Human Input node suspended workflow for form. workflow_run_id=%s, node_id=%s, form_id=%s",
-                self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id,
+                "Human Input node suspended workflow for form. node_id=%s, form_id=%s",
                 self.id,
                 form_entity.id,
             )
             yield self._form_to_pause_event(form_entity)
             return
 
-        if (
-            form.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}
-            or form.expiration_time <= naive_utc_now()
-        ):
+        if form.status in {
+            HumanInputFormStatus.TIMEOUT,
+            HumanInputFormStatus.EXPIRED,
+        } or form.expiration_time <= datetime.now(UTC).replace(tzinfo=None):
             yield HumanInputFormTimeoutEvent(
                 node_title=self._node_data.title,
                 expiration_time=form.expiration_time,

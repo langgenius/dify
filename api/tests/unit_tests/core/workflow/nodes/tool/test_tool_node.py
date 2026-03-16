@@ -3,17 +3,18 @@ from __future__ import annotations
 import sys
 import types
 from collections.abc import Generator
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
 
+from core.workflow.system_variables import build_system_variables
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.node_events import StreamChunkEvent, StreamCompletedEvent
 from dify_graph.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables.segments import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -34,7 +35,6 @@ class _StubToolRuntime:
         tool_runtime: ToolRuntimeHandle,
         tool_parameters: dict[str, Any],
         workflow_call_depth: int,
-        conversation_id: str | None,
         provider_name: str,
     ) -> Generator[ToolRuntimeMessage, None, None]:
         yield from ()
@@ -98,7 +98,7 @@ def tool_node(monkeypatch) -> ToolNode:
         call_depth=0,
     )
 
-    variable_pool = VariablePool(system_variables=SystemVariable(user_id="user-id"))
+    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user-id"))
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
@@ -140,7 +140,6 @@ def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[li
 
 def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
     file_obj = File(
-        tenant_id="tenant-id",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="file-id",
@@ -192,3 +191,35 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     files_segment = completed_events[0].node_run_result.outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
     assert files_segment.value == []
+
+
+def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
+    file_obj = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        related_id="file-id",
+        filename="demo.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=123,
+        storage_key="file-key",
+    )
+    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.return_value = (
+        None,
+        SimpleNamespace(mime_type="application/pdf"),
+    )
+    tool_node._runtime.build_file_reference = MagicMock(return_value=file_obj)
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
+        message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+        meta={"tool_file_id": "file-id"},
+    )
+
+    events, _ = _run_transform(tool_node, message)
+
+    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    files_segment = completed_events[0].node_run_result.outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == [file_obj]

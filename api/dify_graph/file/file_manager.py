@@ -12,7 +12,6 @@ from dify_graph.model_runtime.entities import (
 )
 from dify_graph.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 
-from . import helpers
 from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
 from .runtime import get_workflow_file_runtime
@@ -80,7 +79,7 @@ def download(f: File, /) -> bytes:
         FileTransferMethod.LOCAL_FILE,
         FileTransferMethod.DATASOURCE_FILE,
     ):
-        return _download_file_content(f.storage_key)
+        return _download_file_content(f)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
         if f.remote_url is None:
             raise ValueError("Missing file remote_url")
@@ -90,12 +89,9 @@ def download(f: File, /) -> bytes:
     raise ValueError(f"unsupported transfer method: {f.transfer_method}")
 
 
-def _download_file_content(path: str, /) -> bytes:
+def _download_file_content(file: File, /) -> bytes:
     """Download and return a file from storage as bytes."""
-    data = get_workflow_file_runtime().storage_load(path, stream=False)
-    if not isinstance(data, bytes):
-        raise ValueError(f"file {path} is not a bytes object")
-    return data
+    return get_workflow_file_runtime().load_file_bytes(file=file)
 
 
 def _get_encoded_string(f: File, /) -> str:
@@ -107,30 +103,20 @@ def _get_encoded_string(f: File, /) -> str:
             response.raise_for_status()
             data = response.content
         case FileTransferMethod.LOCAL_FILE:
-            data = _download_file_content(f.storage_key)
+            data = _download_file_content(f)
         case FileTransferMethod.TOOL_FILE:
-            data = _download_file_content(f.storage_key)
+            data = _download_file_content(f)
         case FileTransferMethod.DATASOURCE_FILE:
-            data = _download_file_content(f.storage_key)
+            data = _download_file_content(f)
 
     return base64.b64encode(data).decode("utf-8")
 
 
 def _to_url(f: File, /):
-    if f.transfer_method == FileTransferMethod.REMOTE_URL:
-        if f.remote_url is None:
-            raise ValueError("Missing file remote_url")
-        return f.remote_url
-    elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
-        if f.related_id is None:
-            raise ValueError("Missing file related_id")
-        return f.remote_url or helpers.get_signed_file_url(upload_file_id=f.related_id)
-    elif f.transfer_method == FileTransferMethod.TOOL_FILE:
-        if f.related_id is None or f.extension is None:
-            raise ValueError("Missing file related_id or extension")
-        return helpers.get_signed_tool_file_url(tool_file_id=f.related_id, extension=f.extension)
-    else:
+    url = f.generate_url()
+    if url is None:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
+    return url
 
 
 class FileManager:

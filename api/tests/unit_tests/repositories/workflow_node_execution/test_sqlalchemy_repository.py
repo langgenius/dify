@@ -13,6 +13,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.factory import OrderConfig
 from dify_graph.entities import (
     WorkflowNodeExecution,
 )
@@ -22,7 +23,6 @@ from dify_graph.enums import (
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
@@ -175,8 +175,8 @@ def test_save_with_existing_tenant_id(repository, session):
     session_obj.commit.assert_called_once()
 
 
-def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
-    """Test get_by_workflow_run method."""
+def test_get_by_workflow_execution(repository, session, mocker: MockerFixture):
+    """Test get_by_workflow_execution method."""
     session_obj, _ = session
     # Set up mock
     mock_select = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.select")
@@ -206,7 +206,10 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
 
     # Call method
     order_config = OrderConfig(order_by=["index"], order_direction="desc")
-    result = repository.get_by_workflow_run(workflow_run_id="test-workflow-run-id", order_config=order_config)
+    result = repository.get_by_workflow_execution(
+        workflow_execution_id="test-workflow-run-id",
+        order_config=order_config,
+    )
 
     # Assert select was called with correct parameters
     mock_select.assert_called_once()

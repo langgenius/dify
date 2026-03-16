@@ -3,7 +3,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.enums import NodeExecutionType
 from dify_graph.file import FileTransferMethod
@@ -60,16 +61,14 @@ class TriggerWebhookNode(Node[WebhookData]):
         happens in the trigger controller.
         """
         # Get webhook data from variable pool (injected by Celery task)
-        webhook_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        webhook_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
 
         # Extract webhook-specific outputs based on node configuration
         outputs = self._extract_configured_outputs(webhook_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
+        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
-        # TODO: System variables should be directly accessible, no need for special handling
-        # Set system variables as node outputs.
-        for var in system_inputs:
-            outputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
+        for variable_name, value in system_inputs.items():
+            outputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=webhook_inputs,
@@ -77,17 +76,17 @@ class TriggerWebhookNode(Node[WebhookData]):
         )
 
     def generate_file_var(self, param_name: str, file: dict):
-        related_id = file.get("related_id")
+        file_id = resolve_file_record_id(file.get("reference") or file.get("related_id"))
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
             transfer_method = FileTransferMethod.value_of(transfer_method_value)
             match transfer_method:
                 case FileTransferMethod.LOCAL_FILE | FileTransferMethod.REMOTE_URL:
-                    file["upload_file_id"] = related_id
+                    file["upload_file_id"] = file_id
                 case FileTransferMethod.TOOL_FILE:
-                    file["tool_file_id"] = related_id
+                    file["tool_file_id"] = file_id
                 case FileTransferMethod.DATASOURCE_FILE:
-                    file["datasource_file_id"] = related_id
+                    file["datasource_file_id"] = file_id
 
             try:
                 file_obj = self._file_reference_factory.build_from_mapping(mapping=file)

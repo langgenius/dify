@@ -20,6 +20,7 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
+from core.workflow.file_reference import parse_file_reference
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from dify_graph.file import helpers as file_helpers
@@ -38,6 +39,21 @@ if TYPE_CHECKING:
 
 
 # --- TypedDict definitions for structured dict return types ---
+
+
+def _resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
+    reference = file_mapping.get("reference")
+    if isinstance(reference, str) and reference:
+        parsed_reference = parse_file_reference(reference)
+        if parsed_reference is not None:
+            return parsed_reference.record_id
+
+    related_id = file_mapping.get("related_id")
+    if isinstance(related_id, str) and related_id:
+        parsed_reference = parse_file_reference(related_id)
+        if parsed_reference is not None:
+            return parsed_reference.record_id
+    return None
 
 
 class EnabledConfig(TypedDict):
@@ -1052,10 +1068,11 @@ class Conversation(Base):
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
+                record_id = _resolve_file_record_id(value_dict)
                 if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = value_dict["related_id"]
+                    value_dict["tool_file_id"] = record_id
                 elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = value_dict["related_id"]
+                    value_dict["upload_file_id"] = record_id
                 tenant_id = cast(str, value_dict.get("tenant_id", ""))
                 inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
             elif isinstance(value, list):
@@ -1070,13 +1087,14 @@ class Conversation(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
+                        record_id = _resolve_file_record_id(item_dict)
                         if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = item_dict["related_id"]
+                            item_dict["tool_file_id"] = record_id
                         elif item_dict["transfer_method"] in [
                             FileTransferMethod.LOCAL_FILE,
                             FileTransferMethod.REMOTE_URL,
                         ]:
-                            item_dict["upload_file_id"] = item_dict["related_id"]
+                            item_dict["upload_file_id"] = record_id
                         tenant_id = cast(str, item_dict.get("tenant_id", ""))
                         file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
                     inputs[key] = file_list
@@ -1387,10 +1405,11 @@ class Message(Base):
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
+                record_id = _resolve_file_record_id(value_dict)
                 if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = value_dict["related_id"]
+                    value_dict["tool_file_id"] = record_id
                 elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = value_dict["related_id"]
+                    value_dict["upload_file_id"] = record_id
                 tenant_id = cast(str, value_dict.get("tenant_id", ""))
                 inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
             elif isinstance(value, list):
@@ -1405,13 +1424,14 @@ class Message(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
+                        record_id = _resolve_file_record_id(item_dict)
                         if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = item_dict["related_id"]
+                            item_dict["tool_file_id"] = record_id
                         elif item_dict["transfer_method"] in [
                             FileTransferMethod.LOCAL_FILE,
                             FileTransferMethod.REMOTE_URL,
                         ]:
-                            item_dict["upload_file_id"] = item_dict["related_id"]
+                            item_dict["upload_file_id"] = record_id
                         tenant_id = cast(str, item_dict.get("tenant_id", ""))
                         file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
                     inputs[key] = file_list

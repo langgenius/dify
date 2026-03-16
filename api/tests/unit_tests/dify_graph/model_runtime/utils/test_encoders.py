@@ -121,9 +121,9 @@ class TestEncoders:
         assert jsonable_encoder(Decimal("1.000")) == "1.000"
 
     def test_jsonable_encoder_dict(self):
-        d = {"a": 1, "b": [2, 3], "_sa_instance": "hidden"}
-        assert jsonable_encoder(d) == {"a": 1, "b": [2, 3]}
-        assert jsonable_encoder(d, sqlalchemy_safe=False) == {"a": 1, "b": [2, 3], "_sa_instance": "hidden"}
+        d = {"a": 1, "b": [2, 3], "_private": "hidden"}
+        assert jsonable_encoder(d) == {"a": 1, "b": [2, 3], "_private": "hidden"}
+        assert jsonable_encoder(d, excluded_key_prefixes=("_",)) == {"a": 1, "b": [2, 3]}
 
         d_with_none = {"a": 1, "b": None}
         assert jsonable_encoder(d_with_none, exclude_none=True) == {"a": 1}

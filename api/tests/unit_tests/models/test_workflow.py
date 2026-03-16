@@ -183,7 +183,6 @@ class TestWorkflowDraftVariableGetValue:
         tenant_id = "test_tenant_id"
 
         test_file = File(
-            tenant_id=tenant_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/example.jpg",
@@ -256,7 +255,6 @@ class TestWorkflowDraftVariableGetValue:
         # Create a File with specific field values
         test_file = File(
             id="test_file_id",
-            tenant_id=tenant_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/test.jpg",
@@ -278,7 +276,6 @@ class TestWorkflowDraftVariableGetValue:
 
         # Verify all important fields are preserved
         assert retrieved_file.id == test_file.id
-        assert retrieved_file.tenant_id == test_file.tenant_id
         assert retrieved_file.type == test_file.type
         assert retrieved_file.transfer_method == test_file.transfer_method
         assert retrieved_file.remote_url == test_file.remote_url

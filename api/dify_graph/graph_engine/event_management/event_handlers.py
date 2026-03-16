@@ -28,6 +28,7 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
 )
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState
@@ -152,6 +153,17 @@ class EventHandler:
         # Collect all events
         for stream_event in streaming_events:
             self._event_collector.collect(stream_event)
+
+    @_dispatch.register
+    def _(self, event: NodeRunVariableUpdatedEvent) -> None:
+        """
+        Apply a node-requested variable mutation before downstream observers run.
+
+        The event is collected like other node events so parent/container engines can
+        forward the updated payload to outer layers, including persistence listeners.
+        """
+        self._graph_runtime_state.variable_pool.add(event.variable.selector, event.variable)
+        self._event_collector.collect(event)
 
     @_dispatch.register
     def _(self, event: NodeRunSucceededEvent) -> None:

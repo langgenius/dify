@@ -85,8 +85,6 @@ class FileSaverImpl(LLMFileSaver):
         extension_override: str | None = None,
     ) -> File:
         tool_file = self._tool_file_manager.create_file_by_raw(
-            # TODO(QuantumGhost): what is conversation id?
-            conversation_id=None,
             file_binary=data,
             mimetype=mime_type,
         )
@@ -100,9 +98,7 @@ class FileSaverImpl(LLMFileSaver):
                 "extension": extension,
                 "mime_type": mime_type,
                 "size": len(data),
-                "tool_file_id": tool_file.id,
-                "related_id": tool_file.id,
-                "storage_key": tool_file.file_key,
+                "tool_file_id": str(tool_file.id),
             }
         )
 

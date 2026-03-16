@@ -19,8 +19,8 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.human_input_compat import normalize_node_config_for_graph
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -37,9 +37,11 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
+from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph.graph import NodeFactory
 from dify_graph.model_runtime.memory import PromptMessageMemory
@@ -51,11 +53,8 @@ from dify_graph.nodes.code.limits import CodeNodeLimits
 from dify_graph.nodes.document_extractor import UnstructuredApiConfig
 from dify_graph.nodes.http_request import build_http_request_config
 from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.llm.protocols import TemplateRenderer
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.template_rendering import CodeExecutorJinja2TemplateRenderer
-from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
 
@@ -233,16 +232,6 @@ class DefaultWorkflowCodeExecutor:
         return isinstance(error, CodeExecutionError)
 
 
-class DefaultLLMTemplateRenderer(TemplateRenderer):
-    def render_jinja2(self, *, template: str, inputs: Mapping[str, Any]) -> str:
-        result = CodeExecutor.execute_workflow_code_template(
-            language=CodeLanguage.JINJA2,
-            code=template,
-            inputs=inputs,
-        )
-        return str(result.get("result", ""))
-
-
 @final
 class DifyNodeFactory(NodeFactory):
     """
@@ -268,11 +257,13 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
-        self._llm_template_renderer: TemplateRenderer = DefaultLLMTemplateRenderer()
+        self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
-        self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(self._dify_context)
+        self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
+            self._dify_context,
+            conversation_id_getter=self._conversation_id,
+        )
         self._file_reference_factory = DifyFileReferenceFactory(self._dify_context)
         self._prompt_message_serializer = DifyPromptMessageSerializer()
         self._retriever_attachment_loader = DifyRetrieverAttachmentLoader(
@@ -281,8 +272,15 @@ class DifyNodeFactory(NodeFactory):
         self._llm_file_saver = build_dify_llm_file_saver(
             run_context=self._dify_context,
             http_client=self._http_request_http_client,
+            conversation_id_getter=self._conversation_id,
         )
-        self._human_input_runtime = DifyHumanInputNodeRuntime(self._dify_context)
+        self._human_input_runtime = DifyHumanInputNodeRuntime(
+            self._dify_context,
+            workflow_execution_id_getter=lambda: get_system_text(
+                self.graph_runtime_state.variable_pool,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID,
+            ),
+        )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
@@ -314,6 +312,15 @@ class DifyNodeFactory(NodeFactory):
             return raw_ctx
         return DifyRunContext.model_validate(raw_ctx)
 
+    def _dify_invoke_source(self) -> str:
+        invoke_from = self._dify_context.invoke_from
+        if isinstance(invoke_from, str):
+            return invoke_from
+        return str(invoke_from.value)
+
+    def _conversation_id(self) -> str | None:
+        return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
@@ -325,7 +332,7 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
-        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        typed_node_config = NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
@@ -347,10 +354,6 @@ class DifyNodeFactory(NodeFactory):
                 "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "form_repository": HumanInputFormRepositoryImpl(
-                    tenant_id=self._dify_context.tenant_id,
-                    app_id=self._dify_context.app_id,
-                ),
                 "runtime": self._human_input_runtime,
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
@@ -445,7 +448,7 @@ class DifyNodeFactory(NodeFactory):
             ),
         }
         if validated_node_data.type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
-            node_init_kwargs["template_renderer"] = self._llm_template_renderer
+            node_init_kwargs["template_renderer"] = self._jinja2_template_renderer
         if include_http_client:
             node_init_kwargs["http_client"] = self._http_request_http_client
         if include_llm_file_saver:
@@ -456,6 +459,8 @@ class DifyNodeFactory(NodeFactory):
             node_init_kwargs["retriever_attachment_loader"] = self._retriever_attachment_loader
         if include_jinja2_template_renderer:
             node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
+        if validated_node_data.type == BuiltinNodeTypes.LLM:
+            node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
         return node_init_kwargs
 
     def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
@@ -477,12 +482,7 @@ class DifyNodeFactory(NodeFactory):
         if node_data.memory is None:
             return None
 
-        conversation_id_variable = self.graph_runtime_state.variable_pool.get(
-            ["sys", SystemVariableKey.CONVERSATION_ID]
-        )
-        conversation_id = (
-            conversation_id_variable.value if isinstance(conversation_id_variable, StringSegment) else None
-        )
+        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,

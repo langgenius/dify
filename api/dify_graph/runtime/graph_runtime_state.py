@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
@@ -211,6 +212,7 @@ class GraphRuntimeState:
         graph_execution: GraphExecutionProtocol | None = None,
         response_coordinator: ResponseStreamCoordinatorProtocol | None = None,
         graph: GraphProtocol | None = None,
+        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         self._variable_pool = variable_pool
         self._start_at = start_at
@@ -231,6 +233,9 @@ class GraphRuntimeState:
         self._ready_queue = ready_queue
         self._graph_execution = graph_execution
         self._response_coordinator = response_coordinator
+        # Application code injects this when worker threads must restore request
+        # or framework-local state. It is intentionally excluded from snapshots.
+        self._execution_context = execution_context
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
@@ -328,6 +333,14 @@ class GraphRuntimeState:
                 raise ValueError("Graph must be attached before accessing response coordinator")
             self._response_coordinator = self._build_response_coordinator(self._graph)
         return self._response_coordinator
+
+    @property
+    def execution_context(self) -> AbstractContextManager[object] | None:
+        return self._execution_context
+
+    @execution_context.setter
+    def execution_context(self, value: AbstractContextManager[object] | None) -> None:
+        self._execution_context = value
 
     # ------------------------------------------------------------------
     # Scalar state

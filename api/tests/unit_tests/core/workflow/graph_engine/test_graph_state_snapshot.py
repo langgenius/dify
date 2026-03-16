@@ -1,6 +1,7 @@
 import time
 from collections.abc import Mapping
 
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.enums import NodeState
 from dify_graph.graph import Graph
@@ -20,7 +21,6 @@ from dify_graph.nodes.llm.entities import (
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.nodes.start.start_node import StartNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
@@ -29,7 +29,7 @@ from .test_mock_nodes import MockLLMNode
 
 def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="user",
             app_id="app",
             workflow_id="workflow",

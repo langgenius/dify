@@ -43,7 +43,7 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -61,25 +61,13 @@ class _WorkflowRunError(Exception):
     pass
 
 
-def _select_recipient_token(
-    recipients: Sequence[HumanInputFormRecipient],
-    recipient_type: RecipientType,
-) -> str | None:
-    for recipient in recipients:
-        if recipient.recipient_type == recipient_type and recipient.access_token:
-            return recipient.access_token
-    return None
-
-
 def _build_human_input_required_reason(
     reason_model: WorkflowPauseReason,
     form_model: HumanInputForm | None,
-    recipients: Sequence[HumanInputFormRecipient],
 ) -> HumanInputRequired:
     form_content = ""
     inputs = []
     actions = []
-    display_in_ui = False
     resolved_default_values: dict[str, Any] = {}
     node_title = "Human Input"
     form_id = reason_model.form_id
@@ -99,25 +87,16 @@ def _build_human_input_required_reason(
             form_content = definition.form_content
             inputs = list(definition.inputs)
             actions = list(definition.user_actions)
-            display_in_ui = bool(definition.display_in_ui)
             resolved_default_values = dict(definition.default_values)
             node_title = definition.node_title or node_title
-
-    form_token = (
-        _select_recipient_token(recipients, RecipientType.BACKSTAGE)
-        or _select_recipient_token(recipients, RecipientType.CONSOLE)
-        or _select_recipient_token(recipients, RecipientType.STANDALONE_WEB_APP)
-    )
 
     return HumanInputRequired(
         form_id=form_id,
         form_content=form_content,
         inputs=inputs,
         actions=actions,
-        display_in_ui=display_in_ui,
         node_id=node_id,
         node_title=node_title,
-        form_token=form_token,
         resolved_default_values=resolved_default_values,
     )
 
@@ -823,22 +802,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED and reason.form_id
         ]
         form_models: dict[str, HumanInputForm] = {}
-        recipient_models_by_form: dict[str, list[HumanInputFormRecipient]] = {}
         if form_ids:
             form_stmt = select(HumanInputForm).where(HumanInputForm.id.in_(form_ids))
             for form in session.scalars(form_stmt).all():
                 form_models[form.id] = form
 
-            recipient_stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
-            for recipient in session.scalars(recipient_stmt).all():
-                recipient_models_by_form.setdefault(recipient.form_id, []).append(recipient)
-
         pause_reasons: list[PauseReason] = []
         for reason in pause_reason_models:
             if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
                 form_model = form_models.get(reason.form_id)
-                recipients = recipient_models_by_form.get(reason.form_id, [])
-                pause_reasons.append(_build_human_input_required_reason(reason, form_model, recipients))
+                pause_reasons.append(_build_human_input_required_reason(reason, form_model))
             else:
                 pause_reasons.append(reason.to_entity())
         return pause_reasons

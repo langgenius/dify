@@ -1,7 +1,7 @@
 import logging
 import time
 import uuid
-from collections.abc import Callable, Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from typing import Union
 
 from dify_graph.model_runtime.callbacks.base_callback import Callback
@@ -320,7 +320,7 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
         callbacks: list[Callback] | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -362,7 +362,7 @@ class LargeLanguageModel(AIModel):
                     tools=tools,
                     stop=stop,
                     stream=stream,
-                    user=user,
+                    invocation_context=invocation_context,
                     callbacks=callbacks,
                 )
 
@@ -393,7 +393,7 @@ class LargeLanguageModel(AIModel):
             tools=tools,
             stop=stop,
             stream=stream,
-            user=user,
+            invocation_context=invocation_context,
             callbacks=callbacks,
         )
 
@@ -474,7 +474,7 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
         callbacks: list[Callback] | None = None,
     ):
         """
@@ -487,7 +487,7 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param invocation_context: opaque request metadata for the current invocation
         :param callbacks: callbacks
         """
         _run_callbacks(
@@ -502,7 +502,7 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
+                invocation_context=invocation_context,
             ),
         )
 
@@ -516,7 +516,7 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
         callbacks: list[Callback] | None = None,
     ):
         """
@@ -530,7 +530,7 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param invocation_context: opaque request metadata for the current invocation
         """
         _run_callbacks(
             callbacks,
@@ -545,7 +545,7 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
+                invocation_context=invocation_context,
             ),
         )
 
@@ -559,7 +559,7 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
         callbacks: list[Callback] | None = None,
     ):
         """
@@ -573,7 +573,7 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param invocation_context: opaque request metadata for the current invocation
         :param callbacks: callbacks
         """
         _run_callbacks(
@@ -589,7 +589,7 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
+                invocation_context=invocation_context,
             ),
         )
 
@@ -603,7 +603,7 @@ class LargeLanguageModel(AIModel):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: str | None = None,
+        invocation_context: Mapping[str, object] | None = None,
         callbacks: list[Callback] | None = None,
     ):
         """
@@ -617,7 +617,7 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
-        :param user: unique user id
+        :param invocation_context: opaque request metadata for the current invocation
         :param callbacks: callbacks
         """
         _run_callbacks(
@@ -633,6 +633,6 @@ class LargeLanguageModel(AIModel):
                 tools=tools,
                 stop=stop,
                 stream=stream,
-                user=user,
+                invocation_context=invocation_context,
             ),
         )

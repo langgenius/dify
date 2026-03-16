@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import NoReturn
+from typing import TYPE_CHECKING, Literal, NoReturn
 
 from .protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
+
+if TYPE_CHECKING:
+    from .models import File
 
 
 class WorkflowFileRuntimeNotConfiguredError(RuntimeError):
@@ -17,22 +20,6 @@ class _UnconfiguredWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         )
 
     @property
-    def files_url(self) -> str:
-        self._raise()
-
-    @property
-    def internal_files_url(self) -> str | None:
-        self._raise()
-
-    @property
-    def secret_key(self) -> str:
-        self._raise()
-
-    @property
-    def files_access_timeout(self) -> int:
-        self._raise()
-
-    @property
     def multimodal_send_format(self) -> str:
         self._raise()
 
@@ -42,7 +29,33 @@ class _UnconfiguredWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:
         self._raise()
 
-    def sign_tool_file(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
+    def load_file_bytes(self, *, file: File) -> bytes:
+        self._raise()
+
+    def resolve_file_url(self, *, file: File, for_external: bool = True) -> str | None:
+        self._raise()
+
+    def resolve_upload_file_url(
+        self,
+        *,
+        upload_file_id: str,
+        as_attachment: bool = False,
+        for_external: bool = True,
+    ) -> str:
+        self._raise()
+
+    def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
+        self._raise()
+
+    def verify_preview_signature(
+        self,
+        *,
+        preview_kind: Literal["image", "file"],
+        file_id: str,
+        timestamp: str,
+        nonce: str,
+        sign: str,
+    ) -> bool:
         self._raise()
 
 

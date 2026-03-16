@@ -23,9 +23,9 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
@@ -53,7 +53,7 @@ class TestWorkflowResponseConverter:
         mock_user.name = "Test User"
         mock_user.email = "test@example.com"
 
-        system_variables = SystemVariable(workflow_id="wf-id", workflow_execution_id="initial-run-id")
+        system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(
             application_generate_entity=mock_entity,
             user=mock_user,
@@ -406,9 +406,9 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         account.id = "test_user_id"
         return account
 
-    def create_test_system_variables(self) -> SystemVariable:
+    def create_test_system_variables(self):
         """Create test system variables."""
-        return SystemVariable()
+        return build_system_variables()
 
     def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
         """Create WorkflowResponseConverter with specified invoke_from."""

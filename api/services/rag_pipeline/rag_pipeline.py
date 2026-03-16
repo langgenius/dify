@@ -34,25 +34,31 @@ from core.rag.entities.event import (
     DatasourceErrorEvent,
     DatasourceProcessingEvent,
 )
-from core.repositories.factory import DifyCoreRepositoryFactory
+from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    get_system_segment,
+)
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeType
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from dify_graph.graph_events.base import GraphNodeEventBase
 from dify_graph.node_events.base import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
 from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.variables import VariableBase
+from dify_graph.variables.variables import Variable, VariableBase
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -85,6 +91,12 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 
 logger = logging.getLogger(__name__)
+
+
+def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(variable_pool, variables)
+    return variable_pool
 
 
 class RagPipelineService:
@@ -461,13 +473,7 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
-                variable_pool=VariablePool(
-                    system_variables=SystemVariable.default(),
-                    user_inputs=user_inputs,
-                    environment_variables=[],
-                    conversation_variables=[],
-                    rag_pipeline_variables=[],
-                ),
+                variable_pool=_build_seeded_variable_pool(default_system_variables()),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,
                     app_id=pipeline.id,
@@ -899,10 +905,10 @@ class RagPipelineService:
             workflow_node_execution.error = error
             # update document status
             variable_pool = node_instance.graph_runtime_state.variable_pool
-            invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
+            invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
-                    document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+                    document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
                         if document:
@@ -1216,7 +1222,7 @@ class RagPipelineService:
         else:
             enclosing_node_id = None
 
-        system_inputs = SystemVariable(
+        system_inputs = build_system_variables(
             datasource_type=args.get("datasource_type", "online_document"),
             datasource_info=args.get("datasource_info", {}),
         )
@@ -1227,12 +1233,11 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs={},
                 user_id=current_user.id,
-                variable_pool=VariablePool(
-                    system_variables=system_inputs,
-                    user_inputs={},
-                    environment_variables=[],
-                    conversation_variables=[],
-                    rag_pipeline_variables=[],
+                variable_pool=_build_seeded_variable_pool(
+                    build_bootstrap_variables(
+                        system_variables=system_inputs,
+                        rag_pipeline_variables=(),
+                    )
                 ),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,

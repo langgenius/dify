@@ -135,7 +135,6 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     files = [
         File(
             id="file1",
-            tenant_id="tenant1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image1.jpg",
@@ -246,7 +245,6 @@ def test_completion_prompt_jinja2_with_files():
 
     file = File(
         id="file1",
-        tenant_id="tenant1",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
@@ -380,7 +378,6 @@ def test_chat_prompt_memory_with_files_and_query():
     prompt_template = [ChatModelMessage(text="sys", role=PromptMessageRole.SYSTEM)]
     file = File(
         id="file1",
-        tenant_id="tenant1",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
@@ -414,7 +411,6 @@ def test_chat_prompt_files_without_query_updates_last_user_or_appends_new():
     model_config_mock = MagicMock(spec=ModelConfigEntity)
     file = File(
         id="file1",
-        tenant_id="tenant1",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",
@@ -464,7 +460,6 @@ def test_chat_prompt_files_with_query_branch():
     model_config_mock = MagicMock(spec=ModelConfigEntity)
     file = File(
         id="file1",
-        tenant_id="tenant1",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image.jpg",

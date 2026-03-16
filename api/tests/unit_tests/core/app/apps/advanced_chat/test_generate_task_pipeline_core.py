@@ -42,11 +42,12 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 def _make_pipeline():
@@ -166,7 +167,7 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
@@ -311,7 +312,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -522,7 +523,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 self.items = items
 
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
 
@@ -556,7 +557,7 @@ class TestAdvancedChatGenerateTaskPipeline:
     def test_handle_message_end_event_applies_output_moderation(self, monkeypatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable(workflow_execution_id="run-id")),
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer: "safe"

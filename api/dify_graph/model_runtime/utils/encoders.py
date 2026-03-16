@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from decimal import Decimal
 from enum import Enum
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6Interface, IPv6Network
@@ -99,7 +99,7 @@ def jsonable_encoder(
     exclude_defaults: bool = False,
     exclude_none: bool = False,
     custom_encoder: dict[Any, Callable[[Any], Any]] | None = None,
-    sqlalchemy_safe: bool = True,
+    excluded_key_prefixes: Sequence[str] = (),
 ) -> Any:
     custom_encoder = custom_encoder or {}
     if custom_encoder:
@@ -126,7 +126,7 @@ def jsonable_encoder(
             obj_dict,
             exclude_none=exclude_none,
             exclude_defaults=exclude_defaults,
-            sqlalchemy_safe=sqlalchemy_safe,
+            excluded_key_prefixes=excluded_key_prefixes,
         )
     if dataclasses.is_dataclass(obj):
         # Ensure obj is a dataclass instance, not a dataclass type
@@ -139,7 +139,7 @@ def jsonable_encoder(
                 exclude_defaults=exclude_defaults,
                 exclude_none=exclude_none,
                 custom_encoder=custom_encoder,
-                sqlalchemy_safe=sqlalchemy_safe,
+                excluded_key_prefixes=excluded_key_prefixes,
             )
     if isinstance(obj, Enum):
         return obj.value
@@ -152,26 +152,28 @@ def jsonable_encoder(
     if isinstance(obj, dict):
         encoded_dict = {}
         for key, value in obj.items():
-            if (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa"))) and (
-                value is not None or not exclude_none
-            ):
-                encoded_key = jsonable_encoder(
-                    key,
-                    by_alias=by_alias,
-                    exclude_unset=exclude_unset,
-                    exclude_none=exclude_none,
-                    custom_encoder=custom_encoder,
-                    sqlalchemy_safe=sqlalchemy_safe,
-                )
-                encoded_value = jsonable_encoder(
-                    value,
-                    by_alias=by_alias,
-                    exclude_unset=exclude_unset,
-                    exclude_none=exclude_none,
-                    custom_encoder=custom_encoder,
-                    sqlalchemy_safe=sqlalchemy_safe,
-                )
-                encoded_dict[encoded_key] = encoded_value
+            if isinstance(key, str) and any(key.startswith(prefix) for prefix in excluded_key_prefixes):
+                continue
+            if value is None and exclude_none:
+                continue
+
+            encoded_key = jsonable_encoder(
+                key,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_none=exclude_none,
+                custom_encoder=custom_encoder,
+                excluded_key_prefixes=excluded_key_prefixes,
+            )
+            encoded_value = jsonable_encoder(
+                value,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_none=exclude_none,
+                custom_encoder=custom_encoder,
+                excluded_key_prefixes=excluded_key_prefixes,
+            )
+            encoded_dict[encoded_key] = encoded_value
         return encoded_dict
     if isinstance(obj, list | set | frozenset | GeneratorType | tuple | deque):
         encoded_list = []
@@ -184,7 +186,7 @@ def jsonable_encoder(
                     exclude_defaults=exclude_defaults,
                     exclude_none=exclude_none,
                     custom_encoder=custom_encoder,
-                    sqlalchemy_safe=sqlalchemy_safe,
+                    excluded_key_prefixes=excluded_key_prefixes,
                 )
             )
         return encoded_list
@@ -212,5 +214,5 @@ def jsonable_encoder(
         exclude_defaults=exclude_defaults,
         exclude_none=exclude_none,
         custom_encoder=custom_encoder,
-        sqlalchemy_safe=sqlalchemy_safe,
+        excluded_key_prefixes=excluded_key_prefixes,
     )

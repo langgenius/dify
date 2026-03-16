@@ -6,6 +6,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events.base import GraphEngineEvent
 from dify_graph.graph_events.graph import GraphRunPausedEvent
@@ -119,7 +120,10 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             generate_entity=entity_wrapper,
         )
 
-        workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
+        workflow_run_id = get_system_text(
+            self.graph_runtime_state.variable_pool,
+            SystemVariableKey.WORKFLOW_EXECUTION_ID,
+        )
         assert workflow_run_id is not None
         repo = self._get_repo()
         repo.create_workflow_pause(

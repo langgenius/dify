@@ -8,9 +8,9 @@ DynamicScaler, and WorkerFactory into a single class.
 import logging
 import queue
 import threading
+from contextlib import AbstractContextManager
 from typing import final
 
-from dify_graph.context import IExecutionContext
 from dify_graph.graph import Graph
 from dify_graph.graph_events import GraphNodeEventBase
 
@@ -38,7 +38,7 @@ class WorkerPool:
         graph: Graph,
         layers: list[GraphEngineLayer],
         config: GraphEngineConfig,
-        execution_context: IExecutionContext | None = None,
+        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         """
         Initialize the simple worker pool.

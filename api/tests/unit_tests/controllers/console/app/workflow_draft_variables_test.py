@@ -13,7 +13,7 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from dify_graph.variables.types import SegmentType
 from factories.variable_factory import build_segment
 from libs.datetime_utils import naive_utc_now
@@ -316,7 +316,6 @@ def test_workflow_file_variable_with_signed_url():
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
         id="test_file_id",
-        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_upload_file_id",
@@ -374,7 +373,6 @@ def test_workflow_file_variable_remote_url():
     # Create a File object with REMOTE_URL transfer method
     test_file = File(
         id="test_file_id",
-        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/test.jpg",

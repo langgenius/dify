@@ -10,12 +10,12 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
+from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.graph_events.graph import GraphRunPausedEvent
 from dify_graph.nodes.human_input.entities import FormInput, UserAction
 from dify_graph.nodes.human_input.enums import FormInputType
-from dify_graph.system_variable import SystemVariable
 from models.account import Account
 
 
@@ -98,7 +98,7 @@ def _build_converter():
         invoke_from=InvokeFrom.SERVICE_API,
         app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
     )
-    system_variables = SystemVariable(
+    system_variables = build_system_variables(
         user_id="user",
         app_id="app-id",
         workflow_id="workflow-id",

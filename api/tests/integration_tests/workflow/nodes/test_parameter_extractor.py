@@ -6,12 +6,12 @@ from unittest.mock import MagicMock
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
 from core.workflow.node_runtime import DifyPromptMessageSerializer
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.model_runtime.entities import AssistantPromptMessage, UserPromptMessage
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -57,7 +57,7 @@ def init_parameter_extractor_node(config: dict, memory=None):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
         ),
         user_inputs={},

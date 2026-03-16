@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.nodes.iteration.exc import IterationGraphNotFoundError
 from dify_graph.nodes.iteration.iteration_node import IterationNode
@@ -12,7 +13,6 @@ from dify_graph.runtime import (
     GraphRuntimeState,
     VariablePool,
 )
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -32,7 +32,7 @@ class _MissingGraphBuilder:
 
 def _build_runtime_state() -> GraphRuntimeState:
     return GraphRuntimeState(
-        variable_pool=VariablePool(system_variables=SystemVariable.default(), user_inputs={}),
+        variable_pool=VariablePool(system_variables=default_system_variables(), user_inputs={}),
         start_at=0.0,
     )
 

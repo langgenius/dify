@@ -60,7 +60,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -123,7 +123,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -187,7 +187,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -249,7 +249,7 @@ class TestMockTemplateTransformNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -318,7 +318,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -384,7 +384,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -458,7 +458,7 @@ class TestMockCodeNode:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -534,7 +534,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -579,7 +579,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 
@@ -634,7 +634,7 @@ class TestMockNodeFactory:
         )
 
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=[],
             user_inputs={},
         )
 

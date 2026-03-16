@@ -1,15 +1,22 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
+from contextlib import AbstractContextManager
 from typing import Any, cast
 
 from configs import dify_config
+from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.node_factory import DifyNodeFactory, resolve_workflow_node_class
-from dify_graph.constants import ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.node_factory import DifyNodeFactory, is_start_node_type, resolve_workflow_node_class
+from core.workflow.system_variables import (
+    default_system_variables,
+    inject_default_system_variable_mappings,
+)
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS, ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -24,7 +31,6 @@ from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphR
 from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.base.node import Node
 from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
@@ -34,6 +40,9 @@ logger = logging.getLogger(__name__)
 
 
 class _WorkflowChildEngineBuilder:
+    def __init__(self, execution_context: AbstractContextManager[object] | None) -> None:
+        self._execution_context = execution_context
+
     @staticmethod
     def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
         """
@@ -86,6 +95,7 @@ class _WorkflowChildEngineBuilder:
             command_channel=InMemoryChannel(),
             config=GraphEngineConfig(),
             child_engine_builder=self,
+            execution_context=self._execution_context,
         )
         child_engine.layer(LLMQuotaLayer())
         for layer in layers:
@@ -136,7 +146,8 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
-        self._child_engine_builder = _WorkflowChildEngineBuilder()
+        execution_context = capture_current_context()
+        self._child_engine_builder = _WorkflowChildEngineBuilder(execution_context=execution_context)
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -149,6 +160,7 @@ class WorkflowEntry:
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
             child_engine_builder=self._child_engine_builder,
+            execution_context=execution_context,
         )
 
         # Add debug logging layer when in debug mode
@@ -225,8 +237,16 @@ class WorkflowEntry:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=capture_current_context(),
+        )
+
+        if is_start_node_type(node_type):
+            add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
 
         # init workflow run state
         node_factory = DifyNodeFactory(
@@ -243,6 +263,12 @@ class WorkflowEntry:
             )
         except NotImplementedError:
             variable_mapping = {}
+        variable_mapping = inject_default_system_variable_mappings(
+            node_id=node_id,
+            node_type=node_type,
+            node_data=node_config_data,
+            variable_mapping=variable_mapping,
+        )
 
         # Loading missing variable from draft var here, and set it into
         # variable_pool.
@@ -347,11 +373,8 @@ class WorkflowEntry:
             raise ValueError(f"Node class not found for node type {node_type}")
 
         # init variable pool
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.default(),
-            user_inputs={},
-            environment_variables=[],
-        )
+        variable_pool = VariablePool()
+        add_variables_to_pool(variable_pool, default_system_variables())
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -365,8 +388,13 @@ class WorkflowEntry:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=capture_current_context(),
+        )
 
         # init workflow run state
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
@@ -384,6 +412,12 @@ class WorkflowEntry:
                 )
             except NotImplementedError:
                 variable_mapping = {}
+            variable_mapping = inject_default_system_variable_mappings(
+                node_id=node_id,
+                node_type=node_type,
+                node_data=node_data,
+                variable_mapping=variable_mapping,
+            )
 
             cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,

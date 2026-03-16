@@ -32,6 +32,7 @@ from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from models.human_input import HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
@@ -45,6 +46,28 @@ def _build_backstage_input_url(form_token: str | None) -> str | None:
     if not base_url:
         return None
     return f"{base_url.rstrip('/')}/form/{form_token}"
+
+
+def _load_form_tokens_by_form_id(form_ids: list[str]) -> dict[str, str]:
+    if not form_ids:
+        return {}
+
+    priority = {
+        RecipientType.BACKSTAGE: 0,
+        RecipientType.CONSOLE: 1,
+        RecipientType.STANDALONE_WEB_APP: 2,
+    }
+    tokens_by_form_id: dict[str, tuple[int, str]] = {}
+    with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
+        stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
+        for recipient in session.scalars(stmt):
+            if recipient.recipient_type not in priority or not recipient.access_token:
+                continue
+            candidate = (priority[recipient.recipient_type], recipient.access_token)
+            current = tokens_by_form_id.get(recipient.form_id)
+            if current is None or candidate[0] < current[0]:
+                tokens_by_form_id[recipient.form_id] = candidate
+    return {form_id: token for form_id, (_, token) in tokens_by_form_id.items()}
 
 
 # Workflow run status choices for filtering
@@ -496,6 +519,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        form_tokens_by_form_id = _load_form_tokens_by_form_id(
+            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+        )
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
@@ -514,7 +540,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         "pause_type": {
                             "type": "human_input",
                             "form_id": reason.form_id,
-                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                            "backstage_input_url": _build_backstage_input_url(
+                                form_tokens_by_form_id.get(reason.form_id)
+                            ),
                         },
                     }
                 )

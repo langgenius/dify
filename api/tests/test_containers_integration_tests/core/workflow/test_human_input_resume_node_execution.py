@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import WorkflowType
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -24,9 +26,7 @@ from dify_graph.nodes.human_input.enums import HumanInputFormStatus
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.nodes.start.start_node import StartNode
-from dify_graph.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -40,7 +40,7 @@ def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.web_app_token = "test-form-token"
+    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = False
@@ -53,7 +53,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.web_app_token = "test-form-token"
+    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = True
@@ -67,7 +67,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
 
 def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             workflow_execution_id=workflow_execution_id,
             app_id=app_id,
             workflow_id=workflow_id,

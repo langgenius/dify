@@ -1,6 +1,7 @@
 import time
 from unittest import mock
 
+from core.workflow.system_variables import build_system_variables
 from dify_graph.graph import Graph
 from dify_graph.graph_events import (
     GraphRunStartedEvent,
@@ -26,7 +27,6 @@ from dify_graph.nodes.llm.entities import (
 from dify_graph.nodes.start.entities import StartNodeData
 from dify_graph.nodes.start.start_node import StartNode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.utils.condition.entities import Condition
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -44,7 +44,7 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
+        system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],
     )

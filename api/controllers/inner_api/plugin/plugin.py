@@ -28,7 +28,7 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from dify_graph.file.helpers import get_signed_file_url_for_plugin
+from core.tools.signature import get_signed_file_url_for_plugin
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
 from models import Account, Tenant

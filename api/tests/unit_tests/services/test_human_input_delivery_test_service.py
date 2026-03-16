@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.engine import Engine
 
 from configs import dify_config
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_compat import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
@@ -36,7 +36,11 @@ def mock_db(monkeypatch):
 
 
 def _make_valid_email_config():
-    return EmailDeliveryConfig(recipients=EmailRecipients(whole_workspace=False, items=[]), subject="Subj", body="Body")
+    return EmailDeliveryConfig(
+        recipients=EmailRecipients(include_bound_group=False, items=[]),
+        subject="Subj",
+        body="Body",
+    )
 
 
 def test_build_form_link():
@@ -252,7 +256,9 @@ class TestEmailDeliveryTestHandler:
         # Test Case 1: External Recipient
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
-                recipients=EmailRecipients(items=[ExternalRecipient(email="ext@example.com")], whole_workspace=False),
+                recipients=EmailRecipients(
+                    items=[ExternalRecipient(email="ext@example.com")], include_bound_group=False
+                ),
                 subject="",
                 body="",
             )
@@ -262,7 +268,7 @@ class TestEmailDeliveryTestHandler:
         # Test Case 2: Member Recipient
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
-                recipients=EmailRecipients(items=[MemberRecipient(user_id="u1")], whole_workspace=False),
+                recipients=EmailRecipients(items=[MemberRecipient(reference_id="u1")], include_bound_group=False),
                 subject="",
                 body="",
             )
@@ -272,7 +278,11 @@ class TestEmailDeliveryTestHandler:
 
         # Test Case 3: Whole Workspace
         method = EmailDeliveryMethod(
-            config=EmailDeliveryConfig(recipients=EmailRecipients(items=[], whole_workspace=True), subject="", body="")
+            config=EmailDeliveryConfig(
+                recipients=EmailRecipients(items=[], include_bound_group=True),
+                subject="",
+                body="",
+            )
         )
         handler._query_workspace_member_emails = MagicMock(
             return_value={"u1": "u1@example.com", "u2": "u2@example.com"}

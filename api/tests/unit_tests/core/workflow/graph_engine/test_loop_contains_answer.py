@@ -14,6 +14,7 @@ from dify_graph.graph_events import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
 )
 
 from .test_mock_config import MockConfigBuilder
@@ -50,6 +51,7 @@ def test_loop_contains_answer():
             NodeRunLoopStartedEvent,
             # Variable assigner
             NodeRunStartedEvent,
+            NodeRunVariableUpdatedEvent,
             NodeRunStreamChunkEvent,  # 1
             NodeRunStreamChunkEvent,  # \n
             NodeRunSucceededEvent,
@@ -60,6 +62,7 @@ def test_loop_contains_answer():
             NodeRunLoopNextEvent,
             # Variable assigner
             NodeRunStartedEvent,
+            NodeRunVariableUpdatedEvent,
             NodeRunStreamChunkEvent,  # 2
             NodeRunStreamChunkEvent,  # \n
             NodeRunSucceededEvent,

@@ -57,8 +57,8 @@ class IfElseNode(Node[IfElseNodeData]):
                         break
 
             else:
-                # TODO: Update database then remove this
-                # Fallback to old structure if cases are not defined
+                # TODO: Remove this once all graph definitions use the `cases` structure.
+                # Fallback to the legacy node shape when `cases` are not defined.
                 input_conditions, group_result, final_result = _should_not_use_old_function(  # pyright: ignore [reportDeprecated]
                     condition_processor=condition_processor,
                     variable_pool=self.graph_runtime_state.variable_pool,

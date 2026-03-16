@@ -56,6 +56,7 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import (
     KnowledgeRetrievalRequest,
@@ -517,13 +518,14 @@ class DatasetRetrieval:
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    tenant_id=segment.tenant_id,
                                     type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
-                                    related_id=upload_file.id,
+                                    reference=build_file_reference(
+                                        record_id=str(upload_file.id),
+                                        storage_key=upload_file.key,
+                                    ),
                                     size=upload_file.size,
-                                    storage_key=upload_file.key,
                                     url=sign_upload_file(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attachment_info)
