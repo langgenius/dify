@@ -1951,9 +1951,11 @@ class DocumentService:
             # Apply custom_metadata and create bindings for the re-indexed document
             if custom_metadata or metadata_bindings_to_create:
                 if custom_metadata:
-                    doc_metadata_field = document.doc_metadata or {}
+                    from sqlalchemy.orm import attributes
+                    doc_metadata_field = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                     doc_metadata_field.update(custom_metadata)
                     document.doc_metadata = doc_metadata_field
+                    attributes.flag_modified(document, "doc_metadata")
                     db.session.add(document)
                 if metadata_bindings_to_create:
                     metadata_ids_deduped = list(dict.fromkeys(metadata_bindings_to_create))

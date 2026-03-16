@@ -137,7 +137,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
         case DataType.number:
           return variable.type === VarType.number || variable.type === VarType.integer
         case DataType.time:
-          return variable.type === VarType.number
+          return variable.type === VarType.number || variable.type === VarType.integer
         default:
           return false
       }

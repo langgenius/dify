@@ -27,10 +27,7 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
-<<<<<<< HEAD
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-=======
->>>>>>> 27ffc836f4 (fix: address type-check issues after upstream merge)
+from dify_graph.enums import BuiltinNodeTypes
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
