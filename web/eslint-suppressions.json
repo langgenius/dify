@@ -7881,8 +7881,11 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 4
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message.tsx": {
