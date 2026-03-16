@@ -198,9 +198,9 @@ export function NumberFieldIncrement({
 
   return (
     <BaseNumberField.Increment
+      {...props}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.increment', { ns: 'common' }))}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
-      {...props}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
     </BaseNumberField.Increment>
@@ -217,9 +217,9 @@ export function NumberFieldDecrement({
 
   return (
     <BaseNumberField.Decrement
+      {...props}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.decrement', { ns: 'common' }))}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
-      {...props}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}
     </BaseNumberField.Decrement>

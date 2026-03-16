@@ -206,6 +206,21 @@ describe('NumberField wrapper', () => {
       expect(decrement.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
     })
 
+    it('should keep the fallback aria labels when aria-label is omitted in props', () => {
+      renderNumberField({
+        controlsProps: {},
+        incrementProps: {
+          'aria-label': undefined,
+        },
+        decrementProps: {
+          'aria-label': undefined,
+        },
+      })
+
+      expect(screen.getByRole('button', { name: 'common.operation.increment' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.decrement' })).toBeInTheDocument()
+    })
+
     it('should rely on aria-labelledby when provided instead of injecting a translated aria-label', () => {
       render(
         <>
