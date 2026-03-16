@@ -77,10 +77,18 @@ class EmailDeliveryConfig(BaseModel):
         "p",
         "pre",
         "strong",
+        "table",
+        "tbody",
+        "td",
+        "th",
+        "thead",
+        "tr",
         "ul",
     ]
     _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
         "a": ["href", "title"],
+        "td": ["align"],
+        "th": ["align"],
     }
     _ALLOWED_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto"]
 
@@ -133,7 +141,11 @@ class EmailDeliveryConfig(BaseModel):
             strip=True,
             strip_comments=True,
         )
-        rendered_html = markdown.markdown(sanitized_markdown, extensions=["nl2br"])
+        rendered_html = markdown.markdown(
+            sanitized_markdown,
+            extensions=["nl2br", "tables"],
+            extension_configs={"tables": {"use_align_attribute": True}},
+        )
         return bleach.clean(
             rendered_html,
             tags=cls._ALLOWED_HTML_TAGS,

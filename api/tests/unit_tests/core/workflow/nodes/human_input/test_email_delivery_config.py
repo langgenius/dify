@@ -43,7 +43,11 @@ def test_render_markdown_body_does_not_allow_raw_html_tags():
     assert "<strong>markdown</strong>" in rendered
 
 
-def test_render_markdown_body_does_not_support_table_syntax():
-    rendered = EmailDeliveryConfig.render_markdown_body("| h1 | h2 |\n| --- | --- |\n| v1 | v2 |")
+def test_render_markdown_body_supports_table_syntax():
+    rendered = EmailDeliveryConfig.render_markdown_body("| h1 | h2 |\n| --- | ---: |\n| v1 | v2 |")
 
-    assert "<table" not in rendered
+    assert "<table>" in rendered
+    assert "<thead>" in rendered
+    assert "<tbody>" in rendered
+    assert 'align="right"' in rendered
+    assert "style=" not in rendered
