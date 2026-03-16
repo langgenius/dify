@@ -146,6 +146,18 @@ describe('plugin install check', () => {
       expect(isNodePluginMissing(node, { triggerPlugins: [createTriggerProvider()] })).toBe(true)
     })
 
+    it('should keep trigger plugin nodes installable when the provider list has not loaded yet', () => {
+      const node = {
+        type: BlockEnum.TriggerPlugin,
+        title: 'Trigger',
+        desc: '',
+        provider_id: 'missing-trigger',
+        plugin_unique_identifier: 'trigger-plugin@1.0.0',
+      } as CommonNodeType
+
+      expect(isNodePluginMissing(node, { triggerPlugins: undefined })).toBe(false)
+    })
+
     it('should report missing data source plugins when the list is loaded but unmatched', () => {
       const node = {
         type: BlockEnum.DataSource,
@@ -156,6 +168,18 @@ describe('plugin install check', () => {
       } as CommonNodeType
 
       expect(isNodePluginMissing(node, { dataSourceList: [createTool()] })).toBe(true)
+    })
+
+    it('should keep data source nodes installable when the list has not loaded yet', () => {
+      const node = {
+        type: BlockEnum.DataSource,
+        title: 'Data Source',
+        desc: '',
+        provider_name: 'missing-provider',
+        plugin_unique_identifier: 'missing-data-source@1.0.0',
+      } as CommonNodeType
+
+      expect(isNodePluginMissing(node, { dataSourceList: undefined })).toBe(false)
     })
 
     it('should return false for unsupported node types', () => {

@@ -115,6 +115,12 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
+  it('should render the primary button variant when configuration is required', () => {
+    render(<SystemModel {...defaultProps} notConfigured />)
+
+    expect(screen.getByRole('button', { name: /system model settings/i })).toHaveClass('btn-primary')
+  })
+
   it('should close dialog when cancel is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
@@ -149,6 +155,27 @@ describe('SystemModel', () => {
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
+  })
+
+  it('should keep the dialog open when saving does not succeed', async () => {
+    mockUpdateDefaultModel.mockResolvedValueOnce({ result: 'failed' })
+
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
+    expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
   it('should disable save when user is not workspace manager', async () => {

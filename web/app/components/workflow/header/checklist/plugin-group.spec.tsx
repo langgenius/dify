@@ -76,4 +76,21 @@ describe('ChecklistPluginGroup', () => {
     fireEvent.click(installButton)
     expect(usePluginDependencyStore.getState().dependencies).toEqual([])
   })
+
+  it('should omit the version when the marketplace identifier does not include one', () => {
+    renderInPopover([createChecklistItem({ pluginUniqueIdentifier: 'langgenius/test-plugin@sha256' })])
+
+    fireEvent.click(getInstallButton())
+
+    expect(usePluginDependencyStore.getState().dependencies).toEqual([
+      {
+        type: 'marketplace',
+        value: {
+          marketplace_plugin_unique_identifier: 'langgenius/test-plugin@sha256',
+          plugin_unique_identifier: 'langgenius/test-plugin@sha256',
+          version: undefined,
+        },
+      },
+    ])
+  })
 })

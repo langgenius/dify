@@ -12,6 +12,9 @@ import {
 } from './types'
 import {
   getKnowledgeBaseValidationIssue,
+  getKnowledgeBaseValidationMessage,
+  isHighQualitySearchMethod,
+  isKnowledgeBaseEmbeddingIssue,
   KnowledgeBaseValidationIssueCode,
 } from './utils'
 
@@ -69,6 +72,13 @@ const makePayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): KnowledgeB
 }
 
 describe('knowledge-base validation issue', () => {
+  it('identifies high quality retrieval methods', () => {
+    expect(isHighQualitySearchMethod(RetrievalSearchMethodEnum.semantic)).toBe(true)
+    expect(isHighQualitySearchMethod(RetrievalSearchMethodEnum.hybrid)).toBe(true)
+    expect(isHighQualitySearchMethod(RetrievalSearchMethodEnum.fullText)).toBe(true)
+    expect(isHighQualitySearchMethod('unknown-method' as RetrievalSearchMethodEnum)).toBe(false)
+  })
+
   it('returns chunk structure issue when chunk structure is missing', () => {
     const issue = getKnowledgeBaseValidationIssue(makePayload({ chunk_structure: undefined }))
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.chunkStructureRequired)
@@ -122,5 +132,95 @@ describe('knowledge-base validation issue', () => {
       makePayload({ _embeddingProviderModelList: [] }),
     )
     expect(issue).toBeNull()
+  })
+
+  it('returns embedding-model-not-configured when the qualified index is missing provider details', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({ embedding_model: undefined }),
+    )
+
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
+  })
+
+  it('maps no-permission embedding models to incompatible', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noPermission) }),
+    )
+
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
+  })
+
+  it('returns retrieval-setting-required when retrieval search method is missing', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({ retrieval_model: undefined as never }),
+    )
+
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.retrievalSettingRequired)
+  })
+
+  it('returns reranking-model-required when reranking is enabled without a model', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({
+        retrieval_model: {
+          ...makePayload().retrieval_model,
+          reranking_enable: true,
+        },
+      }),
+    )
+
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.rerankingModelRequired)
+  })
+
+  it('returns reranking-model-invalid when the configured reranking model is unavailable', () => {
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({
+        retrieval_model: {
+          ...makePayload().retrieval_model,
+          reranking_enable: true,
+          reranking_model: {
+            reranking_provider_name: 'missing-provider',
+            reranking_model_name: 'missing-model',
+          },
+        },
+      }),
+    )
+
+    expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.rerankingModelInvalid)
+  })
+})
+
+describe('knowledge-base validation messaging', () => {
+  const t = (key: string) => key
+
+  it.each([
+    [KnowledgeBaseValidationIssueCode.chunkStructureRequired, 'nodes.knowledgeBase.chunkIsRequired'],
+    [KnowledgeBaseValidationIssueCode.chunksVariableRequired, 'nodes.knowledgeBase.chunksVariableIsRequired'],
+    [KnowledgeBaseValidationIssueCode.indexMethodRequired, 'nodes.knowledgeBase.indexMethodIsRequired'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured, 'nodes.knowledgeBase.embeddingModelNotConfigured'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired, 'modelProvider.selector.configureRequired'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable, 'modelProvider.selector.apiKeyUnavailable'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted, 'modelProvider.selector.creditsExhausted'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelDisabled, 'modelProvider.selector.disabled'],
+    [KnowledgeBaseValidationIssueCode.embeddingModelIncompatible, 'modelProvider.selector.incompatible'],
+    [KnowledgeBaseValidationIssueCode.retrievalSettingRequired, 'nodes.knowledgeBase.retrievalSettingIsRequired'],
+    [KnowledgeBaseValidationIssueCode.rerankingModelRequired, 'nodes.knowledgeBase.rerankingModelIsRequired'],
+    [KnowledgeBaseValidationIssueCode.rerankingModelInvalid, 'nodes.knowledgeBase.rerankingModelIsInvalid'],
+  ] as const)('maps %s to the expected translation key', (code, expectedKey) => {
+    expect(getKnowledgeBaseValidationMessage({ code }, t as never)).toBe(expectedKey)
+  })
+
+  it('returns an empty string when there is no issue', () => {
+    expect(getKnowledgeBaseValidationMessage(undefined, t as never)).toBe('')
+  })
+})
+
+describe('isKnowledgeBaseEmbeddingIssue', () => {
+  it('returns true for embedding-related issues', () => {
+    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.embeddingModelDisabled })).toBe(true)
+  })
+
+  it('returns false for non-embedding issues and missing values', () => {
+    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.rerankingModelInvalid })).toBe(false)
+    expect(isKnowledgeBaseEmbeddingIssue(undefined)).toBe(false)
   })
 })

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ModelParameterModal from './index'
 
 let isAPIKeySet = true
@@ -77,9 +77,10 @@ vi.mock('./parameter-item', () => ({
 }))
 
 vi.mock('../model-selector', () => ({
-  default: ({ onSelect }: { onSelect: (value: { provider: string, model: string }) => void }) => (
+  default: ({ onHide, onSelect }: { onHide: () => void, onSelect: (value: { provider: string, model: string }) => void }) => (
     <div data-testid="model-selector">
       <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>Select GPT-4.1</button>
+      <button onClick={onHide}>hide</button>
     </div>
   ),
 }))
@@ -229,6 +230,69 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     fireEvent.click(screen.getByText('Open Settings'))
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+  })
+
+  it('should support custom triggers, workflow mode, and missing default model values', async () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        provider=""
+        modelId=""
+        isInWorkflow
+        renderTrigger={({ open }) => <span>{open ? 'Custom Open' : 'Custom Closed'}</span>}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Custom Closed'))
+
+    expect(screen.getByText('Custom Open')).toBeInTheDocument()
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('hide'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should append the stop parameter in advanced mode and show the single-model debug label', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        debugWithMultipleModel
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
+  })
+
+  it('should render the empty loading fallback when rules resolve to an empty list', () => {
+    parameterRules = []
+    isRulesLoading = true
+
+    render(<ModelParameterModal {...defaultProps} />)
+    fireEvent.click(screen.getByText('Open Settings'))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+  })
+
+  it('should support custom trigger placement outside workflow mode', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        renderTrigger={({ open }) => <span>{open ? 'Popup Open' : 'Popup Closed'}</span>}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Popup Closed'))
+
+    expect(screen.getByText('Popup Open')).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })

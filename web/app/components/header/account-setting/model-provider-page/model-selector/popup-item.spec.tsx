@@ -12,12 +12,13 @@ import PopupItem from './popup-item'
 
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockUpdateModelProviders = vi.hoisted(() => vi.fn())
+const mockUseLanguage = vi.hoisted(() => vi.fn(() => 'en_US'))
 
 vi.mock('../hooks', async () => {
   const actual = await vi.importActual<typeof import('../hooks')>('../hooks')
   return {
     ...actual,
-    useLanguage: () => 'en_US',
+    useLanguage: mockUseLanguage,
     useUpdateModelList: () => mockUpdateModelList,
     useUpdateModelProviders: () => mockUpdateModelProviders,
   }
@@ -43,6 +44,12 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock('@/app/components/base/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 const mockCredentialPanelState = vi.hoisted(() => vi.fn())
 vi.mock('../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockCredentialPanelState,
@@ -56,7 +63,7 @@ vi.mock('../provider-added-card/use-change-provider-priority', () => ({
 }))
 
 vi.mock('../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
-  default: () => null,
+  default: ({ onClose }: { onClose: () => void }) => <button type="button" onClick={onClose}>close dropdown</button>,
 }))
 
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
@@ -110,6 +117,7 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
 describe('PopupItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseLanguage.mockReturnValue('en_US')
     mockUseProviderContext.mockReturnValue({
       modelProviders: [makeProvider()],
     })
@@ -215,6 +223,24 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toBeInTheDocument()
   })
 
+  it('should fall back to english labels when the current language is unavailable', () => {
+    mockUseLanguage.mockReturnValue('zh_Hans')
+
+    render(
+      <PopupItem
+        model={makeModel({
+          label: { en_US: 'OpenAI only' } as Model['label'],
+          models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
+        })}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('OpenAI only')).toBeInTheDocument()
+    expect(screen.getByText('GPT-4 only')).toBeInTheDocument()
+  })
+
   it('should toggle collapsed state when clicking provider header', () => {
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
@@ -233,6 +259,24 @@ describe('PopupItem', () => {
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText('my-api-key')).toBeInTheDocument()
+  })
+
+  it('should render the inactive credential badge when the api key is not active', () => {
+    mockCredentialPanelState.mockReturnValue({
+      variant: 'api-inactive',
+      priority: 'apiKey',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'stale-key',
+      credits: 200,
+    })
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+
+    expect(screen.getByText('stale-key')).toBeInTheDocument()
+    expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
   })
 
   it('should show configure required when no credential name', () => {
@@ -305,5 +349,15 @@ describe('PopupItem', () => {
     render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/)).toBeInTheDocument()
+  })
+
+  it('should close the dropdown through dropdown content callbacks', () => {
+    const onHide = vi.fn()
+
+    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={onHide} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
+
+    expect(onHide).toHaveBeenCalled()
   })
 })

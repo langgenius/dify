@@ -172,6 +172,24 @@ describe('useCredentialPanelState', () => {
 
       expect(result.current.variant).toBe('api-unavailable')
     })
+
+    it('should return api-required-configure when credentials exist but the current credential is incomplete', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: 'cred-1',
+          current_credential_name: undefined,
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      })
+
+      const { result } = renderHook(() => useCredentialPanelState(provider))
+
+      expect(result.current.variant).toBe('api-required-configure')
+    })
   })
 
   // apiKeyOnly priority

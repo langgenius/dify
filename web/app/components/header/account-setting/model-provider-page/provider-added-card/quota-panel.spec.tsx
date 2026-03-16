@@ -12,7 +12,7 @@ let mockWorkspaceData: {
   next_credit_reset_date: '2024-12-31',
 }
 let mockWorkspaceIsPending = false
-let mockTrialModels: string[] = ['langgenius/openai/openai']
+let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
 let mockPlugins = [{
   plugin_id: 'langgenius/openai',
   latest_package_identifier: 'openai@1.0.0',
@@ -39,9 +39,7 @@ vi.mock('@/service/use-common', () => ({
 
 vi.mock('@/context/global-public-context', () => ({
   useSystemFeaturesQuery: () => ({
-    data: {
-      trial_models: mockTrialModels,
-    },
+    data: mockTrialModels ? { trial_models: mockTrialModels } : undefined,
   }),
 }))
 
@@ -148,5 +146,38 @@ describe('QuotaPanel', () => {
     await waitFor(() => {
       expect(screen.queryByText('install modal')).not.toBeInTheDocument()
     })
+  })
+
+  it('should tolerate missing trial model configuration', () => {
+    mockTrialModels = undefined
+
+    render(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+  })
+
+  it('should render installed custom providers without opening the install modal', () => {
+    render(<QuotaPanel providers={mockProviders} />)
+
+    expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('openai'))
+
+    expect(screen.queryByText('install modal')).not.toBeInTheDocument()
+  })
+
+  it('should show the supported-model tooltip for installed non-custom providers', () => {
+    render(
+      <QuotaPanel providers={[
+        {
+          provider: 'langgenius/openai/openai',
+          preferred_provider_type: 'system',
+          custom_configuration: { available_credentials: [] },
+        },
+      ] as unknown as ModelProvider[]}
+      />,
+    )
+
+    expect(screen.getByLabelText(/modelSupported/)).toBeInTheDocument()
   })
 })

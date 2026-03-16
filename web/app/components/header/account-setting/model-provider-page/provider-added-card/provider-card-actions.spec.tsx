@@ -223,4 +223,42 @@ describe('ProviderCardActions', () => {
     expect(mockSetTargetVersion).not.toHaveBeenCalled()
     expect(mockHandleUpdate).toHaveBeenCalledWith()
   })
+
+  it('should fall back to the detail name when declaration metadata is missing', () => {
+    render(
+      <ProviderCardActions
+        detail={createDetail({
+          declaration: undefined,
+        })}
+      />,
+    )
+
+    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins//provider-plugin', {
+      language: 'en-US',
+      theme: 'light',
+    })
+  })
+
+  it('should leave the detail url empty when a GitHub plugin has no repo or the source is unsupported', () => {
+    const { rerender } = render(
+      <ProviderCardActions
+        detail={createDetail({
+          source: PluginSource.github,
+          meta: undefined,
+        })}
+      />,
+    )
+
+    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-detail-url', '')
+
+    rerender(
+      <ProviderCardActions
+        detail={createDetail({
+          source: PluginSource.local,
+        })}
+      />,
+    )
+
+    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-detail-url', '')
+  })
 })

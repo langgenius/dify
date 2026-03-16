@@ -100,6 +100,42 @@ describe('deriveModelStatus', () => {
     ).toBe('api-key-unavailable')
   })
 
+  it('should return credits-exhausted when model status is quota exceeded', () => {
+    expect(
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem({ status: ModelStatusEnum.quotaExceeded }),
+        createCredentialState({ priority: 'apiKey' }),
+      ),
+    ).toBe('credits-exhausted')
+  })
+
+  it('should return api-key-unavailable when model status is credential removed', () => {
+    expect(
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem({ status: ModelStatusEnum.credentialRemoved }),
+        createCredentialState({ priority: 'apiKey' }),
+      ),
+    ).toBe('api-key-unavailable')
+  })
+
+  it('should return incompatible when model status is no-permission', () => {
+    expect(
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        createModelItem({ status: ModelStatusEnum.noPermission }),
+        createCredentialState({ priority: 'apiKey' }),
+      ),
+    ).toBe('incompatible')
+  })
+
   it('should return active when model and credential state are available', () => {
     expect(
       deriveModelStatus('text-embedding-3-large', 'openai', createModelProvider(), createModelItem(), createCredentialState()),

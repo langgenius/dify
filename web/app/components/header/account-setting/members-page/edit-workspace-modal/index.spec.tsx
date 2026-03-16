@@ -120,6 +120,21 @@ describe('EditWorkspaceModal', () => {
     expect(screen.getByTestId('edit-workspace-error')).toBeInTheDocument()
   })
 
+  it('should not submit when the form is submitted while save is disabled', async () => {
+    renderModal()
+
+    const saveButton = screen.getByTestId('edit-workspace-save')
+    const form = saveButton.closest('form')
+
+    expect(saveButton).toBeDisabled()
+    expect(form).not.toBeNull()
+
+    fireEvent.submit(form!)
+
+    expect(updateWorkspaceInfo).not.toHaveBeenCalled()
+    expect(mockNotify).not.toHaveBeenCalled()
+  })
+
   it('should disable confirm button for non-owners', async () => {
     vi.mocked(useAppContext).mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,

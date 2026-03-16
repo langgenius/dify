@@ -419,6 +419,21 @@ describe('ModelParameterTrigger', () => {
 
       expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'common.modelProvider.selector.disabled')
     })
+
+    it('should apply expanded and warning styles when the trigger is open for a non-active status', () => {
+      const { unmount } = renderComponent()
+      const triggerContent = capturedModalProps?.renderTrigger({
+        open: true,
+        currentProvider: { provider: 'openai' },
+        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
+      })
+
+      unmount()
+      const { container } = render(<>{triggerContent}</>)
+
+      expect(container.firstChild).toHaveClass('bg-state-base-hover')
+      expect(container.firstChild).toHaveClass('!bg-[#FFFAEB]')
+    })
   })
 
   describe('edge cases', () => {

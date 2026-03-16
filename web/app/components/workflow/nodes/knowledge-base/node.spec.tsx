@@ -158,4 +158,76 @@ describe('KnowledgeBaseNode', () => {
       expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
     })
   })
+
+  describe('Validation warnings', () => {
+    it('should render a warning banner when chunk structure is missing', () => {
+      render(
+        <Node
+          id="knowledge-base-1"
+          data={createNodeData({
+            chunk_structure: undefined,
+          })}
+        />,
+      )
+
+      expect(screen.getByText(/chunkIsRequired/i)).toBeInTheDocument()
+    })
+
+    it('should render a warning value for the chunks input row when no chunk variable is selected', () => {
+      render(
+        <Node
+          id="knowledge-base-1"
+          data={createNodeData({
+            index_chunk_variable_selector: [],
+          })}
+        />,
+      )
+
+      expect(screen.getByText(/chunksVariableIsRequired/i)).toBeInTheDocument()
+    })
+
+    it('should render a warning value for retrieval settings when reranking is incomplete', () => {
+      mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
+        if (modelType === ModelTypeEnum.textEmbedding) {
+          return {
+            data: [{
+              provider: 'openai',
+              models: [createModelItem()],
+            }],
+          }
+        }
+        return { data: [] }
+      })
+
+      render(
+        <Node
+          id="knowledge-base-1"
+          data={createNodeData({
+            retrieval_model: {
+              top_k: 3,
+              score_threshold_enabled: false,
+              score_threshold: 0.5,
+              search_method: RetrievalSearchMethodEnum.semantic,
+              reranking_enable: true,
+            },
+          })}
+        />,
+      )
+
+      expect(screen.getByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
+    })
+
+    it('should hide the embedding model row when the index method is not qualified', () => {
+      render(
+        <Node
+          id="knowledge-base-1"
+          data={createNodeData({
+            indexing_technique: IndexMethodEnum.ECONOMICAL,
+          })}
+        />,
+      )
+
+      expect(screen.queryByText('Text Embedding 3 Large')).not.toBeInTheDocument()
+    })
+  })
 })

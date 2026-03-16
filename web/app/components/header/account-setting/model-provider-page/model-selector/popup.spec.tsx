@@ -553,4 +553,60 @@ describe('Popup', () => {
     })
     expect(mockRefreshPluginList).toHaveBeenCalled()
   })
+
+  it('should skip install requests when marketplace plugins are still loading', async () => {
+    mockMarketplacePlugins.current = [
+      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
+    ]
+    mockMarketplacePlugins.isLoading = true
+
+    render(
+      <Popup
+        modelList={[]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
+
+    await waitFor(() => {
+      expect(mockInstallMutateAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  it('should skip install requests when the marketplace plugin cannot be found', async () => {
+    mockMarketplacePlugins.current = []
+
+    render(
+      <Popup
+        modelList={[]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByText(/common\.modelProvider\.selector\.install/)[0])
+
+    await waitFor(() => {
+      expect(mockInstallMutateAsync).not.toHaveBeenCalled()
+    })
+  })
+
+  it('should sort the selected provider to the top when a default model is provided', () => {
+    render(
+      <Popup
+        defaultModel={{ provider: 'anthropic', model: 'claude-3' }}
+        modelList={[
+          makeModel({ provider: 'openai', label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' } }),
+          makeModel({ provider: 'anthropic', label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' } }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    const providerLabels = screen.getAllByText(/openai|anthropic/)
+    expect(providerLabels[0]).toHaveTextContent('anthropic')
+  })
 })
