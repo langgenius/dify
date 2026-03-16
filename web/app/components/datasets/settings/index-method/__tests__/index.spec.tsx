@@ -191,9 +191,9 @@ describe('IndexMethod', () => {
     })
 
     it('should handle minimum keywordNumber', () => {
-      render(<IndexMethod {...defaultProps} keywordNumber={1} />)
+      render(<IndexMethod {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('1')
+      expect(input).toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {

@@ -12,7 +12,7 @@ import {
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
 
-const MIN_KEYWORD_NUMBER = 1
+const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
 
 type KeyWordNumberProps = {

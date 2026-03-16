@@ -87,14 +87,14 @@ describe('KeyWordNumber', () => {
       expect(handleChange).toHaveBeenCalled()
     })
 
-    it('should reset to 1 when users clear the input', () => {
+    it('should reset to 0 when users clear the input', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '' } })
 
-      expect(handleChange).toHaveBeenCalledWith(1)
+      expect(handleChange).toHaveBeenCalledWith(0)
     })
   })
 
@@ -105,18 +105,18 @@ describe('KeyWordNumber', () => {
       expect(slider).toHaveAttribute('aria-valuemax', '50')
     })
 
-    it('should have min value of 1', () => {
+    it('should have min value of 0', () => {
       render(<KeyWordNumber {...defaultProps} />)
       const slider = screen.getByRole('slider')
-      expect(slider).toHaveAttribute('aria-valuemin', '1')
+      expect(slider).toHaveAttribute('aria-valuemin', '0')
     })
   })
 
   describe('Edge Cases', () => {
-    it('should handle minimum value (1)', () => {
-      render(<KeyWordNumber {...defaultProps} keywordNumber={1} />)
+    it('should handle minimum value (0)', () => {
+      render(<KeyWordNumber {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('1')
+      expect(input).toHaveValue('0')
     })
 
     it('should handle maximum value (50)', () => {
