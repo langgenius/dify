@@ -14,6 +14,7 @@ import type datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
 import type datasetSettings from '../i18n/en-US/dataset-settings.json'
 import type dataset from '../i18n/en-US/dataset.json'
 import type education from '../i18n/en-US/education.json'
+import type evaluation from '../i18n/en-US/evaluation.json'
 import type explore from '../i18n/en-US/explore.json'
 import type layout from '../i18n/en-US/layout.json'
 import type login from '../i18n/en-US/login.json'
@@ -48,6 +49,7 @@ export type Resources = {
   datasetPipeline: typeof datasetPipeline
   datasetSettings: typeof datasetSettings
   education: typeof education
+  evaluation: typeof evaluation
   explore: typeof explore
   layout: typeof layout
   login: typeof login
@@ -82,6 +84,7 @@ export const namespaces = [
   'datasetPipeline',
   'datasetSettings',
   'education',
+  'evaluation',
   'explore',
   'layout',
   'login',

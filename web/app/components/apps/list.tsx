@@ -91,7 +91,7 @@ const SnippetCard = ({
   snippet: SnippetListItem
 }) => {
   return (
-    <Link href={`/snippets/${snippet.id}`} className="group col-span-1">
+    <Link href={`/snippets/${snippet.id}/orchestrate`} className="group col-span-1">
       <article className="relative inline-flex h-[160px] w-full flex-col rounded-xl border border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg">
         {snippet.status && (
           <div className="absolute right-0 top-0 rounded-bl-lg rounded-tr-xl bg-background-default-dimmed px-2 py-1 text-[10px] font-medium uppercase leading-3 text-text-placeholder">

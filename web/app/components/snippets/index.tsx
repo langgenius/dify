@@ -1,5 +1,6 @@
 'use client'
 
+import type { SnippetSection } from '@/models/snippet'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -14,10 +15,12 @@ import { useSnippetInit } from './hooks/use-snippet-init'
 
 type SnippetPageProps = {
   snippetId: string
+  section?: SnippetSection
 }
 
 const SnippetPage = ({
   snippetId,
+  section = 'orchestrate',
 }: SnippetPageProps) => {
   const { t } = useTranslation('snippet')
   const { data, isLoading } = useSnippetInit(snippetId)
@@ -62,6 +65,7 @@ const SnippetPage = ({
       <SnippetMain
         key={snippetId}
         snippetId={snippetId}
+        section={section}
         payload={data}
         nodes={nodesData}
         edges={edgesData}

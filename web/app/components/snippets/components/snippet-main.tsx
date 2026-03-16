@@ -2,7 +2,7 @@
 
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { SnippetDetailPayload, SnippetInputField, SnippetSection } from '@/models/snippet'
 import {
   RiFlaskFill,
   RiFlaskLine,
@@ -17,6 +17,7 @@ import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfo from '@/app/components/app-sidebar/snippet-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
+import Evaluation from '@/app/components/evaluation'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSnippetDetailStore } from '../store'
@@ -25,6 +26,7 @@ import SnippetChildren from './snippet-children'
 type SnippetMainProps = {
   payload: SnippetDetailPayload
   snippetId: string
+  section: SnippetSection
 } & Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 
 const ORCHESTRATE_ICONS: { normal: NavIcon, selected: NavIcon } = {
@@ -40,6 +42,7 @@ const EVALUATION_ICONS: { normal: NavIcon, selected: NavIcon } = {
 const SnippetMain = ({
   payload,
   snippetId,
+  section,
   nodes,
   edges,
   viewport,
@@ -51,7 +54,6 @@ const SnippetMain = ({
   const [fields, setFields] = useState<SnippetInputField[]>(payload.inputFields)
   const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
   const {
-    activeSection,
     editingField,
     isEditorOpen,
     isInputPanelOpen,
@@ -59,12 +61,10 @@ const SnippetMain = ({
     closeEditor,
     openEditor,
     reset,
-    setActiveSection,
     setInputPanelOpen,
     toggleInputPanel,
     togglePublishMenu,
   } = useSnippetDetailStore(useShallow(state => ({
-    activeSection: state.activeSection,
     editingField: state.editingField,
     isEditorOpen: state.isEditorOpen,
     isInputPanelOpen: state.isInputPanelOpen,
@@ -72,7 +72,6 @@ const SnippetMain = ({
     closeEditor: state.closeEditor,
     openEditor: state.openEditor,
     reset: state.reset,
-    setActiveSection: state.setActiveSection,
     setInputPanelOpen: state.setInputPanelOpen,
     toggleInputPanel: state.toggleInputPanel,
     togglePublishMenu: state.togglePublishMenu,
@@ -145,15 +144,15 @@ const SnippetMain = ({
               mode={mode}
               name={t('sectionOrchestrate')}
               iconMap={ORCHESTRATE_ICONS}
-              active={activeSection === 'orchestrate'}
-              onClick={() => setActiveSection('orchestrate')}
+              href={`/snippets/${snippetId}/orchestrate`}
+              active={section === 'orchestrate'}
             />
             <NavLink
               mode={mode}
               name={t('sectionEvaluation')}
               iconMap={EVALUATION_ICONS}
-              active={activeSection === 'evaluation'}
-              onClick={() => setActiveSection('evaluation')}
+              href={`/snippets/${snippetId}/evaluation`}
+              active={section === 'evaluation'}
             />
           </>
         )}
@@ -161,29 +160,35 @@ const SnippetMain = ({
 
       <div className="relative min-h-0 min-w-0 grow overflow-hidden">
         <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">
-          <WorkflowWithInnerContext
-            nodes={nodes}
-            edges={edges}
-            viewport={viewport ?? graph.viewport}
-          >
-            <SnippetChildren
-              fields={fields}
-              uiMeta={uiMeta}
-              editingField={editingField}
-              isEditorOpen={isEditorOpen}
-              isInputPanelOpen={isInputPanelOpen}
-              isPublishMenuOpen={isPublishMenuOpen}
-              onToggleInputPanel={handleToggleInputPanel}
-              onTogglePublishMenu={togglePublishMenu}
-              onCloseInputPanel={handleCloseInputPanel}
-              onOpenEditor={openEditor}
-              onCloseEditor={closeEditor}
-              onSubmitField={handleSubmitField}
-              onRemoveField={handleRemoveField}
-              onPrimarySortChange={handlePrimarySortChange}
-              onSecondarySortChange={handleSecondarySortChange}
-            />
-          </WorkflowWithInnerContext>
+          {section === 'evaluation'
+            ? (
+                <Evaluation resourceType="snippet" resourceId={snippetId} />
+              )
+            : (
+                <WorkflowWithInnerContext
+                  nodes={nodes}
+                  edges={edges}
+                  viewport={viewport ?? graph.viewport}
+                >
+                  <SnippetChildren
+                    fields={fields}
+                    uiMeta={uiMeta}
+                    editingField={editingField}
+                    isEditorOpen={isEditorOpen}
+                    isInputPanelOpen={isInputPanelOpen}
+                    isPublishMenuOpen={isPublishMenuOpen}
+                    onToggleInputPanel={handleToggleInputPanel}
+                    onTogglePublishMenu={togglePublishMenu}
+                    onCloseInputPanel={handleCloseInputPanel}
+                    onOpenEditor={openEditor}
+                    onCloseEditor={closeEditor}
+                    onSubmitField={handleSubmitField}
+                    onRemoveField={handleRemoveField}
+                    onPrimarySortChange={handlePrimarySortChange}
+                    onSecondarySortChange={handleSecondarySortChange}
+                  />
+                </WorkflowWithInnerContext>
+              )}
         </div>
       </div>
     </div>

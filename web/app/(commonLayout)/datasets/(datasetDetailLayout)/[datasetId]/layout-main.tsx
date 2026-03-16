@@ -6,6 +6,8 @@ import {
   RiEqualizer2Line,
   RiFileTextFill,
   RiFileTextLine,
+  RiFlaskFill,
+  RiFlaskLine,
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
@@ -86,20 +88,30 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
-        name: t('datasetMenus.pipeline', { ns: 'common' }),
-        href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
-        disabled: false,
-      })
-      baseNavigation.unshift({
-        name: t('datasetMenus.documents', { ns: 'common' }),
-        href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
-        disabled: isButtonDisabledWithPipeline,
-      })
+      return [
+        {
+          name: t('datasetMenus.documents', { ns: 'common' }),
+          href: `/datasets/${datasetId}/documents`,
+          icon: RiFileTextLine,
+          selectedIcon: RiFileTextFill,
+          disabled: isButtonDisabledWithPipeline,
+        },
+        {
+          name: t('datasetMenus.pipeline', { ns: 'common' }),
+          href: `/datasets/${datasetId}/pipeline`,
+          icon: PipelineLine as RemixiconComponentType,
+          selectedIcon: PipelineFill as RemixiconComponentType,
+          disabled: false,
+        },
+        {
+          name: t('datasetMenus.evaluation', { ns: 'common' }),
+          href: `/datasets/${datasetId}/evaluation`,
+          icon: RiFlaskLine,
+          selectedIcon: RiFlaskFill,
+          disabled: false,
+        },
+        ...baseNavigation,
+      ]
     }
 
     return baseNavigation

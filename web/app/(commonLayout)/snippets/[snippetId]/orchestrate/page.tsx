@@ -1,11 +1,11 @@
-import { redirect } from 'next/navigation'
+import SnippetPage from '@/app/components/snippets'
 
 const Page = async (props: {
   params: Promise<{ snippetId: string }>
 }) => {
   const { snippetId } = await props.params
 
-  redirect(`/snippets/${snippetId}/orchestrate`)
+  return <SnippetPage snippetId={snippetId} section="orchestrate" />
 }
 
 export default Page
