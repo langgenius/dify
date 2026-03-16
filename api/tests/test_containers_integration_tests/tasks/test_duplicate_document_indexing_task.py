@@ -8,9 +8,9 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.account import AccountStatus, TenantStatus
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.duplicate_document_indexing_task import (
-from models.account import AccountStatus, TenantStatus
     _duplicate_document_indexing_task,  # Core function
     _duplicate_document_indexing_task_with_tenant_queue,  # Tenant queue wrapper function
     duplicate_document_indexing_task,  # Deprecated old interface

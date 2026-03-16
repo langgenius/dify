@@ -11,9 +11,9 @@ from core.indexing_runner import DocumentIsPausedError
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.account import AccountStatus, TenantStatus
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
-from models.account import AccountStatus, TenantStatus
     _document_indexing,
     _document_indexing_with_tenant_queue,
     document_indexing_task,
