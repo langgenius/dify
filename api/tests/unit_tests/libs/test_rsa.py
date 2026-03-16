@@ -1,13 +1,12 @@
-import rsa as pyrsa
 from Crypto.PublicKey import RSA
 
 from libs import gmpy2_pkcs10aep_cipher
 
 
 def test_gmpy2_pkcs10aep_cipher():
-    rsa_key_pair = pyrsa.newkeys(2048)
-    public_key = rsa_key_pair[0].save_pkcs1()
-    private_key = rsa_key_pair[1].save_pkcs1()
+    rsa_key = RSA.generate(2048)
+    public_key = rsa_key.publickey().export_key(format='PEM')
+    private_key = rsa_key.export_key(format='PEM')
 
     public_rsa_key = RSA.import_key(public_key)
     public_cipher_rsa2 = gmpy2_pkcs10aep_cipher.new(public_rsa_key)
