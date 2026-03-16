@@ -275,7 +275,7 @@ describe('useTextGenerationBatch', () => {
     })
 
     act(() => {
-      result.current.handleCompleted({ answer: 'failed' } as unknown as string, 1, false)
+      result.current.handleCompleted('{"answer":"failed"}', 1, false)
     })
 
     expect(result.current.allFailedTaskList).toEqual([
@@ -291,7 +291,7 @@ describe('useTextGenerationBatch', () => {
       {
         'Name': 'Alice',
         'Score': '',
-        'generation.completionResult': JSON.stringify({ answer: 'failed' }),
+        'generation.completionResult': '{"answer":"failed"}',
       },
     ])
 
