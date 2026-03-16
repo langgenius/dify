@@ -18,15 +18,14 @@ import pytest
 
 from dify_graph.entities import WorkflowNodeExecution
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     ErrorStrategy,
-    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from dify_graph.node_events import NodeRunResult
-from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from dify_graph.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
@@ -1978,7 +1977,7 @@ class TestSetupVariablePool:
                 user_id="u-1",
                 user_inputs={"k": "v"},
                 workflow=workflow,
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
@@ -2005,7 +2004,7 @@ class TestSetupVariablePool:
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
-                node_type=NodeType.LLM,  # not a start/trigger node
+                node_type=BuiltinNodeTypes.LLM,  # not a start/trigger node
                 conversation_id="conv-1",
                 conversation_variables=[],
             )
@@ -2031,7 +2030,7 @@ class TestSetupVariablePool:
                 user_id="u-1",
                 user_inputs={},
                 workflow=workflow,
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 conversation_id="conv-abc",
                 conversation_variables=[],
             )
@@ -2263,7 +2262,7 @@ class TestWorkflowServiceDraftExecution:
         draft_workflow.graph_dict = {"nodes": []}
 
         node_id = "start-node"
-        node_config = {"id": node_id, "data": MagicMock(type=NodeType.START)}
+        node_config = {"id": node_id, "data": MagicMock(type=BuiltinNodeTypes.START)}
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
 
@@ -2291,7 +2290,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.storage"),
         ):
             mock_node = MagicMock()
-            mock_node.node_type = NodeType.START
+            mock_node.node_type = BuiltinNodeTypes.START
             mock_node.title = "Start Node"
             mock_run_result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
@@ -2299,7 +2298,7 @@ class TestWorkflowServiceDraftExecution:
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id="start-node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_run_result=mock_run_result,
                 start_at=naive_utc_now(),
             )
@@ -2339,7 +2338,7 @@ class TestWorkflowServiceDraftExecution:
         draft_workflow = MagicMock(spec=Workflow)
         draft_workflow.graph_dict = {"nodes": []}
         node_id = "llm-node"
-        node_config = {"id": node_id, "data": MagicMock(type=NodeType.LLM)}
+        node_config = {"id": node_id, "data": MagicMock(type=BuiltinNodeTypes.LLM)}
         draft_workflow.get_node_config_by_id.return_value = node_config
         draft_workflow.get_enclosing_node_type_and_id.return_value = None
         service.get_draft_workflow = MagicMock(return_value=draft_workflow)
@@ -2360,7 +2359,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.storage"),
         ):
             mock_node = MagicMock()
-            mock_node.node_type = NodeType.LLM
+            mock_node.node_type = BuiltinNodeTypes.LLM
             mock_node.title = "LLM Node"
             mock_run_result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
@@ -2368,7 +2367,7 @@ class TestWorkflowServiceDraftExecution:
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id="llm-node",
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 node_run_result=mock_run_result,
                 start_at=naive_utc_now(),
             )
@@ -2420,7 +2419,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft = MagicMock()
         draft.get_node_config_by_id.return_value = {"data": {"type": "llm"}}
         service.get_draft_workflow = MagicMock(return_value=draft)
-        with patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.LLM):
+        with patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.LLM):
             with pytest.raises(ValueError, match="Node type must be human-input"):
                 service.get_human_input_form_preview(app_model=MagicMock(), account=MagicMock(), node_id="node-1")
 
@@ -2437,7 +2436,7 @@ class TestWorkflowServiceHumanInputOperations:
         draft.tenant_id = "tenant-1"
         draft.app_id = "app-1"
         draft.graph_dict = {"nodes": []}
-        draft.get_node_config_by_id.return_value = {"id": "node-1", "data": MagicMock(type=NodeType.HUMAN_INPUT)}
+        draft.get_node_config_by_id.return_value = {"id": "node-1", "data": MagicMock(type=BuiltinNodeTypes.HUMAN_INPUT)}
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         mock_node = MagicMock()
@@ -2449,7 +2448,7 @@ class TestWorkflowServiceHumanInputOperations:
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
+            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch.object(service, "_build_human_input_variable_pool"),
             patch("services.workflow_service.HumanInputNode", return_value=mock_node),
             patch("services.workflow_service.HumanInputRequired") as mock_required_cls,
@@ -2481,7 +2480,7 @@ class TestWorkflowServiceHumanInputOperations:
         with (
             patch("services.workflow_service.db"),
             patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
+            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch.object(service, "_build_human_input_variable_pool"),
             patch("services.workflow_service.HumanInputNode", return_value=mock_node),
             patch("services.workflow_service.validate_human_input_submission"),
@@ -2500,7 +2499,7 @@ class TestWorkflowServiceHumanInputOperations:
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         with (
-            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
+            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
             patch("services.workflow_service.apply_debug_email_recipient"),
@@ -2521,7 +2520,7 @@ class TestWorkflowServiceHumanInputOperations:
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         with (
-            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=NodeType.HUMAN_INPUT),
+            patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
         ):
@@ -2571,7 +2570,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
         ):
             service._build_human_input_variable_pool(
-                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}
+                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}, user_id="user-1"
             )
             mock_pool_cls.assert_called_once()
 
