@@ -40,7 +40,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.10.37",
-    "litellm==1.82.2",                                  # Pinned to avoid madoka dependency issue
+    "litellm==1.82.2",                                    # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.28.0",
     "opentelemetry-distro==0.49b0",
     "opentelemetry-exporter-otlp==1.28.0",
@@ -91,6 +91,7 @@ dependencies = [
     "apscheduler>=3.11.0",
     "weave>=0.52.16",
     "fastopenapi[flask]>=0.7.0",
+    "bleach~=6.2.0",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -251,10 +252,7 @@ ignore_errors = true
 
 [tool.pyrefly]
 project-includes = ["."]
-project-excludes = [
-    ".venv",
-    "migrations/",
-]
+project-excludes = [".venv", "migrations/"]
 python-platform = "linux"
 python-version = "3.11.0"
 infer-with-first-use = false
