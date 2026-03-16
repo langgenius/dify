@@ -160,6 +160,25 @@ describe('workflow-stream-handlers helpers', () => {
     expect(nextProcess.tracing[0]?.details).toEqual([[], []])
   })
 
+  it('should leave tracing unchanged when a parallel next event has no matching trace', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        node_id: 'parallel-node',
+        execution_metadata: { parallel_id: 'parallel-1' },
+        details: [[]],
+      }),
+    ]
+
+    const nextProcess = appendParallelNext(process, createTrace({
+      node_id: 'missing-node',
+      execution_metadata: { parallel_id: 'parallel-2' },
+    }))
+
+    expect(nextProcess.tracing).toEqual(process.tracing)
+    expect(nextProcess.expand).toBe(true)
+  })
+
   it('should mark running nodes as stopped recursively', () => {
     const workflowProcessData = createWorkflowProcess()
     workflowProcessData.tracing = [
@@ -782,5 +801,101 @@ describe('createWorkflowStreamHandlers', () => {
       status: WorkflowRunningStatus.Succeeded,
       resultText: '',
     }))
+  })
+
+  it('should serialize empty, string, and circular workflow outputs', () => {
+    const noOutputSetup = setupHandlers()
+    const noOutputHandlers = noOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+
+    act(() => {
+      noOutputHandlers.onWorkflowFinished({
+        task_id: 'task-empty',
+        workflow_run_id: 'run-empty',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-empty',
+          workflow_id: 'wf-empty',
+          status: WorkflowRunningStatus.Succeeded,
+          outputs: null,
+          error: '',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    expect(noOutputSetup.setCompletionRes).toHaveBeenCalledWith('')
+
+    const stringOutputSetup = setupHandlers()
+    const stringOutputHandlers = stringOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+
+    act(() => {
+      stringOutputHandlers.onWorkflowFinished({
+        task_id: 'task-string',
+        workflow_run_id: 'run-string',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-string',
+          workflow_id: 'wf-string',
+          status: WorkflowRunningStatus.Succeeded,
+          outputs: 'plain text output',
+          error: '',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    expect(stringOutputSetup.setCompletionRes).toHaveBeenCalledWith('plain text output')
+
+    const circularOutputSetup = setupHandlers()
+    const circularOutputHandlers = circularOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+    const circularOutputs: Record<string, unknown> = {
+      answer: 'Hello',
+    }
+    circularOutputs.self = circularOutputs
+
+    act(() => {
+      circularOutputHandlers.onWorkflowFinished({
+        task_id: 'task-circular',
+        workflow_run_id: 'run-circular',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-circular',
+          workflow_id: 'wf-circular',
+          status: WorkflowRunningStatus.Succeeded,
+          outputs: circularOutputs,
+          error: '',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    expect(circularOutputSetup.setCompletionRes).toHaveBeenCalledWith('[object Object]')
   })
 })

@@ -136,6 +136,25 @@ describe('result-request', () => {
     })
   })
 
+  it('should allow required file inputs when a file is selected', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        file: createFileEntity(),
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'file', name: 'File', type: 'file', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({ canSend: true })
+  })
+
   it('should reject pending local uploads outside batch mode', () => {
     const t = createTranslator()
 

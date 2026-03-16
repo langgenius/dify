@@ -347,11 +347,9 @@ export const createWorkflowStreamHandlers = ({
       }
 
       setWorkflowProcessData(applyWorkflowOutputs(getWorkflowProcessData(), data.outputs))
-      if (!data.outputs) {
-        setCompletionRes('')
-      }
-      else {
-        setCompletionRes(serializeWorkflowOutputs(data.outputs))
+      const serializedOutputs = serializeWorkflowOutputs(data.outputs)
+      setCompletionRes(serializedOutputs)
+      if (data.outputs) {
         const outputKeys = Object.keys(data.outputs)
         const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
         if (isStringOutput) {
