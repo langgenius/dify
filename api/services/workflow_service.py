@@ -697,7 +697,7 @@ class WorkflowService:
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
+            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
@@ -740,6 +740,7 @@ class WorkflowService:
             engine=db.engine,
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
+            user_id=account.id,
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -831,6 +832,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -891,6 +893,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -967,6 +970,7 @@ class WorkflowService:
             workflow=draft_workflow,
             node_config=node_config,
             manual_inputs=inputs or {},
+            user_id=account.id,
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -1102,10 +1106,11 @@ class WorkflowService:
         workflow: Workflow,
         node_config: NodeConfigDict,
         manual_inputs: Mapping[str, Any],
+        user_id: str,
     ) -> VariablePool:
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
-            draft_var_srv.prefill_conversation_variable_default_values(workflow)
+            draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user_id)
 
         variable_pool = VariablePool(
             system_variables=SystemVariable.default(),
@@ -1118,6 +1123,7 @@ class WorkflowService:
             engine=db.engine,
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
+            user_id=user_id,
         )
         variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
             graph_config=workflow.graph_dict,

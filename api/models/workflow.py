@@ -1286,16 +1286,17 @@ class WorkflowDraftVariable(Base):
     """
 
     @staticmethod
-    def unique_app_id_node_id_name() -> list[str]:
+    def unique_app_id_user_id_node_id_name() -> list[str]:
         return [
             "app_id",
+            "user_id",
             "node_id",
             "name",
         ]
 
     __tablename__ = "workflow_draft_variables"
     __table_args__ = (
-        UniqueConstraint(*unique_app_id_node_id_name()),
+        UniqueConstraint(*unique_app_id_user_id_node_id_name()),
         Index("workflow_draft_variable_file_id_idx", "file_id"),
     )
     # Required for instance variable annotation.
@@ -1321,6 +1322,11 @@ class WorkflowDraftVariable(Base):
 
     # "`app_id` maps to the `id` field in the `model.App` model."
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Owner of this draft variable.
+    #
+    # This field is nullable during migration and will be migrated to NOT NULL
+    # in a follow-up release.
+    user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     # `last_edited_at` records when the value of a given draft variable
     # is edited.
@@ -1573,6 +1579,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None,
         node_id: str,
         name: str,
         value: Segment,
@@ -1586,6 +1593,7 @@ class WorkflowDraftVariable(Base):
         variable.updated_at = naive_utc_now()
         variable.description = description
         variable.app_id = app_id
+        variable.user_id = user_id
         variable.node_id = node_id
         variable.name = name
         variable.set_value(value)
@@ -1599,12 +1607,14 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         name: str,
         value: Segment,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
             name=name,
             value=value,
@@ -1619,6 +1629,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         name: str,
         value: Segment,
         node_execution_id: str,
@@ -1626,6 +1637,7 @@ class WorkflowDraftVariable(Base):
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=SYSTEM_VARIABLE_NODE_ID,
             name=name,
             node_execution_id=node_execution_id,
@@ -1639,6 +1651,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         node_id: str,
         name: str,
         value: Segment,
@@ -1649,6 +1662,7 @@ class WorkflowDraftVariable(Base):
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=node_id,
             name=name,
             node_execution_id=node_execution_id,
