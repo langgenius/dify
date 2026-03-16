@@ -46,6 +46,7 @@ const NumberInputField = ({
     id: _id,
     ...inputProps
   } = props
+  const emptyValue = min ?? 0
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
@@ -57,7 +58,6 @@ const NumberInputField = ({
       <NumberField
         id={field.name}
         name={field.name}
-        allowOutOfRange
         value={field.state.value}
         min={min}
         max={max}
@@ -65,7 +65,7 @@ const NumberInputField = ({
         disabled={disabled}
         readOnly={readOnly}
         required={required}
-        onValueChange={value => field.handleChange(value ?? 0)}
+        onValueChange={value => field.handleChange(value ?? emptyValue)}
       >
         <NumberFieldGroup size={size}>
           <NumberFieldInput

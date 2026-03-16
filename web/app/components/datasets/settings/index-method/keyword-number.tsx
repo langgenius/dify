@@ -51,7 +51,6 @@ const KeyWordNumber = ({
       />
       <NumberField
         className="w-12 shrink-0"
-        allowOutOfRange
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}

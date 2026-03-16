@@ -56,12 +56,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
         <div className="mr-3 flex shrink-0 items-center">
           <NumberField
             disabled={!enable}
-            allowOutOfRange
             min={min}
             max={max}
             step={step}
             value={value}
-            onValueChange={nextValue => onChange(id, nextValue ?? 0)}
+            onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup size="regular">
               <NumberFieldInput size="regular" className="w-[72px]" />

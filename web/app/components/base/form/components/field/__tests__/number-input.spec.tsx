@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import NumberInputField from '../number-input'
 
 const mockField = {
@@ -38,14 +37,11 @@ describe('NumberInputField', () => {
     expect(mockField.handleChange).toHaveBeenCalledWith(0)
   })
 
-  it('should preserve out-of-range edits before blur', async () => {
-    const user = userEvent.setup()
+  it('should clamp out-of-range edits before updating field state', () => {
     render(<NumberInputField label="Count" min={0} max={10} />)
 
-    const input = screen.getByRole('textbox')
-    await user.clear(input)
-    await user.type(input, '12')
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '12' } })
 
-    expect(mockField.handleChange).toHaveBeenLastCalledWith(12)
+    expect(mockField.handleChange).toHaveBeenLastCalledWith(10)
   })
 })

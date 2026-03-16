@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import KeyWordNumber from '../keyword-number'
 
 describe('KeyWordNumber', () => {
@@ -98,16 +97,12 @@ describe('KeyWordNumber', () => {
       expect(handleChange).toHaveBeenCalledWith(0)
     })
 
-    it('should preserve out-of-range edits before blur', async () => {
-      const user = userEvent.setup()
+    it('should clamp out-of-range edits before updating state', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('textbox')
-      await user.clear(input)
-      await user.type(input, '60')
-
-      expect(handleChange).toHaveBeenLastCalledWith(60)
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '60' } })
+      expect(handleChange).toHaveBeenLastCalledWith(50)
     })
   })
 

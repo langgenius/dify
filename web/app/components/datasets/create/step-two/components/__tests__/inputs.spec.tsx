@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
@@ -63,23 +62,19 @@ describe('MaxLengthInput', () => {
     expect(input).toBeInTheDocument()
   })
 
-  it('should report 0 when users clear the value', () => {
+  it('should reset to the minimum when users clear the value', () => {
     const onChange = vi.fn()
     render(<MaxLengthInput value={500} onChange={onChange} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
-    expect(onChange).toHaveBeenCalledWith(0)
+    expect(onChange).toHaveBeenCalledWith(1)
   })
 
-  it('should report out-of-range text edits before blur', async () => {
-    const user = userEvent.setup()
+  it('should clamp out-of-range text edits before updating state', () => {
     const onChange = vi.fn()
     render(<MaxLengthInput value={500} max={1000} onChange={onChange} />)
 
-    const input = screen.getByRole('textbox')
-    await user.clear(input)
-    await user.type(input, '1200')
-
-    expect(onChange).toHaveBeenLastCalledWith(1200)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '1200' } })
+    expect(onChange).toHaveBeenLastCalledWith(1000)
   })
 })
 
@@ -110,22 +105,18 @@ describe('OverlapInput', () => {
     expect(input).toBeInTheDocument()
   })
 
-  it('should report 0 when users clear the value', () => {
+  it('should reset to the minimum when users clear the value', () => {
     const onChange = vi.fn()
     render(<OverlapInput value={50} onChange={onChange} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
-    expect(onChange).toHaveBeenCalledWith(0)
+    expect(onChange).toHaveBeenCalledWith(1)
   })
 
-  it('should report out-of-range text edits before blur', async () => {
-    const user = userEvent.setup()
+  it('should clamp out-of-range text edits before updating state', () => {
     const onChange = vi.fn()
     render(<OverlapInput value={50} max={100} onChange={onChange} />)
 
-    const input = screen.getByRole('textbox')
-    await user.clear(input)
-    await user.type(input, '150')
-
-    expect(onChange).toHaveBeenLastCalledWith(150)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '150' } })
+    expect(onChange).toHaveBeenLastCalledWith(100)
   })
 })

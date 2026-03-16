@@ -142,7 +142,7 @@ describe('ParamItem', () => {
       expect(input).toHaveValue('0')
     })
 
-    it('should report out-of-range text edits before blur', async () => {
+    it('should clamp out-of-range text edits before updating state', async () => {
       const user = userEvent.setup()
       const StatefulParamItem = () => {
         const [value, setValue] = useState(defaultProps.value)
@@ -165,8 +165,8 @@ describe('ParamItem', () => {
       await user.clear(input)
       await user.type(input, '1.5')
 
-      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 1.5)
-      expect(input).toHaveValue('1.5')
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 1)
+      expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '100')
     })
 
     it('should pass scaled value to slider when max < 5', () => {

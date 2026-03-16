@@ -68,10 +68,10 @@ function CompoundNumberInput({
   ...props
 }: CompoundNumberInputProps) {
   const { value, defaultValue, min, max, step, disabled, readOnly, required, id, name, onBlur, ...inputProps } = props
+  const emptyValue = defaultValue ?? min ?? 0
 
   return (
     <NumberField
-      allowOutOfRange
       value={value}
       defaultValue={defaultValue}
       min={min}
@@ -82,7 +82,7 @@ function CompoundNumberInput({
       required={required}
       id={id}
       name={name}
-      onValueChange={value => onChange(value ?? 0)}
+      onValueChange={value => onChange(value ?? emptyValue)}
     >
       <NumberFieldGroup size={size}>
         <NumberFieldInput
