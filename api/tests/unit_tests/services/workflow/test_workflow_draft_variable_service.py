@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
@@ -194,7 +194,7 @@ class TestDraftVariableSaver:
             session=mock_session,
             app_id="test-app-id",
             node_id="start-node-id",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_execution_id="exec-id",
             user=mock_user,
         )
