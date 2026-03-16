@@ -22,10 +22,11 @@ const Header = ({
           <div className="py-[5px]">
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
-          <span className={cn(
-            'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent',
-            styles.instrumentSerif,
-          )}
+          <span
+            className={cn(
+              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent',
+              styles.instrumentSerif,
+            )}
           >
             {t('plansCommon.title.plans', { ns: 'billing' })}
           </span>
