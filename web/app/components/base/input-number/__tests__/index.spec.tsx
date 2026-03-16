@@ -309,7 +309,7 @@ describe('InputNumber Component', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} styleCss={{ color: 'red' }} />)
 
-    expect(screen.getByRole('textbox')).toHaveStyle({ color: 'red' })
+    expect(screen.getByRole('textbox')).toHaveStyle({ color: 'rgb(255, 0, 0)' })
   })
 
   it('applies controlWrapClassName to control buttons container', () => {
