@@ -3,6 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytest
+
+from dify_graph.file import File, FileTransferMethod, FileType
+from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
 
 
@@ -76,3 +80,32 @@ def test_remote_file_info_and_upload_config() -> None:
     dumped = config.model_dump(mode="json")
     assert dumped["file_upload_limit"] == 3
     assert dumped["attachment_image_file_size_limit"] == 10
+
+
+@pytest.mark.parametrize(
+    "formatter",
+    [
+        conversation_fields.format_files_contained,
+        message_fields.format_files_contained,
+    ],
+)
+def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPatch, formatter) -> None:
+    monkeypatch.setattr(File, "generate_url", lambda self, for_external=True: "https://preview.example/file")
+
+    file = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        remote_url="https://storage.example/source.pdf",
+        reference="dify-file-ref:opaque-upload-1",
+        filename="source.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=42,
+    )
+
+    serialized = formatter(file)
+
+    assert serialized["reference"] == "dify-file-ref:opaque-upload-1"
+    assert serialized["related_id"] == "dify-file-ref:opaque-upload-1"
+    assert serialized["remote_url"] == "https://storage.example/source.pdf"
+    assert serialized["url"] == "https://preview.example/file"
