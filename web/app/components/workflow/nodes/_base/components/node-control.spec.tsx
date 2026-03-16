@@ -3,10 +3,17 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import NodeControl from './node-control'
 
-const mockHandleNodeSelect = vi.fn()
-const mockSetInitShowLastRunTab = vi.fn()
-const mockSetPendingSingleRun = vi.fn()
-const mockCanRunBySingle = vi.fn(() => true)
+const {
+  mockHandleNodeSelect,
+  mockSetInitShowLastRunTab,
+  mockSetPendingSingleRun,
+  mockCanRunBySingle,
+} = vi.hoisted(() => ({
+  mockHandleNodeSelect: vi.fn(),
+  mockSetInitShowLastRunTab: vi.fn(),
+  mockSetPendingSingleRun: vi.fn(),
+  mockCanRunBySingle: vi.fn(() => true),
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
