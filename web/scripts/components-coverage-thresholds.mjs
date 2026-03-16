@@ -92,10 +92,10 @@ export const COMPONENT_MODULE_THRESHOLDS = {
     branches: 90,
   },
   'share': {
-    lines: 15,
-    statements: 15,
-    functions: 20,
-    branches: 20,
+    lines: 95,
+    statements: 95,
+    functions: 95,
+    branches: 95,
   },
   'signin': {
     lines: 95,
