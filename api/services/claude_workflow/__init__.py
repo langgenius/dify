@@ -1,6 +1,7 @@
 """Claude workflow schema helpers used by the import pipeline."""
 
 from .errors import (
+    ClaudeWorkflowCompilerError,
     ClaudeWorkflowSchemaErrorCode,
     ClaudeWorkflowSchemaValidationError,
     ClaudeWorkflowValidationIssue,
@@ -10,6 +11,7 @@ from .schema import ClaudeWorkflowDocument, parse_claude_workflow_document
 
 __all__ = [
     "ClaudeWorkflowDocument",
+    "ClaudeWorkflowCompilerError",
     "ClaudeWorkflowSchemaErrorCode",
     "ClaudeWorkflowSchemaValidationError",
     "ClaudeWorkflowValidationIssue",

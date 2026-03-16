@@ -38,3 +38,7 @@ class ClaudeWorkflowSchemaValidationError(ValueError):
     def __init__(self, errors: list[ClaudeWorkflowValidationIssue]) -> None:
         self.errors = errors
         super().__init__("Claude workflow schema validation failed")
+
+
+class ClaudeWorkflowCompilerError(ValueError):
+    """Raised when a validated Claude workflow cannot be compiled to Dify DSL."""

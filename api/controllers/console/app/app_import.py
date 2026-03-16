@@ -18,6 +18,7 @@ from fields.app_fields import (
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
+from services.claude_workflow.import_service import ClaudeWorkflowImportExecutionError, ClaudeWorkflowImportService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -72,21 +73,23 @@ class AppImportApi(Resource):
 
         # Create service with session
         with Session(db.engine) as session:
-            import_service = AppDslService(session)
-            # Import app
-            account = current_user
-            result = import_service.import_app(
-                account=account,
-                import_mode=args.mode,
-                yaml_content=args.yaml_content,
-                yaml_url=args.yaml_url,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-                app_id=args.app_id,
-            )
+            import_service = ClaudeWorkflowImportService(session)
+            try:
+                result = import_service.import_app(
+                    account=current_user,
+                    import_mode=args.mode,
+                    yaml_content=args.yaml_content,
+                    yaml_url=args.yaml_url,
+                    name=args.name,
+                    description=args.description,
+                    icon_type=args.icon_type,
+                    icon=args.icon,
+                    icon_background=args.icon_background,
+                    app_id=args.app_id,
+                )
+            except ClaudeWorkflowImportExecutionError as exc:
+                session.commit()
+                return exc.payload.model_dump(mode="json"), exc.status_code
             session.commit()
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private

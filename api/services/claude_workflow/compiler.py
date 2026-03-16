@@ -13,6 +13,7 @@ from typing import cast
 
 import yaml
 
+from .errors import ClaudeWorkflowCompilerError
 from .schema import ClaudeWorkflowDocument, CodeNode, EndNode, HttpRequestNode, IfElseNode, LlmNode
 
 DEFAULT_ICON_BACKGROUND = "#FFEAD5"
@@ -193,7 +194,7 @@ def _build_workflow_node(node: object, index: int) -> dict:
         }
         return _graph_node(node.id, node.title, "end", data, x=x, y=y, height=90)
 
-    raise TypeError(f"Unsupported node instance: {type(node)!r}")
+    raise ClaudeWorkflowCompilerError(f"Unsupported node instance: {type(node)!r}")
 
 
 def _build_if_else_case(raw_case: dict, node_id: str) -> dict:
@@ -270,7 +271,7 @@ def _selector_parts(raw_selector: object) -> list[str]:
         raw_selector = raw_selector.get("selector")
 
     if not isinstance(raw_selector, (list, tuple)) or len(raw_selector) != 2:
-        raise ValueError(f"Invalid selector payload: {raw_selector!r}")
+        raise ClaudeWorkflowCompilerError(f"Invalid selector payload: {raw_selector!r}")
 
     return [str(raw_selector[0]), str(raw_selector[1])]
 
