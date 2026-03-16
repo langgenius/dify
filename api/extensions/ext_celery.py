@@ -206,6 +206,13 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
+    if dify_config.ENABLE_ACEDATACLOUD_EXPLORE_SYNC_TASK:
+        imports.append("schedule.sync_acedatacloud_explore_task")
+        beat_schedule["sync_acedatacloud_explore_task"] = {
+            "task": "schedule.sync_acedatacloud_explore_task.sync_acedatacloud_explore_task",
+            "schedule": timedelta(minutes=30),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

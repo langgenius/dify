@@ -9,13 +9,12 @@ from sqlalchemy.orm import Session
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Account, App
-from models.model import RecommendedApp
+from models.model import RecommendedApp, Site
 
 logger = logging.getLogger(__name__)
 
 WORKFLOWS_DIR = Path(__file__).resolve().parent.parent.parent / "workflows"
 REDIS_KEY_PREFIX = "acedatacloud_workflow_imported:"
-REDIS_EXPLORE_KEY = "acedatacloud_explore_setup_done"
 REDIS_EXPIRY = 365 * 24 * 3600  # 1 year
 
 EXPLORE_CATEGORY = "AceDataCloud"
@@ -100,9 +99,7 @@ def _import_single_workflow(
         confirm_result = dsl_service.confirm_import(import_id=result.id, account=account)
         if confirm_result.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS):
             session.commit()
-            _mark_imported(
-                tenant_id=tenant_id, template_name=template_name, app_id=str(confirm_result.app_id or "")
-            )
+            _mark_imported(tenant_id=tenant_id, template_name=template_name, app_id=str(confirm_result.app_id or ""))
             logger.info("AceDataCloud: imported (confirmed) %s app_id=%s", template_name, confirm_result.app_id)
             return str(confirm_result.app_id) if confirm_result.app_id else None
         session.rollback()
@@ -114,15 +111,41 @@ def _import_single_workflow(
     return None
 
 
-def _register_explore_apps(*, session: Session, tenant_id: str, workflow_files: list[Path]) -> None:
-    """Register already-imported workflows in Explore. Does NOT import anything.
+def _ensure_site_exists(*, session: Session, app: App) -> None:
+    """Ensure the App has a Site record (required by the DB retrieval to display on Explore).
 
-    Idempotent: uses a Redis key so this only runs once.
+    If the app already has a Site, this is a no-op.
     """
-    if redis_client.exists(REDIS_EXPLORE_KEY):
+    existing_site = session.execute(select(Site.id).where(Site.app_id == app.id).limit(1)).scalar_one_or_none()
+    if existing_site:
         return
 
-    logger.info("AceDataCloud: registering Explore apps from tenant=%s", tenant_id)
+    site = Site(
+        app_id=app.id,
+        title=app.name,
+        icon_type=app.icon_type,
+        icon=app.icon,
+        icon_background=app.icon_background,
+        description=app.description or "",
+        default_language=EXPLORE_LANGUAGE,
+        customize_token_strategy="not_allow",
+        code=Site.generate_code(16),
+        created_by=app.created_by,
+        updated_by=app.updated_by,
+    )
+    session.add(site)
+    logger.info("AceDataCloud: created Site for app %s (%s)", app.name, app.id)
+
+
+def _register_explore_apps(*, session: Session, tenant_id: str, workflow_files: list[Path]) -> int:
+    """Register already-imported workflows in Explore. Does NOT import anything.
+
+    Fully idempotent via DB checks — safe to call repeatedly.
+    Creates both RecommendedApp and Site records as needed.
+
+    Returns the number of newly registered apps.
+    """
+    registered = 0
 
     for position, wf_file in enumerate(workflow_files):
         parsed = _parse_workflow_yaml(wf_file)
@@ -135,22 +158,25 @@ def _register_explore_apps(*, session: Session, tenant_id: str, workflow_files: 
             select(App.id).where(App.tenant_id == tenant_id, App.name == app_name).limit(1)
         ).scalar_one_or_none()
         if not app_id:
-            logger.warning("AceDataCloud: app not found for Explore: %s", wf_file.stem)
             continue
 
         app_id_str = str(app_id)
-
-        # Skip if already registered
-        if session.execute(
-            select(RecommendedApp.id).where(RecommendedApp.app_id == app_id_str).limit(1)
-        ).first():
-            continue
-
         app = session.get(App, app_id_str)
         if not app:
             continue
 
-        app.is_public = True
+        # Ensure app is public
+        if not app.is_public:
+            app.is_public = True
+
+        # Ensure Site record exists (DatabaseRecommendAppRetrieval skips apps without a Site)
+        _ensure_site_exists(session=session, app=app)
+
+        # Skip if already registered in Explore
+        if session.execute(select(RecommendedApp.id).where(RecommendedApp.app_id == app_id_str).limit(1)).first():
+            session.commit()
+            continue
+
         recommended = RecommendedApp(
             app_id=app_id_str,
             description={"text": parsed.get("app", {}).get("description", "")},
@@ -164,10 +190,10 @@ def _register_explore_apps(*, session: Session, tenant_id: str, workflow_files: 
         )
         session.add(recommended)
         session.commit()
+        registered += 1
         logger.info("AceDataCloud: added %s to Explore (app_id=%s)", wf_file.stem, app_id_str)
 
-    redis_client.setex(REDIS_EXPLORE_KEY, REDIS_EXPIRY, "1")
-    logger.info("AceDataCloud: Explore setup complete")
+    return registered
 
 
 @shared_task(
@@ -208,5 +234,5 @@ def import_acedatacloud_workflow_templates_task(
                 imported += 1
         logger.info("AceDataCloud: imported %d workflows for tenant=%s", imported, tenant_id)
 
-        # 2) Register in Explore if not done yet (idempotent, only runs once)
+        # 2) Register in Explore (idempotent, creates Site + RecommendedApp as needed)
         _register_explore_apps(session=session, tenant_id=tenant_id, workflow_files=workflow_files)

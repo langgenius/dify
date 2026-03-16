@@ -1328,6 +1328,12 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=60 * 60,
     )
 
+    # AceDataCloud Explore sync
+    ENABLE_ACEDATACLOUD_EXPLORE_SYNC_TASK: bool = Field(
+        description="Enable periodic sync of AceDataCloud workflow templates to the Explore page",
+        default=False,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
