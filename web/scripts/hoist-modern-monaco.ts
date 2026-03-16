@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer'
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,6 +22,7 @@ const MODERN_MONACO_PKG_PATH = path.join(MODERN_MONACO_DIR, 'package.json')
 const SHIKI_DIST_PATH = path.join(MODERN_MONACO_DIST_DIR, 'shiki.mjs')
 const TYPESCRIPT_PKG_PATH = path.join(ROOT_DIR, 'node_modules', 'typescript', 'package.json')
 const MODERN_MONACO_PUBLIC_DIR = path.join(HOIST_PUBLIC_DIR, 'modern-monaco')
+const HOIST_MANIFEST_PATH = path.join(MODERN_MONACO_PUBLIC_DIR, 'hoist-manifest.json')
 const TYPESCRIPT_SETUP_PATH = path.join(MODERN_MONACO_PUBLIC_DIR, 'lsp', 'typescript', 'setup.mjs')
 
 function parseArgs(argv: string[]): Args {
@@ -70,6 +71,16 @@ function log(message: string) {
 
 async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, 'utf8')) as T
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath)
+    return true
+  }
+  catch {
+    return false
+  }
 }
 
 function requireMatch(text: string, pattern: RegExp, description: string): string {
@@ -213,6 +224,10 @@ async function main() {
       rm(path.join(PUBLIC_DIR, localTypeScriptDir), { force: true, recursive: true }),
     ])
   }
+  else if (await pathExists(HOIST_MANIFEST_PATH)) {
+    log(`modern-monaco hoist cache hit: public/${HOIST_DIR_NAME}`)
+    return
+  }
 
   log(`Copying modern-monaco dist -> ${path.relative(ROOT_DIR, MODERN_MONACO_PUBLIC_DIR)}`)
   await rm(MODERN_MONACO_PUBLIC_DIR, { force: true, recursive: true })
@@ -252,7 +267,7 @@ async function main() {
     },
   }
 
-  await writeManifest(path.join(MODERN_MONACO_PUBLIC_DIR, 'hoist-manifest.json'), manifest)
+  await writeManifest(HOIST_MANIFEST_PATH, manifest)
 
   log('')
   log('modern-monaco hoist complete.')
