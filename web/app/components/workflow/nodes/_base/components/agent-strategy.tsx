@@ -153,6 +153,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   max={def.max}
                 />
                 <NumberField
+                  allowOutOfRange
                   value={value}
                   min={def.min}
                   max={def.max}

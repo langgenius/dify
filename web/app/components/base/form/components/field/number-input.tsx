@@ -57,6 +57,7 @@ const NumberInputField = ({
       <NumberField
         id={field.name}
         name={field.name}
+        allowOutOfRange
         value={field.state.value}
         min={min}
         max={max}
