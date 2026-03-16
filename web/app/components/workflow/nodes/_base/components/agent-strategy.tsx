@@ -123,7 +123,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         }
         case FormTypeEnum.textNumber: {
           const def = schema as CredentialFormSchemaNumberInput
-          if (!def.max || !def.min)
+          if (def.max == null || def.min == null)
             return false
 
           const defaultValue = schema.default ? Number.parseInt(schema.default) : 1

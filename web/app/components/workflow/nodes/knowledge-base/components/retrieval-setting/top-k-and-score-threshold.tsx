@@ -47,17 +47,11 @@ const TopKAndScoreThreshold = ({
 }: TopKAndScoreThresholdProps) => {
   const { t } = useTranslation()
   const handleTopKChange = useCallback((value: number) => {
-    let notOutRangeValue = Number.parseInt(value.toFixed(0))
-    notOutRangeValue = Math.max(TOP_K_VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(TOP_K_VALUE_LIMIT.max, notOutRangeValue)
-    onTopKChange?.(notOutRangeValue)
+    onTopKChange?.(Number.parseInt(value.toFixed(0)))
   }, [onTopKChange])
 
   const handleScoreThresholdChange = (value: number) => {
-    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(SCORE_THRESHOLD_VALUE_LIMIT.min, notOutRangeValue)
-    notOutRangeValue = Math.min(SCORE_THRESHOLD_VALUE_LIMIT.max, notOutRangeValue)
-    onScoreThresholdChange?.(notOutRangeValue)
+    onScoreThresholdChange?.(Number.parseFloat(value.toFixed(2)))
   }
 
   return (
