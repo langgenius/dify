@@ -24,9 +24,8 @@ describe('KeyWordNumber', () => {
 
     it('should render tooltip with question icon', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      // RiQuestionLine renders as an svg
       const container = screen.getByText(/form\.numberOfKeywords/).closest('div')?.parentElement
-      const questionIcon = container?.querySelector('svg')
+      const questionIcon = container?.querySelector('.i-ri-question-line')
       expect(questionIcon).toBeInTheDocument()
     })
 
