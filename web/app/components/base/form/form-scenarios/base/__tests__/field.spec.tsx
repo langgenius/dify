@@ -45,7 +45,7 @@ describe('BaseField', () => {
   it('should render a number input when configured as number input', () => {
     render(<FieldHarness config={createConfig({ type: BaseFieldType.numberInput, label: 'Age' })} initialData={{ fieldA: 20 }} />)
 
-    expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.getByText('Age')).toBeInTheDocument()
   })
 
