@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import (
@@ -29,7 +30,6 @@ from dify_graph.graph_events import (
     NodeRunStreamChunkEvent,
 )
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 
 
 class TestWorkflowBasedAppRunner:
@@ -44,7 +44,7 @@ class TestWorkflowBasedAppRunner:
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
         runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            variable_pool=VariablePool(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
@@ -83,7 +83,7 @@ class TestWorkflowBasedAppRunner:
     def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            variable_pool=VariablePool(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
@@ -140,7 +140,7 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            variable_pool=VariablePool(system_variables=default_system_variables()),
             start_at=0.0,
         )
         graph_runtime_state.register_paused_node("node-1")
@@ -183,7 +183,7 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=SystemVariable.default()),
+            variable_pool=VariablePool(system_variables=default_system_variables()),
             start_at=0.0,
         )
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))

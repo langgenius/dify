@@ -13,7 +13,11 @@ class _ToolRuntimeModel(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class ToolRuntimeHandle:
-    """Opaque graph-owned handle for a workflow-layer tool runtime."""
+    """Opaque graph-owned handle for a workflow-layer tool runtime.
+
+    Workflow-specific execution context must stay behind `raw` so the graph
+    contract does not absorb application-owned concepts.
+    """
 
     raw: object
 

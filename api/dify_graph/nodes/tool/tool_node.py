@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     BuiltinNodeTypes,
-    SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -20,8 +19,7 @@ from dify_graph.nodes.tool_runtime_entities import (
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
-from dify_graph.variables.segments import ArrayAnySegment, ArrayFileSegment
-from dify_graph.variables.variables import ArrayAnyVariable
+from dify_graph.variables.segments import ArrayFileSegment
 
 from .entities import ToolNodeData
 from .exc import (
@@ -121,15 +119,11 @@ class ToolNode(Node[ToolNodeData]):
             node_data=self.node_data,
             for_log=True,
         )
-        # get conversation id
-        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
-
         try:
             message_stream = self._runtime.invoke(
                 tool_runtime=tool_runtime,
                 tool_parameters=parameters,
                 workflow_call_depth=self.workflow_call_depth,
-                conversation_id=conversation_id.text if conversation_id else None,
                 provider_name=self.node_data.provider_name,
             )
         except ToolNodeError as e:
@@ -209,11 +203,6 @@ class ToolNode(Node[ToolNodeData]):
 
         return result
 
-    def _fetch_files(self, variable_pool: "VariablePool") -> list[File]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES])
-        assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
-        return list(variable.value) if variable else []
-
     def _transform_message(
         self,
         messages: Generator[ToolRuntimeMessage, None, None],
@@ -243,18 +232,22 @@ class ToolNode(Node[ToolNodeData]):
                 url = message.message.text
                 if message.meta:
                     transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                    tool_file_id = message.meta.get("tool_file_id")
                 else:
                     transfer_method = FileTransferMethod.TOOL_FILE
-
-                tool_file_id = str(url).split("/")[-1].split(".")[0]
+                    tool_file_id = None
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileError("tool message is missing tool_file_id metadata")
 
                 _stream, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not found")
+                if tool_file.mime_type is None:
+                    raise ToolFileError(f"tool file {tool_file_id} is missing mime type")
 
                 file_mapping: dict[str, Any] = {
                     "tool_file_id": tool_file_id,
-                    "type": get_file_type_by_mime_type(tool_file.mimetype),
+                    "type": get_file_type_by_mime_type(tool_file.mime_type),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
@@ -265,7 +258,9 @@ class ToolNode(Node[ToolNodeData]):
                 assert isinstance(message.message, ToolRuntimeMessage.TextMessage)
                 assert message.meta
 
-                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
+                tool_file_id = message.meta.get("tool_file_id")
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileError("tool blob message is missing tool_file_id metadata")
                 _stream, tool_file = self._tool_file_manager_factory.get_file_generator_by_tool_file_id(tool_file_id)
                 if not tool_file:
                     raise ToolFileError(f"tool file {tool_file_id} not exists")

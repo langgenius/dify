@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from core.workflow.file_reference import resolve_file_record_id
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from factories.file_factory import build_from_mapping
@@ -288,16 +289,21 @@ class WorkflowTool(Tool):
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [File.model_validate(f) for f in file]
+                        file_var_list = [
+                            # Workflow-as-tool can receive stored file payloads
+                            # from older runs that still include tenant_id.
+                            File.model_validate({key: item for key, item in f.items() if key != "tenant_id"})
+                            for f in file
+                        ]
                         for file in file_var_list:
                             file_dict: dict[str, str | None] = {
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
                             if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file.related_id
+                                file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file.related_id
+                                file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
                             elif file.transfer_method == FileTransferMethod.REMOTE_URL:
                                 file_dict["url"] = file.generate_url()
 
@@ -340,9 +346,10 @@ class WorkflowTool(Tool):
         return result, files
 
     def _update_file_mapping(self, file_dict: dict):
+        file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_dict.get("related_id")
+            file_dict["tool_file_id"] = file_id
         elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_dict.get("related_id")
+            file_dict["upload_file_id"] = file_id
         return file_dict

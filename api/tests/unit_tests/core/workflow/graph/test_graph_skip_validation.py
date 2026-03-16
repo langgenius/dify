@@ -5,11 +5,11 @@ from typing import Any
 import pytest
 
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import default_system_variables
 from dify_graph.graph import Graph
 from dify_graph.graph.validation import GraphValidationError
 from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -63,7 +63,7 @@ def _make_factory(graph_config: dict[str, Any]) -> DifyNodeFactory:
     )
     graph_runtime_state = GraphRuntimeState(
         variable_pool=VariablePool(
-            system_variables=SystemVariable.default(),
+            system_variables=default_system_variables(),
             user_inputs={},
             environment_variables=[],
         ),

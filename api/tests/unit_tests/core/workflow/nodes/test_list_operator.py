@@ -71,7 +71,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="image1.jpg",
             type=FileType.IMAGE,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related1",
             storage_key="",
@@ -79,7 +78,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="document1.pdf",
             type=FileType.DOCUMENT,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related2",
             storage_key="",
@@ -87,7 +85,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="image2.png",
             type=FileType.IMAGE,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related3",
             storage_key="",
@@ -95,7 +92,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="audio1.mp3",
             type=FileType.AUDIO,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related4",
             storage_key="",
@@ -119,14 +115,12 @@ def test_filter_files_by_type(list_operator_node):
         {
             "filename": "document1.pdf",
             "type": FileType.DOCUMENT,
-            "tenant_id": "tenant1",
             "transfer_method": FileTransferMethod.LOCAL_FILE,
             "related_id": "related2",
         },
         {
             "filename": "image2.png",
             "type": FileType.IMAGE,
-            "tenant_id": "tenant1",
             "transfer_method": FileTransferMethod.LOCAL_FILE,
             "related_id": "related3",
         },
@@ -135,7 +129,6 @@ def test_filter_files_by_type(list_operator_node):
     for expected_file, result_file in zip(expected_files, result.outputs["result"].value):
         assert expected_file["filename"] == result_file.filename
         assert expected_file["type"] == result_file.type
-        assert expected_file["tenant_id"] == result_file.tenant_id
         assert expected_file["transfer_method"] == result_file.transfer_method
         assert expected_file["related_id"] == result_file.related_id
 
@@ -143,7 +136,6 @@ def test_filter_files_by_type(list_operator_node):
 def test_get_file_extract_string_func():
     # Create a File object
     file = File(
-        tenant_id="test_tenant",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename="test_file.txt",
@@ -164,7 +156,6 @@ def test_get_file_extract_string_func():
 
     # Test with empty values
     empty_file = File(
-        tenant_id="test_tenant",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename=None,

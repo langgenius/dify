@@ -15,8 +15,13 @@ from sqlalchemy.sql.expression import and_, or_
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.trigger.constants import is_trigger_node_type
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import NodeType, SystemVariableKey
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
+from dify_graph.enums import NodeType
 from dify_graph.file.models import File
 from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.nodes.variable_assigner.common.helpers import get_updated_variables
@@ -912,7 +917,12 @@ class DraftVariableSaver:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
                     # just build files from the value.
-                    files = [File.model_validate(v) for v in value]
+                    files = [
+                        # Draft variable payloads may predate the removal of
+                        # File.tenant_id, so normalize the raw dict first.
+                        File.model_validate({key: item for key, item in v.items() if key != "tenant_id"})
+                        for v in value
+                    ]
                     if files:
                         value_seg = WorkflowDraftVariable.build_segment_with_type(SegmentType.ARRAY_FILE, files)
                     else:

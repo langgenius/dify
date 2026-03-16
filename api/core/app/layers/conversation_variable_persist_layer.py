@@ -1,12 +1,19 @@
+"""
+Persist conversation-scoped variable updates emitted by the graph engine.
+
+The graph package emits generic variable update events and stays unaware of
+conversation identity or storage concerns. This layer lives in the application
+core, listens to those generic events, and persists only the `conversation.*`
+scope updates that matter to chat applications.
+"""
+
 import logging
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.conversation_variable_updater import ConversationVariableUpdater
-from dify_graph.enums import BuiltinNodeTypes
+from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphEngineEvent, NodeRunSucceededEvent
-from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
-from dify_graph.variables import VariableBase
+from dify_graph.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
+from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -20,41 +27,22 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         pass
 
     def on_event(self, event: GraphEngineEvent) -> None:
-        if not isinstance(event, NodeRunSucceededEvent):
-            return
-        if event.node_type != BuiltinNodeTypes.VARIABLE_ASSIGNER:
-            return
-        if self.graph_runtime_state is None:
+        if not isinstance(event, NodeRunVariableUpdatedEvent):
             return
 
-        updated_variables = common_helpers.get_updated_variables(event.node_run_result.process_data) or []
-        if not updated_variables:
+        selector = event.variable.selector
+        if len(selector) < 2:
+            logger.warning("Conversation variable selector invalid. selector=%s", selector)
             return
 
-        conversation_id = self.graph_runtime_state.system_variable.conversation_id
+        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         if conversation_id is None:
             return
 
-        updated_any = False
-        for item in updated_variables:
-            selector = item.selector
-            if len(selector) < 2:
-                logger.warning("Conversation variable selector invalid. selector=%s", selector)
-                continue
-            if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
-                continue
-            variable = self.graph_runtime_state.variable_pool.get(selector)
-            if not isinstance(variable, VariableBase):
-                logger.warning(
-                    "Conversation variable not found in variable pool. selector=%s",
-                    selector,
-                )
-                continue
-            self._conversation_variable_updater.update(conversation_id=conversation_id, variable=variable)
-            updated_any = True
+        if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
+            return
 
-        if updated_any:
-            self._conversation_variable_updater.flush()
+        self._conversation_variable_updater.update(conversation_id=conversation_id, variable=event.variable)
 
     def on_graph_end(self, error: Exception | None) -> None:
         pass

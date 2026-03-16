@@ -5,9 +5,10 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow import node_factory
+from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import BuiltinNodeTypes, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.code.entities import CodeLanguage
 from dify_graph.variables.segments import StringSegment
 
@@ -139,6 +140,37 @@ class TestDefaultWorkflowCodeExecutor:
         assert executor.is_execution_error(RuntimeError("boom")) is False
 
 
+class TestCodeExecutorJinja2TemplateRenderer:
+    def test_render_template_delegates_to_code_executor(self, monkeypatch):
+        renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
+        execute_workflow_code_template = MagicMock(return_value={"result": "Hello workflow"})
+        monkeypatch.setattr(
+            workflow_template_rendering.CodeExecutor,
+            "execute_workflow_code_template",
+            execute_workflow_code_template,
+        )
+
+        result = renderer.render_template("Hello {{ name }}", {"name": "workflow"})
+
+        assert result == "Hello workflow"
+        execute_workflow_code_template.assert_called_once_with(
+            language=CodeLanguage.JINJA2,
+            code="Hello {{ name }}",
+            inputs={"name": "workflow"},
+        )
+
+    def test_render_template_wraps_code_execution_errors(self, monkeypatch):
+        renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
+        monkeypatch.setattr(
+            workflow_template_rendering.CodeExecutor,
+            "execute_workflow_code_template",
+            MagicMock(side_effect=workflow_template_rendering.CodeExecutionError("sandbox failed")),
+        )
+
+        with pytest.raises(workflow_template_rendering.TemplateRenderError, match="sandbox failed"):
+            renderer.render_template("{{ broken }}", {})
+
+
 class TestDifyNodeFactoryInit:
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
@@ -220,8 +252,7 @@ class TestDifyNodeFactoryInit:
 
         resolve_dify_context.assert_called_once_with(graph_init_params.run_context)
         build_dify_model_access.assert_called_once_with(dify_context)
-        renderer_factory.assert_called_once()
-        assert renderer_factory.call_args.kwargs["code_executor"] is factory._code_executor
+        renderer_factory.assert_called_once_with()
         assert factory.graph_init_params is graph_init_params
         assert factory.graph_runtime_state is graph_runtime_state
         assert factory._dify_context is dify_context
@@ -278,8 +309,13 @@ class TestDifyNodeFactoryCreateNode:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = sentinel.graph_runtime_state
-        factory._dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id")
+        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory._dify_context = SimpleNamespace(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
@@ -341,7 +377,7 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
+        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
         latest_node_class.assert_not_called()
 
     def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch, factory):
@@ -361,7 +397,7 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
+        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name"),
@@ -402,7 +438,7 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["id"] == "node-id"
         _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=node_type)
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
+        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
         if constructor_name == "CodeNode":
             assert kwargs["code_executor"] is sentinel.code_executor
@@ -419,7 +455,13 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
             assert kwargs["runtime"] is sentinel.human_input_runtime
-            form_repository_impl.assert_called_once_with(tenant_id="tenant-id", app_id="app-id")
+            form_repository_impl.assert_called_once_with(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                workflow_execution_id=None,
+                invoke_source=InvokeFrom.DEBUGGER,
+                submission_actor_id="user-id",
+            )
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client
@@ -445,6 +487,7 @@ class TestDifyNodeFactoryCreateNode:
                     "http_client": sentinel.http_client,
                     "llm_file_saver": sentinel.llm_file_saver,
                     "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    "template_renderer": sentinel.jinja2_template_renderer,
                 },
             ),
             (
@@ -501,7 +544,7 @@ class TestDifyNodeFactoryCreateNode:
         assert constructor_kwargs["id"] == "node-id"
         _assert_typed_node_config(constructor_kwargs["config"], node_id="node-id", node_type=node_type)
         assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert constructor_kwargs["graph_runtime_state"] is sentinel.graph_runtime_state
+        assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state
         assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
         assert constructor_kwargs["model_factory"] is sentinel.model_factory
         assert constructor_kwargs["model_instance"] is sentinel.model_instance
@@ -584,9 +627,7 @@ class TestDifyNodeFactoryMemory:
         )
 
         assert result is sentinel.memory
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(
-            ["sys", SystemVariableKey.CONVERSATION_ID]
-        )
+        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
         fetch_memory.assert_called_once_with(
             conversation_id="conversation-id",
             app_id="app-id",

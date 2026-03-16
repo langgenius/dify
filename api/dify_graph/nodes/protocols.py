@@ -4,7 +4,6 @@ from typing import Any, Protocol
 import httpx
 
 from dify_graph.file import File
-from dify_graph.file.models import ToolFile
 
 
 class HttpClientProtocol(Protocol):
@@ -35,13 +34,12 @@ class ToolFileManagerProtocol(Protocol):
     def create_file_by_raw(
         self,
         *,
-        conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
     ) -> Any: ...
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]: ...
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]: ...
 
 
 class FileReferenceFactoryProtocol(Protocol):

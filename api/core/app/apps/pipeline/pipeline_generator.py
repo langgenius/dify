@@ -18,6 +18,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -34,11 +35,12 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import DifyCoreRepositoryFactory
+from core.repositories.factory import (
+    DifyCoreRepositoryFactory,
+    WorkflowExecutionRepository,
+    WorkflowNodeExecutionRepository,
+)
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
-from dify_graph.repositories.draft_variable_repository import DraftVariableSaverFactory
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from libs.flask_utils import preserve_flask_contexts

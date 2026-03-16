@@ -10,12 +10,12 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.file.file_manager import file_manager
 from dify_graph.graph import Graph
 from dify_graph.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -55,7 +55,7 @@ def init_http_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -191,6 +191,7 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
+    from core.workflow.system_variables import build_system_variables
     from dify_graph.enums import BuiltinNodeTypes
     from dify_graph.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
@@ -200,11 +201,10 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     from dify_graph.nodes.http_request.exc import AuthorizationConfigError
     from dify_graph.nodes.http_request.executor import Executor
     from dify_graph.runtime import VariablePool
-    from dify_graph.system_variable import SystemVariable
 
     # Create variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="test", files=[]),
+        system_variables=build_system_variables(user_id="test", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -702,7 +702,7 @@ def test_nested_object_variable_selector(setup_http_mock):
 
     # Create independent variable pool for this test only
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],

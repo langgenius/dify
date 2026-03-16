@@ -413,7 +413,7 @@ class TestTencentDataTrace:
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
                 ) as mock_repo:
-                    mock_repo.return_value.get_by_workflow_run.return_value = mock_executions
+                    mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
 
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 

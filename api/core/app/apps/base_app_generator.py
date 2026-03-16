@@ -3,15 +3,16 @@ from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.enums import NodeType
-from dify_graph.file import File, FileUploadConfig
-from dify_graph.repositories.draft_variable_repository import (
+from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
     DraftVariableSaverFactory,
     NoopDraftVariableSaver,
 )
+from core.app.entities.app_invoke_entities import InvokeFrom
+from dify_graph.enums import NodeType
+from dify_graph.file import File, FileUploadConfig
 from dify_graph.variables.input_entities import VariableEntityType
+from extensions.ext_database import db
 from factories import file_factory
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
@@ -19,6 +20,40 @@ from services.workflow_draft_variable_service import DraftVariableSaver as Draft
 
 if TYPE_CHECKING:
     from dify_graph.variables.input_entities import VariableEntity
+
+
+@final
+class _DebuggerDraftVariableSaver:
+    """Adapter that binds SQLAlchemy session setup outside the saver port."""
+
+    def __init__(
+        self,
+        *,
+        account: Account,
+        app_id: str,
+        node_id: str,
+        node_type: NodeType,
+        node_execution_id: str,
+        enclosing_node_id: str | None = None,
+    ) -> None:
+        self._account = account
+        self._app_id = app_id
+        self._node_id = node_id
+        self._node_type = node_type
+        self._node_execution_id = node_execution_id
+        self._enclosing_node_id = enclosing_node_id
+
+    def save(self, process_data: Mapping[str, Any] | None, outputs: Mapping[str, Any] | None) -> None:
+        with Session(db.engine) as session, session.begin():
+            DraftVariableSaverImpl(
+                session=session,
+                app_id=self._app_id,
+                node_id=self._node_id,
+                node_type=self._node_type,
+                node_execution_id=self._node_execution_id,
+                enclosing_node_id=self._enclosing_node_id,
+                user=self._account,
+            ).save(process_data, outputs)
 
 
 class BaseAppGenerator:
@@ -226,32 +261,30 @@ class BaseAppGenerator:
             assert isinstance(account, Account)
 
             def draft_var_saver_factory(
-                session: Session,
                 app_id: str,
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
                 enclosing_node_id: str | None = None,
             ) -> DraftVariableSaver:
-                return DraftVariableSaverImpl(
-                    session=session,
+                return _DebuggerDraftVariableSaver(
+                    account=account,
                     app_id=app_id,
                     node_id=node_id,
                     node_type=node_type,
                     node_execution_id=node_execution_id,
                     enclosing_node_id=enclosing_node_id,
-                    user=account,
                 )
         else:
 
             def draft_var_saver_factory(
-                session: Session,
                 app_id: str,
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
                 enclosing_node_id: str | None = None,
             ) -> DraftVariableSaver:
+                _ = app_id, node_id, node_type, node_execution_id, enclosing_node_id
                 return NoopDraftVariableSaver()
 
         return draft_var_saver_factory

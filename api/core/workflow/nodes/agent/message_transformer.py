@@ -37,6 +37,7 @@ class AgentMessageTransformer:
         parameters_for_log: dict[str, Any],
         user_id: str,
         tenant_id: str,
+        conversation_id: str | None,
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
@@ -47,7 +48,7 @@ class AgentMessageTransformer:
             messages=messages,
             user_id=user_id,
             tenant_id=tenant_id,
-            conversation_id=None,
+            conversation_id=conversation_id,
         )
 
         text = ""
@@ -70,10 +71,12 @@ class AgentMessageTransformer:
                 url = message.message.text
                 if message.meta:
                     transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                    tool_file_id = message.meta.get("tool_file_id")
                 else:
                     transfer_method = FileTransferMethod.TOOL_FILE
-
-                tool_file_id = str(url).split("/")[-1].split(".")[0]
+                    tool_file_id = None
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileNotFoundError("missing tool_file_id metadata")
 
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
@@ -96,7 +99,9 @@ class AgentMessageTransformer:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 assert message.meta
 
-                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
+                tool_file_id = message.meta.get("tool_file_id")
+                if not isinstance(tool_file_id, str) or not tool_file_id:
+                    raise ToolFileNotFoundError("missing tool_file_id metadata")
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)

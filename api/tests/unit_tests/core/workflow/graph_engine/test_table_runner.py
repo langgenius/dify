@@ -22,6 +22,9 @@ from typing import Any, cast
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
@@ -33,7 +36,6 @@ from dify_graph.graph_events import (
     GraphRunSucceededEvent,
 )
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -204,16 +206,18 @@ class WorkflowRunner:
                 }
             },
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
-        system_variables = SystemVariable(
+        system_variables = build_system_variables(
             user_id="test_user",
             app_id="test_app",
             workflow_id=graph_init_params.workflow_id,
             files=[],
             query=query,
         )
-        user_inputs = inputs if inputs is not None else {}
+        root_node_inputs = dict(inputs or {})
+        root_node_inputs.setdefault("query", query)
 
         # Extract conversation variables from workflow config
         conversation_variables = []
@@ -242,11 +246,16 @@ class WorkflowRunner:
             )
             conversation_variables.append(var)
 
-        variable_pool = VariablePool(
-            system_variables=system_variables,
-            user_inputs=user_inputs,
-            conversation_variables=conversation_variables,
+        root_node_id = get_default_root_node_id(graph_config)
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=system_variables,
+                conversation_variables=conversation_variables,
+            ),
         )
+        add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=root_node_inputs)
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
@@ -260,7 +269,7 @@ class WorkflowRunner:
         graph = Graph.init(
             graph_config=graph_config,
             node_factory=node_factory,
-            root_node_id=get_default_root_node_id(graph_config),
+            root_node_id=root_node_id,
         )
 
         return graph, graph_runtime_state

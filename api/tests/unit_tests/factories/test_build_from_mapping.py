@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from httpx import Response
 
+from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from factories.file_factory import (
     File,
     FileTransferMethod,
@@ -99,7 +100,37 @@ def test_build_from_mapping_backward_compatibility(mock_upload_file):
     assert isinstance(file, File)
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
-    assert file.related_id == TEST_UPLOAD_FILE_ID
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+
+
+def test_build_from_mapping_accepts_opaque_reference_for_local_file(mock_upload_file):
+    mapping = {
+        "transfer_method": "local_file",
+        "reference": build_file_reference(record_id=TEST_UPLOAD_FILE_ID, storage_key="test_key"),
+        "type": "image",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert isinstance(file, File)
+    assert file.transfer_method == FileTransferMethod.LOCAL_FILE
+    assert file.type == FileType.IMAGE
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+
+
+def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_file):
+    mapping = {
+        "transfer_method": "tool_file",
+        "related_id": build_file_reference(record_id=TEST_TOOL_FILE_ID, storage_key="tool_file.pdf"),
+        "type": "document",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
+
+    assert isinstance(file, File)
+    assert file.transfer_method == FileTransferMethod.TOOL_FILE
+    assert file.type == FileType.DOCUMENT
+    assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
 
 
 @pytest.mark.parametrize(

@@ -4,17 +4,34 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from dify_graph.entities import GraphInitParams
 from dify_graph.graph import Graph
-from dify_graph.graph_events.node import NodeRunSucceededEvent
+from dify_graph.graph_events.node import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.v1 import VariableAssignerNode
 from dify_graph.nodes.variable_assigner.v1.node_data import WriteMode
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayStringVariable, StringVariable
 
 DEFAULT_NODE_ID = "node_id"
+
+
+def _build_variable_pool(
+    *,
+    conversation_id: str,
+    conversation_variables: list[StringVariable | ArrayStringVariable],
+) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(
+        variable_pool,
+        build_bootstrap_variables(
+            system_variables=build_system_variables(conversation_id=conversation_id),
+            conversation_variables=conversation_variables,
+        ),
+    )
+    return variable_pool
 
 
 def test_overwrite_string_variable():
@@ -70,10 +87,8 @@ def test_overwrite_string_variable():
     conversation_id = str(uuid.uuid4())
 
     # construct variable pool
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id=conversation_id),
-        user_inputs={},
-        environment_variables=[],
+    variable_pool = _build_variable_pool(
+        conversation_id=conversation_id,
         conversation_variables=[conversation_variable],
     )
 
@@ -107,16 +122,14 @@ def test_overwrite_string_variable():
     )
 
     events = list(node.run())
+    updated_event = next(event for event in events if isinstance(event, NodeRunVariableUpdatedEvent))
     succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
     updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
     assert updated_variables is not None
     assert updated_variables[0].name == conversation_variable.name
     assert updated_variables[0].new_value == input_variable.value
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.value == "the second value"
-    assert got.to_object() == "the second value"
+    assert updated_event.variable.value == "the second value"
+    assert tuple(updated_event.variable.selector) == ("conversation", conversation_variable.name)
 
 
 def test_append_variable_to_array():
@@ -171,10 +184,8 @@ def test_append_variable_to_array():
     )
     conversation_id = str(uuid.uuid4())
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id=conversation_id),
-        user_inputs={},
-        environment_variables=[],
+    variable_pool = _build_variable_pool(
+        conversation_id=conversation_id,
         conversation_variables=[conversation_variable],
     )
     variable_pool.add(
@@ -207,15 +218,13 @@ def test_append_variable_to_array():
     )
 
     events = list(node.run())
+    updated_event = next(event for event in events if isinstance(event, NodeRunVariableUpdatedEvent))
     succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
     updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
     assert updated_variables is not None
     assert updated_variables[0].name == conversation_variable.name
     assert updated_variables[0].new_value == ["the first value", "the second value"]
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == ["the first value", "the second value"]
+    assert updated_event.variable.value == ["the first value", "the second value"]
 
 
 def test_clear_array():
@@ -264,10 +273,8 @@ def test_clear_array():
     )
 
     conversation_id = str(uuid.uuid4())
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(conversation_id=conversation_id),
-        user_inputs={},
-        environment_variables=[],
+    variable_pool = _build_variable_pool(
+        conversation_id=conversation_id,
         conversation_variables=[conversation_variable],
     )
 
@@ -296,12 +303,10 @@ def test_clear_array():
     )
 
     events = list(node.run())
+    updated_event = next(event for event in events if isinstance(event, NodeRunVariableUpdatedEvent))
     succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
     updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
     assert updated_variables is not None
     assert updated_variables[0].name == conversation_variable.name
     assert updated_variables[0].new_value == []
-
-    got = variable_pool.get(["conversation", conversation_variable.name])
-    assert got is not None
-    assert got.to_object() == []
+    assert updated_event.variable.value == []

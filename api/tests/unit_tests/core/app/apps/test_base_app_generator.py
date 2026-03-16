@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -489,7 +487,6 @@ class TestBaseAppGeneratorExtras:
 
         factory = base_app_generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account)
         saver = factory(
-            session=MagicMock(),
             app_id="app-id",
             node_id="node-id",
             node_type=BuiltinNodeTypes.START,

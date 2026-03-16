@@ -15,7 +15,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from dify_graph.file import helpers as file_helpers
 from dify_graph.variables.segment_group import SegmentGroup
 from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment

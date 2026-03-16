@@ -5,9 +5,11 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.system_variables import SystemVariableKey, get_system_segment
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, SystemVariableKey, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionMetadataKey
 from dify_graph.node_events import NodeRunResult, StreamCompletedEvent
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
@@ -54,11 +56,11 @@ class DatasourceNode(Node[DatasourceNodeData]):
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
-        datasource_type_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
+        datasource_type_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_TYPE)
         if not datasource_type_segment:
             raise DatasourceNodeError("Datasource type is not set")
         datasource_type = str(datasource_type_segment.value) if datasource_type_segment.value else None
-        datasource_info_segment = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO])
+        datasource_info_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_INFO)
         if not datasource_info_segment:
             raise DatasourceNodeError("Datasource info is not set")
         datasource_info_value = datasource_info_segment.value
@@ -131,12 +133,14 @@ class DatasourceNode(Node[DatasourceNodeData]):
                         )
                     )
                 case DatasourceProviderType.LOCAL_FILE:
-                    related_id = datasource_info.get("related_id")
-                    if not related_id:
+                    file_id = resolve_file_record_id(
+                        datasource_info.get("reference") or datasource_info.get("related_id")
+                    )
+                    if not file_id:
                         raise DatasourceNodeError("File is not exist")
 
                     file_info = self.datasource_manager.get_upload_file_by_id(
-                        file_id=related_id, tenant_id=dify_ctx.tenant_id
+                        file_id=file_id, tenant_id=dify_ctx.tenant_id
                     )
                     variable_pool.add([self._node_id, "file"], file_info)
                     # variable_pool.add([self.node_id, "file"], file_info.to_dict())

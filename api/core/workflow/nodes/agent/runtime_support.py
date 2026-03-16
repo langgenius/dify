@@ -17,10 +17,9 @@ from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
-from dify_graph.enums import SystemVariableKey
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from dify_graph.runtime import VariablePool
-from dify_graph.variables.segments import StringSegment
 from extensions.ext_database import db
 from models.model import Conversation
 
@@ -224,10 +223,9 @@ class AgentRuntimeSupport:
         app_id: str,
         model_instance: ModelInstance,
     ) -> TokenBufferMemory | None:
-        conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
-        if not isinstance(conversation_id_variable, StringSegment):
+        conversation_id = get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
+        if conversation_id is None:
             return None
-        conversation_id = conversation_id_variable.value
 
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from dify_graph.variables.variables import StringVariable

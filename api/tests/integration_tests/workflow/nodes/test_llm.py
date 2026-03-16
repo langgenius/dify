@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
+from core.workflow.system_variables import build_system_variables
 from dify_graph.enums import WorkflowNodeExecutionStatus
 from dify_graph.node_events import StreamCompletedEvent
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
@@ -15,7 +16,6 @@ from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.nodes.protocols import HttpClientProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from extensions.ext_database import db
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -53,7 +53,7 @@ def init_llm_node(config: dict) -> LLMNode:
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="aaa",
             app_id=app_id,
             workflow_id=workflow_id,

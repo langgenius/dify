@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import Field
 
 from dify_graph.entities.pause_reason import PauseReason
+from dify_graph.variables.variables import Variable
 
 from .base import GraphNodeEventBase
 
@@ -37,6 +38,12 @@ class NodeRunRetrieverResourceEvent(GraphNodeEventBase):
 class NodeRunSucceededEvent(GraphNodeEventBase):
     start_at: datetime = Field(..., description="node start time")
     finished_at: datetime | None = Field(default=None, description="node finish time")
+
+
+class NodeRunVariableUpdatedEvent(GraphNodeEventBase):
+    """Request that the engine apply a variable update before downstream observers continue."""
+
+    variable: Variable = Field(..., description="Updated variable payload to apply.")
 
 
 class NodeRunFailedEvent(GraphNodeEventBase):

@@ -25,9 +25,9 @@ from dify_graph.nodes.llm import (
     llm_utils,
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.protocols import TemplateRenderer
 from dify_graph.nodes.llm.runtime_protocols import PreparedLLMProtocol, PromptMessageSerializerProtocol
 from dify_graph.nodes.protocols import HttpClientProtocol
+from dify_graph.template_rendering import Jinja2TemplateRenderer
 from dify_graph.utils.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -62,7 +62,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     _prompt_message_serializer: PromptMessageSerializerProtocol
     _model_instance: PreparedLLMProtocol
     _memory: PromptMessageMemory | None
-    _template_renderer: TemplateRenderer
+    _template_renderer: Jinja2TemplateRenderer
 
     def __init__(
         self,
@@ -75,7 +75,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         model_factory: object | None = None,
         model_instance: PreparedLLMProtocol,
         http_client: HttpClientProtocol,
-        template_renderer: TemplateRenderer,
+        template_renderer: Jinja2TemplateRenderer,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver,
         prompt_message_serializer: PromptMessageSerializerProtocol | None = None,

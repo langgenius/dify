@@ -17,10 +17,11 @@ from typing import Any, Union
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.system_variables import SystemVariableKey
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import WorkflowExecution, WorkflowNodeExecution
 from dify_graph.enums import (
-    SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
@@ -43,8 +44,6 @@ from dify_graph.graph_events import (
     NodeRunSucceededEvent,
 )
 from dify_graph.node_events import NodeRunResult
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from libs.datetime_utils import naive_utc_now
 
 

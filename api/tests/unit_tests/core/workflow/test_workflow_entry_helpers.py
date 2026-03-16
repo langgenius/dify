@@ -7,6 +7,7 @@ import pytest
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow import workflow_entry
+from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import NodeType
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -224,6 +225,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
             patch.object(
                 workflow_entry.WorkflowEntry,
@@ -260,6 +262,11 @@ class TestWorkflowEntrySingleStepRun:
             variable_mapping={},
             user_inputs={"question": "hello"},
         )
+        add_node_inputs_to_pool.assert_called_once_with(
+            sentinel.variable_pool,
+            node_id="node-id",
+            inputs={"question": "hello"},
+        )
         mapping_user_inputs_to_variable_pool.assert_called_once_with(
             variable_mapping={},
             user_inputs={"question": "hello"},
@@ -286,6 +293,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs_to_pool,
             patch.object(workflow_entry, "load_into_variable_pool") as load_into_variable_pool,
             patch.object(
                 workflow_entry.WorkflowEntry,
@@ -317,6 +325,11 @@ class TestWorkflowEntrySingleStepRun:
         assert node.id == "node-id"
         assert list(generator) == ["event"]
         load_into_variable_pool.assert_called_once()
+        add_node_inputs_to_pool.assert_called_once_with(
+            sentinel.variable_pool,
+            node_id="node-id",
+            inputs={"question": "hello"},
+        )
         mapping_user_inputs_to_variable_pool.assert_not_called()
 
     def test_wraps_traced_node_run_failures(self):
@@ -339,6 +352,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "DifyNodeFactory") as dify_node_factory,
+            patch.object(workflow_entry, "add_node_inputs_to_pool"),
             patch.object(workflow_entry, "load_into_variable_pool"),
             patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool"),
             patch.object(
@@ -438,8 +452,9 @@ class TestWorkflowEntryHelpers:
         )
 
         with (
-            patch.object(workflow_entry.SystemVariable, "default", return_value=sentinel.system_variables),
+            patch.object(workflow_entry, "default_system_variables", return_value=sentinel.system_variables),
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool) as variable_pool_cls,
+            patch.object(workflow_entry, "add_variables_to_pool") as add_variables_to_pool,
             patch.object(
                 workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params
             ) as graph_init_params,
@@ -469,11 +484,8 @@ class TestWorkflowEntryHelpers:
 
         assert node.id == "node-id"
         assert list(generator) == ["event"]
-        variable_pool_cls.assert_called_once_with(
-            system_variables=sentinel.system_variables,
-            user_inputs={},
-            environment_variables=[],
-        )
+        variable_pool_cls.assert_called_once_with()
+        add_variables_to_pool.assert_called_once_with(sentinel.variable_pool, sentinel.system_variables)
         build_dify_run_context.assert_called_once_with(
             tenant_id="tenant-id",
             app_id="",
@@ -488,6 +500,7 @@ class TestWorkflowEntryHelpers:
             ),
             run_context={"_dify": "context"},
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
         dify_node_factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
@@ -524,8 +537,9 @@ class TestWorkflowEntryHelpers:
         )
 
         with (
-            patch.object(workflow_entry.SystemVariable, "default", return_value=sentinel.system_variables),
+            patch.object(workflow_entry, "default_system_variables", return_value=sentinel.system_variables),
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool),
+            patch.object(workflow_entry, "add_variables_to_pool"),
             patch.object(workflow_entry, "GraphInitParams", return_value=sentinel.graph_init_params),
             patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -548,7 +562,6 @@ class TestWorkflowEntryHelpers:
 
     def test_handle_special_values_serializes_nested_files(self):
         file = File(
-            tenant_id="tenant-id",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image.png",

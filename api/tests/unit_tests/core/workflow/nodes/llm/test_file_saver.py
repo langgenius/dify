@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.file import FileTransferMethod, FileType
 from dify_graph.nodes.llm.file_saver import (
     FileSaverImpl,
@@ -14,6 +13,7 @@ from dify_graph.nodes.llm.file_saver import (
     _get_extension,
     _validate_extension_override,
 )
+from dify_graph.nodes.protocols import ToolFileManagerProtocol
 
 _PNG_DATA = b"\x89PNG\r\n\x1a\n"
 
@@ -30,7 +30,7 @@ class TestFileSaverImpl:
         mock_tool_file.id = _gen_id()
         mock_tool_file.name = f"{_gen_id()}.png"
         mock_tool_file.file_key = "test-file-key"
-        mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManager)
+        mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManagerProtocol)
         mocked_tool_file_manager.create_file_by_raw.return_value = mock_tool_file
         file_reference = MagicMock()
         file_reference_factory = MagicMock()
@@ -47,7 +47,6 @@ class TestFileSaverImpl:
         assert file is file_reference
 
         mocked_tool_file_manager.create_file_by_raw.assert_called_once_with(
-            conversation_id=None,
             file_binary=_PNG_DATA,
             mimetype=mime_type,
         )

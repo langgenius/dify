@@ -9,13 +9,11 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
     BuiltinNodeTypes,
     NodeType,
-    SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -113,6 +111,7 @@ class LLMNode(Node[LLMNodeData]):
     _jinja2_template_renderer: Jinja2TemplateRenderer | None
     _model_instance: PreparedLLMProtocol
     _memory: PromptMessageMemory | None
+    _default_query_selector: tuple[str, ...] | None
 
     def __init__(
         self,
@@ -130,6 +129,7 @@ class LLMNode(Node[LLMNodeData]):
         prompt_message_serializer: PromptMessageSerializerProtocol,
         retriever_attachment_loader: RetrieverAttachmentLoaderProtocol | None = None,
         jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
+        default_query_selector: Sequence[str] | None = None,
     ):
         super().__init__(
             id=id,
@@ -148,6 +148,7 @@ class LLMNode(Node[LLMNodeData]):
         self._prompt_message_serializer = prompt_message_serializer
         self._retriever_attachment_loader = retriever_attachment_loader
         self._jinja2_template_renderer = jinja2_template_renderer
+        self._default_query_selector = tuple(default_query_selector) if default_query_selector is not None else None
 
     @classmethod
     def version(cls) -> str:
@@ -214,8 +215,10 @@ class LLMNode(Node[LLMNodeData]):
             query: str | None = None
             if self.node_data.memory:
                 query = self.node_data.memory.query_prompt_template
-                if not query and (
-                    query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
+                if (
+                    not query
+                    and self._default_query_selector
+                    and (query_variable := variable_pool.get(self._default_query_selector))
                 ):
                     query = query_variable.text
 
@@ -973,9 +976,6 @@ class LLMNode(Node[LLMNodeData]):
 
         if node_data.vision.enabled:
             variable_mapping["#files#"] = node_data.vision.configs.variable_selector
-
-        if node_data.memory:
-            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
         if node_data.prompt_config:
             enable_jinja = False

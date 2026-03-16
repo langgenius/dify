@@ -14,9 +14,9 @@ from core.app.llm.model_access import (
 )
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities import GraphInitParams
 from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.model_runtime.entities.common_entities import I18nObject
@@ -44,7 +44,6 @@ from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -60,6 +59,24 @@ class MockTokenBufferMemory:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
         return self.history_messages
+
+
+def _build_prepared_llm_mock() -> mock.MagicMock:
+    model_instance = mock.MagicMock()
+    model_instance.provider = "openai"
+    model_instance.model_name = "gpt-3.5-turbo"
+    model_instance.parameters = {}
+    model_instance.stop = ()
+    model_instance.get_llm_num_tokens.return_value = 0
+    model_instance.get_model_schema.return_value = AIModelEntity(
+        model="gpt-3.5-turbo",
+        label=I18nObject(en_US="GPT-3.5 Turbo"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+        model_properties={},
+    )
+    model_instance.is_structured_output_parse_error.return_value = False
+    return model_instance
 
 
 @pytest.fixture
@@ -98,7 +115,7 @@ def graph_init_params() -> GraphInitParams:
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable.default(),
+        system_variables=default_system_variables(),
         user_inputs={},
     )
     return GraphRuntimeState(
@@ -127,7 +144,7 @@ def llm_node(
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
-        model_instance=mock.MagicMock(spec=ModelInstance),
+        model_instance=_build_prepared_llm_mock(),
         llm_file_saver=mock_file_saver,
         prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
@@ -314,7 +331,6 @@ def test_dify_model_access_adapters_call_managers():
 def test_fetch_files_with_file_segment():
     file = File(
         id="1",
-        tenant_id="test",
         type=FileType.IMAGE,
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -332,7 +348,6 @@ def test_fetch_files_with_array_file_segment():
     files = [
         File(
             id="1",
-            tenant_id="test",
             type=FileType.IMAGE,
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -341,7 +356,6 @@ def test_fetch_files_with_array_file_segment():
         ),
         File(
             id="2",
-            tenant_id="test",
             type=FileType.IMAGE,
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -391,7 +405,6 @@ def test_fetch_files_with_non_existent_variable():
 # files = [
 #     File(
 #         id="1",
-#         tenant_id="test",
 #         type=FileType.IMAGE,
 #         filename="test1.jpg",
 #         transfer_method=FileTransferMethod.REMOTE_URL,
@@ -496,7 +509,6 @@ def test_fetch_files_with_non_existent_variable():
 #         sys_query=fake_query,
 #         sys_files=[
 #             File(
-#                 tenant_id="test",
 #                 type=FileType.IMAGE,
 #                 filename="test1.jpg",
 #                 transfer_method=FileTransferMethod.REMOTE_URL,
@@ -572,7 +584,6 @@ def test_fetch_files_with_non_existent_variable():
 #         + [UserPromptMessage(content=fake_query)],
 #         file_variables={
 #             "input.image": File(
-#                 tenant_id="test",
 #                 type=FileType.IMAGE,
 #                 filename="test1.jpg",
 #                 transfer_method=FileTransferMethod.REMOTE_URL,
@@ -656,7 +667,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
         AssistantPromptMessage(content="first answer"),
     ]
 
-    model_instance = mock.MagicMock(spec=ModelInstance)
+    model_instance = _build_prepared_llm_mock()
 
     memory_config = MemoryConfig(
         role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
@@ -693,7 +704,7 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
-        model_instance=mock.MagicMock(spec=ModelInstance),
+        model_instance=_build_prepared_llm_mock(),
         llm_file_saver=mock_file_saver,
         prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
@@ -711,7 +722,6 @@ class TestLLMNodeSaveMultiModalImageOutput:
         )
         mock_file = File(
             id=str(uuid.uuid4()),
-            tenant_id="1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
@@ -742,7 +752,6 @@ class TestLLMNodeSaveMultiModalImageOutput:
         )
         mock_file = File(
             id=str(uuid.uuid4()),
-            tenant_id="1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
@@ -797,7 +806,6 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
 
         mock_saved_file = File(
             id=str(uuid.uuid4()),
-            tenant_id="1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             filename="test.png",

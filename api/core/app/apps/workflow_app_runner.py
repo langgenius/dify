@@ -34,6 +34,13 @@ from core.app.entities.queue_entities import (
 )
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
+from core.workflow.system_variables import (
+    build_bootstrap_variables,
+    default_system_variables,
+    inject_default_system_variable_mappings,
+)
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -68,7 +75,6 @@ from dify_graph.graph_events import (
 )
 from dify_graph.graph_events.graph import GraphRunAbortedEvent
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from dify_graph.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
@@ -131,6 +137,7 @@ class WorkflowBasedAppRunner:
                 invoke_from=invoke_from,
             ),
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
         # Use the provided graph_runtime_state for consistent state management
@@ -173,14 +180,15 @@ class WorkflowBasedAppRunner:
             ValueError: If neither single_iteration_run nor single_loop_run is specified
         """
         # Create initial runtime state with variable pool containing environment variables
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(
-                system_variables=SystemVariable.default(),
-                user_inputs={},
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=default_system_variables(),
                 environment_variables=workflow.environment_variables,
             ),
-            start_at=time.time(),
         )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
@@ -284,6 +292,7 @@ class WorkflowBasedAppRunner:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
+            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
         node_factory = DifyNodeFactory(
@@ -325,6 +334,12 @@ class WorkflowBasedAppRunner:
             )
         except NotImplementedError:
             variable_mapping = {}
+        variable_mapping = inject_default_system_variable_mappings(
+            node_id=target_node_config["id"],
+            node_type=node_type,
+            node_data=target_node_config["data"],
+            variable_mapping=variable_mapping,
+        )
 
         load_into_variable_pool(
             variable_loader=self._variable_loader,

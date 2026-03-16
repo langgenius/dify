@@ -43,7 +43,6 @@ from services.variable_truncator import (
 def file() -> File:
     return File(
         id=str(uuid4()),  # Generate new UUID for File.id
-        tenant_id=str(uuid.uuid4()),
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id=str(uuid.uuid4()),

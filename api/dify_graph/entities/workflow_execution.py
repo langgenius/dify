@@ -1,26 +1,23 @@
 """
 Domain entities for workflow execution.
 
-Models are independent of the storage mechanism and don't contain
-implementation details like tenant_id, app_id, etc.
+Models describe graph runtime state and avoid infrastructure-specific details.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from dify_graph.enums import WorkflowExecutionStatus, WorkflowType
-from dify_graph.utils.datetime_utils import naive_utc_now
 
 
 class WorkflowExecution(BaseModel):
     """
-    Domain model for workflow execution based on WorkflowRun but without
-    user, tenant, and app attributes.
+    Domain model for a workflow execution within the graph runtime.
     """
 
     id_: str = Field(...)
@@ -47,7 +44,7 @@ class WorkflowExecution(BaseModel):
         Calculate elapsed time in seconds.
         If workflow is not finished, use current time.
         """
-        end_time = self.finished_at or naive_utc_now()
+        end_time = self.finished_at or datetime.now(UTC).replace(tzinfo=None)
         return (end_time - self.started_at).total_seconds()
 
     @classmethod

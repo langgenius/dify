@@ -9,15 +9,15 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.workflow.system_variables import default_system_variables
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
 from models.workflow import Workflow
 
 
 def _make_graph_state():
     variable_pool = VariablePool(
-        system_variables=SystemVariable.default(),
+        system_variables=default_system_variables(),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
