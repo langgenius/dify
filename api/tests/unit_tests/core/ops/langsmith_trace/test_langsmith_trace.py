@@ -21,7 +21,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 
@@ -145,7 +145,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = {
         "model_mode": "chat",
@@ -162,7 +162,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_other = MagicMock()
     node_other.id = "node-other"
     node_other.title = "Tool Node"
-    node_other.node_type = NodeType.TOOL
+    node_other.node_type = BuiltinNodeTypes.TOOL
     node_other.status = "succeeded"
     node_other.process_data = None
     node_other.inputs = {"tool_input": "val"}
@@ -174,7 +174,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_retrieval = MagicMock()
     node_retrieval.id = "node-retrieval"
     node_retrieval.title = "Retrieval Node"
-    node_retrieval.node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node_retrieval.node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     node_retrieval.status = "succeeded"
     node_retrieval.process_data = None
     node_retrieval.inputs = {"query": "val"}
@@ -555,7 +555,7 @@ def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch, capl
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = BadDict({"model_mode": "chat", "model_name": "gpt-4", "usage": True, "prompts": ["p"]})
     node_llm.inputs = {}

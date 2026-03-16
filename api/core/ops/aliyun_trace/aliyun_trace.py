@@ -58,7 +58,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import WorkflowNodeExecutionTriggeredFrom
 
@@ -302,11 +302,11 @@ class AliyunDataTrace(BaseTraceInstance):
         self, node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata
     ):
         try:
-            if node_execution.node_type == NodeType.LLM:
+            if node_execution.node_type == BuiltinNodeTypes.LLM:
                 node_span = self.build_workflow_llm_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 node_span = self.build_workflow_retrieval_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == NodeType.TOOL:
+            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
                 node_span = self.build_workflow_tool_span(trace_info, node_execution, trace_metadata)
             else:
                 node_span = self.build_workflow_task_span(trace_info, node_execution, trace_metadata)

@@ -16,15 +16,15 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType
-from dify_graph.file.models import FileTransferMethod
-from dify_graph.nodes.trigger_webhook.entities import (
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     WebhookBodyParameter,
     WebhookData,
     WebhookParameter,
 )
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.file.models import FileTransferMethod
 from dify_graph.variables.types import ArrayValidation, SegmentType
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
@@ -862,7 +862,7 @@ class WebhookService:
             node_id: str
             webhook_id: str
 
-        nodes_id_in_graph = [node_id for node_id, _ in workflow.walk_nodes(NodeType.TRIGGER_WEBHOOK)]
+        nodes_id_in_graph = [node_id for node_id, _ in workflow.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)]
 
         # Check webhook node limit
         if len(nodes_id_in_graph) > cls.MAX_WEBHOOK_NODES_PER_WORKFLOW:

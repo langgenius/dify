@@ -4,7 +4,7 @@ from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.code.entities import CodeLanguage, CodeNodeData
@@ -72,7 +72,7 @@ _DEFAULT_CODE_BY_LANGUAGE: Mapping[CodeLanguage, str] = {
 
 
 class CodeNode(Node[CodeNodeData]):
-    node_type = NodeType.CODE
+    node_type = BuiltinNodeTypes.CODE
     _limits: CodeNodeLimits
 
     def __init__(

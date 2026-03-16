@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
@@ -134,7 +134,7 @@ class TestWorkflowAssociatedDataFactory:
                 return (
                     (node["id"], node["data"])
                     for node in nodes
-                    if node.get("data", {}).get("type") == specific_node_type.value
+                    if node.get("data", {}).get("type") == str(specific_node_type)
                 )
             # Return all nodes if no filter specified
             return ((node["id"], node["data"]) for node in nodes)
@@ -179,7 +179,7 @@ class TestWorkflowAssociatedDataFactory:
                 {
                     "id": "start",
                     "data": {
-                        "type": NodeType.START.value,
+                        "type": BuiltinNodeTypes.START,
                         "title": "START",
                         "variables": [],
                     },
@@ -204,7 +204,7 @@ class TestWorkflowAssociatedDataFactory:
             {
                 "id": "llm-1",
                 "data": {
-                    "type": NodeType.LLM.value,
+                    "type": BuiltinNodeTypes.LLM,
                     "title": "LLM",
                     "model": {
                         "provider": "openai",
@@ -1001,12 +1001,12 @@ class TestWorkflowService:
         Used by the UI to populate the node palette and provide sensible defaults
         when users add new nodes to their workflow.
         """
-        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping:
+        with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
             # Mock node class with default config
             mock_node_class = MagicMock()
             mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
 
-            mock_mapping.items.return_value = [(NodeType.LLM, {"latest": mock_node_class})]
+            mock_mapping.return_value = {BuiltinNodeTypes.LLM: {"latest": mock_node_class}}
 
             with patch("services.workflow_service.LATEST_VERSION", "latest"):
                 result = workflow_service.get_default_block_configs()
@@ -1025,7 +1025,7 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
                 "services.workflow_service.build_http_request_config",
@@ -1036,10 +1036,10 @@ class TestWorkflowService:
             mock_http_node_class.get_default_config.return_value = {"type": "http-request", "config": {}}
             mock_llm_node_class = MagicMock()
             mock_llm_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
-            mock_mapping.items.return_value = [
-                (NodeType.HTTP_REQUEST, {"latest": mock_http_node_class}),
-                (NodeType.LLM, {"latest": mock_llm_node_class}),
-            ]
+            mock_mapping.return_value = {
+                BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_http_node_class},
+                BuiltinNodeTypes.LLM: {"latest": mock_llm_node_class},
+            }
 
             result = workflow_service.get_default_block_configs()
 
@@ -1060,7 +1060,7 @@ class TestWorkflowService:
         This includes default values for all required and optional parameters.
         """
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
             # Mock node class with default config
@@ -1068,23 +1068,21 @@ class TestWorkflowService:
             mock_config = {"type": "llm", "config": {"provider": "openai"}}
             mock_node_class.get_default_config.return_value = mock_config
 
-            # Create a mock mapping that includes NodeType.LLM
-            mock_mapping.__contains__.return_value = True
-            mock_mapping.__getitem__.return_value = {"latest": mock_node_class}
+            # Create a mock mapping that includes BuiltinNodeTypes.LLM
+            mock_mapping.return_value = {BuiltinNodeTypes.LLM: {"latest": mock_node_class}}
 
-            result = workflow_service.get_default_block_config(NodeType.LLM.value)
+            result = workflow_service.get_default_block_config(BuiltinNodeTypes.LLM)
 
             assert result == mock_config
             mock_node_class.get_default_config.assert_called_once()
 
     def test_get_default_block_config_invalid_node_type(self, workflow_service):
         """Test get_default_block_config returns empty dict for invalid node type."""
-        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping:
-            # Mock mapping to not contain the node type
-            mock_mapping.__contains__.return_value = False
+        with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
+            mock_mapping.return_value = {}
 
             # Use a valid NodeType but one that's not in the mapping
-            result = workflow_service.get_default_block_config(NodeType.LLM.value)
+            result = workflow_service.get_default_block_config(BuiltinNodeTypes.LLM)
 
             assert result == {}
 
@@ -1100,7 +1098,7 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch(
                 "services.workflow_service.build_http_request_config",
@@ -1110,10 +1108,9 @@ class TestWorkflowService:
             mock_node_class = MagicMock()
             expected = {"type": "http-request", "config": {}}
             mock_node_class.get_default_config.return_value = expected
-            mock_mapping.__contains__.return_value = True
-            mock_mapping.__getitem__.return_value = {"latest": mock_node_class}
+            mock_mapping.return_value = {BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_node_class}}
 
-            result = workflow_service.get_default_block_config(NodeType.HTTP_REQUEST.value)
+            result = workflow_service.get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
 
             assert result == expected
             mock_build_config.assert_called_once()
@@ -1132,18 +1129,17 @@ class TestWorkflowService:
         )
 
         with (
-            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
             patch("services.workflow_service.LATEST_VERSION", "latest"),
             patch("services.workflow_service.build_http_request_config") as mock_build_config,
         ):
             mock_node_class = MagicMock()
             expected = {"type": "http-request", "config": {}}
             mock_node_class.get_default_config.return_value = expected
-            mock_mapping.__contains__.return_value = True
-            mock_mapping.__getitem__.return_value = {"latest": mock_node_class}
+            mock_mapping.return_value = {BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_node_class}}
 
             result = workflow_service.get_default_block_config(
-                NodeType.HTTP_REQUEST.value,
+                BuiltinNodeTypes.HTTP_REQUEST,
                 filters={HTTP_REQUEST_CONFIG_FILTER_KEY: provided_config},
             )
 
@@ -1155,14 +1151,14 @@ class TestWorkflowService:
     def test_get_default_block_config_http_request_malformed_config_raises_value_error(self, workflow_service):
         with (
             patch(
-                "services.workflow_service.NODE_TYPE_CLASSES_MAPPING",
-                {NodeType.HTTP_REQUEST: {"latest": HttpRequestNode}},
+                "services.workflow_service.get_node_type_classes_mapping",
+                return_value={BuiltinNodeTypes.HTTP_REQUEST: {"latest": HttpRequestNode}},
             ),
             patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
             with pytest.raises(ValueError, match="http_request_config must be an HttpRequestNodeConfig instance"):
                 workflow_service.get_default_block_config(
-                    NodeType.HTTP_REQUEST.value,
+                    BuiltinNodeTypes.HTTP_REQUEST,
                     filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
                 )
 
