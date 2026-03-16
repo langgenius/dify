@@ -72,7 +72,8 @@ const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language
     }).then((result) => {
       if (!cancelled)
         setHtml(result)
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('Shiki highlighting failed:', error)
       if (!cancelled)
         setHtml('')
     })
@@ -105,7 +106,7 @@ const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language
         borderBottomRightRadius: '10px',
         overflow: 'auto',
       }}
-      className="[&_pre]:!m-0 [&_pre]:!rounded-b-[10px] [&_pre]:!rounded-t-none [&_pre]:!bg-components-input-bg-normal [&_pre]:!p-3"
+      className="shiki-line-numbers [&_pre]:!m-0 [&_pre]:!rounded-b-[10px] [&_pre]:!rounded-t-none [&_pre]:!bg-components-input-bg-normal [&_pre]:!p-3"
     />
   )
 })
