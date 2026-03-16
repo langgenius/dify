@@ -1,7 +1,7 @@
 """add user_id and switch workflow_draft_variables unique key to user scope
 
 Revision ID: 6b5f9f8b1a2c
-Revises: e288952f2994
+Revises: 0ec65df55790
 Create Date: 2026-03-04 16:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "6b5f9f8b1a2c"
-down_revision = "e288952f2994"
+down_revision = "0ec65df55790"
 branch_labels = None
 depends_on = None
 
