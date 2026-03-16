@@ -185,7 +185,7 @@ describe('dataset-config/params-config', () => {
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        expect(topKInput).toHaveValue('5')
       })
 
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
@@ -200,7 +200,7 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(5)
+      expect(reopenedTopKInput).toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -218,7 +218,7 @@ describe('dataset-config/params-config', () => {
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('spinbutton')
-        expect(topKInput).toHaveValue(5)
+        expect(topKInput).toHaveValue('5')
       })
 
       const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
@@ -234,7 +234,7 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue(4)
+      expect(reopenedTopKInput).toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {

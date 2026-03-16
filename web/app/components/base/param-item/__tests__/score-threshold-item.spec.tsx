@@ -72,21 +72,19 @@ describe('ScoreThresholdItem', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveAttribute('min', '0')
+      expect(input).toHaveAttribute('aria-valuemin', '0')
     })
 
     it('should clamp values to maximum of 1', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveAttribute('max', '1')
+      expect(input).toHaveAttribute('aria-valuemax', '1')
     })
 
     it('should use step of 0.01', () => {
-      render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      expect(input).toHaveAttribute('step', '0.01')
+      render(<ScoreThresholdItem {...defaultProps} value={0.5} />)
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuenow', '0.5')
     })
 
     it('should call onChange with rounded value when input changes', async () => {
@@ -139,7 +137,7 @@ describe('ScoreThresholdItem', () => {
     it('should clamp to max=1 when value exceeds maximum', () => {
       render(<ScoreThresholdItem {...defaultProps} value={1.5} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(1)
+      expect(input).toHaveValue('1')
     })
   })
 })

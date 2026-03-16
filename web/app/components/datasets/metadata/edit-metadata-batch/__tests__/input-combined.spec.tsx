@@ -43,8 +43,9 @@ describe('InputCombined', () => {
       render(
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
-      const input = screen.getByDisplayValue('42')
+      const input = screen.getByRole('spinbutton')
       expect(input).toBeInTheDocument()
+      expect(input).toHaveValue('42')
     })
 
     it('should render date picker for time type', () => {
@@ -108,7 +109,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={999} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('999')).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toHaveValue('999')
     })
 
     it('should apply readOnly prop to number input', () => {
@@ -230,7 +231,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('0')).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toHaveValue('0')
     })
 
     it('should handle negative number', () => {
@@ -239,7 +240,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={-100} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('-100')).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toHaveValue('-100')
     })
 
     it('should handle special characters in string', () => {

@@ -130,7 +130,7 @@ describe('IndexMethod', () => {
     it('should pass keywordNumber to KeywordNumber component', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={25} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      expect(input).toHaveValue('25')
     })
 
     it('should call onKeywordNumberChange when KeywordNumber changes', () => {
@@ -193,13 +193,13 @@ describe('IndexMethod', () => {
     it('should handle keywordNumber of 0', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(0)
+      expect(input).toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={50} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(50)
+      expect(input).toHaveValue('50')
     })
   })
 })

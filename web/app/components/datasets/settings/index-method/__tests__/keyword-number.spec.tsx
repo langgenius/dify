@@ -46,7 +46,7 @@ describe('KeyWordNumber', () => {
     it('should display correct keywordNumber value in input', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={25} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      expect(input).toHaveValue('25')
     })
 
     it('should display different keywordNumber values', () => {
@@ -55,7 +55,7 @@ describe('KeyWordNumber', () => {
       values.forEach((value) => {
         const { unmount } = render(<KeyWordNumber {...defaultProps} keywordNumber={value} />)
         const input = screen.getByRole('spinbutton')
-        expect(input).toHaveValue(value)
+        expect(input).toHaveValue(String(value))
         unmount()
       })
     })
@@ -118,24 +118,24 @@ describe('KeyWordNumber', () => {
     it('should handle minimum value (0)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(0)
+      expect(input).toHaveValue('0')
     })
 
     it('should handle maximum value (50)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={50} />)
       const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(50)
+      expect(input).toHaveValue('50')
     })
 
     it('should handle value updates correctly', () => {
       const { rerender } = render(<KeyWordNumber {...defaultProps} keywordNumber={10} />)
 
       let input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(10)
+      expect(input).toHaveValue('10')
 
       rerender(<KeyWordNumber {...defaultProps} keywordNumber={25} />)
       input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      expect(input).toHaveValue('25')
     })
 
     it('should handle rapid value changes', () => {

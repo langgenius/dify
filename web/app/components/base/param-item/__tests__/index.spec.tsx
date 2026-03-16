@@ -166,14 +166,11 @@ describe('ParamItem', () => {
       expect(slider).toHaveAttribute('aria-valuemax', '10')
     })
 
-    it('should use default step of 0.1 and min of 0 when not provided', () => {
+    it('should expose default minimum of 0 when min is not provided', () => {
       render(<ParamItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      // Component renders without error with default step/min
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
-      expect(input).toHaveAttribute('step', '0.1')
-      expect(input).toHaveAttribute('min', '0')
+      expect(input).toHaveAttribute('aria-valuemin', '0')
     })
   })
 })

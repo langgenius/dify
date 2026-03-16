@@ -53,13 +53,13 @@ describe('MaxLengthInput', () => {
 
   it('should accept value prop', () => {
     render(<MaxLengthInput value={500} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('500')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton')).toHaveValue('500')
   })
 
   it('should have min of 1', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    expect(input).toHaveAttribute('aria-valuemin', '1')
   })
 })
 
@@ -81,12 +81,12 @@ describe('OverlapInput', () => {
 
   it('should accept value prop', () => {
     render(<OverlapInput value={50} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('50')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton')).toHaveValue('50')
   })
 
   it('should have min of 1', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    expect(input).toHaveAttribute('aria-valuemin', '1')
   })
 })

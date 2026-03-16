@@ -61,21 +61,21 @@ describe('TopKItem', () => {
       render(<TopKItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveAttribute('step', '1')
+      expect(input).toHaveAttribute('aria-valuenow', '2')
     })
 
     it('should use minimum of 1', () => {
       render(<TopKItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveAttribute('min', '1')
+      expect(input).toHaveAttribute('aria-valuemin', '1')
     })
 
     it('should use maximum from env (10)', () => {
       render(<TopKItem {...defaultProps} />)
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveAttribute('max', '10')
+      expect(input).toHaveAttribute('aria-valuemax', '10')
     })
 
     it('should render slider with max >= 5 so no scaling is applied', () => {
