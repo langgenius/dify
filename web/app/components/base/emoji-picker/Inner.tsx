@@ -59,6 +59,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
   React.useEffect(() => {
     if (selectedEmoji) {
       setShowStyleColors(true)
+      /* v8 ignore next 2 - @preserve */
       if (selectedBackground)
         onSelect?.(selectedEmoji, selectedBackground)
     }

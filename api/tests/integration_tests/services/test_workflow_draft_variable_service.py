@@ -7,7 +7,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
 from dify_graph.variables.variables import StringVariable
@@ -286,7 +286,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     session=session,
                     app_id=self._test_app_id,
                     node_id="test_offload_node",
-                    node_type=NodeType.LLM,  # Use a real node type
+                    node_type=BuiltinNodeTypes.LLM,  # Use a real node type
                     node_execution_id=node_execution_id,
                     user=setup_account,
                 )
@@ -542,7 +542,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             index=1,
             node_execution_id=str(uuid.uuid4()),
             node_id=self._node_id,
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Test Node",
             inputs='{"input": "test input"}',
             process_data='{"test_var": "process_value", "other_var": "other_process"}',

@@ -10,8 +10,9 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -96,7 +97,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     Parameter Extractor Node.
     """
 
-    node_type = NodeType.PARAMETER_EXTRACTOR
+    node_type = BuiltinNodeTypes.PARAMETER_EXTRACTOR
 
     _model_instance: ModelInstance
     _credentials_provider: "CredentialsProvider"
@@ -106,7 +107,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -837,15 +838,13 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: ParameterExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = ParameterExtractorNodeData.model_validate(node_data)
+        _ = graph_config  # Explicitly mark as unused
+        variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
-        variable_mapping: dict[str, Sequence[str]] = {"query": typed_node_data.query}
-
-        if typed_node_data.instruction:
-            selectors = variable_template_parser.extract_selectors_from_template(typed_node_data.instruction)
+        if node_data.instruction:
+            selectors = variable_template_parser.extract_selectors_from_template(node_data.instruction)
             for selector in selectors:
                 variable_mapping[selector.variable] = selector.value_selector
 
