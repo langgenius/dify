@@ -44,10 +44,10 @@ export const COMPONENT_MODULE_THRESHOLDS = {
     branches: 95,
   },
   'custom': {
-    lines: 70,
-    statements: 70,
-    functions: 70,
-    branches: 80,
+    lines: 95,
+    statements: 95,
+    functions: 95,
+    branches: 95,
   },
   'datasets': {
     lines: 95,
