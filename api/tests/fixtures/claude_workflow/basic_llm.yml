@@ -1,0 +1,40 @@
+kind: claude-workflow
+version: 0.1.0
+app:
+  name: basic-llm
+  description: Simple linear workflow for schema validation.
+  mode: workflow
+  icon: 🤖
+dependencies: []
+inputs:
+  - name: query
+    type: text
+    required: true
+nodes:
+  - id: summarize
+    type: llm
+    title: Summarize
+    model:
+      provider: openai
+      name: gpt-4o-mini
+      mode: chat
+    prompt:
+      - role: system
+        text: You are a concise assistant.
+      - role: user
+        selector:
+          - start
+          - query
+  - id: done
+    type: end
+    title: End
+    outputs:
+      - name: answer
+        selector:
+          - summarize
+          - text
+edges:
+  - source: start
+    target: summarize
+  - source: summarize
+    target: done
