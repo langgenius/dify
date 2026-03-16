@@ -10,6 +10,20 @@ public/hoisted-modern-monaco/
 
 That directory is expected to stay generated-only and is git-ignored.
 
+It also generates:
+
+```text
+app/components/base/modern-monaco/hoisted-config.ts
+```
+
+That module is the runtime source of truth for:
+
+- `tm-themes` version
+- `tm-grammars` version
+- the hoisted theme list
+- the hoisted language list
+- the local `modern-monaco` import map
+
 ## Customizations
 
 ### 1. Only download the Shiki assets Dify actually uses
@@ -26,6 +40,7 @@ Why:
 
 - Avoid copying the full `tm-themes` and `tm-grammars` sets into `public`
 - Keep the current Dify editor use cases fully local
+- Keep the generated runtime config aligned with the actual hoisted assets
 
 ### 2. Rewrite the bare `typescript` import in the TypeScript worker
 
