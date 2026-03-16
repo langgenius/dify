@@ -198,6 +198,16 @@ describe('InputNumber Component', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('uses fallback step guard when step is any', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} value={10} max={10} step="any" />)
+    const incrementBtn = screen.getByRole('button', { name: /increment/i })
+
+    await user.click(incrementBtn)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('prevents decrement below min with custom amount', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
