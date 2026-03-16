@@ -40,7 +40,7 @@ class DatasetsHitTestingBase:
     @staticmethod
     def get_and_validate_dataset(dataset_id: str):
         assert isinstance(current_user, Account)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_user.current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
 

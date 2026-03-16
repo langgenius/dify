@@ -207,6 +207,8 @@ class ConsoleDatasetListQuery(BaseModel):
     include_all: bool = Field(default=False, description="Include all datasets")
     ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    project_id: str | None = Field(default=None, description="Filter by project ID")
+    space_type: str | None = Field(default=None, description="Filter by space type")
 
 
 register_schema_models(
@@ -301,6 +303,8 @@ class DatasetListApi(Resource):
             "ids": "Filter by dataset IDs (list)",
             "keyword": "Search keyword",
             "tag_ids": "Filter by tag IDs (list)",
+            "project_id": "Filter by project ID",
+            "space_type": "Filter by space type",
             "include_all": "Include all datasets (default: false)",
         }
     )
@@ -331,6 +335,8 @@ class DatasetListApi(Resource):
                 query.keyword,
                 query.tag_ids,
                 query.include_all,
+                query.project_id,
+                query.space_type,
             )
 
         # check embedding setting
@@ -433,7 +439,7 @@ class DatasetApi(Resource):
     def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:

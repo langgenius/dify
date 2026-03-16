@@ -100,7 +100,17 @@ logger = logging.getLogger(__name__)
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def get_datasets(
+        page,
+        per_page,
+        tenant_id=None,
+        user=None,
+        search=None,
+        tag_ids=None,
+        include_all=False,
+        project_id=None,
+        space_type=None,
+    ):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
@@ -150,6 +160,12 @@ class DatasetService:
         if search:
             escaped_search = helper.escape_like_pattern(search)
             query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+
+        if project_id is not None:
+            query = query.where(Dataset.project_id == project_id)
+
+        if space_type is not None:
+            query = query.where(Dataset.space_type == space_type)
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
@@ -335,6 +351,11 @@ class DatasetService:
     @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
         dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        return dataset
+
+    @staticmethod
+    def get_dataset_in_tenant(dataset_id: str, tenant_id: str) -> Dataset | None:
+        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id, tenant_id=tenant_id).first()
         return dataset
 
     @staticmethod

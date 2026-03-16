@@ -138,7 +138,7 @@ register_schema_models(
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
         current_user, current_tenant_id = current_account_with_tenant()
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -158,8 +158,8 @@ class DocumentResource(Resource):
         return document
 
     def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
-        current_user, _ = current_account_with_tenant()
-        dataset = DatasetService.get_dataset(dataset_id)
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -270,7 +270,7 @@ class DatasetDocumentListApi(Resource):
                     )
         except (ArgumentTypeError, ValueError, Exception):
             fetch = False
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
 
