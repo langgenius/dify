@@ -162,6 +162,7 @@ class EmailDeliveryTestHandler:
                 variable_pool=context.variable_pool,
             )
             body = render_email_template(templated_body, substitutions)
+            body = EmailDeliveryConfig.render_markdown_body(body)
 
             mail.send(
                 to=recipient_email,

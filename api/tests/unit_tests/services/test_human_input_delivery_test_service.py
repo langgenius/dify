@@ -94,4 +94,4 @@ def test_email_delivery_test_handler_replaces_body_variables(monkeypatch: pytest
 
     handler.send_test(context=context, method=method)
 
-    assert mail.sent[0]["html"] == "Value OK"
+    assert mail.sent[0]["html"] == "<p>Value OK</p>"

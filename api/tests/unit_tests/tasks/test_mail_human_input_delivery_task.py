@@ -120,4 +120,4 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
         session_factory=lambda: _DummySession(form),
     )
 
-    assert mail.sent[0]["html"] == "Body OK"
+    assert mail.sent[0]["html"] == "<p>Body OK</p>"

@@ -111,7 +111,7 @@ def _render_body(
         url=form_link,
         variable_pool=variable_pool,
     )
-    return body
+    return EmailDeliveryConfig.render_markdown_body(body)
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:

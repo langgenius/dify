@@ -8,6 +8,7 @@ dependencies = [
     "arize-phoenix-otel~=0.9.2",
     "azure-identity==1.16.1",
     "beautifulsoup4==4.12.2",
+    "bleach~=6.2.0",
     "boto3==1.35.99",
     "bs4~=0.0.1",
     "cachetools~=5.3.0",
