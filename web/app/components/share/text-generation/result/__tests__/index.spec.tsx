@@ -263,7 +263,7 @@ describe('Result', () => {
         status: 'succeeded',
       }),
     }))
-    expect(onCompleted).toHaveBeenCalledWith({ answer: 'Hello' }, undefined, true)
+    expect(onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', undefined, true)
   })
 
   it('should render batch task ids for both short and long indexes', () => {

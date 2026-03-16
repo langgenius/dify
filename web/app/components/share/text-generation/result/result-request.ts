@@ -40,6 +40,22 @@ type BuildResultRequestDataParams = {
   visionConfig: VisionSettings
 }
 
+const isMissingRequiredInput = (
+  variable: PromptConfig['prompt_variables'][number],
+  value: ResultInputValue,
+) => {
+  if (value === undefined || value === null)
+    return true
+
+  if (variable.type === 'file-list')
+    return !Array.isArray(value) || value.length === 0
+
+  if (['string', 'paragraph', 'number', 'json_object', 'select'].includes(variable.type))
+    return typeof value !== 'string' ? false : value.trim() === ''
+
+  return false
+}
+
 const hasPendingLocalFiles = (completionFiles: VisionFile[]) => {
   return completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)
 }
@@ -76,7 +92,7 @@ export const validateResultRequest = ({
     return (!key || !key.trim()) || (!name || !name.trim()) || required === undefined || required === null || required
   })
 
-  const missingRequiredVariable = requiredVariables.find(({ key }) => !inputs[key])?.name
+  const missingRequiredVariable = requiredVariables.find(variable => isMissingRequiredInput(variable, inputs[variable.key]))?.name
   if (missingRequiredVariable) {
     return {
       canSend: false,

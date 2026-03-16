@@ -67,6 +67,75 @@ describe('result-request', () => {
     })
   })
 
+  it('should allow required number inputs with a value of zero', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        count: 0,
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'count', name: 'Count', type: 'number', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({ canSend: true })
+  })
+
+  it('should reject required text inputs that only contain whitespace', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        name: '   ',
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'name', name: 'Name', type: 'string', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({
+      canSend: false,
+      notification: {
+        type: 'error',
+        message: 'errorMessage.valueOfVarRequired',
+      },
+    })
+  })
+
+  it('should reject required file lists when no files are selected', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        files: [],
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'files', name: 'Files', type: 'file-list', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({
+      canSend: false,
+      notification: {
+        type: 'error',
+        message: 'errorMessage.valueOfVarRequired',
+      },
+    })
+  })
+
   it('should reject pending local uploads outside batch mode', () => {
     const t = createTranslator()
 

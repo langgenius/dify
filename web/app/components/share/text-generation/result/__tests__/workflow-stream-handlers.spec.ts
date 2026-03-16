@@ -147,6 +147,19 @@ describe('workflow-stream-handlers helpers', () => {
     }))
   })
 
+  it('should initialize missing parallel details on start and next events', () => {
+    const parallelTrace = createTrace({
+      node_id: 'parallel-node',
+      execution_metadata: { parallel_id: 'parallel-1' },
+    })
+
+    const startedProcess = appendParallelStart(undefined, parallelTrace)
+    const nextProcess = appendParallelNext(startedProcess, parallelTrace)
+
+    expect(startedProcess.tracing[0]?.details).toEqual([[]])
+    expect(nextProcess.tracing[0]?.details).toEqual([[], []])
+  })
+
   it('should mark running nodes as stopped recursively', () => {
     const workflowProcessData = createWorkflowProcess()
     workflowProcessData.tracing = [
@@ -516,7 +529,7 @@ describe('createWorkflowStreamHandlers', () => {
     }))
     expect(sseGetMock).toHaveBeenCalledWith('/workflow/run-1/events', {}, expect.any(Object))
     expect(setup.messageId()).toBe('run-1')
-    expect(setup.onCompleted).toHaveBeenCalledWith({ answer: 'Hello' }, 3, true)
+    expect(setup.onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', 3, true)
     expect(setup.setRespondingFalse).toHaveBeenCalled()
     expect(setup.resetRunState).toHaveBeenCalled()
   })
@@ -764,12 +777,7 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     expect(objectOutputSetup.currentTaskId()).toBeNull()
-    expect(objectOutputSetup.setCompletionRes).toHaveBeenCalledWith({
-      answer: 'Hello',
-      meta: {
-        mode: 'object',
-      },
-    })
+    expect(objectOutputSetup.setCompletionRes).toHaveBeenCalledWith('{"answer":"Hello","meta":{"mode":"object"}}')
     expect(objectOutputSetup.workflowProcessData()).toEqual(expect.objectContaining({
       status: WorkflowRunningStatus.Succeeded,
       resultText: '',

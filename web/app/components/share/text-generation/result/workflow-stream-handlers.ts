@@ -48,11 +48,16 @@ const matchParallelTrace = (trace: WorkflowProcess['tracing'][number], data: Nod
       || trace.parallel_id === data.execution_metadata?.parallel_id)
 }
 
+const ensureParallelTraceDetails = (details?: NodeTracing['details']) => {
+  return details?.length ? details : [[]]
+}
+
 const appendParallelStart = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
     draft.tracing.push({
       ...data,
+      details: ensureParallelTraceDetails(data.details),
       status: NodeRunningStatus.Running,
       expand: true,
     })
@@ -63,7 +68,11 @@ const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTrac
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
     const trace = draft.tracing.find(item => matchParallelTrace(item, data))
-    trace?.details?.push([])
+    if (!trace)
+      return
+
+    trace.details = ensureParallelTraceDetails(trace.details)
+    trace.details.push([])
   })
 }
 
@@ -228,6 +237,21 @@ const applyWorkflowPaused = (current: WorkflowProcess | undefined) => {
   })
 }
 
+const serializeWorkflowOutputs = (outputs: WorkflowFinishedResponse['data']['outputs']) => {
+  if (outputs === undefined || outputs === null)
+    return ''
+
+  if (typeof outputs === 'string')
+    return outputs
+
+  try {
+    return JSON.stringify(outputs) ?? ''
+  }
+  catch {
+    return String(outputs)
+  }
+}
+
 export const createWorkflowStreamHandlers = ({
   getCompletionRes,
   getWorkflowProcessData,
@@ -327,7 +351,7 @@ export const createWorkflowStreamHandlers = ({
         setCompletionRes('')
       }
       else {
-        setCompletionRes(data.outputs as string)
+        setCompletionRes(serializeWorkflowOutputs(data.outputs))
         const outputKeys = Object.keys(data.outputs)
         const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
         if (isStringOutput) {
