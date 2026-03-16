@@ -2424,9 +2424,6 @@
   "app/components/base/param-item/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/portal-to-follow-elem/index.tsx": {
