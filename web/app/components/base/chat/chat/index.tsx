@@ -75,6 +75,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
+  sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
@@ -119,6 +120,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   sidebarCollapseState,
   hideAvatar,
+  sendOnEnter,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -167,6 +169,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleScrollToBottom, handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatContainerRef.current) {
       requestAnimationFrame(() => {
         handleScrollToBottom()
@@ -186,6 +189,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleWindowResize])
 
   useEffect(() => {
+    /* v8 ignore next - @preserve */
     if (chatFooterRef.current && chatContainerRef.current) {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -214,9 +218,10 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const setUserScrolled = () => {
       const container = chatContainerRef.current
+      /* v8 ignore next 2 - @preserve */
       if (!container)
         return
-
+      /* v8 ignore next 2 - @preserve */
       if (isAutoScrollingRef.current)
         return
 
@@ -227,6 +232,7 @@ const Chat: FC<ChatProps> = ({
     }
 
     const container = chatContainerRef.current
+    /* v8 ignore next 2 - @preserve */
     if (!container)
       return
 
@@ -244,7 +250,7 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (!sidebarCollapseState) {
-      const timer = setTimeout(() => handleWindowResize(), 200)
+      const timer = setTimeout(handleWindowResize, 200)
       return () => clearTimeout(timer)
     }
   }, [handleWindowResize, sidebarCollapseState])
@@ -283,7 +289,7 @@ const Chat: FC<ChatProps> = ({
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {
-                  const isLast = item.id === chatList[chatList.length - 1]?.id
+                  const isLast = item.id === chatList.at(-1)?.id
                   return (
                     <Answer
                       appData={appData}
@@ -363,6 +369,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendOnEnter={sendOnEnter}
                 />
               )
             }

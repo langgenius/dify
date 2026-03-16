@@ -3,7 +3,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from dify_graph.nodes import NodeType
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode
@@ -98,7 +98,7 @@ def get_trigger_infos_from_workflow(published_workflow: Workflow) -> list[dict]:
         return []
 
     nodes = graph.get("nodes", [])
-    trigger_types = {NodeType.TRIGGER_WEBHOOK.value, NodeType.TRIGGER_SCHEDULE.value, NodeType.TRIGGER_PLUGIN.value}
+    trigger_types = TRIGGER_NODE_TYPES
 
     trigger_infos = [
         {

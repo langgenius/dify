@@ -51,7 +51,7 @@ def bypass_decorators(mocker):
     )
     mocker.patch(
         "controllers.console.datasets.hit_testing.cloud_edition_billing_rate_limit_check",
-        return_value=lambda *_: (lambda f: f),
+        return_value=lambda *_: lambda f: f,
     )
 
 

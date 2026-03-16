@@ -179,7 +179,7 @@ const Tools = () => {
                   </div>
                   <div className="ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block" />
                   <Switch
-                    size="l"
+                    size="lg"
                     value={item.enabled ?? false}
                     onChange={(enabled: boolean) => handleSaveExternalDataToolModal({ ...item, enabled }, index)}
                   />

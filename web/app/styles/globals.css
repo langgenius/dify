@@ -11,6 +11,7 @@
 @import "../components/base/button/index.css";
 @import "../components/base/modal/index.css";
 @import "../components/base/premium-badge/index.css";
+@import "../components/base/segmented-control/index.css";
 
 @tailwind base;
 @tailwind components;

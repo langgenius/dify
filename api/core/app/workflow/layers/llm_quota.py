@@ -12,7 +12,7 @@ from typing_extensions import override
 from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_engine.entities.commands import AbortCommand, CommandType
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase
@@ -113,11 +113,11 @@ class LLMQuotaLayer(GraphEngineLayer):
     def _extract_model_instance(node: Node) -> ModelInstance | None:
         try:
             match node.node_type:
-                case NodeType.LLM:
+                case BuiltinNodeTypes.LLM:
                     return cast("LLMNode", node).model_instance
-                case NodeType.PARAMETER_EXTRACTOR:
+                case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                     return cast("ParameterExtractorNode", node).model_instance
-                case NodeType.QUESTION_CLASSIFIER:
+                case BuiltinNodeTypes.QUESTION_CLASSIFIER:
                     return cast("QuestionClassifierNode", node).model_instance
                 case _:
                     return None

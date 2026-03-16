@@ -13,6 +13,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestMessageService:
@@ -95,7 +96,7 @@ class TestMessageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -633,7 +634,7 @@ class TestMessageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(other_account, name=fake.company())
 

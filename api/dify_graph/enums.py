@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import ClassVar, TypeAlias
 
 
 class NodeState(StrEnum):
@@ -33,56 +34,71 @@ class SystemVariableKey(StrEnum):
     INVOKE_FROM = "invoke_from"
 
 
-class NodeType(StrEnum):
-    START = "start"
-    END = "end"
-    ANSWER = "answer"
-    LLM = "llm"
-    KNOWLEDGE_RETRIEVAL = "knowledge-retrieval"
-    KNOWLEDGE_INDEX = "knowledge-index"
-    IF_ELSE = "if-else"
-    CODE = "code"
-    TEMPLATE_TRANSFORM = "template-transform"
-    QUESTION_CLASSIFIER = "question-classifier"
-    HTTP_REQUEST = "http-request"
-    TOOL = "tool"
-    DATASOURCE = "datasource"
-    VARIABLE_AGGREGATOR = "variable-aggregator"
-    LEGACY_VARIABLE_AGGREGATOR = "variable-assigner"  # TODO: Merge this into VARIABLE_AGGREGATOR in the database.
-    LOOP = "loop"
-    LOOP_START = "loop-start"
-    LOOP_END = "loop-end"
-    ITERATION = "iteration"
-    ITERATION_START = "iteration-start"  # Fake start node for iteration.
-    PARAMETER_EXTRACTOR = "parameter-extractor"
-    VARIABLE_ASSIGNER = "assigner"
-    DOCUMENT_EXTRACTOR = "document-extractor"
-    LIST_OPERATOR = "list-operator"
-    AGENT = "agent"
-    TRIGGER_WEBHOOK = "trigger-webhook"
-    TRIGGER_SCHEDULE = "trigger-schedule"
-    TRIGGER_PLUGIN = "trigger-plugin"
-    HUMAN_INPUT = "human-input"
+NodeType: TypeAlias = str
 
-    @property
-    def is_trigger_node(self) -> bool:
-        """Check if this node type is a trigger node."""
-        return self in [
-            NodeType.TRIGGER_WEBHOOK,
-            NodeType.TRIGGER_SCHEDULE,
-            NodeType.TRIGGER_PLUGIN,
-        ]
 
-    @property
-    def is_start_node(self) -> bool:
-        """Check if this node type can serve as a workflow entry point."""
-        return self in [
-            NodeType.START,
-            NodeType.DATASOURCE,
-            NodeType.TRIGGER_WEBHOOK,
-            NodeType.TRIGGER_SCHEDULE,
-            NodeType.TRIGGER_PLUGIN,
-        ]
+class BuiltinNodeTypes:
+    """Built-in node type string constants.
+
+    `node_type` values are plain strings throughout the graph runtime. This namespace
+    only exposes the built-in values shipped by `dify_graph`; downstream packages can
+    use additional strings without extending this class.
+    """
+
+    START: ClassVar[NodeType] = "start"
+    END: ClassVar[NodeType] = "end"
+    ANSWER: ClassVar[NodeType] = "answer"
+    LLM: ClassVar[NodeType] = "llm"
+    KNOWLEDGE_RETRIEVAL: ClassVar[NodeType] = "knowledge-retrieval"
+    IF_ELSE: ClassVar[NodeType] = "if-else"
+    CODE: ClassVar[NodeType] = "code"
+    TEMPLATE_TRANSFORM: ClassVar[NodeType] = "template-transform"
+    QUESTION_CLASSIFIER: ClassVar[NodeType] = "question-classifier"
+    HTTP_REQUEST: ClassVar[NodeType] = "http-request"
+    TOOL: ClassVar[NodeType] = "tool"
+    DATASOURCE: ClassVar[NodeType] = "datasource"
+    VARIABLE_AGGREGATOR: ClassVar[NodeType] = "variable-aggregator"
+    LEGACY_VARIABLE_AGGREGATOR: ClassVar[NodeType] = "variable-assigner"
+    LOOP: ClassVar[NodeType] = "loop"
+    LOOP_START: ClassVar[NodeType] = "loop-start"
+    LOOP_END: ClassVar[NodeType] = "loop-end"
+    ITERATION: ClassVar[NodeType] = "iteration"
+    ITERATION_START: ClassVar[NodeType] = "iteration-start"
+    PARAMETER_EXTRACTOR: ClassVar[NodeType] = "parameter-extractor"
+    VARIABLE_ASSIGNER: ClassVar[NodeType] = "assigner"
+    DOCUMENT_EXTRACTOR: ClassVar[NodeType] = "document-extractor"
+    LIST_OPERATOR: ClassVar[NodeType] = "list-operator"
+    AGENT: ClassVar[NodeType] = "agent"
+    HUMAN_INPUT: ClassVar[NodeType] = "human-input"
+
+
+BUILT_IN_NODE_TYPES: tuple[NodeType, ...] = (
+    BuiltinNodeTypes.START,
+    BuiltinNodeTypes.END,
+    BuiltinNodeTypes.ANSWER,
+    BuiltinNodeTypes.LLM,
+    BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+    BuiltinNodeTypes.IF_ELSE,
+    BuiltinNodeTypes.CODE,
+    BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+    BuiltinNodeTypes.QUESTION_CLASSIFIER,
+    BuiltinNodeTypes.HTTP_REQUEST,
+    BuiltinNodeTypes.TOOL,
+    BuiltinNodeTypes.DATASOURCE,
+    BuiltinNodeTypes.VARIABLE_AGGREGATOR,
+    BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR,
+    BuiltinNodeTypes.LOOP,
+    BuiltinNodeTypes.LOOP_START,
+    BuiltinNodeTypes.LOOP_END,
+    BuiltinNodeTypes.ITERATION,
+    BuiltinNodeTypes.ITERATION_START,
+    BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+    BuiltinNodeTypes.VARIABLE_ASSIGNER,
+    BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
+    BuiltinNodeTypes.LIST_OPERATOR,
+    BuiltinNodeTypes.AGENT,
+    BuiltinNodeTypes.HUMAN_INPUT,
+)
 
 
 class NodeExecutionType(StrEnum):
@@ -236,7 +252,6 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"
     AGENT_LOG = "agent_log"
-    TRIGGER_INFO = "trigger_info"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"
     LOOP_ID = "loop_id"

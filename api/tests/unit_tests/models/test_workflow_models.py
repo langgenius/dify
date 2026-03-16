@@ -15,7 +15,7 @@ from uuid import uuid4
 import pytest
 
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
 )
@@ -471,7 +471,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=workflow_run_id,
             index=1,
             node_id="start",
-            node_type=NodeType.START.value,
+            node_type=BuiltinNodeTypes.START,
             title="Start Node",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -484,7 +484,7 @@ class TestNodeExecutionRelationships:
         assert node_execution.workflow_id == workflow_id
         assert node_execution.workflow_run_id == workflow_run_id
         assert node_execution.node_id == "start"
-        assert node_execution.node_type == NodeType.START.value
+        assert node_execution.node_type == BuiltinNodeTypes.START
         assert node_execution.index == 1
 
     def test_node_execution_with_predecessor_relationship(self):
@@ -503,7 +503,7 @@ class TestNodeExecutionRelationships:
             index=2,
             predecessor_node_id=predecessor_node_id,
             node_id=current_node_id,
-            node_type=NodeType.LLM.value,
+            node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
             status=WorkflowNodeExecutionStatus.RUNNING.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -526,7 +526,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=None,  # Single-step has no workflow run
             index=1,
             node_id="llm_test",
-            node_type=NodeType.LLM.value,
+            node_type=BuiltinNodeTypes.LLM,
             title="Test LLM",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -553,7 +553,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="llm_1",
-            node_type=NodeType.LLM.value,
+            node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -579,7 +579,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="code_1",
-            node_type=NodeType.CODE.value,
+            node_type=BuiltinNodeTypes.CODE,
             title="Code Node",
             status=WorkflowNodeExecutionStatus.RUNNING.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -610,7 +610,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=str(uuid4()),
             index=3,
             node_id="code_1",
-            node_type=NodeType.CODE.value,
+            node_type=BuiltinNodeTypes.CODE,
             title="Code Node",
             status=WorkflowNodeExecutionStatus.FAILED.value,
             error=error_message,
@@ -641,7 +641,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="llm_1",
-            node_type=NodeType.LLM.value,
+            node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -664,7 +664,7 @@ class TestNodeExecutionRelationships:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
-            node_type=NodeType.START.value,
+            node_type=BuiltinNodeTypes.START,
             title="Start",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -682,12 +682,12 @@ class TestNodeExecutionRelationships:
         """Test node execution with different node types."""
         # Test various node types
         node_types = [
-            (NodeType.START, "Start Node"),
-            (NodeType.LLM, "LLM Node"),
-            (NodeType.CODE, "Code Node"),
-            (NodeType.TOOL, "Tool Node"),
-            (NodeType.IF_ELSE, "Conditional Node"),
-            (NodeType.END, "End Node"),
+            (BuiltinNodeTypes.START, "Start Node"),
+            (BuiltinNodeTypes.LLM, "LLM Node"),
+            (BuiltinNodeTypes.CODE, "Code Node"),
+            (BuiltinNodeTypes.TOOL, "Tool Node"),
+            (BuiltinNodeTypes.IF_ELSE, "Conditional Node"),
+            (BuiltinNodeTypes.END, "End Node"),
         ]
 
         for node_type, title in node_types:
@@ -699,8 +699,8 @@ class TestNodeExecutionRelationships:
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
                 workflow_run_id=str(uuid4()),
                 index=1,
-                node_id=f"{node_type.value}_1",
-                node_type=node_type.value,
+                node_id=f"{node_type}_1",
+                node_type=node_type,
                 title=title,
                 status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
                 created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -708,7 +708,7 @@ class TestNodeExecutionRelationships:
             )
 
             # Assert
-            assert node_execution.node_type == node_type.value
+            assert node_execution.node_type == node_type
             assert node_execution.title == title
 
 
@@ -1004,7 +1004,7 @@ class TestGraphConfigurationValidation:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
-            node_type=NodeType.START.value,
+            node_type=BuiltinNodeTypes.START,
             title="Start",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
@@ -1029,7 +1029,7 @@ class TestGraphConfigurationValidation:
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
-            node_type=NodeType.START.value,
+            node_type=BuiltinNodeTypes.START,
             title="Start",
             status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
             created_by_role=CreatorUserRole.ACCOUNT.value,
