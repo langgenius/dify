@@ -8386,9 +8386,6 @@
   "app/components/workflow/nodes/trigger-webhook/panel.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {
