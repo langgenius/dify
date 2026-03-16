@@ -124,7 +124,6 @@ describe('NumberField wrapper', () => {
 
       expect(input).toHaveAttribute('autoComplete', 'off')
       expect(input).toHaveAttribute('autoCorrect', 'off')
-      expect(input).toHaveAttribute('inputMode', 'decimal')
       expect(input).toHaveAttribute('placeholder', 'Regular placeholder')
       expect(input).toBeRequired()
       expect(input).toHaveClass('px-3')

@@ -77,11 +77,7 @@ export function NumberFieldInput({
 }: NumberFieldInputProps) {
   return (
     <BaseNumberField.Input
-      autoComplete="off"
-      autoCorrect="off"
       className={cn(numberFieldInputVariants({ size }), className)}
-      inputMode="decimal"
-      spellCheck={false}
       {...props}
     />
   )

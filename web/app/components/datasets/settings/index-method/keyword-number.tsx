@@ -12,6 +12,9 @@ import {
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
 
+const MIN_KEYWORD_NUMBER = 1
+const MAX_KEYWORD_NUMBER = 50
+
 type KeyWordNumberProps = {
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void
@@ -24,7 +27,7 @@ const KeyWordNumber = ({
   const { t } = useTranslation()
 
   const handleInputChange = useCallback((value: number | null) => {
-    onKeywordNumberChange(value ?? 0)
+    onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
   }, [onKeywordNumberChange])
 
   return (
@@ -34,7 +37,7 @@ const KeyWordNumber = ({
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
-          popupContent="number of keywords"
+          popupContent={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         >
           <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
         </Tooltip>
@@ -42,11 +45,14 @@ const KeyWordNumber = ({
       <Slider
         className="mr-3 w-[206px] shrink-0"
         value={keywordNumber}
-        max={50}
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
         onChange={onKeywordNumberChange}
       />
       <NumberField
         className="w-12 shrink-0"
+        min={MIN_KEYWORD_NUMBER}
+        max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
