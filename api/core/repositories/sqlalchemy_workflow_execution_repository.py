@@ -146,7 +146,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # No sequence number generation needed anymore
 
-        db_model.type = domain_model.workflow_type
+        from models.workflow import WorkflowType as ModelWorkflowType
+
+        db_model.type = ModelWorkflowType(domain_model.workflow_type.value)
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None
@@ -194,6 +196,13 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
+            existing_model = session.get(WorkflowRun, db_model.id)
+            if existing_model:
+                if existing_model.tenant_id != self._tenant_id:
+                    raise ValueError("Unauthorized access to workflow run")
+                # Preserve the original start time for pause/resume flows.
+                db_model.created_at = existing_model.created_at
+
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key
             session.merge(db_model)

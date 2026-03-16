@@ -20,14 +20,19 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
-from dify_graph.enums import NodeType
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from dify_graph.nodes.llm.entities import LLMNodeData
 from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
 from dify_graph.nodes.tool.entities import ToolNodeData
-from dify_graph.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -429,17 +434,18 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
+        resolved_icon_type: IconType
         if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
-            icon_type = icon_type_value
+            resolved_icon_type = IconType(icon_type_value)
         else:
-            icon_type = IconType.EMOJI
+            resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
             # Update existing app
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
@@ -452,10 +458,10 @@ class AppDslService:
             app = App()
             app.id = str(uuid4())
             app.tenant_id = account.current_tenant_id
-            app.mode = app_mode.value
+            app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
             app.enable_site = True
@@ -499,7 +505,7 @@ class AppDslService:
                 unique_hash = None
             graph = workflow_data.get("graph", {})
             for node in graph.get("nodes", []):
-                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
+                if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                     dataset_ids = node["data"].get("dataset_ids", [])
                     node["data"]["dataset_ids"] = [
                         decrypted_id
@@ -549,9 +555,12 @@ class AppDslService:
             "kind": "app",
             "app": {
                 "name": app_model.name,
-                "mode": app_model.mode,
-                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
-                "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
+                "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
+                "icon": app_model.icon,
+                "icon_type": (
+                    app_model.icon_type.value if isinstance(app_model.icon_type, IconType) else app_model.icon_type
+                ),
+                "icon_background": app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
             },
@@ -587,27 +596,27 @@ class AppDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL:
+            if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT:
+            if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
-            if data_type == NodeType.TRIGGER_SCHEDULE.value:
+            if data_type == TRIGGER_SCHEDULE_NODE_TYPE:
                 # override the config with the default config
                 node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
-            if data_type == NodeType.TRIGGER_WEBHOOK.value:
+            if data_type == TRIGGER_WEBHOOK_NODE_TYPE:
                 # clear the webhook_url
                 node_data["webhook_url"] = ""
                 node_data["webhook_debug_url"] = ""
-            if data_type == NodeType.TRIGGER_PLUGIN.value:
+            if data_type == TRIGGER_PLUGIN_NODE_TYPE:
                 # clear the subscription_id
                 node_data["subscription_id"] = ""
 
@@ -671,31 +680,31 @@ class AppDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL:
+                    case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.LLM:
+                    case BuiltinNodeTypes.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER:
+                    case BuiltinNodeTypes.QUESTION_CLASSIFIER:
                         question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR:
+                    case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                         parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                    case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:

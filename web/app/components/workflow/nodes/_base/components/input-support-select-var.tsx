@@ -61,11 +61,11 @@ const Editor: FC<Props> = ({
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
-    <div className={cn(className, 'relative')}>
+    <div className={cn(className, 'relative min-h-8')}>
       <>
         <PromptEditor
           instanceId={instanceId}
-          className={cn(promptMinHeightClassName, '!leading-[18px]')}
+          className={cn(promptMinHeightClassName, 'leading-[18px]')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
           value={value}
@@ -118,7 +118,7 @@ const Editor: FC<Props> = ({
         {/* to patch Editor not support dynamic change editable status */}
         {readOnly && <div className="absolute inset-0 z-10"></div>}
         {isFocus && (
-          <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : ' right-1 top-[-9px]')}>
+          <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : 'right-1 top-[-9px]')}>
             <Tooltip
               popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
             >
