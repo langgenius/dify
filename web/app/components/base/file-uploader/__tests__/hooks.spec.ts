@@ -56,7 +56,7 @@ describe('useFileSizeLimit', () => {
     const { result } = renderHook(() => useFileSizeLimit())
 
     expect(result.current.imgSizeLimit).toBe(10 * 1024 * 1024)
-    expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
+    expect(result.current.docSizeLimit).toBe(500 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
@@ -92,7 +92,7 @@ describe('useFileSizeLimit', () => {
     const { result } = renderHook(() => useFileSizeLimit(config))
 
     expect(result.current.imgSizeLimit).toBe(10 * 1024 * 1024)
-    expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
+    expect(result.current.docSizeLimit).toBe(500 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)

@@ -13,8 +13,8 @@ describe('file-uploader constants', () => {
       expect(IMG_SIZE_LIMIT).toBe(10 * 1024 * 1024)
     })
 
-    it('should set FILE_SIZE_LIMIT to 15 MB', () => {
-      expect(FILE_SIZE_LIMIT).toBe(15 * 1024 * 1024)
+    it('should set FILE_SIZE_LIMIT to 500 MB', () => {
+      expect(FILE_SIZE_LIMIT).toBe(500 * 1024 * 1024)
     })
 
     it('should set AUDIO_SIZE_LIMIT to 50 MB', () => {

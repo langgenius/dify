@@ -36,7 +36,7 @@ const CSVUploader: FC<Props> = ({
   const fileUploader = useRef<HTMLInputElement>(null)
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
+    file_size_limit: 500,
   }, [fileUploadConfigResponse])
 
   type UploadResult = Awaited<ReturnType<typeof upload>>
