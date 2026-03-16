@@ -758,3 +758,166 @@ def test_convert_mcp_schema_to_parameter_should_return_empty_for_non_object_sche
 
     # Assert
     assert result == []
+
+
+class TestToolTransformServiceAdditional:
+    """Additional coverage for ToolTransformService branches."""
+
+    @pytest.mark.parametrize(
+        ("auth_type", "expected"),
+        [
+            ("api_key_header", ApiProviderAuthType.API_KEY_HEADER),
+            ("api_key", ApiProviderAuthType.API_KEY_HEADER),
+            ("api_key_query", ApiProviderAuthType.API_KEY_QUERY),
+            ("unknown", ApiProviderAuthType.NONE),
+            (None, ApiProviderAuthType.NONE),
+        ],
+    )
+    def test_should_map_auth_type_for_api_provider_controller(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        auth_type: str | None,
+        expected: ApiProviderAuthType,
+    ) -> None:
+        """Test auth_type mapping for API provider controllers."""
+        # Arrange
+        db_provider = MagicMock(spec=ApiToolProvider)
+        db_provider.credentials = {"auth_type": auth_type}
+        from_db_mock = MagicMock(return_value="controller")
+        monkeypatch.setattr(tools_transform_service.ApiToolProviderController, "from_db", from_db_mock)
+
+        # Act
+        result = ToolTransformService.api_provider_to_controller(db_provider)
+
+        # Assert
+        assert result == "controller"
+        from_db_mock.assert_called_once_with(db_provider=db_provider, auth_type=expected)
+
+    def test_should_delegate_workflow_provider_controller_from_db(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test workflow provider controller creation delegates to from_db."""
+        # Arrange
+        db_provider = MagicMock()
+        from_db_mock = MagicMock(return_value="workflow-controller")
+        monkeypatch.setattr(tools_transform_service.WorkflowToolProviderController, "from_db", from_db_mock)
+
+        # Act
+        result = ToolTransformService.workflow_provider_to_controller(db_provider)
+
+        # Assert
+        assert result == "workflow-controller"
+        from_db_mock.assert_called_once_with(db_provider)
+
+    def test_should_build_workflow_user_provider_with_labels_and_app_id(self) -> None:
+        """Test workflow provider mapping includes labels and workflow app id."""
+        # Arrange
+        provider_controller = MagicMock()
+        provider_controller.provider_id = "provider-1"
+        provider_controller.entity.identity = SimpleNamespace(
+            author="author",
+            name="workflow-provider",
+            description=I18nObject(en_US="desc", zh_Hans="desc"),
+            icon="icon.png",
+            icon_dark="icon-dark.png",
+            label=I18nObject(en_US="label", zh_Hans="label"),
+        )
+
+        # Act
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=provider_controller,
+            labels=["a", "b"],
+            workflow_app_id="app-1",
+        )
+
+        # Assert
+        assert result.workflow_app_id == "app-1"
+        assert result.labels == ["a", "b"]
+        assert result.type == ToolProviderType.WORKFLOW
+
+    def test_should_convert_builtin_provider_to_credential_entity(self) -> None:
+        """Test mapping builtin provider fields into credential entity."""
+        # Arrange
+        provider = MagicMock()
+        provider.id = "provider-1"
+        provider.name = "provider-name"
+        provider.provider = "builtin"
+        provider.credential_type = CredentialType.API_KEY.value
+        provider.is_default = True
+
+        # Act
+        result = ToolTransformService.convert_builtin_provider_to_credential_entity(
+            provider=provider,
+            credentials={"api_key": "masked"},
+        )
+
+        # Assert
+        assert result.id == "provider-1"
+        assert result.provider == "builtin"
+        assert result.credential_type == CredentialType.API_KEY
+        assert result.is_default is True
+        assert result.credentials == {"api_key": "masked"}
+
+    def test_should_resolve_union_and_null_types_in_mcp_schema(self) -> None:
+        """Test union/null type resolution in MCP schema conversion."""
+        # Arrange
+        schema = {
+            "type": "object",
+            "required": ["choice"],
+            "properties": {
+                "choice": {
+                    "description": "choice",
+                    "anyOf": [{"type": "integer"}, {"type": "null"}],
+                },
+                "nullable": {"type": ["null"]},
+            },
+        }
+
+        # Act
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        # Assert
+        assert [p.name for p in result] == ["choice", "nullable"]
+        assert result[0].type == ToolParameter.ToolParameterType.NUMBER
+        assert result[1].type == ToolParameter.ToolParameterType.STRING
+
+    def test_should_handle_allof_and_complex_schema_types(self) -> None:
+        """Test allOf resolution and complex input_schema preservation."""
+        # Arrange
+        schema = {
+            "type": "object",
+            "properties": {
+                "payload": {
+                    "description": "payload",
+                    "allOf": [
+                        {"type": "array", "items": {"type": "string"}},
+                        {"type": "null"},
+                    ],
+                }
+            },
+        }
+
+        # Act
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        # Assert
+        assert result[0].type == ToolParameter.ToolParameterType.ARRAY
+        assert result[0].input_schema is not None
+
+    def test_should_guard_against_deeply_nested_union_types(self) -> None:
+        """Test depth guard defaults to string for deep union nesting."""
+        # Arrange
+        nested: dict[str, Any] = {"type": "null"}
+        for _ in range(ToolTransformService._MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH + 1):
+            nested = {"anyOf": [nested]}
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "deep": nested,
+            },
+        }
+
+        # Act
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        # Assert
+        assert result[0].type == ToolParameter.ToolParameterType.STRING
