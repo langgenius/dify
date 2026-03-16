@@ -2,6 +2,14 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  getChangedBranchCoverage,
+  getChangedStatementCoverage,
+  getIgnoredChangedLinesFromFile,
+  getLineHits,
+  normalizeToRepoRelative,
+  parseChangedLineMap,
+} from './check-components-diff-coverage-lib.mjs'
+import {
   collectComponentCoverageExcludedFiles,
   COMPONENT_COVERAGE_EXCLUDE_LABEL,
 } from './component-coverage-filters.mjs'
@@ -54,7 +62,13 @@ if (changedSourceFiles.length === 0) {
 
 const coverageEntries = new Map()
 for (const [file, entry] of Object.entries(coverage)) {
-  const repoRelativePath = normalizeToRepoRelative(entry.path ?? file)
+  const repoRelativePath = normalizeToRepoRelative(entry.path ?? file, {
+    appComponentsCoveragePrefix: APP_COMPONENTS_COVERAGE_PREFIX,
+    appComponentsPrefix: APP_COMPONENTS_PREFIX,
+    repoRoot,
+    sharedTestPrefix: SHARED_TEST_PREFIX,
+    webRoot,
+  })
   if (!isTrackedComponentSourceFile(repoRelativePath))
     continue
 
@@ -74,46 +88,53 @@ for (const [file, entry] of coverageEntries.entries()) {
 const overallCoverage = sumCoverageStats(fileCoverageRows)
 const diffChanges = getChangedLineMap(baseSha, headSha)
 const diffRows = []
+const ignoredDiffLines = []
+const invalidIgnorePragmas = []
 
 for (const [file, changedLines] of diffChanges.entries()) {
   if (!isTrackedComponentSourceFile(file))
     continue
 
   const entry = coverageEntries.get(file)
-  const lineHits = entry ? getLineHits(entry) : {}
-  const executableChangedLines = [...changedLines]
-    .filter(line => !entry || lineHits[line] !== undefined)
-    .sort((a, b) => a - b)
-
-  if (executableChangedLines.length === 0) {
-    diffRows.push({
+  const ignoreInfo = getIgnoredChangedLinesFromFile(path.join(repoRoot, file), changedLines)
+  for (const [line, reason] of ignoreInfo.ignoredLines.entries()) {
+    ignoredDiffLines.push({
       file,
-      moduleName: getModuleName(file),
-      total: 0,
-      covered: 0,
-      uncoveredLines: [],
+      line,
+      reason,
     })
-    continue
+  }
+  for (const invalidPragma of ignoreInfo.invalidPragmas) {
+    invalidIgnorePragmas.push({
+      file,
+      ...invalidPragma,
+    })
   }
 
-  const uncoveredLines = executableChangedLines.filter(line => (lineHits[line] ?? 0) === 0)
+  const statements = getChangedStatementCoverage(entry, ignoreInfo.effectiveChangedLines)
+  const branches = getChangedBranchCoverage(entry, ignoreInfo.effectiveChangedLines)
   diffRows.push({
+    branches,
     file,
+    ignoredLineCount: ignoreInfo.ignoredLines.size,
     moduleName: getModuleName(file),
-    total: executableChangedLines.length,
-    covered: executableChangedLines.length - uncoveredLines.length,
-    uncoveredLines,
+    statements,
   })
 }
 
 const diffTotals = diffRows.reduce((acc, row) => {
-  acc.total += row.total
-  acc.covered += row.covered
+  acc.statements.total += row.statements.total
+  acc.statements.covered += row.statements.covered
+  acc.branches.total += row.branches.total
+  acc.branches.covered += row.branches.covered
   return acc
-}, { total: 0, covered: 0 })
+}, {
+  branches: { total: 0, covered: 0 },
+  statements: { total: 0, covered: 0 },
+})
 
-const diffCoveragePct = percentage(diffTotals.covered, diffTotals.total)
-const diffFailures = diffRows.filter(row => row.uncoveredLines.length > 0)
+const diffStatementFailures = diffRows.filter(row => row.statements.uncoveredLines.length > 0)
+const diffBranchFailures = diffRows.filter(row => row.branches.uncoveredBranches.length > 0)
 const overallThresholdFailures = getThresholdFailures(overallCoverage, COMPONENTS_GLOBAL_THRESHOLDS)
 const moduleCoverageRows = [...moduleCoverageMap.entries()]
   .map(([moduleName, stats]) => ({
@@ -139,25 +160,38 @@ appendSummary(buildSummary({
   overallThresholdFailures,
   moduleCoverageRows,
   moduleThresholdFailures,
+  diffBranchFailures,
   diffRows,
-  diffFailures,
-  diffCoveragePct,
+  diffStatementFailures,
+  diffTotals,
   changedSourceFiles,
   changedTestFiles,
+  ignoredDiffLines,
+  invalidIgnorePragmas,
   missingTestTouch,
 }))
 
-if (diffFailures.length > 0 && process.env.CI) {
-  for (const failure of diffFailures.slice(0, 20)) {
-    const firstLine = failure.uncoveredLines[0] ?? 1
-    console.log(`::error file=${failure.file},line=${firstLine}::Uncovered changed lines: ${formatLineRanges(failure.uncoveredLines)}`)
+if (process.env.CI) {
+  for (const failure of diffStatementFailures.slice(0, 20)) {
+    const firstLine = failure.statements.uncoveredLines[0] ?? 1
+    console.log(`::error file=${failure.file},line=${firstLine}::Uncovered changed statements: ${formatLineRanges(failure.statements.uncoveredLines)}`)
+  }
+  for (const failure of diffBranchFailures.slice(0, 20)) {
+    const firstBranch = failure.branches.uncoveredBranches[0]
+    const line = firstBranch?.line ?? 1
+    console.log(`::error file=${failure.file},line=${line}::Uncovered changed branches: ${formatBranchRefs(failure.branches.uncoveredBranches)}`)
+  }
+  for (const invalidPragma of invalidIgnorePragmas.slice(0, 20)) {
+    console.log(`::error file=${invalidPragma.file},line=${invalidPragma.line}::Invalid diff coverage ignore pragma: ${invalidPragma.reason}`)
   }
 }
 
 if (
   overallThresholdFailures.length > 0
   || moduleThresholdFailures.length > 0
-  || diffFailures.length > 0
+  || diffStatementFailures.length > 0
+  || diffBranchFailures.length > 0
+  || invalidIgnorePragmas.length > 0
   || (STRICT_TEST_FILE_TOUCH && missingTestTouch)
 ) {
   process.exit(1)
@@ -168,11 +202,14 @@ function buildSummary({
   overallThresholdFailures,
   moduleCoverageRows,
   moduleThresholdFailures,
+  diffBranchFailures,
   diffRows,
-  diffFailures,
-  diffCoveragePct,
+  diffStatementFailures,
+  diffTotals,
   changedSourceFiles,
   changedTestFiles,
+  ignoredDiffLines,
+  invalidIgnorePragmas,
   missingTestTouch,
 }) {
   const lines = [
@@ -189,7 +226,8 @@ function buildSummary({
     `| Overall tracked statements | ${formatPercent(overallCoverage.statements)} | ${overallCoverage.statements.covered}/${overallCoverage.statements.total}; threshold ${COMPONENTS_GLOBAL_THRESHOLDS.statements}% |`,
     `| Overall tracked functions | ${formatPercent(overallCoverage.functions)} | ${overallCoverage.functions.covered}/${overallCoverage.functions.total}; threshold ${COMPONENTS_GLOBAL_THRESHOLDS.functions}% |`,
     `| Overall tracked branches | ${formatPercent(overallCoverage.branches)} | ${overallCoverage.branches.covered}/${overallCoverage.branches.total}; threshold ${COMPONENTS_GLOBAL_THRESHOLDS.branches}% |`,
-    `| Changed executable lines | ${formatPercent({ covered: diffTotals.covered, total: diffTotals.total })} | ${diffTotals.covered}/${diffTotals.total} |`,
+    `| Changed statements | ${formatDiffPercent(diffTotals.statements)} | ${diffTotals.statements.covered}/${diffTotals.statements.total} |`,
+    `| Changed branches | ${formatDiffPercent(diffTotals.branches)} | ${diffTotals.branches.covered}/${diffTotals.branches.total} |`,
     '',
   ]
 
@@ -239,20 +277,19 @@ function buildSummary({
   lines.push('')
 
   const changedRows = diffRows
-    .filter(row => row.total > 0)
+    .filter(row => row.statements.total > 0 || row.branches.total > 0)
     .sort((a, b) => {
-      const aPct = percentage(rowCovered(a), rowTotal(a))
-      const bPct = percentage(rowCovered(b), rowTotal(b))
-      return aPct - bPct || a.file.localeCompare(b.file)
+      const aScore = percentage(a.statements.covered + a.branches.covered, a.statements.total + a.branches.total)
+      const bScore = percentage(b.statements.covered + b.branches.covered, b.statements.total + b.branches.total)
+      return aScore - bScore || a.file.localeCompare(b.file)
     })
 
   lines.push('<details><summary>Changed file coverage</summary>')
   lines.push('')
-  lines.push('| File | Module | Changed executable lines | Coverage | Uncovered lines |')
-  lines.push('|---|---|---:|---:|---|')
+  lines.push('| File | Module | Changed statements | Statement coverage | Uncovered statements | Changed branches | Branch coverage | Uncovered branches | Ignored lines |')
+  lines.push('|---|---|---:|---:|---|---:|---:|---|---:|')
   for (const row of changedRows) {
-    const rowPct = percentage(row.covered, row.total)
-    lines.push(`| ${row.file.replace('web/', '')} | ${row.moduleName} | ${row.total} | ${rowPct.toFixed(2)}% | ${formatLineRanges(row.uncoveredLines)} |`)
+    lines.push(`| ${row.file.replace('web/', '')} | ${row.moduleName} | ${row.statements.total} | ${formatDiffPercent(row.statements)} | ${formatLineRanges(row.statements.uncoveredLines)} | ${row.branches.total} | ${formatDiffPercent(row.branches)} | ${formatBranchRefs(row.branches.uncoveredBranches)} | ${row.ignoredLineCount} |`)
   }
   lines.push('</details>')
   lines.push('')
@@ -268,16 +305,41 @@ function buildSummary({
     lines.push('')
   }
 
-  if (diffFailures.length > 0) {
-    lines.push('Uncovered changed lines:')
-    for (const row of diffFailures) {
-      lines.push(`- ${row.file.replace('web/', '')}: ${formatLineRanges(row.uncoveredLines)}`)
+  if (diffStatementFailures.length > 0) {
+    lines.push('Uncovered changed statements:')
+    for (const row of diffStatementFailures) {
+      lines.push(`- ${row.file.replace('web/', '')}: ${formatLineRanges(row.statements.uncoveredLines)}`)
+    }
+    lines.push('')
+  }
+
+  if (diffBranchFailures.length > 0) {
+    lines.push('Uncovered changed branches:')
+    for (const row of diffBranchFailures) {
+      lines.push(`- ${row.file.replace('web/', '')}: ${formatBranchRefs(row.branches.uncoveredBranches)}`)
+    }
+    lines.push('')
+  }
+
+  if (ignoredDiffLines.length > 0) {
+    lines.push('Ignored changed lines via pragma:')
+    for (const ignoredLine of ignoredDiffLines) {
+      lines.push(`- ${ignoredLine.file.replace('web/', '')}:${ignoredLine.line} - ${ignoredLine.reason}`)
+    }
+    lines.push('')
+  }
+
+  if (invalidIgnorePragmas.length > 0) {
+    lines.push('Invalid diff coverage ignore pragmas:')
+    for (const invalidPragma of invalidIgnorePragmas) {
+      lines.push(`- ${invalidPragma.file.replace('web/', '')}:${invalidPragma.line} - ${invalidPragma.reason}`)
     }
     lines.push('')
   }
 
   lines.push(`Changed source files checked: ${changedSourceFiles.length}`)
-  lines.push(`Changed executable line coverage: ${diffCoveragePct.toFixed(2)}%`)
+  lines.push(`Changed statement coverage: ${percentage(diffTotals.statements.covered, diffTotals.statements.total).toFixed(2)}%`)
+  lines.push(`Changed branch coverage: ${percentage(diffTotals.branches.covered, diffTotals.branches.total).toFixed(2)}%`)
 
   return lines
 }
@@ -312,34 +374,7 @@ function getChangedFiles(base, head) {
 
 function getChangedLineMap(base, head) {
   const diff = execGit(['diff', '--unified=0', '--no-color', '--diff-filter=ACMR', `${base}...${head}`, '--', 'web/app/components'])
-  const lineMap = new Map()
-  let currentFile = null
-
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+++ b/')) {
-      currentFile = line.slice(6).trim()
-      continue
-    }
-
-    if (!currentFile || !isTrackedComponentSourceFile(currentFile))
-      continue
-
-    const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/)
-    if (!match)
-      continue
-
-    const start = Number(match[1])
-    const count = match[2] ? Number(match[2]) : 1
-    if (count === 0)
-      continue
-
-    const linesForFile = lineMap.get(currentFile) ?? new Set()
-    for (let offset = 0; offset < count; offset += 1)
-      linesForFile.add(start + offset)
-    lineMap.set(currentFile, linesForFile)
-  }
-
-  return lineMap
+  return parseChangedLineMap(diff, isTrackedComponentSourceFile)
 }
 
 function isAnyComponentSourceFile(filePath) {
@@ -407,24 +442,6 @@ function getCoverageStats(entry) {
   }
 }
 
-function getLineHits(entry) {
-  if (entry.l && Object.keys(entry.l).length > 0)
-    return entry.l
-
-  const lineHits = {}
-  for (const [statementId, statement] of Object.entries(entry.statementMap ?? {})) {
-    const line = statement?.start?.line
-    if (!line)
-      continue
-
-    const hits = entry.s?.[statementId] ?? 0
-    const previous = lineHits[line]
-    lineHits[line] = previous === undefined ? hits : Math.max(previous, hits)
-  }
-
-  return lineHits
-}
-
 function sumCoverageStats(rows) {
   const total = createEmptyCoverageStats()
   for (const row of rows)
@@ -479,23 +496,6 @@ function getModuleName(filePath) {
   return segments.length === 1 ? '(root)' : segments[0]
 }
 
-function normalizeToRepoRelative(filePath) {
-  if (!filePath)
-    return ''
-
-  if (filePath.startsWith(APP_COMPONENTS_PREFIX) || filePath.startsWith(SHARED_TEST_PREFIX))
-    return filePath
-
-  if (filePath.startsWith(APP_COMPONENTS_COVERAGE_PREFIX))
-    return `web/${filePath}`
-
-  const absolutePath = path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(webRoot, filePath)
-
-  return path.relative(repoRoot, absolutePath).split(path.sep).join('/')
-}
-
 function formatLineRanges(lines) {
   if (!lines || lines.length === 0)
     return ''
@@ -520,6 +520,13 @@ function formatLineRanges(lines) {
   return ranges.join(', ')
 }
 
+function formatBranchRefs(branches) {
+  if (!branches || branches.length === 0)
+    return ''
+
+  return branches.map(branch => `${branch.line}[${branch.armIndex}]`).join(', ')
+}
+
 function percentage(covered, total) {
   if (total === 0)
     return 100
@@ -527,6 +534,13 @@ function percentage(covered, total) {
 }
 
 function formatPercent(metric) {
+  return `${percentage(metric.covered, metric.total).toFixed(2)}%`
+}
+
+function formatDiffPercent(metric) {
+  if (metric.total === 0)
+    return 'n/a'
+
   return `${percentage(metric.covered, metric.total).toFixed(2)}%`
 }
 
@@ -549,12 +563,4 @@ function repoRootFromCwd() {
     cwd: process.cwd(),
     encoding: 'utf8',
   }).trim()
-}
-
-function rowCovered(row) {
-  return row.covered
-}
-
-function rowTotal(row) {
-  return row.total
 }
