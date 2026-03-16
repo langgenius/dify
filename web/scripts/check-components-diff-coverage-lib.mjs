@@ -3,6 +3,12 @@ import path from 'node:path'
 
 const DIFF_COVERAGE_IGNORE_LINE_TOKEN = 'diff-coverage-ignore-line:'
 
+export function buildGitDiffRevisionArgs(base, head, mode = 'merge-base') {
+  return mode === 'exact'
+    ? [base, head]
+    : [`${base}...${head}`]
+}
+
 export function parseChangedLineMap(diff, isTrackedComponentSourceFile) {
   const lineMap = new Map()
   let currentFile = null
