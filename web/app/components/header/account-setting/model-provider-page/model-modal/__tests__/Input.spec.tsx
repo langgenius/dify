@@ -19,6 +19,21 @@ describe('Input', () => {
     expect(screen.getByPlaceholderText('API Key')).toHaveValue('hello')
   })
 
+  it('should render password inputs without autocomplete attributes', () => {
+    render(
+      <Input
+        type="password"
+        placeholder="Secret"
+        onChange={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('Secret')
+
+    expect(input).toHaveAttribute('type', 'password')
+    expect(input).not.toHaveAttribute('autocomplete')
+  })
+
   // User interaction
   it('should call onChange when the user types', () => {
     const onChange = vi.fn()

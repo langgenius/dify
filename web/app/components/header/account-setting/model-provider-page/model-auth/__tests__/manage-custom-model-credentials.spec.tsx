@@ -13,13 +13,33 @@ vi.mock('../hooks', () => ({
 
 // Mock Authorized
 vi.mock('../authorized', () => ({
-  default: ({ renderTrigger, items, popupTitle }: { renderTrigger: (o?: boolean) => React.ReactNode, items: Array<{ selectedCredential?: unknown }>, popupTitle: string }) => (
+  default: ({
+    renderTrigger,
+    items,
+    popupTitle,
+  }: {
+    renderTrigger: (o?: boolean) => React.ReactNode
+    items: Array<{
+      model?: { model?: string }
+      selectedCredential?: { credential_id?: string }
+    }>
+    popupTitle: string
+  }) => (
     <div data-testid="authorized-mock">
       <div data-testid="trigger-closed">{renderTrigger()}</div>
       <div data-testid="trigger-open">{renderTrigger(true)}</div>
       <div data-testid="popup-title">{popupTitle}</div>
       <div data-testid="items-count">{items.length}</div>
-      <div data-testid="items-selected">{items.map((it, i) => <span key={i} data-testid={`selected-${i}`}>{it.selectedCredential ? 'has-cred' : 'no-cred'}</span>)}</div>
+      <div data-testid="items-selected">
+        {items.map((item, index) => (
+          <span
+            key={item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`}
+            data-testid={`selected-${index}`}
+          >
+            {item.selectedCredential ? 'has-cred' : 'no-cred'}
+          </span>
+        ))}
+      </div>
     </div>
   ),
 }))

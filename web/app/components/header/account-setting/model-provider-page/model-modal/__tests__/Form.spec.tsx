@@ -9,7 +9,7 @@ import type {
   FormValue,
 } from '../../declarations'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FormTypeEnum } from '../../declarations'
 import Form from '../Form'
 
@@ -202,7 +202,7 @@ describe('Form', () => {
 
   // Interaction updates
   describe('Interactions', () => {
-    it('should update values and clear dependent fields when a field changes', () => {
+    it('should update values and clear dependent fields when a field changes', async () => {
       const formSchemas: AnyFormSchema[] = [
         createTextSchema({
           variable: 'api_key',
@@ -232,8 +232,10 @@ describe('Form', () => {
 
       fireEvent.change(screen.getByPlaceholderText('API Key'), { target: { value: 'new-key' } })
 
-      expect(onChange).toHaveBeenCalledWith({ api_key: 'new-key', dependent: 'reset' })
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith({ api_key: 'new-key', dependent: 'reset' })
+        expect(screen.getByText('Validating...')).toBeInTheDocument()
+      })
     })
 
     it('should render radio options based on show conditions and ignore edit-locked changes', () => {
@@ -447,9 +449,9 @@ describe('Form', () => {
           showOnVariableMap={{}}
           isEditMode={false}
           fieldMoreInfo={() => <div>Extra Info</div>}
-          override={[[FormTypeEnum.textInput], () => <div>Override Field</div>]}
+          override={[[FormTypeEnum.textInput], () => <div key="override-field">Override Field</div>]}
           customRenderField={schema => (
-            <div>
+            <div key={schema.variable}>
               Custom Render:
               {schema.variable}
             </div>
