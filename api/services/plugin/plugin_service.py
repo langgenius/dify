@@ -30,7 +30,7 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.provider import Provider, ProviderCredential
+from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID
 from services.enterprise.plugin_manager_service import (
     PluginManagerService,
@@ -566,6 +566,13 @@ class PluginService:
             session.execute(
                 delete(ProviderCredential).where(
                     ProviderCredential.id.in_(credential_ids),
+                )
+            )
+
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
                 )
             )
 
