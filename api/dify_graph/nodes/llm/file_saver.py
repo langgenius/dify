@@ -1,8 +1,8 @@
 import mimetypes
 import typing as tp
 
-from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
 from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.file.constants import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
 from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 
 
