@@ -65,7 +65,7 @@ class TestDisableSegmentsFromIndexTask:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="active",
+            status="normal",
         )
         tenant.id = account.tenant_id
         tenant.created_at = fake.date_time_this_year()

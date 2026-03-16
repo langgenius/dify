@@ -263,6 +263,27 @@ class TestFileService:
                 user=account,
             )
 
+    def test_upload_file_allows_regular_punctuation_in_filename(
+        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
+    ):
+        """
+        Test file upload allows punctuation that is safe when stored as metadata.
+        """
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        filename = 'candidate?resume for "dify"<final>|v2:.txt'
+        content = b"test content"
+        mimetype = "text/plain"
+
+        upload_file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=account,
+        )
+
+        assert upload_file.name == filename
+
     def test_upload_file_filename_too_long(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies
     ):

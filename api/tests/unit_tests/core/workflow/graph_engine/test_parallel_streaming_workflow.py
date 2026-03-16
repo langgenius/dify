@@ -14,8 +14,8 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.model_manager import ModelInstance
-from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
@@ -118,7 +118,11 @@ def test_parallel_streaming_workflow():
     with patch.object(
         DifyNodeFactory, "_build_model_instance_for_llm_node", return_value=MagicMock(spec=ModelInstance), autospec=True
     ):
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=get_default_root_node_id(graph_config),
+        )
 
     # Create the graph engine
     engine = GraphEngine(
@@ -164,7 +168,9 @@ def test_parallel_streaming_workflow():
     stream_chunk_events = [e for e in events if isinstance(e, NodeRunStreamChunkEvent)]
 
     # Get Answer node start event
-    answer_start_events = [e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == NodeType.ANSWER]
+    answer_start_events = [
+        e for e in events if isinstance(e, NodeRunStartedEvent) and e.node_type == BuiltinNodeTypes.ANSWER
+    ]
     assert len(answer_start_events) == 1, f"Expected 1 Answer node start event, got {len(answer_start_events)}"
     answer_start_event = answer_start_events[0]
 
@@ -211,7 +217,9 @@ def test_parallel_streaming_workflow():
 
     # Get LLM completion events
     llm_completed_events = [
-        (i, e) for i, e in enumerate(events) if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.LLM
+        (i, e)
+        for i, e in enumerate(events)
+        if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.LLM
     ]
 
     # Check LLM completion order - in the current implementation, LLMs run sequentially
@@ -263,7 +271,7 @@ def test_parallel_streaming_workflow():
     # According to Answer node configuration: '{{#1754339725656.text#}}{{#1754339718571.text#}}'
     # This means LLM 2 output should come first, then LLM 1 output
     answer_complete_events = [
-        e for e in events if isinstance(e, NodeRunSucceededEvent) and e.node_type == NodeType.ANSWER
+        e for e in events if isinstance(e, NodeRunSucceededEvent) and e.node_type == BuiltinNodeTypes.ANSWER
     ]
     assert len(answer_complete_events) == 1, f"Expected 1 Answer completion event, got {len(answer_complete_events)}"
 
