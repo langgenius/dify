@@ -203,7 +203,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               </label>
               <NumberField
                 className="w-[120px]"
-                allowOutOfRange
                 min={DEFAULT_STATUS_CODE}
                 max={MAX_STATUS_CODE}
                 value={inputs.status_code ?? DEFAULT_STATUS_CODE}
