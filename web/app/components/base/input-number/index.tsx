@@ -28,6 +28,11 @@ export type InputNumberProps = {
   controlClassName?: string
 } & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
+const STEPPER_REASONS = new Set<BaseNumberFieldRoot.ChangeEventDetails['reason']>([
+  'increment-press',
+  'decrement-press',
+])
+
 const isValueWithinBounds = (value: number, min?: number, max?: number) => {
   if (typeof min === 'number' && value < min)
     return false
@@ -36,6 +41,35 @@ const isValueWithinBounds = (value: number, min?: number, max?: number) => {
     return false
 
   return true
+}
+
+const resolveStep = (amount?: number, step?: InputProps['step']) => (
+  amount ?? (step === 'any' || typeof step === 'number' ? step : undefined) ?? 1
+)
+
+const exceedsStepBounds = ({
+  value,
+  reason,
+  stepAmount,
+  min,
+  max,
+}: {
+  value?: number
+  reason: BaseNumberFieldRoot.ChangeEventDetails['reason']
+  stepAmount: number
+  min?: number
+  max?: number
+}) => {
+  if (typeof value !== 'number')
+    return false
+
+  if (reason === 'increment-press' && typeof max === 'number')
+    return value + stepAmount > max
+
+  if (reason === 'decrement-press' && typeof min === 'number')
+    return value - stepAmount < min
+
+  return false
 }
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
@@ -62,17 +96,14 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     ...rest
   } = props
 
-  const resolvedStep = amount ?? (step === 'any' || typeof step === 'number' ? step : undefined) ?? 1
+  const resolvedStep = resolveStep(amount, step)
   const stepAmount = typeof resolvedStep === 'number' ? resolvedStep : 1
 
   const handleValueChange = useCallback((
     nextValue: number | null,
     eventDetails: BaseNumberFieldRoot.ChangeEventDetails,
   ) => {
-    if (
-      value === undefined
-      && (eventDetails.reason === 'increment-press' || eventDetails.reason === 'decrement-press')
-    ) {
+    if (value === undefined && STEPPER_REASONS.has(eventDetails.reason)) {
       onChange(defaultValue ?? 0)
       return
     }
@@ -82,21 +113,13 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       return
     }
 
-    if (
-      typeof value === 'number'
-      && eventDetails.reason === 'increment-press'
-      && typeof max === 'number'
-      && value + stepAmount > max
-    ) {
-      return
-    }
-
-    if (
-      typeof value === 'number'
-      && eventDetails.reason === 'decrement-press'
-      && typeof min === 'number'
-      && value - stepAmount < min
-    ) {
+    if (exceedsStepBounds({
+      value,
+      reason: eventDetails.reason,
+      stepAmount,
+      min,
+      max,
+    })) {
       return
     }
 
