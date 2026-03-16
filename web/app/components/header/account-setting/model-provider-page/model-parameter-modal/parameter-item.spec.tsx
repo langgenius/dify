@@ -1,5 +1,7 @@
 import type { ModelParameterRule } from '../declarations'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { BlockEnum } from '@/app/components/workflow/types'
 import ParameterItem from './parameter-item'
 
 vi.mock('../hooks', () => ({
@@ -16,6 +18,24 @@ vi.mock('@/app/components/base/tag-input', () => ({
   default: ({ onChange }: { onChange: (v: string[]) => void }) => (
     <button onClick={() => onChange(['tag1', 'tag2'])} data-testid="tag-input">Tag</button>
   ),
+}))
+
+let promptEditorOnChange: ((text: string) => void) | undefined
+let capturedWorkflowNodesMap: Record<string, { title: string, type: string }> | undefined
+vi.mock('@/app/components/base/prompt-editor', () => ({
+  default: ({ value, onChange, workflowVariableBlock }: {
+    value: string
+    onChange: (text: string) => void
+    workflowVariableBlock?: { show: boolean, variables: NodeOutPutVar[], workflowNodesMap?: Record<string, { title: string, type: string }> }
+  }) => {
+    promptEditorOnChange = onChange
+    capturedWorkflowNodesMap = workflowVariableBlock?.workflowNodesMap
+    return (
+      <div data-testid="prompt-editor" data-value={value} data-has-workflow-vars={!!workflowVariableBlock?.variables}>
+        {value}
+      </div>
+    )
+  },
 }))
 
 describe('ParameterItem', () => {
@@ -179,5 +199,89 @@ describe('ParameterItem', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'unsupported' as unknown as string })} value={0.7} />)
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+  })
+
+  // Workflow variable reference support
+  describe('Workflow variable reference', () => {
+    const mockNodesOutputVars: NodeOutPutVar[] = [
+      { nodeId: 'node1', title: 'LLM Node', vars: [] },
+    ]
+    const mockAvailableNodes: Node[] = [
+      { id: 'node1', type: 'custom', position: { x: 0, y: 0 }, data: { title: 'LLM Node', type: BlockEnum.LLM } } as Node,
+      { id: 'start', type: 'custom', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } } as Node,
+    ]
+
+    beforeEach(() => {
+      capturedWorkflowNodesMap = undefined
+    })
+
+    it('should build workflowNodesMap and render PromptEditor for string type', () => {
+      const onChange = vi.fn()
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
+          value="hello {{#node1.output#}}"
+          onChange={onChange}
+          isInWorkflow
+          nodesOutputVars={mockNodesOutputVars}
+          availableNodes={mockAvailableNodes}
+        />,
+      )
+      const editor = screen.getByTestId('prompt-editor')
+      expect(editor).toBeInTheDocument()
+      expect(editor).toHaveAttribute('data-has-workflow-vars', 'true')
+
+      expect(capturedWorkflowNodesMap).toBeDefined()
+      expect(capturedWorkflowNodesMap!.node1.title).toBe('LLM Node')
+      expect(capturedWorkflowNodesMap!.sys.title).toBe('workflow.blocks.start')
+      expect(capturedWorkflowNodesMap!.sys.type).toBe(BlockEnum.Start)
+
+      promptEditorOnChange?.('updated text')
+      expect(onChange).toHaveBeenCalledWith('updated text')
+    })
+
+    it('should build workflowNodesMap and render PromptEditor for text type', () => {
+      const onChange = vi.fn()
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type: 'text', name: 'user_prompt' })}
+          value="some long text"
+          onChange={onChange}
+          isInWorkflow
+          nodesOutputVars={mockNodesOutputVars}
+          availableNodes={mockAvailableNodes}
+        />,
+      )
+      const editor = screen.getByTestId('prompt-editor')
+      expect(editor).toBeInTheDocument()
+      expect(editor).toHaveAttribute('data-has-workflow-vars', 'true')
+
+      expect(capturedWorkflowNodesMap).toBeDefined()
+
+      promptEditorOnChange?.('new long text')
+      expect(onChange).toHaveBeenCalledWith('new long text')
+    })
+
+    it('should fall back to plain input when not in workflow mode for string type', () => {
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
+          value="plain"
+        />,
+      )
+      expect(screen.queryByTestId('prompt-editor')).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should return undefined workflowNodesMap when not in workflow mode', () => {
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
+          value="plain"
+          availableNodes={mockAvailableNodes}
+        />,
+      )
+      expect(capturedWorkflowNodesMap).toBeUndefined()
+    })
   })
 })
