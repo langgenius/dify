@@ -1952,6 +1952,7 @@ class DocumentService:
             if custom_metadata or metadata_bindings_to_create:
                 if custom_metadata:
                     from sqlalchemy.orm import attributes
+
                     doc_metadata_field = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                     doc_metadata_field.update(custom_metadata)
                     document.doc_metadata = doc_metadata_field
