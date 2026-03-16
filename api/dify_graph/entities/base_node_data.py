@@ -53,6 +53,7 @@ class RetryConfig(BaseModel):
         interval = base_interval * (2 ** retry_count)
 
         # Add jitter to avoid thundering herd problem
+        # nosec: B311 - random.uniform is used for jitter, not cryptographic purposes
         jitter_amount = interval * self.retry_jitter_ratio
         jitter = random.uniform(-jitter_amount, jitter_amount)
         interval += jitter
@@ -210,9 +211,12 @@ class BaseNodeData(ABC, BaseModel):
         extras = getattr(self, "__pydantic_extra__", None)
         if extras is None:
             extras = getattr(self, "model_extra", None)
-        if extras is not None and key in extras:
+        if extras is not None:
             return extras.get(key, default)
 
         return default
+
+
+
 
 
