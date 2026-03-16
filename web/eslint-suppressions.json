@@ -4242,6 +4242,14 @@
       "count": 1
     }
   },
+  "app/components/header/account-dropdown/workplace-selector/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
+      "count": 2
+    }
+  },
   "app/components/header/account-setting/api-based-extension-page/empty.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
