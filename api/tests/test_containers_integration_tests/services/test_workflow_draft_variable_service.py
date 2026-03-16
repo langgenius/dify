@@ -581,6 +581,69 @@ class TestWorkflowDraftVariableService:
         assert len(app_variables_after) == 0
         assert len(other_app_variables_after) == 1
 
+    def test_draft_variables_are_isolated_between_users(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test draft variable isolation for different users in the same app.
+
+        This test verifies that:
+        1. Query APIs return only variables owned by the target user.
+        2. User-scoped deletion only removes variables for that user and keeps
+           other users' variables in the same app untouched.
+        """
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
+        user_a = app.created_by
+        user_b = fake.uuid4()
+
+        # Use identical variable names on purpose to verify uniqueness scope includes user_id.
+        self._create_test_variable(
+            db_session_with_containers,
+            app.id,
+            CONVERSATION_VARIABLE_NODE_ID,
+            "shared_name",
+            StringSegment(value="value_a"),
+            user_id=user_a,
+            fake=fake,
+        )
+        self._create_test_variable(
+            db_session_with_containers,
+            app.id,
+            CONVERSATION_VARIABLE_NODE_ID,
+            "shared_name",
+            StringSegment(value="value_b"),
+            user_id=user_b,
+            fake=fake,
+        )
+        self._create_test_variable(
+            db_session_with_containers,
+            app.id,
+            CONVERSATION_VARIABLE_NODE_ID,
+            "only_a",
+            StringSegment(value="only_a"),
+            user_id=user_a,
+            fake=fake,
+        )
+
+        service = WorkflowDraftVariableService(db_session_with_containers)
+
+        user_a_vars = service.list_conversation_variables(app.id, user_id=user_a)
+        user_b_vars = service.list_conversation_variables(app.id, user_id=user_b)
+        assert {v.name for v in user_a_vars.variables} == {"shared_name", "only_a"}
+        assert {v.name for v in user_b_vars.variables} == {"shared_name"}
+
+        service.delete_user_workflow_variables(app.id, user_id=user_a)
+
+        user_a_remaining = (
+            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, user_id=user_a).count()
+        )
+        user_b_remaining = (
+            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, user_id=user_b).count()
+        )
+        assert user_a_remaining == 0
+        assert user_b_remaining == 1
+
     def test_delete_node_variables_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
