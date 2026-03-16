@@ -75,26 +75,13 @@ describe('InputNumber Component', () => {
     expect(onChange).toHaveBeenCalledWith(0)
   })
 
-  it('does not call onChange when parsed value is NaN', () => {
+  it('does not call onChange when input is not parseable', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} />)
     const input = screen.getByRole('spinbutton')
 
-    const originalNumber = globalThis.Number
-    const numberSpy = vi.spyOn(globalThis, 'Number').mockImplementation((val: unknown) => {
-      if (val === '123') {
-        return Number.NaN
-      }
-      return originalNumber(val)
-    })
-
-    try {
-      fireEvent.change(input, { target: { value: '123' } })
-      expect(onChange).not.toHaveBeenCalled()
-    }
-    finally {
-      numberSpy.mockRestore()
-    }
+    fireEvent.change(input, { target: { value: 'abc' } })
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('does not call onChange when direct input exceeds range', () => {
