@@ -89,7 +89,17 @@ jobs:
       - name: Merge reports
         run: vp test --merge-reports --reporter=json --reporter=agent --coverage
 
-      - name: Check app/components diff coverage
+      - name: Report app/components baseline coverage
+        run: node ./scripts/report-components-coverage-baseline.mjs
+
+      - name: Report app/components test touch
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: node ./scripts/report-components-test-touch.mjs
+
+      - name: Check app/components pure diff coverage
         env:
           BASE_SHA: ${{ inputs.base_sha }}
           DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
