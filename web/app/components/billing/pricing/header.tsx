@@ -24,7 +24,7 @@ const Header = ({
           </div>
           <span
             className={cn(
-              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent',
+              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] text-transparent',
               styles.instrumentSerif,
             )}
           >
