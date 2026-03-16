@@ -6,11 +6,11 @@ from pydantic import BaseModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 
 class AgentNodeData(BaseNodeData):
-    type: NodeType = NodeType.AGENT
+    type: NodeType = BuiltinNodeTypes.AGENT
     agent_strategy_provider_name: str
     agent_strategy_name: str
     agent_strategy_label: str

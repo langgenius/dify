@@ -5,7 +5,7 @@ import pytest
 from faker import Faker
 
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password

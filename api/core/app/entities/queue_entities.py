@@ -9,9 +9,8 @@ from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import WorkflowNodeExecutionMetadataKey
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from dify_graph.nodes import NodeType
 
 
 class QueueEvent(StrEnum):

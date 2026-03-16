@@ -187,53 +187,12 @@ const Template = useMemo(() => {
 
 **When**: Component directly handles API calls, data transformation, or complex async operations.
 
-**Dify Convention**: Use `@tanstack/react-query` hooks from `web/service/use-*.ts` or create custom data hooks.
-
-```typescript
-// ❌ Before: API logic in component
-const MCPServiceCard = () => {
-  const [basicAppConfig, setBasicAppConfig] = useState({})
-  
-  useEffect(() => {
-    if (isBasicApp && appId) {
-      (async () => {
-        const res = await fetchAppDetail({ url: '/apps', id: appId })
-        setBasicAppConfig(res?.model_config || {})
-      })()
-    }
-  }, [appId, isBasicApp])
-  
-  // More API-related logic...
-}
-
-// ✅ After: Extract to data hook using React Query
-// use-app-config.ts
-import { useQuery } from '@tanstack/react-query'
-import { get } from '@/service/base'
-
-const NAME_SPACE = 'appConfig'
-
-export const useAppConfig = (appId: string, isBasicApp: boolean) => {
-  return useQuery({
-    enabled: isBasicApp && !!appId,
-    queryKey: [NAME_SPACE, 'detail', appId],
-    queryFn: () => get<AppDetailResponse>(`/apps/${appId}`),
-    select: data => data?.model_config || {},
-  })
-}
-
-// Component becomes cleaner
-const MCPServiceCard = () => {
-  const { data: config, isLoading } = useAppConfig(appId, isBasicApp)
-  // UI only
-}
-```
-
-**React Query Best Practices in Dify**:
-- Define `NAME_SPACE` for query key organization
-- Use `enabled` option for conditional fetching
-- Use `select` for data transformation
-- Export invalidation hooks: `useInvalidXxx`
+**Dify Convention**:
+- This skill is for component decomposition, not query/mutation design.
+- When refactoring data fetching, follow `web/AGENTS.md`.
+- Use `frontend-query-mutation` for contracts, query shape, data-fetching wrappers, query/mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
+- Do not introduce deprecated `useInvalid` / `useReset`.
+- Do not add thin passthrough `useQuery` wrappers during refactoring; only extract a custom hook when it truly orchestrates multiple queries/mutations or shared derived state.
 
 **Dify Examples**:
 - `web/service/use-workflow.ts`

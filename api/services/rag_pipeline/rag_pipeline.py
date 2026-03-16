@@ -36,13 +36,13 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_resolution import LATEST_VERSION, get_workflow_node_type_classes_mapping
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from dify_graph.enums import ErrorStrategy, NodeType, SystemVariableKey
+from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, SystemVariableKey
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from dify_graph.graph_events.base import GraphNodeEventBase
@@ -381,10 +381,10 @@ class RagPipelineService:
         """
         # return default block config
         default_block_configs: list[dict[str, Any]] = []
-        for node_type, node_class_mapping in get_workflow_node_type_classes_mapping().items():
+        for node_type, node_class_mapping in get_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
-            if node_type is NodeType.HTTP_REQUEST:
+            if node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 filters = {
                     HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
                         max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -410,7 +410,7 @@ class RagPipelineService:
         :return:
         """
         node_type_enum = NodeType(node_type)
-        node_mapping = get_workflow_node_type_classes_mapping()
+        node_mapping = get_node_type_classes_mapping()
 
         # return default block config
         if node_type_enum not in node_mapping:
@@ -418,7 +418,7 @@ class RagPipelineService:
 
         node_class = node_mapping[node_type_enum][LATEST_VERSION]
         final_filters = dict(filters) if filters else {}
-        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
+        if node_type_enum == BuiltinNodeTypes.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
             final_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
                 max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
                 max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
@@ -500,7 +500,7 @@ class RagPipelineService:
                 session=session,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution.node_id,
-                node_type=NodeType(workflow_node_execution.node_type),
+                node_type=workflow_node_execution.node_type,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=account,
@@ -1262,7 +1262,7 @@ class RagPipelineService:
                 session=session,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution_db_model.node_id,
-                node_type=NodeType(workflow_node_execution_db_model.node_type),
+                node_type=workflow_node_execution_db_model.node_type,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=current_user,

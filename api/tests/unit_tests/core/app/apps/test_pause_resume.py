@@ -12,7 +12,7 @@ from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine
 from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
@@ -44,12 +44,12 @@ if "core.ops.ops_trace_manager" not in sys.modules:
 
 
 class _StubToolNodeData(BaseNodeData):
-    type: NodeType = NodeType.TOOL
+    type: NodeType = BuiltinNodeTypes.TOOL
     pause_on: bool = False
 
 
 class _StubToolNode(Node[_StubToolNodeData]):
-    node_type = NodeType.TOOL
+    node_type = BuiltinNodeTypes.TOOL
 
     @classmethod
     def version(cls) -> str:
@@ -94,7 +94,7 @@ def _patch_tool_node(mocker):
     def _patched_create_node(self, node_config: dict[str, object] | NodeConfigDict) -> Node:
         typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
         node_data = typed_node_config["data"]
-        if node_data.type == NodeType.TOOL:
+        if node_data.type == BuiltinNodeTypes.TOOL:
             return _StubToolNode(
                 id=str(typed_node_config["id"]),
                 config=typed_node_config,
@@ -108,7 +108,7 @@ def _patch_tool_node(mocker):
 
 def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
     node_data = data.model_dump()
-    node_data["type"] = node_type.value
+    node_data["type"] = str(node_type)
     return node_data
 
 
@@ -124,11 +124,11 @@ def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
     )
 
     nodes = [
-        {"id": "start", "data": _node_data(NodeType.START, start_data)},
-        {"id": "tool_a", "data": _node_data(NodeType.TOOL, tool_data_a)},
-        {"id": "tool_b", "data": _node_data(NodeType.TOOL, tool_data_b)},
-        {"id": "tool_c", "data": _node_data(NodeType.TOOL, tool_data_c)},
-        {"id": "end", "data": _node_data(NodeType.END, end_data)},
+        {"id": "start", "data": _node_data(BuiltinNodeTypes.START, start_data)},
+        {"id": "tool_a", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_a)},
+        {"id": "tool_b", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_b)},
+        {"id": "tool_c", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_c)},
+        {"id": "end", "data": _node_data(BuiltinNodeTypes.END, end_data)},
     ]
     edges = [
         {"source": "start", "target": "tool_a"},
@@ -157,7 +157,7 @@ def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> G
         graph_runtime_state=runtime_state,
     )
 
-    return Graph.init(graph_config=graph_config, node_factory=node_factory)
+    return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:

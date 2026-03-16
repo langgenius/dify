@@ -96,7 +96,6 @@ ignore_imports =
     dify_graph.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
     dify_graph.nodes.tool.tool_node -> core.tools.tool_engine
     dify_graph.nodes.tool.tool_node -> core.tools.tool_manager
-    dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> dify_graph.model_runtime.model_providers.__base.large_language_model
@@ -104,7 +103,6 @@ ignore_imports =
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
     dify_graph.nodes.question_classifier.question_classifier_node -> core.model_manager
     dify_graph.nodes.tool.tool_node -> core.tools.utils.message_transformer
-    dify_graph.nodes.llm.node -> core.helper.code_executor
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.errors
     dify_graph.nodes.llm.node -> core.llm_generator.output_parser.structured_output
     dify_graph.nodes.llm.node -> core.model_manager
@@ -116,7 +114,6 @@ ignore_imports =
     dify_graph.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.utils.prompt_message_util
     dify_graph.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
     dify_graph.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
-    dify_graph.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
     dify_graph.nodes.llm.node -> models.dataset
     dify_graph.nodes.llm.file_saver -> core.tools.signature
     dify_graph.nodes.llm.file_saver -> core.tools.tool_file_manager
