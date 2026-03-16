@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
@@ -20,12 +20,12 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
-from core.workflow.file_reference import parse_file_reference
 from dify_graph.enums import WorkflowExecutionStatus
 from dify_graph.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from dify_graph.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
+from models.utils.file_input_compat import build_file_from_input_mapping
 
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
@@ -41,19 +41,23 @@ if TYPE_CHECKING:
 # --- TypedDict definitions for structured dict return types ---
 
 
-def _resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
-    reference = file_mapping.get("reference")
-    if isinstance(reference, str) and reference:
-        parsed_reference = parse_file_reference(reference)
-        if parsed_reference is not None:
-            return parsed_reference.record_id
+def _resolve_app_tenant_id(app_id: str) -> str:
+    resolved_tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    if not resolved_tenant_id:
+        raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
+    return cast(str, resolved_tenant_id)
 
-    related_id = file_mapping.get("related_id")
-    if isinstance(related_id, str) and related_id:
-        parsed_reference = parse_file_reference(related_id)
-        if parsed_reference is not None:
-            return parsed_reference.record_id
-    return None
+
+def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) -> Callable[[], str]:
+    resolved_tenant_id = owner_tenant_id
+
+    def resolve_owner_tenant_id() -> str:
+        nonlocal resolved_tenant_id
+        if resolved_tenant_id is None:
+            resolved_tenant_id = _resolve_app_tenant_id(app_id)
+        return resolved_tenant_id
+
+    return resolve_owner_tenant_id
 
 
 class EnabledConfig(TypedDict):
@@ -1057,24 +1061,26 @@ class Conversation(Base):
     @property
     def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
+        # Compatibility bridge: stored input payloads may come from before or after the
+        # graph-layer file refactor. Newer rows may omit `tenant_id`, so keep tenant
+        # resolution at the SQLAlchemy model boundary instead of pushing ownership back
+        # into `dify_graph.file.File`.
+        tenant_resolver = _build_app_tenant_resolver(
+            app_id=self.app_id,
+            owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+        )
 
         # Convert file mapping to File object
         for key, value in inputs.items():
-            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
-            from factories import file_factory
-
             if (
                 isinstance(value, dict)
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
-                record_id = _resolve_file_record_id(value_dict)
-                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = record_id
-                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = record_id
-                tenant_id = cast(str, value_dict.get("tenant_id", ""))
-                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+                inputs[key] = build_file_from_input_mapping(
+                    file_mapping=value_dict,
+                    tenant_resolver=tenant_resolver,
+                )
             elif isinstance(value, list):
                 value_list = cast(list[Any], value)
                 if all(
@@ -1087,16 +1093,12 @@ class Conversation(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
-                        record_id = _resolve_file_record_id(item_dict)
-                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = record_id
-                        elif item_dict["transfer_method"] in [
-                            FileTransferMethod.LOCAL_FILE,
-                            FileTransferMethod.REMOTE_URL,
-                        ]:
-                            item_dict["upload_file_id"] = record_id
-                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
-                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                        file_list.append(
+                            build_file_from_input_mapping(
+                                file_mapping=item_dict,
+                                tenant_resolver=tenant_resolver,
+                            )
+                        )
                     inputs[key] = file_list
 
         return inputs
@@ -1396,22 +1398,23 @@ class Message(Base):
     @property
     def inputs(self) -> dict[str, Any]:
         inputs = self._inputs.copy()
+        # Compatibility bridge: message inputs are persisted as JSON and must remain
+        # readable across file payload shape changes. Do not assume `tenant_id`
+        # is serialized into each file mapping going forward.
+        tenant_resolver = _build_app_tenant_resolver(
+            app_id=self.app_id,
+            owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+        )
         for key, value in inputs.items():
-            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
-            from factories import file_factory
-
             if (
                 isinstance(value, dict)
                 and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
             ):
                 value_dict = cast(dict[str, Any], value)
-                record_id = _resolve_file_record_id(value_dict)
-                if value_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                    value_dict["tool_file_id"] = record_id
-                elif value_dict["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
-                    value_dict["upload_file_id"] = record_id
-                tenant_id = cast(str, value_dict.get("tenant_id", ""))
-                inputs[key] = file_factory.build_from_mapping(mapping=value_dict, tenant_id=tenant_id)
+                inputs[key] = build_file_from_input_mapping(
+                    file_mapping=value_dict,
+                    tenant_resolver=tenant_resolver,
+                )
             elif isinstance(value, list):
                 value_list = cast(list[Any], value)
                 if all(
@@ -1424,16 +1427,12 @@ class Message(Base):
                         if not isinstance(item, dict):
                             continue
                         item_dict = cast(dict[str, Any], item)
-                        record_id = _resolve_file_record_id(item_dict)
-                        if item_dict["transfer_method"] == FileTransferMethod.TOOL_FILE:
-                            item_dict["tool_file_id"] = record_id
-                        elif item_dict["transfer_method"] in [
-                            FileTransferMethod.LOCAL_FILE,
-                            FileTransferMethod.REMOTE_URL,
-                        ]:
-                            item_dict["upload_file_id"] = record_id
-                        tenant_id = cast(str, item_dict.get("tenant_id", ""))
-                        file_list.append(file_factory.build_from_mapping(mapping=item_dict, tenant_id=tenant_id))
+                        file_list.append(
+                            build_file_from_input_mapping(
+                                file_mapping=item_dict,
+                                tenant_resolver=tenant_resolver,
+                            )
+                        )
                     inputs[key] = file_list
         return inputs
 
