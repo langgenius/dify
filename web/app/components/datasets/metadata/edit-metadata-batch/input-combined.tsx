@@ -47,7 +47,7 @@ const InputCombined: FC<Props> = ({
           className="min-w-0"
           value={value}
           readOnly={readOnly}
-          onValueChange={onChange}
+          onValueChange={value => onChange(value ?? 0)}
         >
           <NumberFieldGroup size="regular">
             <NumberFieldInput
