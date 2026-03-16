@@ -129,7 +129,7 @@ describe('IndexMethod', () => {
 
     it('should pass keywordNumber to KeywordNumber component', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={25} />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveValue('25')
     })
 
@@ -137,7 +137,7 @@ describe('IndexMethod', () => {
       const handleKeywordChange = vi.fn()
       render(<IndexMethod {...defaultProps} onKeywordNumberChange={handleKeywordChange} />)
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '30' } })
 
       expect(handleKeywordChange).toHaveBeenCalled()
@@ -192,13 +192,13 @@ describe('IndexMethod', () => {
 
     it('should handle keywordNumber of 0', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={0} />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={50} />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveValue('50')
     })
   })

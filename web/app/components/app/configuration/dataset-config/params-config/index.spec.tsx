@@ -184,7 +184,7 @@ describe('dataset-config/params-config', () => {
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
+        const [topKInput] = dialogScope.getAllByRole('textbox')
         expect(topKInput).toHaveValue('5')
       })
 
@@ -197,7 +197,7 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
       expect(reopenedTopKInput).toHaveValue('5')
@@ -217,7 +217,7 @@ describe('dataset-config/params-config', () => {
       await user.click(incrementButtons[0])
 
       await waitFor(() => {
-        const [topKInput] = dialogScope.getAllByRole('spinbutton')
+        const [topKInput] = dialogScope.getAllByRole('textbox')
         expect(topKInput).toHaveValue('5')
       })
 
@@ -231,7 +231,7 @@ describe('dataset-config/params-config', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const reopenedDialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const reopenedScope = within(reopenedDialog)
-      const [reopenedTopKInput] = reopenedScope.getAllByRole('spinbutton')
+      const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
       expect(reopenedTopKInput).toHaveValue('4')

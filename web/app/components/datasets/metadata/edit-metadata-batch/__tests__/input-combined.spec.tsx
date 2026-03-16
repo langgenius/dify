@@ -43,7 +43,7 @@ describe('InputCombined', () => {
       render(
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('42')
     })
@@ -97,7 +97,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '123' } })
 
       expect(handleChange).toHaveBeenCalled()
@@ -109,7 +109,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={999} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('spinbutton')).toHaveValue('999')
+      expect(screen.getByRole('textbox')).toHaveValue('999')
     })
 
     it('should apply readOnly prop to number input', () => {
@@ -118,7 +118,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={42} onChange={handleChange} readOnly />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveAttribute('readonly')
     })
   })
@@ -187,7 +187,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={null} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
     })
   })
@@ -209,7 +209,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveClass('rounded-l-md')
     })
   })
@@ -231,7 +231,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('spinbutton')).toHaveValue('0')
+      expect(screen.getByRole('textbox')).toHaveValue('0')
     })
 
     it('should handle negative number', () => {
@@ -240,7 +240,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={-100} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('spinbutton')).toHaveValue('-100')
+      expect(screen.getByRole('textbox')).toHaveValue('-100')
     })
 
     it('should handle special characters in string', () => {
@@ -264,7 +264,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 })

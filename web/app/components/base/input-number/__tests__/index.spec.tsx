@@ -13,7 +13,7 @@ describe('InputNumber Component', () => {
 
   it('renders input with default values', () => {
     render(<InputNumber {...defaultProps} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
 
@@ -60,7 +60,7 @@ describe('InputNumber Component', () => {
   it('handles direct input changes', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '42' } })
     expect(onChange).toHaveBeenCalledWith(42)
@@ -69,7 +69,7 @@ describe('InputNumber Component', () => {
   it('handles empty input', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} value={1} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '' } })
     expect(onChange).toHaveBeenCalledWith(0)
@@ -78,7 +78,7 @@ describe('InputNumber Component', () => {
   it('does not call onChange when input is not parseable', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: 'abc' } })
     expect(onChange).not.toHaveBeenCalled()
@@ -87,7 +87,7 @@ describe('InputNumber Component', () => {
   it('does not call onChange when direct input exceeds range', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} max={10} min={0} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '11' } })
 
@@ -128,7 +128,7 @@ describe('InputNumber Component', () => {
   it('disables controls when disabled prop is true', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} disabled />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 
@@ -231,7 +231,7 @@ describe('InputNumber Component', () => {
   it('validates input against max constraint', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} max={10} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '15' } })
     expect(onChange).not.toHaveBeenCalled()
@@ -240,7 +240,7 @@ describe('InputNumber Component', () => {
   it('validates input against min constraint', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} min={5} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '2' } })
     expect(onChange).not.toHaveBeenCalled()
@@ -249,7 +249,7 @@ describe('InputNumber Component', () => {
   it('accepts input within min and max constraints', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} min={0} max={100} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '50' } })
     expect(onChange).toHaveBeenCalledWith(50)
@@ -314,7 +314,7 @@ describe('InputNumber Component', () => {
   it('handles zero as a valid input', () => {
     const onChange = vi.fn()
     render(<InputNumber onChange={onChange} min={-5} max={5} value={1} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
 
     fireEvent.change(input, { target: { value: '0' } })
     expect(onChange).toHaveBeenCalledWith(0)

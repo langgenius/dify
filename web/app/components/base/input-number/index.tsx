@@ -127,10 +127,6 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
             {...rest}
             size={size}
             className={className}
-            role="spinbutton"
-            aria-valuemin={min}
-            aria-valuemax={max}
-            aria-valuenow={value}
           />
           {unit && (
             <NumberFieldUnit size={size}>
