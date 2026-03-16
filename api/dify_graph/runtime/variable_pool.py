@@ -206,6 +206,23 @@ class VariablePool(BaseModel):
 
         return result
 
+    def flatten(self, *, unprefixed_node_id: str | None = None) -> Mapping[str, object]:
+        """Return a selector-style snapshot of the entire variable pool.
+
+        Variables belonging to ``unprefixed_node_id`` keep their original names so callers
+        can expose the current node's values without duplicating its namespace. All other
+        entries are emitted as ``"<node_id>.<name>"`` to preserve their source prefix in a
+        single flat mapping.
+        """
+
+        result: dict[str, object] = {}
+        for node_id, variables in self.variable_dictionary.items():
+            for name, variable in variables.items():
+                output_name = name if node_id == unprefixed_node_id else f"{node_id}.{name}"
+                result[output_name] = deepcopy(variable.value)
+
+        return result
+
     @classmethod
     def empty(cls) -> VariablePool:
         """Create an empty variable pool."""

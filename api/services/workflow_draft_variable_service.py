@@ -19,6 +19,7 @@ from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
 from dify_graph.enums import NodeType
@@ -897,9 +898,8 @@ class DraftVariableSaver:
         for name, value in output.items():
             value_seg = _build_segment_for_serialized_values(value)
             node_id, name = self._normalize_variable_for_start_node(name)
-            # If node_id is not `sys`, it means that the variable is a user-defined input field
-            # in `Start` node.
-            if node_id != SYSTEM_VARIABLE_NODE_ID:
+            if node_id == self._node_id:
+                # Variables without a reserved prefix belong to the Start node itself.
                 draft_vars.append(
                     WorkflowDraftVariable.new_node_variable(
                         app_id=self._app_id,
@@ -913,7 +913,7 @@ class DraftVariableSaver:
                     )
                 )
                 has_non_sys_variables = True
-            else:
+            elif node_id == SYSTEM_VARIABLE_NODE_ID:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
                     # just build files from the value.
@@ -938,15 +938,45 @@ class DraftVariableSaver:
                         editable=self._should_variable_be_editable(node_id, name),
                     )
                 )
+            elif node_id == CONVERSATION_VARIABLE_NODE_ID:
+                draft_vars.append(
+                    WorkflowDraftVariable.new_conversation_variable(
+                        app_id=self._app_id,
+                        user_id=self._user.id,
+                        name=name,
+                        value=value_seg,
+                    )
+                )
+            else:
+                draft_vars.append(
+                    WorkflowDraftVariable.new_node_variable(
+                        app_id=self._app_id,
+                        user_id=self._user.id,
+                        node_id=node_id,
+                        name=name,
+                        node_execution_id=self._node_execution_id,
+                        value=value_seg,
+                        visible=self._should_variable_be_visible(node_id, self._node_type, name),
+                        editable=self._should_variable_be_editable(node_id, name),
+                    )
+                )
         if not has_non_sys_variables:
             draft_vars.append(self._create_dummy_output_variable())
         return draft_vars
 
     def _normalize_variable_for_start_node(self, name: str) -> tuple[str, str]:
-        if not name.startswith(f"{SYSTEM_VARIABLE_NODE_ID}."):
-            return self._node_id, name
-        _, name_ = name.split(".", maxsplit=1)
-        return SYSTEM_VARIABLE_NODE_ID, name_
+        for reserved_node_id in (
+            SYSTEM_VARIABLE_NODE_ID,
+            ENVIRONMENT_VARIABLE_NODE_ID,
+            CONVERSATION_VARIABLE_NODE_ID,
+            RAG_PIPELINE_VARIABLE_NODE_ID,
+        ):
+            prefix = f"{reserved_node_id}."
+            if name.startswith(prefix):
+                _, name_ = name.split(".", maxsplit=1)
+                return reserved_node_id, name_
+
+        return self._node_id, name
 
     def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars = []
