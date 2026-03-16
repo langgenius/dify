@@ -67,8 +67,11 @@ def build_protected_resource_metadata_discovery_urls(
             normalized_metadata_url = www_auth_resource_metadata_url
         elif not parsed_metadata_url.scheme and parsed_metadata_url.netloc:
             normalized_metadata_url = f"{parsed_server_url.scheme}:{www_auth_resource_metadata_url}"
-        elif not parsed_metadata_url.scheme and not parsed_metadata_url.netloc and parsed_metadata_url.path.startswith(
-            "/"):
+        elif (
+            not parsed_metadata_url.scheme
+            and not parsed_metadata_url.netloc
+            and parsed_metadata_url.path.startswith("/")
+        ):
             first_segment = parsed_metadata_url.path.lstrip("/").split("/", 1)[0]
             if first_segment == ".well-known" or "." not in first_segment:
                 normalized_metadata_url = urljoin(base_url, parsed_metadata_url.path)
