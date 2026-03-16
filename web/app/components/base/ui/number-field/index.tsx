@@ -81,7 +81,7 @@ export function NumberFieldInput({
 }
 
 export const numberFieldUnitVariants = cva(
-  'shrink-0 text-text-tertiary system-sm-regular',
+  'flex shrink-0 items-center self-stretch text-text-tertiary system-sm-regular',
   {
     variants: {
       size: {
