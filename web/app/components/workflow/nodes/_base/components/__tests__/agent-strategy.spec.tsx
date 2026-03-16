@@ -6,7 +6,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { AgentStrategy } from './agent-strategy'
+import { AgentStrategy } from '../agent-strategy'
 
 const createI18nLabel = (text: string) => ({ en_US: text, zh_Hans: text })
 
@@ -28,7 +28,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   },
 }))
 
-vi.mock('../../../store', () => ({
+vi.mock('../../../../store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       setControlPromptEditorRerenderKey: vi.fn(),
@@ -36,15 +36,15 @@ vi.mock('../../../store', () => ({
   }),
 }))
 
-vi.mock('./agent-strategy-selector', () => ({
+vi.mock('../agent-strategy-selector', () => ({
   AgentStrategySelector: () => <div data-testid="agent-strategy-selector" />,
 }))
 
-vi.mock('./field', () => ({
+vi.mock('../field', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./prompt/editor', () => ({
+vi.mock('../prompt/editor', () => ({
   default: ({ value }: { value: string }) => <div data-testid="agent-strategy-editor">{value}</div>,
 }))
 

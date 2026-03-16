@@ -1,9 +1,9 @@
-import type { WebhookTriggerNodeType } from './types'
+import type { WebhookTriggerNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import Panel from './panel'
+import Panel from '../panel'
 
 const {
   mockHandleStatusCodeChange,
@@ -13,7 +13,7 @@ const {
   mockGenerateWebhookUrl: vi.fn(),
 }))
 
-vi.mock('./use-config', () => ({
+vi.mock('../use-config', () => ({
   DEFAULT_STATUS_CODE: 200,
   MAX_STATUS_CODE: 399,
   normalizeStatusCode: (statusCode: number) => Math.min(Math.max(statusCode, 200), 399),
@@ -70,19 +70,19 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
   default: () => <div data-testid="split" />,
 }))
 
-vi.mock('./components/header-table', () => ({
+vi.mock('../components/header-table', () => ({
   default: () => <div data-testid="header-table" />,
 }))
 
-vi.mock('./components/parameter-table', () => ({
+vi.mock('../components/parameter-table', () => ({
   default: () => <div data-testid="parameter-table" />,
 }))
 
-vi.mock('./components/paragraph-input', () => ({
+vi.mock('../components/paragraph-input', () => ({
   default: () => <div data-testid="paragraph-input" />,
 }))
 
-vi.mock('./utils/render-output-vars', () => ({
+vi.mock('../utils/render-output-vars', () => ({
   OutputVariablesContent: () => <div data-testid="output-variables-content" />,
 }))
 

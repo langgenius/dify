@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import TopKAndScoreThreshold from './top-k-and-score-threshold'
+import TopKAndScoreThreshold from '../top-k-and-score-threshold'
 
 describe('TopKAndScoreThreshold', () => {
   const defaultProps = {
