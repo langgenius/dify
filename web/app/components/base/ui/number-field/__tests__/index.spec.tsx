@@ -8,7 +8,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
   NumberFieldUnit,
-} from './index'
+} from '../index'
 
 describe('NumberField wrapper', () => {
   describe('Exports', () => {
