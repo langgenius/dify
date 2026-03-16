@@ -32,3 +32,9 @@ def test_render_markdown_body_sanitizes_unsafe_html():
     assert "onclick" not in rendered
     assert "javascript:" not in rendered
     assert "Click" in rendered
+
+
+def test_render_markdown_body_does_not_support_table_syntax():
+    rendered = EmailDeliveryConfig.render_markdown_body("| h1 | h2 |\n| --- | --- |\n| v1 | v2 |")
+
+    assert "<table" not in rendered

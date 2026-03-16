@@ -61,7 +61,6 @@ class EmailDeliveryConfig(BaseModel):
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
     _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
         "a",
-        "b",
         "blockquote",
         "br",
         "code",
@@ -73,24 +72,15 @@ class EmailDeliveryConfig(BaseModel):
         "h5",
         "h6",
         "hr",
-        "i",
         "li",
         "ol",
         "p",
         "pre",
         "strong",
-        "table",
-        "tbody",
-        "td",
-        "th",
-        "thead",
-        "tr",
         "ul",
     ]
     _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
         "a": ["href", "title"],
-        "td": ["align"],
-        "th": ["align"],
     }
     _ALLOWED_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto"]
 
@@ -136,10 +126,7 @@ class EmailDeliveryConfig(BaseModel):
     @classmethod
     def render_markdown_body(cls, body: str) -> str:
         """Render markdown to safe HTML for email delivery."""
-        rendered_html = markdown.markdown(
-            body,
-            extensions=["extra", "nl2br", "sane_lists"],
-        )
+        rendered_html = markdown.markdown(body, extensions=["nl2br"])
         return bleach.clean(
             rendered_html,
             tags=cls._ALLOWED_HTML_TAGS,
