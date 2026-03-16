@@ -1,4 +1,7 @@
-"""Abstract interface for document loader implementations."""
+"""Word (.docx) document extractor used for RAG ingestion.
+
+Supports local file paths and remote URLs (downloaded via `core.helper.ssrf_proxy`).
+"""
 
 import logging
 import mimetypes
@@ -8,7 +11,6 @@ import tempfile
 import uuid
 from urllib.parse import urlparse
 
-import httpx
 from docx import Document as DocxDocument
 from docx.oxml.ns import qn
 from docx.text.run import Run
@@ -44,7 +46,7 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            response = httpx.get(self.file_path, timeout=None)
+            response = ssrf_proxy.get(self.file_path)
 
             if response.status_code != 200:
                 response.close()
@@ -55,6 +57,7 @@ class WordExtractor(BaseExtractor):
             self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             try:
                 self.temp_file.write(response.content)
+                self.temp_file.flush()
             finally:
                 response.close()
             self.file_path = self.temp_file.name
@@ -201,26 +204,61 @@ class WordExtractor(BaseExtractor):
         return " ".join(unique_content)
 
     def _parse_cell_paragraph(self, paragraph, image_map):
-        paragraph_content = []
-        for run in paragraph.runs:
-            if run.element.xpath(".//a:blip"):
-                for blip in run.element.xpath(".//a:blip"):
-                    image_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
-                    if not image_id:
-                        continue
-                    rel = paragraph.part.rels.get(image_id)
-                    if rel is None:
-                        continue
-                    # For external images, use image_id as key; for internal, use target_part
-                    if rel.is_external:
-                        if image_id in image_map:
-                            paragraph_content.append(image_map[image_id])
-                    else:
-                        image_part = rel.target_part
-                        if image_part in image_map:
-                            paragraph_content.append(image_map[image_part])
-            else:
-                paragraph_content.append(run.text)
+        paragraph_content: list[str] = []
+
+        for child in paragraph._element:
+            tag = child.tag
+            if tag == qn("w:hyperlink"):
+                # Note: w:hyperlink elements may also use w:anchor for internal bookmarks.
+                # This extractor intentionally only converts external links (HTTP/mailto, etc.)
+                # that are backed by a relationship id (r:id) with rel.is_external == True.
+                # Hyperlinks without such an external rel (including anchor-only bookmarks)
+                # are left as plain text link_text.
+                r_id = child.get(qn("r:id"))
+                link_text_parts: list[str] = []
+                for run_elem in child.findall(qn("w:r")):
+                    run = Run(run_elem, paragraph)
+                    if run.text:
+                        link_text_parts.append(run.text)
+                link_text = "".join(link_text_parts).strip()
+                if r_id:
+                    try:
+                        rel = paragraph.part.rels.get(r_id)
+                        if rel:
+                            target_ref = getattr(rel, "target_ref", None)
+                            if target_ref:
+                                parsed_target = urlparse(str(target_ref))
+                                if rel.is_external or parsed_target.scheme in ("http", "https", "mailto"):
+                                    display_text = link_text or str(target_ref)
+                                    link_text = f"[{display_text}]({target_ref})"
+                    except Exception:
+                        logger.exception("Failed to resolve URL for hyperlink with r:id: %s", r_id)
+                if link_text:
+                    paragraph_content.append(link_text)
+
+            elif tag == qn("w:r"):
+                run = Run(child, paragraph)
+                if run.element.xpath(".//a:blip"):
+                    for blip in run.element.xpath(".//a:blip"):
+                        image_id = blip.get(
+                            "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
+                        )
+                        if not image_id:
+                            continue
+                        rel = paragraph.part.rels.get(image_id)
+                        if rel is None:
+                            continue
+                        if rel.is_external:
+                            if image_id in image_map:
+                                paragraph_content.append(image_map[image_id])
+                        else:
+                            image_part = rel.target_part
+                            if image_part in image_map:
+                                paragraph_content.append(image_map[image_part])
+                else:
+                    if run.text:
+                        paragraph_content.append(run.text)
+
         return "".join(paragraph_content).strip()
 
     def parse_docx(self, docx_path):

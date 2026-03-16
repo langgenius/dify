@@ -22,12 +22,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -51,7 +51,7 @@ jobs:
         run: sh .github/workflows/expose_service_ports.sh
 
       - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@v2
+        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -72,6 +72,7 @@ jobs:
           OPENDAL_FS_ROOT: /tmp/dify-storage
         run: |
           uv run --project api pytest \
+            -n auto \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \

@@ -63,7 +63,12 @@ class RagPipelineTransformService:
             ):
                 node = self._deal_file_extensions(node)
             if node.get("data", {}).get("type") == "knowledge-index":
-                node = self._deal_knowledge_index(dataset, doc_form, indexing_technique, retrieval_model, node)
+                knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
+                if dataset.tenant_id != current_user.current_tenant_id:
+                    raise ValueError("Unauthorized")
+                node = self._deal_knowledge_index(
+                    knowledge_configuration, dataset, indexing_technique, retrieval_model, node
+                )
             new_nodes.append(node)
         if new_nodes:
             graph["nodes"] = new_nodes
@@ -155,14 +160,13 @@ class RagPipelineTransformService:
 
     def _deal_knowledge_index(
         self,
+        knowledge_configuration: KnowledgeConfiguration,
         dataset: Dataset,
-        doc_form: str,
         indexing_technique: str | None,
         retrieval_model: RetrievalSetting | None,
         node: dict,
     ):
         knowledge_configuration_dict = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
@@ -173,6 +177,10 @@ class RagPipelineTransformService:
             knowledge_configuration.retrieval_model = retrieval_model
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
+
+        # Copy summary_index_setting from dataset to knowledge_index node configuration
+        if dataset.summary_index_setting:
+            knowledge_configuration.summary_index_setting = dataset.summary_index_setting
 
         knowledge_configuration_dict.update(knowledge_configuration.model_dump())
         node["data"] = knowledge_configuration_dict

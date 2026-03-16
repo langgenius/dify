@@ -24,20 +24,19 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from core.workflow.runtime.variable_pool import VariablePool
+from dify_graph.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
 from models.provider_ids import ToolProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
-    from core.workflow.nodes.tool.entities import ToolEntity
+    from dify_graph.nodes.tool.entities import ToolEntity
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -58,11 +57,12 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.workflow.nodes.tool.entities import ToolEntity
+    from dify_graph.nodes.tool.entities import ToolEntity
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,6 @@ class ToolManager:
 
         :return: the tool
         """
-
         if provider_type == ToolProviderType.BUILT_IN:
             # check if the builtin tool need credentials
             provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
@@ -189,16 +188,13 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"builtin tool {tool_name} not found")
 
             if not provider_controller.need_credentials:
-                return cast(
-                    BuiltinTool,
-                    builtin_tool.fork_tool_runtime(
-                        runtime=ToolRuntime(
-                            tenant_id=tenant_id,
-                            credentials={},
-                            invoke_from=invoke_from,
-                            tool_invoke_from=tool_invoke_from,
-                        )
-                    ),
+                return builtin_tool.fork_tool_runtime(
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 )
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
@@ -300,18 +296,15 @@ class ToolManager:
                 decrypted_credentials = refreshed_credentials.credentials
                 cache.delete()
 
-            return cast(
-                BuiltinTool,
-                builtin_tool.fork_tool_runtime(
-                    runtime=ToolRuntime(
-                        tenant_id=tenant_id,
-                        credentials=dict(decrypted_credentials),
-                        credential_type=CredentialType.of(builtin_provider.credential_type),
-                        runtime_parameters={},
-                        invoke_from=invoke_from,
-                        tool_invoke_from=tool_invoke_from,
-                    )
-                ),
+            return builtin_tool.fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=tenant_id,
+                    credentials=dict(decrypted_credentials),
+                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    runtime_parameters={},
+                    invoke_from=invoke_from,
+                    tool_invoke_from=tool_invoke_from,
+                )
             )
 
         elif provider_type == ToolProviderType.API:
@@ -634,9 +627,9 @@ class ToolManager:
             # MySQL: Use window function to achieve same result
             sql = """
                 SELECT id FROM (
-                    SELECT id, 
+                    SELECT id,
                            ROW_NUMBER() OVER (
-                               PARTITION BY tenant_id, provider 
+                               PARTITION BY tenant_id, provider
                                ORDER BY is_default DESC, created_at DESC
                            ) as rn
                     FROM tool_builtin_providers
@@ -1023,8 +1016,8 @@ class ToolManager:
         """
         Convert tool parameters type
         """
-        from core.workflow.nodes.tool.entities import ToolNodeData
-        from core.workflow.nodes.tool.exc import ToolParameterError
+        from dify_graph.nodes.tool.entities import ToolNodeData
+        from dify_graph.nodes.tool.exc import ToolParameterError
 
         runtime_parameters = {}
         for parameter in parameters:

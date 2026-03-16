@@ -25,7 +25,8 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
 
     # load dotenv file with pydantic-settings
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     # constant values
     assert config.COMMIT_SHA == ""
@@ -59,7 +60,8 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
 
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     # Verify default timeout values
     assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
@@ -86,7 +88,8 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
-    flask_app.config.from_mapping(DifyConfig().model_dump())  # pyright: ignore
+    # Disable `.env` loading to ensure test stability across environments
+    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())  # pyright: ignore
     config = flask_app.config
 
     # configs read from pydantic-settings
@@ -162,6 +165,62 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     options = engine_options["connect_args"]["options"]
     assert "search_path=myschema" in options
     assert "timezone=UTC" in options
+
+
+def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_HOST", "redis.example.com")
+    monkeypatch.setenv("REDIS_PORT", "6380")
+    monkeypatch.setenv("REDIS_USERNAME", "user")
+    monkeypatch.setenv("REDIS_PASSWORD", "pass@word")
+    monkeypatch.setenv("REDIS_DB", "2")
+    monkeypatch.setenv("REDIS_USE_SSL", "true")
+
+    config = DifyConfig()
+
+    assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
+    assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
+
+
+def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
+
+    config = DifyConfig()
+
+    assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
+
+
+def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_HOST", "")
+
+    with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
+        _ = DifyConfig().normalized_pubsub_redis_url
 
 
 @pytest.mark.parametrize(

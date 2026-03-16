@@ -1,10 +1,11 @@
 import json
+from contextlib import ExitStack
 from typing import Self
 from uuid import UUID
 
-from flask import request
+from flask import request, send_file
 from flask_restx import marshal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -45,6 +46,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     Segmentation,
 )
 from services.file_service import FileService
+from services.summary_index_service import SummaryIndexService
 
 
 class DocumentTextCreatePayload(BaseModel):
@@ -59,6 +61,13 @@ class DocumentTextCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
+
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -70,6 +79,13 @@ class DocumentTextUpdate(BaseModel):
     doc_form: str = "text_model"
     doc_language: str = "English"
     retrieval_model: RetrievalModel | None = None
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
 
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
@@ -85,6 +101,15 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+
+
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading uploaded documents as a ZIP archive."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
 register_enum_models(service_api_ns, RetrievalMethod)
 
 register_schema_models(
@@ -94,6 +119,7 @@ register_schema_models(
     DocumentTextCreatePayload,
     DocumentTextUpdate,
     DocumentListQuery,
+    DocumentBatchDownloadZipPayload,
     Rule,
     PreProcessingRule,
     Segmentation,
@@ -508,6 +534,12 @@ class DocumentListApi(DatasetApiResource):
         )
         documents = paginated_documents.items
 
+        DocumentService.enrich_documents_with_summary_index_status(
+            documents=documents,
+            dataset=dataset,
+            tenant_id=tenant_id,
+        )
+
         response = {
             "data": marshal(documents, document_fields),
             "has_more": len(documents) == query_params.limit,
@@ -516,6 +548,46 @@ class DocumentListApi(DatasetApiResource):
             "page": query_params.page,
         }
 
+        return response
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DatasetApiResource):
+    """Download multiple uploaded-file documents as a single ZIP archive."""
+
+    @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @service_api_ns.doc("download_documents_as_zip")
+    @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "ZIP archive generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or dataset not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id, dataset_id):
+        payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
+
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=str(dataset_id),
+            document_ids=[str(document_id) for document_id in payload.document_ids],
+            tenant_id=str(tenant_id),
+            current_user=current_user,
+        )
+
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
         return response
 
 
@@ -579,6 +651,35 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DatasetApiResource):
+    """Return a signed download URL for a document's original uploaded file."""
+
+    @service_api_ns.doc("get_document_download_url")
+    @service_api_ns.doc(description="Get a signed download URL for a document's original uploaded file")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Download URL generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or upload file not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def get(self, tenant_id, dataset_id, document_id):
+        dataset = self.get_dataset(str(dataset_id), str(tenant_id))
+        document = DocumentService.get_document(dataset.id, str(document_id))
+
+        if not document:
+            raise NotFound("Document not found.")
+
+        if document.tenant_id != str(tenant_id):
+            raise Forbidden("No permission.")
+
+        return {"url": DocumentService.get_document_download_url(document)}
+
+
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
@@ -611,6 +712,16 @@ class DocumentApi(DatasetApiResource):
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
+
+        # Calculate summary_index_status if needed
+        summary_index_status = None
+        has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
+        if has_summary_index and document.need_summary is True:
+            summary_index_status = SummaryIndexService.get_document_summary_index_status(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+            )
 
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
@@ -646,6 +757,8 @@ class DocumentApi(DatasetApiResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "summary_index_status": summary_index_status,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
@@ -681,6 +794,8 @@ class DocumentApi(DatasetApiResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "summary_index_status": summary_index_status,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
 
         return response
@@ -725,4 +840,4 @@ class DocumentApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return 204
+        return "", 204

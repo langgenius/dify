@@ -1,6 +1,7 @@
 from flask_login import current_user
 
 from configs import dify_config
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
@@ -53,7 +54,12 @@ class WorkspaceService:
             from services.credit_pool_service import CreditPoolService
 
             paid_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="paid")
-            if paid_pool:
+            # if the tenant is not on the sandbox plan and the paid pool is not full, use the paid pool
+            if (
+                feature.billing.subscription.plan != CloudPlan.SANDBOX
+                and paid_pool is not None
+                and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
+            ):
                 tenant_info["trial_credits"] = paid_pool.quota_limit
                 tenant_info["trial_credits_used"] = paid_pool.quota_used
             else:

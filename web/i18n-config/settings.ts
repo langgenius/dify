@@ -1,14 +1,15 @@
 import type { InitOptions } from 'i18next'
-import { namespacesCamelCase } from './resources'
+import { namespaces } from './resources'
 
 export function getInitOptions(): InitOptions {
   return {
     // We do not have en for fallback
     load: 'currentOnly',
     fallbackLng: 'en-US',
+    showSupportNotice: false,
     partialBundledLanguages: true,
     keySeparator: false,
-    ns: namespacesCamelCase,
+    ns: namespaces,
     interpolation: {
       escapeValue: false,
     },

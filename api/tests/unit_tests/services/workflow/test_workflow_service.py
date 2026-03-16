@@ -1,9 +1,16 @@
+from contextlib import nullcontext
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.nodes.human_input.entities import FormInput, HumanInputNodeData, UserAction
+from dify_graph.nodes.human_input.enums import FormInputType
 from models.model import App
 from models.workflow import Workflow
+from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 
 
@@ -33,6 +40,23 @@ class TestWorkflowService:
             workflow.marked_name = f"Workflow {i}" if i % 2 == 0 else ""
             workflows.append(workflow)
         return workflows
+
+    @pytest.fixture
+    def dummy_session_cls(self):
+        class DummySession:
+            def __init__(self, *args, **kwargs):
+                self.commit = MagicMock()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def begin(self):
+                return nullcontext()
+
+        return DummySession
 
     def test_get_all_published_workflow_no_workflow_id(self, workflow_service, mock_app):
         mock_app.workflow_id = None
@@ -161,3 +185,230 @@ class TestWorkflowService:
         assert workflows == []
         assert has_more is False
         mock_session.scalars.assert_called_once()
+
+    def test_submit_human_input_form_preview_uses_rendered_content(
+        self,
+        workflow_service: WorkflowService,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_session_cls,
+    ) -> None:
+        service = workflow_service
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="<p>{{#$output.name#}}</p>",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+        )
+        node = MagicMock()
+        node.node_data = node_data
+        node.render_form_content_before_submission.return_value = "<p>preview</p>"
+        node.render_form_content_with_outputs.return_value = "<p>rendered</p>"
+
+        service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
+        service._build_human_input_node = MagicMock(return_value=node)  # type: ignore[method-assign]
+
+        workflow = MagicMock()
+        node_config = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}
+        )
+        workflow.get_node_config_by_id.return_value = node_config
+        workflow.get_enclosing_node_type_and_id.return_value = None
+        service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
+
+        saved_outputs: dict[str, object] = {}
+
+        class DummySaver:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def save(self, outputs, process_data):
+                saved_outputs.update(outputs)
+
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
+        monkeypatch.setattr(workflow_service_module, "DraftVariableSaver", DummySaver)
+        monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
+
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        account = SimpleNamespace(id="account-1")
+
+        result = service.submit_human_input_form_preview(
+            app_model=app_model,
+            account=account,
+            node_id="node-1",
+            form_inputs={"name": "Ada", "extra": "ignored"},
+            inputs={"#node-0.result#": "LLM output"},
+            action="approve",
+        )
+
+        service._build_human_input_variable_pool.assert_called_once_with(
+            app_model=app_model,
+            workflow=workflow,
+            node_config=node_config,
+            manual_inputs={"#node-0.result#": "LLM output"},
+        )
+
+        node.render_form_content_with_outputs.assert_called_once()
+        called_args = node.render_form_content_with_outputs.call_args.args
+        assert called_args[0] == "<p>preview</p>"
+        assert called_args[2] == node_data.outputs_field_names()
+        rendered_outputs = called_args[1]
+        assert rendered_outputs["name"] == "Ada"
+        assert rendered_outputs["extra"] == "ignored"
+        assert "extra" in saved_outputs
+        assert "extra" in result
+        assert saved_outputs["name"] == "Ada"
+        assert result["name"] == "Ada"
+        assert result["__action_id"] == "approve"
+        assert "__rendered_content" in result
+
+    def test_submit_human_input_form_preview_missing_inputs_message(self, workflow_service: WorkflowService) -> None:
+        service = workflow_service
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="<p>{{#$output.name#}}</p>",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+        )
+        node = MagicMock()
+        node.node_data = node_data
+        node._render_form_content_before_submission.return_value = "<p>preview</p>"
+        node._render_form_content_with_outputs.return_value = "<p>rendered</p>"
+
+        service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
+        service._build_human_input_node = MagicMock(return_value=node)  # type: ignore[method-assign]
+
+        workflow = MagicMock()
+        workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}
+        )
+        service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
+
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        account = SimpleNamespace(id="account-1")
+        with pytest.raises(ValueError) as exc_info:
+            service.submit_human_input_form_preview(
+                app_model=app_model,
+                account=account,
+                node_id="node-1",
+                form_inputs={},
+                inputs={},
+                action="approve",
+            )
+
+        assert "Missing required inputs" in str(exc_info.value)
+
+    def test_run_draft_workflow_node_successful_behavior(
+        self, workflow_service, mock_app, monkeypatch, dummy_session_cls
+    ):
+        """Behavior: When a basic workflow node runs, it correctly sets up context,
+        executes the node, and saves outputs."""
+        service = workflow_service
+        account = SimpleNamespace(id="account-1")
+        mock_workflow = MagicMock()
+        mock_workflow.id = "wf-1"
+        mock_workflow.tenant_id = "tenant-1"
+        mock_workflow.environment_variables = []
+        mock_workflow.conversation_variables = []
+
+        # Mock node config
+        mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.LLM}}
+        )
+        mock_workflow.get_enclosing_node_type_and_id.return_value = None
+
+        # Mock class methods
+        monkeypatch.setattr(workflow_service_module, "WorkflowDraftVariableService", MagicMock())
+        monkeypatch.setattr(workflow_service_module, "DraftVarLoader", MagicMock())
+
+        # Mock workflow entry execution
+        mock_node_exec = MagicMock()
+        mock_node_exec.id = "exec-1"
+        mock_node_exec.process_data = {}
+        mock_run = MagicMock()
+        monkeypatch.setattr(workflow_service_module.WorkflowEntry, "single_step_run", mock_run)
+
+        # Mock execution handling
+        service._handle_single_step_result = MagicMock(return_value=mock_node_exec)
+
+        # Mock repository
+        mock_repo = MagicMock()
+        mock_repo.get_execution_by_id.return_value = mock_node_exec
+        mock_repo_factory = MagicMock(return_value=mock_repo)
+        monkeypatch.setattr(
+            workflow_service_module.DifyCoreRepositoryFactory,
+            "create_workflow_node_execution_repository",
+            mock_repo_factory,
+        )
+        service._node_execution_service_repo = mock_repo
+
+        # Set up node execution service repo mock to return our exec node
+        mock_node_exec.load_full_outputs.return_value = {"output_var": "result_value"}
+        mock_node_exec.node_id = "node-1"
+        mock_node_exec.node_type = "llm"
+
+        # Mock draft variable saver
+        mock_saver = MagicMock()
+        monkeypatch.setattr(workflow_service_module, "DraftVariableSaver", MagicMock(return_value=mock_saver))
+
+        # Mock DB
+        monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
+
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
+
+        # Act
+        result = service.run_draft_workflow_node(
+            app_model=mock_app,
+            draft_workflow=mock_workflow,
+            node_id="node-1",
+            user_inputs={"input_val": "test"},
+            account=account,
+        )
+
+        # Assert
+        assert result == mock_node_exec
+        service._handle_single_step_result.assert_called_once()
+        mock_repo.save.assert_called_once_with(mock_node_exec)
+        mock_saver.save.assert_called_once_with(process_data={}, outputs={"output_var": "result_value"})
+
+    def test_run_draft_workflow_node_failure_behavior(self, workflow_service, mock_app, monkeypatch, dummy_session_cls):
+        """Behavior: If retrieving the saved execution fails, an appropriate error bubble matches expectations."""
+        service = workflow_service
+        account = SimpleNamespace(id="account-1")
+        mock_workflow = MagicMock()
+        mock_workflow.tenant_id = "tenant-1"
+        mock_workflow.environment_variables = []
+        mock_workflow.conversation_variables = []
+        mock_workflow.get_node_config_by_id.return_value = NodeConfigDictAdapter.validate_python(
+            {"id": "node-1", "data": {"type": BuiltinNodeTypes.LLM}}
+        )
+        mock_workflow.get_enclosing_node_type_and_id.return_value = None
+
+        monkeypatch.setattr(workflow_service_module, "WorkflowDraftVariableService", MagicMock())
+        monkeypatch.setattr(workflow_service_module, "DraftVarLoader", MagicMock())
+        monkeypatch.setattr(workflow_service_module.WorkflowEntry, "single_step_run", MagicMock())
+
+        mock_node_exec = MagicMock()
+        mock_node_exec.id = "exec-invalid"
+        service._handle_single_step_result = MagicMock(return_value=mock_node_exec)
+
+        mock_repo = MagicMock()
+        mock_repo_factory = MagicMock(return_value=mock_repo)
+        monkeypatch.setattr(
+            workflow_service_module.DifyCoreRepositoryFactory,
+            "create_workflow_node_execution_repository",
+            mock_repo_factory,
+        )
+        service._node_execution_service_repo = mock_repo
+
+        # Simulate failure to retrieve the saved execution
+        mock_repo.get_execution_by_id.return_value = None
+
+        monkeypatch.setattr(workflow_service_module, "db", SimpleNamespace(engine=MagicMock()))
+
+        monkeypatch.setattr(workflow_service_module, "Session", dummy_session_cls)
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="WorkflowNodeExecution with id exec-invalid not found after saving"):
+            service.run_draft_workflow_node(
+                app_model=mock_app, draft_workflow=mock_workflow, node_id="node-1", user_inputs={}, account=account
+            )

@@ -31,6 +31,7 @@
   "list.action.pause": "Пауза",
   "list.action.resume": "Возобновить",
   "list.action.settings": "Настройки сегментации",
+  "list.action.summary": "Создать резюме",
   "list.action.sync": "Синхронизировать",
   "list.action.unarchive": "Разархивировать",
   "list.action.uploadFile": "Загрузить новый файл",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Индексация",
   "list.status.paused": "Приостановлено",
   "list.status.queuing": "В очереди",
+  "list.summary.generating": "Создание...",
+  "list.summary.generatingSummary": "Создание резюме",
+  "list.summary.ready": "Резюме готово",
   "list.table.header.action": "ДЕЙСТВИЕ",
   "list.table.header.chunkingMode": "РЕЖИМ ДРОБЛЕНИЯ",
   "list.table.header.fileName": "НАЗВАНИЕ ФАЙЛА",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "РЕЗУЛЬТАТ",
   "segment.searchResults_other": "РЕЗУЛЬТАТЫ",
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
+  "segment.summary": "РЕЗЮМЕ",
+  "segment.summaryPlaceholder": "Напишите краткое резюме для лучшего поиска…",
   "segment.vectorHash": "Векторный хэш: "
 }

@@ -17,11 +17,11 @@ from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_storage import storage
 from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7
@@ -146,7 +146,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
-            node_type=NodeType(db_model.node_type),
+            node_type=db_model.node_type,
             title=db_model.title,
             inputs=inputs,
             process_data=process_data,
@@ -488,6 +488,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
                 WorkflowNodeExecutionModel.triggered_from == triggered_from,
+                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
 
             if self._app_id:

@@ -149,7 +149,7 @@ def initialize_extensions(app: DifyApp):
             logger.info("Loaded %s (%s ms)", short_name, round((end_time - start_time) * 1000, 2))
 
 
-def create_migrations_app():
+def create_migrations_app() -> DifyApp:
     app = create_flask_app_with_configs()
     from extensions import ext_database, ext_migrate
 

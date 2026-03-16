@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-01-21T07:24:02.413Z
+// Generated at: 2026-01-30T09:14:29.304Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -103,6 +103,10 @@ export type UseDifyPath =
   | '/use-dify/workspace/readme'
   | '/use-dify/workspace/subscription-management'
   | '/use-dify/workspace/team-members-management'
+
+// UseDify node paths (without prefix)
+type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : never
+export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>
 
 // SelfHost paths
 export type SelfHostPath =

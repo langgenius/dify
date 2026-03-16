@@ -106,6 +106,17 @@ def enable_segment_to_index_task(segment_id: str):
             # save vector index
             index_processor.load(dataset, [document], multimodal_documents=multimodel_documents)
 
+            # Enable summary index for this segment
+            from services.summary_index_service import SummaryIndexService
+
+            try:
+                SummaryIndexService.enable_summaries_for_segments(
+                    dataset=dataset,
+                    segment_ids=[segment.id],
+                )
+            except Exception as e:
+                logger.warning("Failed to enable summary for segment %s: %s", segment.id, str(e))
+
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:

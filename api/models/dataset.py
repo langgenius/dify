@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
@@ -29,8 +30,9 @@ from services.entities.knowledge_entities.knowledge_entities import ParentMode, 
 from .account import Account
 from .base import Base, TypeBase
 from .engine import db
+from .enums import CreatorUserRole
 from .model import App, Tag, TagBinding, UploadFile
-from .types import AdjustedJSON, BinaryData, LongText, StringUUID, adjusted_json_index
+from .types import AdjustedJSON, BinaryData, EnumText, LongText, StringUUID, adjusted_json_index
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +53,18 @@ class Dataset(Base):
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
+    DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'"))
+    permission: Mapped[DatasetPermissionEnum] = mapped_column(
+        EnumText(DatasetPermissionEnum, length=255),
+        server_default=sa.text("'only_me'"),
+        default=DatasetPermissionEnum.ONLY_ME,
+    )
     data_source_type = mapped_column(String(255))
     indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct = mapped_column(LongText, nullable=True)
@@ -72,6 +79,7 @@ class Dataset(Base):
     keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode = mapped_column(sa.String(255), nullable=True, server_default=sa.text("'general'"))
@@ -419,6 +427,7 @@ class Document(Base):
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
     doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
     doc_language = mapped_column(String(255), nullable=True)
+    need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -999,7 +1008,7 @@ class DatasetQuery(TypeBase):
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
@@ -1575,3 +1584,36 @@ class SegmentAttachmentBinding(Base):
     segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     attachment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DocumentSegmentSummary(Base):
+    __tablename__ = "document_segment_summaries"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="document_segment_summaries_pkey"),
+        sa.Index("document_segment_summaries_dataset_id_idx", "dataset_id"),
+        sa.Index("document_segment_summaries_document_id_idx", "document_id"),
+        sa.Index("document_segment_summaries_chunk_id_idx", "chunk_id"),
+        sa.Index("document_segment_summaries_status_idx", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # corresponds to DocumentSegment.id or parent chunk id
+    chunk_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    summary_content: Mapped[str] = mapped_column(LongText, nullable=True)
+    summary_index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
+    summary_index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=sa.text("'generating'"))
+    error: Mapped[str] = mapped_column(LongText, nullable=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    disabled_by = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    def __repr__(self):
+        return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"

@@ -25,15 +25,19 @@ class TestMessageCycleManagerOptimization:
         task_state = Mock()
         return MessageCycleManager(application_generate_entity=mock_application_generate_entity, task_state=task_state)
 
-    def test_get_message_event_type_with_message_file(self, message_cycle_manager):
-        """Test get_message_event_type returns MESSAGE_FILE when message has files."""
+    def test_get_message_event_type_with_assistant_file(self, message_cycle_manager):
+        """Test get_message_event_type returns MESSAGE_FILE when message has assistant-generated files.
+
+        This ensures that AI-generated images (belongs_to='assistant') trigger the MESSAGE_FILE event,
+        allowing the frontend to properly display generated image files with url field.
+        """
         with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
             # Setup mock session and message file
             mock_session = Mock()
             mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
             mock_message_file = Mock()
-            # Current implementation uses session.scalar(select(...))
+            mock_message_file.belongs_to = "assistant"
             mock_session.scalar.return_value = mock_message_file
 
             # Execute
@@ -42,6 +46,31 @@ class TestMessageCycleManagerOptimization:
 
             # Assert
             assert result == StreamEvent.MESSAGE_FILE
+            mock_session.scalar.assert_called_once()
+
+    def test_get_message_event_type_with_user_file(self, message_cycle_manager):
+        """Test get_message_event_type returns MESSAGE when message only has user-uploaded files.
+
+        This is a regression test for the issue where user-uploaded images (belongs_to='user')
+        caused the LLM text response to be incorrectly tagged with MESSAGE_FILE event,
+        resulting in broken images in the chat UI. The query filters for belongs_to='assistant',
+        so when only user files exist, the database query returns None, resulting in MESSAGE event type.
+        """
+        with patch("core.app.task_pipeline.message_cycle_manager.session_factory") as mock_session_factory:
+            # Setup mock session and message file
+            mock_session = Mock()
+            mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
+
+            # When querying for assistant files with only user files present, return None
+            # (simulates database query with belongs_to='assistant' filter returning no results)
+            mock_session.scalar.return_value = None
+
+            # Execute
+            with current_app.app_context():
+                result = message_cycle_manager.get_message_event_type("test-message-id")
+
+            # Assert
+            assert result == StreamEvent.MESSAGE
             mock_session.scalar.assert_called_once()
 
     def test_get_message_event_type_without_message_file(self, message_cycle_manager):
@@ -69,7 +98,7 @@ class TestMessageCycleManagerOptimization:
             mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
 
             mock_message_file = Mock()
-            # Current implementation uses session.scalar(select(...))
+            mock_message_file.belongs_to = "assistant"
             mock_session.scalar.return_value = mock_message_file
 
             # Execute: compute event type once, then pass to message_to_stream_response

@@ -39,6 +39,12 @@
   "form.retrievalSettings": "تنظیمات بازیابی",
   "form.save": "ذخیره",
   "form.searchModel": "جستجوی مدل",
+  "form.summaryAutoGen": "ایجاد خودکار خلاصه",
+  "form.summaryAutoGenEnableTip": "پس از فعال‌سازی، خلاصه‌ها به‌طور خودکار برای اسناد تازه اضافه‌شده ایجاد می‌شوند. اسناد موجود همچنان می‌توانند به‌صورت دستی خلاصه شوند.",
+  "form.summaryAutoGenTip": "خلاصه‌ها به‌طور خودکار برای اسناد تازه اضافه‌شده ایجاد می‌شوند. اسناد موجود همچنان می‌توانند به‌صورت دستی خلاصه شوند.",
+  "form.summaryInstructions": "دستورالعمل‌ها",
+  "form.summaryInstructionsPlaceholder": "قوانین یا سبک خلاصه‌های ایجاد شده خودکار را شرح دهید…",
+  "form.summaryModel": "مدل خلاصه",
   "form.upgradeHighQualityTip": "پس از ارتقاء به حالت کیفیت بالا، بازگشت به حالت اقتصادی در دسترس نیست",
   "title": "تنظیمات دانش"
 }

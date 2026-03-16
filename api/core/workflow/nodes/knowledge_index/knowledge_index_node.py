@@ -1,62 +1,67 @@
-import datetime
 import logging
-import time
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
-
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeExecutionType, NodeType, SystemVariableKey
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.base.template import Template
-from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
-from models.dataset import Dataset, Document, DocumentSegment
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.summary_index.summary_index import SummaryIndex
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.enums import NodeExecutionType, SystemVariableKey
+from dify_graph.node_events import NodeRunResult
+from dify_graph.nodes.base.node import Node
+from dify_graph.nodes.base.template import Template
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from dify_graph.entities import GraphInitParams
+    from dify_graph.runtime import GraphRuntimeState
 
-default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
-    "reranking_enable": False,
-    "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 2,
-    "score_threshold_enabled": False,
-}
+logger = logging.getLogger(__name__)
+_INVOKE_FROM_DEBUGGER = "debugger"
 
 
 class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
-    node_type = NodeType.KNOWLEDGE_INDEX
+    node_type = KNOWLEDGE_INDEX_NODE_TYPE
     execution_type = NodeExecutionType.RESPONSE
+
+    def __init__(
+        self,
+        id: str,
+        config: NodeConfigDict,
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+    ) -> None:
+        super().__init__(id, config, graph_init_params, graph_runtime_state)
+        self.index_processor = IndexProcessor()
+        self.summary_index_service = SummaryIndex()
 
     def _run(self) -> NodeRunResult:  # type: ignore
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
-        dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
-        if not dataset_id:
+
+        # get dataset id as string
+        dataset_id_segment = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
+        if not dataset_id_segment:
             raise KnowledgeIndexNodeError("Dataset ID is required.")
-        dataset = db.session.query(Dataset).filter_by(id=dataset_id.value).first()
-        if not dataset:
-            raise KnowledgeIndexNodeError(f"Dataset {dataset_id.value} not found.")
+        dataset_id: str = dataset_id_segment.value
+
+        # get document id as string (may be empty when not provided)
+        document_id_segment = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+        document_id: str = document_id_segment.value if document_id_segment else ""
 
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
         if not variable:
             raise KnowledgeIndexNodeError("Index chunk variable is required.")
         invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
-        if invoke_from:
-            is_preview = invoke_from.value == InvokeFrom.DEBUGGER
-        else:
-            is_preview = False
+        invoke_from_value = str(invoke_from.value) if invoke_from else None
+        is_preview = invoke_from_value == _INVOKE_FROM_DEBUGGER
+
         chunks = variable.value
         variables = {"chunks": chunks}
         if not chunks:
@@ -64,30 +69,49 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Chunks is required."
             )
 
-        # index knowledge
         try:
+            summary_index_setting = node_data.summary_index_setting
             if is_preview:
-                outputs = self._get_preview_output(node_data.chunk_structure, chunks)
+                # Preview mode: generate summaries for chunks directly without saving to database
+                # Format preview and generate summaries on-the-fly
+                # Get indexing_technique and summary_index_setting from node_data (workflow graph config)
+                # or fallback to dataset if not available in node_data
+
+                outputs = self.index_processor.get_preview_output(
+                    chunks, dataset_id, document_id, node_data.chunk_structure, summary_index_setting
+                )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
-                    outputs=outputs,
+                    outputs=outputs.model_dump(exclude_none=True),
                 )
+
+            original_document_id_segment = variable_pool.get(["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID])
+            batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
+            if not batch:
+                raise KnowledgeIndexNodeError("Batch is required.")
+
             results = self._invoke_knowledge_index(
-                dataset=dataset, node_data=node_data, chunks=chunks, variable_pool=variable_pool
+                dataset_id=dataset_id,
+                document_id=document_id,
+                original_document_id=original_document_id_segment.value if original_document_id_segment else "",
+                is_preview=is_preview,
+                batch=batch.value,
+                chunks=chunks,
+                summary_index_setting=summary_index_setting,
             )
             return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=results)
 
         except KnowledgeIndexNodeError as e:
-            logger.warning("Error when running knowledge index node")
+            logger.warning("Error when running knowledge index node", exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
                 error=str(e),
                 error_type=type(e).__name__,
             )
-        # Temporary handle all exceptions from DatasetRetrieval class here.
         except Exception as e:
+            logger.error(e, exc_info=True)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
@@ -97,85 +121,23 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
     def _invoke_knowledge_index(
         self,
-        dataset: Dataset,
-        node_data: KnowledgeIndexNodeData,
+        dataset_id: str,
+        document_id: str,
+        original_document_id: str,
+        is_preview: bool,
+        batch: Any,
         chunks: Mapping[str, Any],
-        variable_pool: VariablePool,
-    ) -> Any:
-        document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+        summary_index_setting: dict | None = None,
+    ):
         if not document_id:
-            raise KnowledgeIndexNodeError("Document ID is required.")
-        original_document_id = variable_pool.get(["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID])
-
-        batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
-        if not batch:
-            raise KnowledgeIndexNodeError("Batch is required.")
-        document = db.session.query(Document).filter_by(id=document_id.value).first()
-        if not document:
-            raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
-        doc_id_value = document.id
-        ds_id_value = dataset.id
-        dataset_name_value = dataset.name
-        document_name_value = document.name
-        created_at_value = document.created_at
-        # chunk nodes by chunk size
-        indexing_start_at = time.perf_counter()
-        index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
-        if original_document_id:
-            segments = db.session.scalars(
-                select(DocumentSegment).where(DocumentSegment.document_id == original_document_id.value)
-            ).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-
-                for segment in segments:
-                    db.session.delete(segment)
-                db.session.commit()
-        index_processor.index(dataset, document, chunks)
-        indexing_end_at = time.perf_counter()
-        document.indexing_latency = indexing_end_at - indexing_start_at
-        # update document status
-        document.indexing_status = "completed"
-        document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        document.word_count = (
-            db.session.query(func.sum(DocumentSegment.word_count))
-            .where(
-                DocumentSegment.document_id == doc_id_value,
-                DocumentSegment.dataset_id == ds_id_value,
-            )
-            .scalar()
+            raise KnowledgeIndexNodeError("document_id is required.")
+        rst = self.index_processor.index_and_clean(
+            dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting
         )
-        db.session.add(document)
-        # update document segment status
-        db.session.query(DocumentSegment).where(
-            DocumentSegment.document_id == doc_id_value,
-            DocumentSegment.dataset_id == ds_id_value,
-        ).update(
-            {
-                DocumentSegment.status: "completed",
-                DocumentSegment.enabled: True,
-                DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-            }
+        self.summary_index_service.generate_and_vectorize_summary(
+            dataset_id, document_id, is_preview, summary_index_setting
         )
-
-        db.session.commit()
-
-        return {
-            "dataset_id": ds_id_value,
-            "dataset_name": dataset_name_value,
-            "batch": batch.value,
-            "document_id": doc_id_value,
-            "document_name": document_name_value,
-            "created_at": created_at_value.timestamp(),
-            "display_status": "completed",
-        }
-
-    def _get_preview_output(self, chunk_structure: str, chunks: Any) -> Mapping[str, Any]:
-        index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
-        return index_processor.format_preview(chunks)
+        return rst
 
     @classmethod
     def version(cls) -> str:

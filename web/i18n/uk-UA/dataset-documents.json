@@ -31,6 +31,7 @@
   "list.action.pause": "Пауза",
   "list.action.resume": "Продовжити",
   "list.action.settings": "Налаштування сегмента",
+  "list.action.summary": "Створити резюме",
   "list.action.sync": "Синхронізувати",
   "list.action.unarchive": "Розархівувати",
   "list.action.uploadFile": "Завантажити новий файл",
@@ -75,6 +76,9 @@
   "list.status.indexing": "Індексування",
   "list.status.paused": "Призупинено",
   "list.status.queuing": "В черзі",
+  "list.summary.generating": "Створення...",
+  "list.summary.generatingSummary": "Створення резюме",
+  "list.summary.ready": "Резюме готове",
   "list.table.header.action": "ДІЯ",
   "list.table.header.chunkingMode": "РЕЖИМ ФРАГМЕНТАЦІЇ",
   "list.table.header.fileName": "НАЗВА ФАЙЛУ",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "РЕЗУЛЬТАТ",
   "segment.searchResults_other": "РЕЗУЛЬТАТІВ",
   "segment.searchResults_zero": "РЕЗУЛЬТАТ",
+  "segment.summary": "РЕЗЮМЕ",
+  "segment.summaryPlaceholder": "Напишіть короткий опис для кращого пошуку…",
   "segment.vectorHash": "Векторний хеш: "
 }

@@ -2,8 +2,8 @@ import logging
 
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.nodes import NodeType
-from core.workflow.nodes.tool.entities import ToolEntity
+from dify_graph.nodes import BuiltinNodeTypes
+from dify_graph.nodes.tool.entities import ToolEntity
 from events.app_event import app_draft_workflow_was_synced
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def handle(sender, **kwargs):
     if synced_draft_workflow is None:
         return
     for node_data in synced_draft_workflow.graph_dict.get("nodes", []):
-        if node_data.get("data", {}).get("type") == NodeType.TOOL:
+        if node_data.get("data", {}).get("type") == BuiltinNodeTypes.TOOL:
             try:
                 tool_entity = ToolEntity.model_validate(node_data["data"])
                 tool_runtime = ToolManager.get_tool_runtime(

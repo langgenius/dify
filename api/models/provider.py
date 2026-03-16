@@ -13,7 +13,7 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 
 class ProviderType(StrEnum):
@@ -69,8 +69,8 @@ class Provider(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'"), default="custom"
+    provider_type: Mapped[ProviderType] = mapped_column(
+        EnumText(ProviderType, length=40), nullable=False, server_default=text("'custom'"), default=ProviderType.CUSTOM
     )
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
@@ -181,6 +181,7 @@ class TenantDefaultModel(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
         sa.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
+        sa.UniqueConstraint("tenant_id", "model_type", name="unique_tenant_default_model_type"),
     )
 
     id: Mapped[str] = mapped_column(

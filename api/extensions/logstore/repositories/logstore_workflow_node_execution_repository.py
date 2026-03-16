@@ -16,13 +16,12 @@ from typing import Any, Union
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities import WorkflowNodeExecution
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import NodeType
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
@@ -78,7 +77,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
         node_id=data.get("node_id", ""),
-        node_type=NodeType(data.get("node_type", "start")),
+        node_type=data.get("node_type", "start"),
         title=data.get("title", ""),
         inputs=inputs,
         process_data=process_data,
@@ -185,7 +184,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ("predecessor_node_id", domain_model.predecessor_node_id or ""),
             ("node_execution_id", domain_model.node_execution_id or ""),
             ("node_id", domain_model.node_id),
-            ("node_type", domain_model.node_type.value),
+            ("node_type", domain_model.node_type),
             ("title", domain_model.title),
             (
                 "inputs",

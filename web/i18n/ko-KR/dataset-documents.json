@@ -31,6 +31,7 @@
   "list.action.pause": "일시 중지",
   "list.action.resume": "재개",
   "list.action.settings": "세그먼트 설정",
+  "list.action.summary": "요약 생성",
   "list.action.sync": "동기화",
   "list.action.unarchive": "아카이브 해제",
   "list.action.uploadFile": "새 파일 업로드",
@@ -75,6 +76,9 @@
   "list.status.indexing": "색인화 중",
   "list.status.paused": "일시 중지됨",
   "list.status.queuing": "대기 중",
+  "list.summary.generating": "생성 중...",
+  "list.summary.generatingSummary": "요약 생성 중",
+  "list.summary.ready": "요약 완료",
   "list.table.header.action": "동작",
   "list.table.header.chunkingMode": "청크 모드",
   "list.table.header.fileName": "파일명",
@@ -329,5 +333,7 @@
   "segment.searchResults_one": "결과",
   "segment.searchResults_other": "결과",
   "segment.searchResults_zero": "결과",
+  "segment.summary": "요약",
+  "segment.summaryPlaceholder": "더 나은 검색을 위해 간단한 요약을 작성하세요…",
   "segment.vectorHash": "벡터 해시: "
 }

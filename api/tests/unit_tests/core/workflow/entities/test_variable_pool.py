@@ -1,10 +1,10 @@
-from core.variables.segments import (
+from dify_graph.runtime import VariablePool
+from dify_graph.variables.segments import (
     BooleanSegment,
     IntegerSegment,
     NoneSegment,
     StringSegment,
 )
-from core.workflow.runtime import VariablePool
 
 
 class TestVariablePoolGetAndNestedAttribute:

@@ -146,7 +146,7 @@ class TestHitTestingServiceRetrieve:
         Provides a mocked database session for testing database operations
         like adding and committing DatasetQuery records.
         """
-        with patch("services.hit_testing_service.db.session") as mock_db:
+        with patch("services.hit_testing_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_retrieve_success_with_default_retrieval_model(self, mock_db_session):
@@ -174,9 +174,11 @@ class TestHitTestingServiceRetrieve:
         ]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.retrieve") as mock_retrieve,
-            patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]  # start, end
             mock_retrieve.return_value = documents
@@ -218,9 +220,11 @@ class TestHitTestingServiceRetrieve:
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.retrieve") as mock_retrieve,
-            patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_retrieve.return_value = documents
@@ -268,10 +272,12 @@ class TestHitTestingServiceRetrieve:
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.retrieve") as mock_retrieve,
-            patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format,
-            patch("services.hit_testing_service.DatasetRetrieval") as mock_dataset_retrieval_class,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
@@ -311,8 +317,10 @@ class TestHitTestingServiceRetrieve:
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, True)
 
         with (
-            patch("services.hit_testing_service.DatasetRetrieval") as mock_dataset_retrieval_class,
-            patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format,
+            patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
         ):
             mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
             mock_format.return_value = []
@@ -346,9 +354,11 @@ class TestHitTestingServiceRetrieve:
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.retrieve") as mock_retrieve,
-            patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_retrieve.return_value = documents
@@ -380,7 +390,7 @@ class TestHitTestingServiceExternalRetrieve:
         Provides a mocked database session for testing database operations
         like adding and committing DatasetQuery records.
         """
-        with patch("services.hit_testing_service.db.session") as mock_db:
+        with patch("services.hit_testing_service.db.session", autospec=True) as mock_db:
             yield mock_db
 
     def test_external_retrieve_success(self, mock_db_session):
@@ -403,8 +413,10 @@ class TestHitTestingServiceExternalRetrieve:
         ]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.external_retrieve") as mock_external_retrieve,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch(
+                "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
+            ) as mock_external_retrieve,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_external_retrieve.return_value = external_documents
@@ -467,8 +479,10 @@ class TestHitTestingServiceExternalRetrieve:
         external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}]
 
         with (
-            patch("services.hit_testing_service.RetrievalService.external_retrieve") as mock_external_retrieve,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch(
+                "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
+            ) as mock_external_retrieve,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_external_retrieve.return_value = external_documents
@@ -499,8 +513,10 @@ class TestHitTestingServiceExternalRetrieve:
         metadata_filtering_conditions = {}
 
         with (
-            patch("services.hit_testing_service.RetrievalService.external_retrieve") as mock_external_retrieve,
-            patch("services.hit_testing_service.time.perf_counter") as mock_perf_counter,
+            patch(
+                "services.hit_testing_service.RetrievalService.external_retrieve", autospec=True
+            ) as mock_external_retrieve,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
             mock_external_retrieve.return_value = []
@@ -542,7 +558,9 @@ class TestHitTestingServiceCompactRetrieveResponse:
             HitTestingTestDataFactory.create_retrieval_record_mock(content="Doc 2", score=0.85),
         ]
 
-        with patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format:
+        with patch(
+            "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+        ) as mock_format:
             mock_format.return_value = mock_records
 
             # Act
@@ -566,7 +584,9 @@ class TestHitTestingServiceCompactRetrieveResponse:
         query = "test query"
         documents = []
 
-        with patch("services.hit_testing_service.RetrievalService.format_retrieval_documents") as mock_format:
+        with patch(
+            "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+        ) as mock_format:
             mock_format.return_value = []
 
             # Act
