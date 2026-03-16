@@ -155,7 +155,6 @@ class EmailDeliveryTestHandler:
                 context=context,
                 recipient_email=recipient_email,
             )
-            subject = render_email_template(method.config.subject, substitutions)
             templated_body = EmailDeliveryConfig.render_body_template(
                 body=method.config.body,
                 url=substitutions.get("form_link"),
