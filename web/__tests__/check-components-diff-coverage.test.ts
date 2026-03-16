@@ -79,6 +79,23 @@ describe('check-components-diff-coverage helpers', () => {
     })
   })
 
+  it('should report the first changed line inside a multi-line uncovered statement', () => {
+    const entry = {
+      s: { 0: 0 },
+      statementMap: {
+        0: { start: { line: 10 }, end: { line: 14 } },
+      },
+    }
+
+    const coverage = getChangedStatementCoverage(entry, new Set([13, 14]))
+
+    expect(coverage).toEqual({
+      covered: 0,
+      total: 1,
+      uncoveredLines: [13],
+    })
+  })
+
   it('should fail changed lines when a source file has no coverage entry', () => {
     const coverage = getChangedStatementCoverage(undefined, new Set([42, 43]))
 
@@ -114,6 +131,36 @@ describe('check-components-diff-coverage helpers', () => {
       total: 2,
       uncoveredBranches: [
         { armIndex: 1, line: 21 },
+      ],
+    })
+  })
+
+  it('should report the first changed line inside a multi-line uncovered branch arm', () => {
+    const entry = {
+      b: {
+        0: [0, 0],
+      },
+      branchMap: {
+        0: {
+          line: 30,
+          loc: { start: { line: 30 }, end: { line: 35 } },
+          locations: [
+            { start: { line: 31 }, end: { line: 34 } },
+            { start: { line: 35 }, end: { line: 38 } },
+          ],
+          type: 'if',
+        },
+      },
+    }
+
+    const coverage = getChangedBranchCoverage(entry, new Set([33]))
+
+    expect(coverage).toEqual({
+      covered: 0,
+      total: 2,
+      uncoveredBranches: [
+        { armIndex: 0, line: 33 },
+        { armIndex: 1, line: 35 },
       ],
     })
   })
