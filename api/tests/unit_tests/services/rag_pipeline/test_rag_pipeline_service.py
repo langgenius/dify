@@ -298,17 +298,12 @@ def test_get_default_block_config_returns_config_for_valid_type(mocker, rag_pipe
     fake_node_class = mocker.Mock()
     fake_node_class.get_default_config.return_value = {"type": "start", "config": {}}
 
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
-        {mocker.Mock(): {mocker.Mock(): fake_node_class}},
-    )
-
     # Use a simpler approach: test with a known valid node type
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
-        {NodeType.START: {"1": fake_node_class}},
+        "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
+        return_value={BuiltinNodeTypes.START: {"1": fake_node_class}},
     )
     mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
 
@@ -318,8 +313,7 @@ def test_get_default_block_config_returns_config_for_valid_type(mocker, rag_pipe
 
 
 def test_get_default_block_config_returns_none_for_unmapped_type(rag_pipeline_service) -> None:
-    with pytest.raises(ValueError):
-        rag_pipeline_service.get_default_block_config("nonexistent-type")
+    assert rag_pipeline_service.get_default_block_config("nonexistent-type") is None
 
 
 # --- update_workflow ---
@@ -1021,9 +1015,9 @@ def test_get_default_block_configs_success(rag_pipeline_service) -> None:
 
 
 def test_get_default_block_config_success(rag_pipeline_service) -> None:
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
-    result = rag_pipeline_service.get_default_block_config(NodeType.LLM.value)
+    result = rag_pipeline_service.get_default_block_config(BuiltinNodeTypes.LLM)
     assert result is not None
     assert result["type"] == "llm"
 
@@ -1039,25 +1033,25 @@ def test_publish_workflow_raises_when_draft_workflow_missing(mocker, rag_pipelin
 
 
 def test_get_default_block_config_returns_none_when_mapped_type_missing(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
-    mocker.patch("services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING", {})
+    mocker.patch("services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping", return_value={})
 
-    assert rag_pipeline_service.get_default_block_config(NodeType.START.value) is None
+    assert rag_pipeline_service.get_default_block_config(BuiltinNodeTypes.START) is None
 
 
 def test_get_default_block_config_injects_http_request_filter(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
     fake_node_cls = mocker.Mock()
     fake_node_cls.get_default_config.return_value = {"type": "http-request"}
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
-        {NodeType.HTTP_REQUEST: {"1": fake_node_cls}},
+        "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
+        return_value={BuiltinNodeTypes.HTTP_REQUEST: {"1": fake_node_cls}},
     )
     mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
 
-    rag_pipeline_service.get_default_block_config(NodeType.HTTP_REQUEST.value)
+    rag_pipeline_service.get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
 
     called_filters = fake_node_cls.get_default_config.call_args.kwargs["filters"]
     assert "http_request_config" in called_filters
@@ -1219,13 +1213,13 @@ def test_run_datasource_workflow_node_online_drive_success(mocker, rag_pipeline_
 def test_handle_node_run_result_default_value_strategy(mocker, rag_pipeline_service) -> None:
     from datetime import datetime
 
-    from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+    from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
     from dify_graph.graph_events import NodeRunFailedEvent
     from dify_graph.node_events.base import NodeRunResult
 
     node_instance = SimpleNamespace(
         workflow_id="wf-1",
-        node_type=NodeType.START,
+        node_type=BuiltinNodeTypes.START,
         title="Start",
         error_strategy=ErrorStrategy.DEFAULT_VALUE,
         default_value_dict={"fallback": "ok"},
@@ -1243,7 +1237,7 @@ def test_handle_node_run_result_default_value_strategy(mocker, rag_pipeline_serv
         yield NodeRunFailedEvent(
             id="e-1",
             node_id="node-1",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             start_at=datetime.now(),
             error="boom",
             node_run_result=failed_result,
@@ -1388,7 +1382,7 @@ def test_set_datasource_variables_raises_when_node_id_missing(mocker, rag_pipeli
 
 
 def test_get_default_block_configs_skips_empty_configs(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
     http_node = mocker.Mock()
     http_node.get_default_config.return_value = {"type": "http-request"}
@@ -1396,10 +1390,10 @@ def test_get_default_block_configs_skips_empty_configs(mocker, rag_pipeline_serv
     empty_node.get_default_config.return_value = None
 
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING",
-        {
-            NodeType.HTTP_REQUEST: {"1": http_node},
-            NodeType.START: {"1": empty_node},
+        "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
+        return_value={
+            BuiltinNodeTypes.HTTP_REQUEST: {"1": http_node},
+            BuiltinNodeTypes.START: {"1": empty_node},
         },
     )
     mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
@@ -1841,11 +1835,14 @@ def test_publish_workflow_skips_dataset_update_for_non_knowledge_nodes(mocker, r
 
 
 def test_get_default_block_config_returns_none_when_default_empty(mocker, rag_pipeline_service) -> None:
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
     node_cls = mocker.Mock()
     node_cls.get_default_config.return_value = None
-    mocker.patch("services.rag_pipeline.rag_pipeline.NODE_TYPE_CLASSES_MAPPING", {NodeType.START: {"1": node_cls}})
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline.get_node_type_classes_mapping",
+        return_value={BuiltinNodeTypes.START: {"1": node_cls}},
+    )
     mocker.patch("services.rag_pipeline.rag_pipeline.LATEST_VERSION", "1")
 
     assert rag_pipeline_service.get_default_block_config("start") is None

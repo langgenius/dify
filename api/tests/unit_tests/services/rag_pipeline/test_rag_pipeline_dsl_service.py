@@ -6,7 +6,8 @@ import pytest
 import yaml
 from sqlalchemy.orm import Session
 
-from dify_graph.enums import NodeType
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from dify_graph.enums import BuiltinNodeTypes
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,
@@ -175,9 +176,9 @@ def test_extract_dependencies_from_workflow_graph_handles_empty_graph() -> None:
 def test_extract_dependencies_from_workflow_graph_handles_malformed_node(mocker) -> None:
     service = RagPipelineDslService(session=Mock())
     # Node with TOOL type but invalid data should be caught by exception handler
-    from dify_graph.enums import NodeType
+    from dify_graph.enums import BuiltinNodeTypes
 
-    graph = {"nodes": [{"data": {"type": NodeType.TOOL}}]}
+    graph = {"nodes": [{"data": {"type": BuiltinNodeTypes.TOOL}}]}
 
     result = service._extract_dependencies_from_workflow_graph(graph)
 
@@ -341,11 +342,11 @@ workflow:
 @pytest.mark.parametrize(
     "node_type",
     [
-        NodeType.TOOL,
-        NodeType.LLM,
-        NodeType.KNOWLEDGE_RETRIEVAL,
-        NodeType.PARAMETER_EXTRACTOR,
-        NodeType.QUESTION_CLASSIFIER,
+        BuiltinNodeTypes.TOOL,
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+        BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+        BuiltinNodeTypes.QUESTION_CLASSIFIER,
     ],
 )
 def test_extract_dependencies_from_workflow_graph_types(mocker, node_type) -> None:
@@ -470,7 +471,7 @@ def test_extract_dependencies_from_workflow_graph_datasource(mocker) -> None:
         return_value=Mock(provider_type="online", plugin_id="ds1"),
     )
     service = RagPipelineDslService(session=Mock())
-    graph = {"nodes": [{"data": {"type": NodeType.DATASOURCE}}]}
+    graph = {"nodes": [{"data": {"type": BuiltinNodeTypes.DATASOURCE}}]}
 
     result = service._extract_dependencies_from_workflow_graph(graph)
 
@@ -536,13 +537,13 @@ def test_append_workflow_export_data_filters_credentials(mocker) -> None:
             "nodes": [
                 {
                     "data": {
-                        "type": NodeType.TOOL,
+                        "type": BuiltinNodeTypes.TOOL,
                         "credential_id": "secret",
                     }
                 },
                 {
                     "data": {
-                        "type": NodeType.AGENT,
+                        "type": BuiltinNodeTypes.AGENT,
                         "agent_parameters": {"tools": {"value": [{"credential_id": "secret-agent"}]}},
                     }
                 },
@@ -624,7 +625,7 @@ def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mo
             "nodes": [
                 {
                     "data": {
-                        "type": NodeType.KNOWLEDGE_RETRIEVAL,
+                        "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                         "dataset_ids": ["d1", "d2"],
                     }
                 }
@@ -717,7 +718,7 @@ def test_create_or_update_pipeline_decrypts_knowledge_retrieval_dataset_ids(mock
                 "nodes": [
                     {
                         "data": {
-                            "type": NodeType.KNOWLEDGE_RETRIEVAL,
+                            "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                             "dataset_ids": ["enc-1", "enc-2"],
                         }
                     }
@@ -830,10 +831,10 @@ def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_tru
     workflow.to_dict.return_value = {
         "graph": {
             "nodes": [
-                {"data": {"type": NodeType.TOOL, "credential_id": "tool-secret"}},
+                {"data": {"type": BuiltinNodeTypes.TOOL, "credential_id": "tool-secret"}},
                 {
                     "data": {
-                        "type": NodeType.AGENT,
+                        "type": BuiltinNodeTypes.AGENT,
                         "agent_parameters": {"tools": {"value": [{"credential_id": "agent-secret"}]}},
                     }
                 },
@@ -868,7 +869,9 @@ def test_extract_dependencies_from_workflow_graph_skips_local_file_datasource(mo
     )
     service = RagPipelineDslService(session=Mock())
 
-    result = service._extract_dependencies_from_workflow_graph({"nodes": [{"data": {"type": NodeType.DATASOURCE}}]})
+    result = service._extract_dependencies_from_workflow_graph(
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.DATASOURCE}}]}
+    )
 
     assert result == []
 
@@ -891,7 +894,7 @@ def test_extract_dependencies_from_workflow_graph_knowledge_index_reranking(mock
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_INDEX}}]}
+        {"nodes": [{"data": {"type": KNOWLEDGE_INDEX_NODE_TYPE}}]}
     )
 
     assert result == ["dep:embed-provider", "dep:rerank-provider"]
@@ -914,7 +917,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_retrieval_weighted_sc
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == ["dep:weighted"]
@@ -936,7 +939,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_retrieval_reranking_m
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == ["dep:rerank"]
@@ -1081,7 +1084,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_config_none(mocker) -
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == []
@@ -1098,7 +1101,7 @@ def test_extract_dependencies_from_workflow_graph_single_config_none(mocker) -> 
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == []
@@ -1280,7 +1283,7 @@ def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedd
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_INDEX}}]}
+        {"nodes": [{"data": {"type": KNOWLEDGE_INDEX_NODE_TYPE}}]}
     )
 
     assert result == []
@@ -1298,7 +1301,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_reranking_without_mod
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == []
@@ -1316,7 +1319,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_weighted_without_weig
     service = RagPipelineDslService(session=Mock())
 
     result = service._extract_dependencies_from_workflow_graph(
-        {"nodes": [{"data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}]}
+        {"nodes": [{"data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}]}
     )
 
     assert result == []
