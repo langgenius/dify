@@ -177,7 +177,12 @@ export const numberFieldControlButtonVariants = cva(
   },
 )
 
-type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & VariantProps<typeof numberFieldControlButtonVariants>
+type NumberFieldButtonVariantProps = Omit<
+  VariantProps<typeof numberFieldControlButtonVariants>,
+  'direction'
+>
+
+type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & NumberFieldButtonVariantProps
 
 export function NumberFieldIncrement({
   className,
