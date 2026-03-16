@@ -73,7 +73,7 @@ const NumberInputField = ({
             className={inputClassName}
             onBlur={field.handleBlur}
           />
-          {unit && (
+          {Boolean(unit) && (
             <NumberFieldUnit size={size}>
               {unit}
             </NumberFieldUnit>
