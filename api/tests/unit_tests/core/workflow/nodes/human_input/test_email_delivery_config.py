@@ -59,3 +59,19 @@ def test_render_markdown_body_supports_table_syntax():
     assert "<tbody>" in rendered
     assert 'align="right"' in rendered
     assert "style=" not in rendered
+
+
+def test_sanitize_subject_removes_crlf():
+    sanitized = EmailDeliveryConfig.sanitize_subject("Notice\r\nBCC:attacker@example.com")
+
+    assert "\r" not in sanitized
+    assert "\n" not in sanitized
+    assert sanitized == "Notice BCC:attacker@example.com"
+
+
+def test_sanitize_subject_removes_html_tags():
+    sanitized = EmailDeliveryConfig.sanitize_subject("<b>Alert</b><img src=x onerror=1>")
+
+    assert "<" not in sanitized
+    assert ">" not in sanitized
+    assert sanitized == "Alert"

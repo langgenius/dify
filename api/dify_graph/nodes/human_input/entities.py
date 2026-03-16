@@ -60,6 +60,7 @@ class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _SUBJECT_NEWLINE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[\r\n]+")
     _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
         "a",
         "blockquote",
@@ -155,6 +156,19 @@ class EmailDeliveryConfig(BaseModel):
             strip=True,
             strip_comments=True,
         )
+
+    @classmethod
+    def sanitize_subject(cls, subject: str) -> str:
+        """Sanitize email subject to plain text and prevent CRLF injection."""
+        sanitized_subject = bleach.clean(
+            subject,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        sanitized_subject = cls._SUBJECT_NEWLINE_PATTERN.sub(" ", sanitized_subject)
+        return " ".join(sanitized_subject.split())
 
 
 class _DeliveryMethodBase(BaseModel):

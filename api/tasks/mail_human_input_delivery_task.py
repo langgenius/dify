@@ -15,7 +15,6 @@ from dify_graph.nodes.human_input.entities import EmailDeliveryConfig, EmailDeli
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
-from libs.email_html_sanitizer import sanitize_email_html, sanitize_email_subject
 from models.human_input import (
     DeliveryMethodType,
     HumanInputDelivery,
@@ -174,8 +173,7 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             for recipient in job.recipients:
                 form_link = _build_form_link(recipient.token)
                 body = _render_body(job.body, form_link, variable_pool=variable_pool)
-                subject = sanitize_email_subject(job.subject)
-                body = sanitize_email_html(body)
+                subject = EmailDeliveryConfig.sanitize_subject(job.subject)
 
                 mail.send(
                     to=recipient.email,
