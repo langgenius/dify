@@ -193,7 +193,7 @@ def model_config(monkeypatch):
 
 def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_config: ModelConfigWithCredentialsEntity):
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    mock_model_factory = mock.MagicMock(spec=ModelFactory)
+    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
 
     provider_model_bundle = model_config.provider_model_bundle
     model_type_instance = provider_model_bundle.model_type_instance

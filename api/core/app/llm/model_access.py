@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
-from core.app.llm.protocols import CredentialsProvider, ModelFactory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -11,6 +10,7 @@ from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.nodes.llm.entities import ModelConfig
 from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
+from dify_graph.nodes.llm.protocols import CredentialsProvider
 
 
 class DifyCredentialsProvider:
@@ -78,7 +78,7 @@ class DifyModelFactory:
         )
 
 
-def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsProvider, ModelFactory]:
+def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsProvider, DifyModelFactory]:
     """Create LLM access adapters that share the same tenant-bound manager graph."""
     provider_manager = create_plugin_provider_manager(
         tenant_id=run_context.tenant_id,
@@ -113,7 +113,7 @@ def fetch_model_config(
     *,
     node_data_model: ModelConfig,
     credentials_provider: CredentialsProvider,
-    model_factory: ModelFactory,
+    model_factory: DifyModelFactory,
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
