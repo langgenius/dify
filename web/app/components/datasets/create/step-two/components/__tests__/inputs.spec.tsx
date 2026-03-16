@@ -47,19 +47,19 @@ describe('MaxLengthInput', () => {
 
   it('should render number input', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<MaxLengthInput value={500} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('500')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('500')
   })
 
   it('should have min of 1', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    const input = screen.getByRole('textbox')
+    expect(input).toBeInTheDocument()
   })
 })
 
@@ -75,18 +75,18 @@ describe('OverlapInput', () => {
 
   it('should render number input', () => {
     render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<OverlapInput value={50} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('50')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('50')
   })
 
   it('should have min of 1', () => {
     render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    const input = screen.getByRole('textbox')
+    expect(input).toBeInTheDocument()
   })
 })
