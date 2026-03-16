@@ -48,6 +48,7 @@ class BaseRequest:
         params: Mapping[str, Any] | None = None,
         *,
         timeout: float | httpx.Timeout | None = None,
+        raise_for_status: bool = False,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
