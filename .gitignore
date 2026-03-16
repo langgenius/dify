@@ -139,6 +139,7 @@ pyrightconfig.json
 .idea/'
 
 .DS_Store
+.worktrees/
 
 # Intellij IDEA Files
 .idea/*
