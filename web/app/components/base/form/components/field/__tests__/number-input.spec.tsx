@@ -22,7 +22,7 @@ describe('NumberInputField', () => {
 
   it('should render current number value', () => {
     render(<NumberInputField label="Count" />)
-    expect(screen.getByDisplayValue('2')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton')).toHaveValue('2')
   })
 
   it('should update value when users click increment', () => {
