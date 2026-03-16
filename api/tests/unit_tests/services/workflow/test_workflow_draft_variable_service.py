@@ -8,7 +8,11 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.system_variables import SystemVariableKey
-from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
@@ -86,6 +90,20 @@ class TestDraftVariableSaver:
                 input_name="start_input",
                 expected_node_id=_NODE_ID,
                 expected_name="start_input",
+            ),
+            TestCase(
+                name="name with `env.` prefix should return the environment node_id",
+                input_node_id=_NODE_ID,
+                input_name="env.API_KEY",
+                expected_node_id=ENVIRONMENT_VARIABLE_NODE_ID,
+                expected_name="API_KEY",
+            ),
+            TestCase(
+                name="name with `conversation.` prefix should return the conversation node_id",
+                input_node_id=_NODE_ID,
+                input_name="conversation.session_id",
+                expected_node_id=CONVERSATION_VARIABLE_NODE_ID,
+                expected_name="session_id",
             ),
             TestCase(
                 name="dummy_variable should return the original input node_id",
@@ -218,6 +236,46 @@ class TestDraftVariableSaver:
             str(SystemVariableKey.TIMESTAMP),
             str(SystemVariableKey.WORKFLOW_EXECUTION_ID),
         }
+
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert):
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.tenant_id = "test-tenant-id"
+
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id="test-app-id",
+            node_id="start-node-id",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-id",
+            user=mock_user,
+        )
+
+        saver.save(
+            outputs={
+                "env.API_KEY": "secret",
+                "conversation.session_id": "conversation-1",
+                "sys.workflow_run_id": "run-id-123",
+            }
+        )
+
+        mock_batch_upsert.assert_called_once()
+        draft_vars = mock_batch_upsert.call_args[0][1]
+
+        assert len(draft_vars) == 4
+
+        env_var = next(v for v in draft_vars if v.node_id == ENVIRONMENT_VARIABLE_NODE_ID)
+        assert env_var.name == "API_KEY"
+        assert env_var.editable is False
+
+        conversation_var = next(v for v in draft_vars if v.node_id == CONVERSATION_VARIABLE_NODE_ID)
+        assert conversation_var.name == "session_id"
+        assert conversation_var.node_execution_id is None
+
+        sys_var = next(v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID)
+        assert sys_var.name == str(SystemVariableKey.WORKFLOW_EXECUTION_ID)
 
 
 class TestWorkflowDraftVariableService:
