@@ -35,6 +35,14 @@ def test_render_markdown_body_sanitizes_unsafe_html():
     assert "Click" in rendered
 
 
+def test_render_markdown_body_sanitizes_markdown_link_with_javascript_href():
+    rendered = EmailDeliveryConfig.render_markdown_body("[bad](javascript:alert(1)) and [ok](https://example.com)")
+
+    assert "javascript:" not in rendered
+    assert "<a>bad</a>" in rendered
+    assert '<a href="https://example.com">ok</a>' in rendered
+
+
 def test_render_markdown_body_does_not_allow_raw_html_tags():
     rendered = EmailDeliveryConfig.render_markdown_body("<b>raw html</b> and **markdown**")
 
