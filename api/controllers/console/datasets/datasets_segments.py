@@ -116,7 +116,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         dataset_id = str(dataset_id)
         document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -228,7 +228,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -262,7 +262,7 @@ class DatasetDocumentSegmentApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
 
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         document_id = str(document_id)
@@ -322,7 +322,7 @@ class DatasetDocumentSegmentAddApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -373,7 +373,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -435,7 +435,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -482,7 +482,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -549,7 +549,7 @@ class ChildChunkAddApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -604,7 +604,7 @@ class ChildChunkAddApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -654,7 +654,7 @@ class ChildChunkAddApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -702,7 +702,7 @@ class ChildChunkUpdateApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -759,7 +759,7 @@ class ChildChunkUpdateApi(Resource):
 
         # check dataset
         dataset_id = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id, current_tenant_id)
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
