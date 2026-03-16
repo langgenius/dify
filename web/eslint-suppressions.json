@@ -2920,11 +2920,6 @@
       "count": 1
     }
   },
-  "app/components/custom/custom-web-app-brand/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/chunk.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
