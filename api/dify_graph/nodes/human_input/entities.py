@@ -8,6 +8,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Annotated, Any, ClassVar, Literal, Self
 
+import bleach
+import markdown
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dify_graph.entities.base_node_data import BaseNodeData
@@ -58,6 +60,39 @@ class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _SUBJECT_NEWLINE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"[\r\n]+")
+    _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
+        "a",
+        "blockquote",
+        "br",
+        "code",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "hr",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "strong",
+        "table",
+        "tbody",
+        "td",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    ]
+    _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
+        "a": ["href", "title"],
+        "td": ["align"],
+        "th": ["align"],
+    }
+    _ALLOWED_PROTOCOLS: ClassVar[list[str]] = ["http", "https", "mailto"]
 
     recipients: EmailRecipients
 
@@ -97,6 +132,43 @@ class EmailDeliveryConfig(BaseModel):
         if variable_pool is None:
             return templated_body
         return variable_pool.convert_template(templated_body).text
+
+    @classmethod
+    def render_markdown_body(cls, body: str) -> str:
+        """Render markdown to safe HTML for email delivery."""
+        sanitized_markdown = bleach.clean(
+            body,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        rendered_html = markdown.markdown(
+            sanitized_markdown,
+            extensions=["nl2br", "tables"],
+            extension_configs={"tables": {"use_align_attribute": True}},
+        )
+        return bleach.clean(
+            rendered_html,
+            tags=cls._ALLOWED_HTML_TAGS,
+            attributes=cls._ALLOWED_HTML_ATTRIBUTES,
+            protocols=cls._ALLOWED_PROTOCOLS,
+            strip=True,
+            strip_comments=True,
+        )
+
+    @classmethod
+    def sanitize_subject(cls, subject: str) -> str:
+        """Sanitize email subject to plain text and prevent CRLF injection."""
+        sanitized_subject = bleach.clean(
+            subject,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        sanitized_subject = cls._SUBJECT_NEWLINE_PATTERN.sub(" ", sanitized_subject)
+        return " ".join(sanitized_subject.split())
 
 
 class _DeliveryMethodBase(BaseModel):

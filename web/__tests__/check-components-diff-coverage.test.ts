@@ -1,4 +1,5 @@
 import {
+  buildGitDiffRevisionArgs,
   getChangedBranchCoverage,
   getChangedStatementCoverage,
   getIgnoredChangedLinesFromSource,
@@ -7,6 +8,11 @@ import {
 } from '../scripts/check-components-diff-coverage-lib.mjs'
 
 describe('check-components-diff-coverage helpers', () => {
+  it('should build exact and merge-base git diff revision args', () => {
+    expect(buildGitDiffRevisionArgs('base-sha', 'head-sha', 'exact')).toEqual(['base-sha', 'head-sha'])
+    expect(buildGitDiffRevisionArgs('base-sha', 'head-sha')).toEqual(['base-sha...head-sha'])
+  })
+
   it('should parse changed line maps from unified diffs', () => {
     const diff = [
       'diff --git a/web/app/components/share/a.ts b/web/app/components/share/a.ts',

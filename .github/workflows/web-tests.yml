@@ -6,6 +6,9 @@ on:
       base_sha:
         required: false
         type: string
+      diff_range_mode:
+        required: false
+        type: string
       head_sha:
         required: false
         type: string
@@ -89,6 +92,7 @@ jobs:
       - name: Check app/components diff coverage
         env:
           BASE_SHA: ${{ inputs.base_sha }}
+          DIFF_RANGE_MODE: ${{ inputs.diff_range_mode }}
           HEAD_SHA: ${{ inputs.head_sha }}
         run: node ./scripts/check-components-diff-coverage.mjs
 
