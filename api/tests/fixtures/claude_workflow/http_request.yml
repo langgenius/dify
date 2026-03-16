@@ -1,0 +1,56 @@
+kind: claude-workflow
+version: 0.1.0
+app:
+  name: fetch-and-transform
+  description: Workflow with HTTP request and code nodes.
+  mode: workflow
+  icon: 🔧
+dependencies: []
+inputs:
+  - name: url
+    type: text
+    required: true
+nodes:
+  - id: fetch
+    type: http_request
+    title: Fetch
+    method: GET
+    url:
+      selector:
+        - start
+        - url
+  - id: transform
+    type: code
+    title: Transform
+    language: python3
+    source: |
+      def main(body: str) -> dict:
+          return {"result": body}
+    inputs:
+      - name: body
+        selector:
+          - fetch
+          - body
+        value_type: string
+    outputs:
+      - name: result
+        type: string
+  - id: done
+    type: end
+    title: End
+    outputs:
+      - name: status_code
+        selector:
+          - fetch
+          - status_code
+      - name: transformed_body
+        selector:
+          - transform
+          - result
+edges:
+  - source: start
+    target: fetch
+  - source: fetch
+    target: transform
+  - source: transform
+    target: done

@@ -1,0 +1,51 @@
+kind: claude-workflow
+version: 0.1.0
+app:
+  name: branching
+  description: Workflow with an if/else branch.
+  mode: workflow
+  icon: 🤖
+dependencies: []
+inputs:
+  - name: query
+    type: text
+    required: true
+nodes:
+  - id: route
+    type: if_else
+    title: Route
+    cases:
+      - id: "true"
+        logical_operator: and
+        conditions:
+          - selector:
+              - start
+              - query
+            operator: contains
+            value: hello
+            value_type: string
+  - id: true_end
+    type: end
+    title: "True"
+    outputs:
+      - name: matched
+        selector:
+          - start
+          - query
+  - id: false_end
+    type: end
+    title: "False"
+    outputs:
+      - name: unmatched
+        selector:
+          - start
+          - query
+edges:
+  - source: start
+    target: route
+  - source: route
+    source_handle: "true"
+    target: true_end
+  - source: route
+    source_handle: "false"
+    target: false_end
