@@ -1,8 +1,9 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { DialogDescription, DialogTitle } from '@/app/components/base/ui/dialog'
+import { cn } from '@/utils/classnames'
 import Button from '../../base/button'
 import DifyLogo from '../../base/logo/dify-logo'
+import styles from './header.module.css'
 
 type HeaderProps = {
   onClose: () => void
@@ -20,13 +21,18 @@ const Header = ({
           <div className="py-[5px]">
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
-          <DialogTitle className="m-0 bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent">
+          <span
+            className={cn(
+              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] text-transparent',
+              styles.instrumentSerif,
+            )}
+          >
             {t('plansCommon.title.plans', { ns: 'billing' })}
-          </DialogTitle>
+          </span>
         </div>
-        <DialogDescription className="m-0 text-text-tertiary system-sm-regular">
+        <p className="text-text-tertiary system-sm-regular">
           {t('plansCommon.title.description', { ns: 'billing' })}
-        </DialogDescription>
+        </p>
         <Button
           variant="secondary"
           className="absolute bottom-[40.5px] right-[-18px] z-10 size-9 rounded-full p-2"

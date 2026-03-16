@@ -338,8 +338,8 @@ function buildSummary({
   }
 
   lines.push(`Changed source files checked: ${changedSourceFiles.length}`)
-  lines.push(`Changed statement coverage: ${percentage(diffTotals.statements.covered, diffTotals.statements.total).toFixed(2)}%`)
-  lines.push(`Changed branch coverage: ${percentage(diffTotals.branches.covered, diffTotals.branches.total).toFixed(2)}%`)
+  lines.push(`Changed statement coverage: ${formatDiffPercent(diffTotals.statements)}`)
+  lines.push(`Changed branch coverage: ${formatDiffPercent(diffTotals.branches)}`)
 
   return lines
 }
