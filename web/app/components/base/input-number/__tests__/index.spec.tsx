@@ -293,6 +293,25 @@ describe('InputNumber Component', () => {
     expect(wrapper).toHaveClass(wrapClassName)
   })
 
+  it('applies wrapperClassName to outer div for Input compatibility', () => {
+    const onChange = vi.fn()
+    const wrapperClassName = 'custom-input-wrapper'
+    render(<InputNumber onChange={onChange} wrapperClassName={wrapperClassName} />)
+
+    const input = screen.getByRole('textbox')
+    const wrapper = screen.getByTestId('input-number-wrapper')
+
+    expect(input).not.toHaveAttribute('wrapperClassName')
+    expect(wrapper).toHaveClass(wrapperClassName)
+  })
+
+  it('applies styleCss to the input element', () => {
+    const onChange = vi.fn()
+    render(<InputNumber onChange={onChange} styleCss={{ color: 'red' }} />)
+
+    expect(screen.getByRole('textbox')).toHaveStyle({ color: 'red' })
+  })
+
   it('applies controlWrapClassName to control buttons container', () => {
     const onChange = vi.fn()
     const controlWrapClassName = 'custom-control-wrap'

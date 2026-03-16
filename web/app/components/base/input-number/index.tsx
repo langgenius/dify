@@ -1,6 +1,5 @@
 import type { NumberFieldRoot as BaseNumberFieldRoot } from '@base-ui/react/number-field'
-import type { FC } from 'react'
-import type { InputProps } from '../input'
+import type { CSSProperties, FC, InputHTMLAttributes } from 'react'
 import { useCallback } from 'react'
 import {
   NumberField,
@@ -13,7 +12,12 @@ import {
 } from '@/app/components/base/ui/number-field'
 import { cn } from '@/utils/classnames'
 
-export type InputNumberProps = {
+type InputNumberInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'defaultValue' | 'max' | 'min' | 'onChange' | 'size' | 'type' | 'value'
+>
+
+export type InputNumberProps = InputNumberInputProps & {
   unit?: string
   value?: number
   onChange: (value: number) => void
@@ -21,12 +25,16 @@ export type InputNumberProps = {
   size?: 'regular' | 'large'
   max?: number
   min?: number
+  step?: number | 'any'
   defaultValue?: number
   disabled?: boolean
   wrapClassName?: string
+  wrapperClassName?: string
+  styleCss?: CSSProperties
   controlWrapClassName?: string
   controlClassName?: string
-} & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
+  type?: 'number'
+}
 
 const STEPPER_REASONS = new Set<BaseNumberFieldRoot.ChangeEventDetails['reason']>([
   'increment-press',
@@ -43,7 +51,7 @@ const isValueWithinBounds = (value: number, min?: number, max?: number) => {
   return true
 }
 
-const resolveStep = (amount?: number, step?: InputProps['step']) => (
+const resolveStep = (amount?: number, step?: InputNumberProps['step']) => (
   amount ?? (step === 'any' || typeof step === 'number' ? step : undefined) ?? 1
 )
 
@@ -76,6 +84,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   const {
     unit,
     className,
+    wrapperClassName,
+    styleCss,
     onChange,
     amount,
     value,
@@ -130,7 +140,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   }, [defaultValue, max, min, onChange, stepAmount, value])
 
   return (
-    <div data-testid="input-number-wrapper" className={cn('flex w-full min-w-0', wrapClassName)}>
+    <div data-testid="input-number-wrapper" className={cn('flex w-full min-w-0', wrapClassName, wrapperClassName)}>
       <NumberField
         className="min-w-0 grow"
         value={value ?? null}
@@ -149,6 +159,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           <NumberFieldInput
             {...rest}
             size={size}
+            style={styleCss}
             className={className}
           />
           {unit && (
