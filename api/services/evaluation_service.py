@@ -245,13 +245,13 @@ class EvaluationService:
 
         config.evaluation_model_provider = data.evaluation_model_provider
         config.evaluation_model = data.evaluation_model
-        config.metrics_config = json.dumps({
-            "default_metrics": [m.model_dump() for m in data.default_metrics],
-            "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
-        })
-        config.judgement_conditions = json.dumps(
-            data.judgment_config.model_dump() if data.judgment_config else {}
+        config.metrics_config = json.dumps(
+            {
+                "default_metrics": [m.model_dump() for m in data.default_metrics],
+                "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
+            }
         )
+        config.judgement_conditions = json.dumps(data.judgment_config.model_dump() if data.judgment_config else {})
         config.updated_by = account_id
         session.commit()
         session.refresh(config)
@@ -299,9 +299,7 @@ class EvaluationService:
         )
         max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
         if active_runs >= max_concurrent:
-            raise EvaluationMaxConcurrentRunsError(
-                f"Maximum concurrent runs ({max_concurrent}) reached."
-            )
+            raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
 
         # Parse dataset
         items = cls._parse_dataset(dataset_file_content)
@@ -373,11 +371,7 @@ class EvaluationService:
         tenant_id: str,
         run_id: str,
     ) -> EvaluationRun:
-        run = (
-            session.query(EvaluationRun)
-            .filter_by(id=run_id, tenant_id=tenant_id)
-            .first()
-        )
+        run = session.query(EvaluationRun).filter_by(id=run_id, tenant_id=tenant_id).first()
         if not run:
             raise EvaluationNotFoundError("Evaluation run not found.")
         return run
@@ -587,8 +581,7 @@ class EvaluationService:
 
     @staticmethod
     def _extract_workflow_run_id(response: Mapping[str, object]) -> str | None:
-        """Extract ``workflow_run_id`` from a blocking workflow response.
-        """
+        """Extract ``workflow_run_id`` from a blocking workflow response."""
         wf_run_id = response.get("workflow_run_id")
         if wf_run_id:
             return str(wf_run_id)
@@ -610,13 +603,15 @@ class EvaluationService:
         from core.workflow.enums import WorkflowNodeExecutionStatus
         from models.workflow import WorkflowNodeExecutionModel
 
-        stmt = WorkflowNodeExecutionModel.preload_offload_data(
-            select(WorkflowNodeExecutionModel)
-        ).where(
-            WorkflowNodeExecutionModel.tenant_id == tenant_id,
-            WorkflowNodeExecutionModel.app_id == app_id,
-            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
+        stmt = (
+            WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            )
+            .order_by(asc(WorkflowNodeExecutionModel.created_at))
+        )
 
         node_models: list[WorkflowNodeExecutionModel] = list(session.execute(stmt).scalars().all())
 

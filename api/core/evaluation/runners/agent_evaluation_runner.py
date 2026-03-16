@@ -141,10 +141,12 @@ class AgentEvaluationRunner(BaseEvaluationRunner):
                             answer_parts.append(thought)
                         tool = chunk.get("tool")
                         if tool:
-                            tool_calls.append({
-                                "tool": tool,
-                                "tool_input": chunk.get("tool_input", ""),
-                            })
+                            tool_calls.append(
+                                {
+                                    "tool": tool,
+                                    "tool_input": chunk.get("tool_input", ""),
+                                }
+                            )
                     elif event == "message":
                         answer = chunk.get("answer", "")
                         if answer:

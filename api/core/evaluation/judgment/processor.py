@@ -1,35 +1,20 @@
 """Judgment condition processor for evaluation metrics.
 
 Evaluates pass/fail judgment conditions against evaluation metric values.
-Reuses the core comparison engine from the workflow condition system
-(core.workflow.utils.condition.processor._evaluate_condition) to ensure
-consistent operator semantics across the platform.
+Each condition uses:
+  - ``metric_name`` as the left-hand side lookup key from ``metric_values``
+  - ``comparison_operator`` as the operator
+  - ``condition_value`` as the right-hand side comparison value
 
-The processor is intentionally decoupled from evaluation frameworks
-(RAGAS / Customized) and runners.  It operates on plain ``dict`` mappings
-and can be invoked from any context.
-
-Typical usage::
-
-    metrics = {"faithfulness": 0.85, "answer_relevancy": 0.6}
-    variables = {"expected_output": "Hello World", "created_at": "2025-01-01T00:00:00"}
-    config = JudgmentConfig(
-        logical_operator="and",
-        conditions=[
-            JudgmentCondition(metric_name="faithfulness", comparison_operator=">",
-                              value="0.8", condition_type="number"),
-            JudgmentCondition(metric_name="output", comparison_operator="contains",
-                              value="expected_output", value_source="variable",
-                              condition_type="string"),
-        ],
-    )
-    result = JudgmentProcessor.evaluate(metrics, config, variable_values=variables)
+The processor is intentionally decoupled from evaluation frameworks and
+runners. It operates on plain ``dict`` mappings and can be invoked anywhere
+that already has per-item metric results.
 """
 
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from core.evaluation.entities.judgment_entity import (
     JudgmentCondition,
@@ -37,9 +22,9 @@ from core.evaluation.entities.judgment_entity import (
     JudgmentConditionType,
     JudgmentConfig,
     JudgmentResult,
-    JudgmentValueSource,
 )
-from core.workflow.utils.condition.processor import _evaluate_condition
+from core.workflow.utils.condition.entities import SupportedComparisonOperator
+from core.workflow.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +33,10 @@ _UNARY_OPERATORS = frozenset({"null", "not null", "empty", "not empty"})
 
 
 class JudgmentProcessor:
-
     @staticmethod
     def evaluate(
         metric_values: dict[str, Any],
         config: JudgmentConfig,
-        variable_values: dict[str, Any] | None = None,
     ) -> JudgmentResult:
         """Evaluate all judgment conditions against the given metric values.
 
@@ -61,9 +44,6 @@ class JudgmentProcessor:
             metric_values: Mapping of metric name → metric value
                 (e.g. ``{"faithfulness": 0.85, "status": "success"}``).
             config: The judgment configuration with logical_operator and conditions.
-            variable_values: Optional mapping of variable name → value, used when
-                a condition's ``value_source`` is ``"variable"``.  Typically built
-                from the evaluation target's inputs / outputs.
 
         Returns:
             JudgmentResult with overall pass/fail and per-condition details.
@@ -78,9 +58,7 @@ class JudgmentProcessor:
         condition_results: list[JudgmentConditionResult] = []
 
         for condition in config.conditions:
-            result = JudgmentProcessor._evaluate_single_condition(
-                metric_values, condition, variable_values
-            )
+            result = JudgmentProcessor._evaluate_single_condition(metric_values, condition)
             condition_results.append(result)
 
             if config.logical_operator == "and" and not result.passed:
@@ -112,14 +90,12 @@ class JudgmentProcessor:
     def _evaluate_single_condition(
         metric_values: dict[str, Any],
         condition: JudgmentCondition,
-        variable_values: dict[str, Any] | None = None,
     ) -> JudgmentConditionResult:
         """Evaluate a single judgment condition.
 
         Steps:
           1. Look up the metric value (left side) by ``metric_name``.
-          2. Resolve the comparison value (right side) — either a constant
-             or a variable reference.
+          2. Read ``condition_value`` as the comparison value (right side).
           3. Dispatch to the correct type handler (string / number / datetime).
         """
         metric_name = condition.metric_name
@@ -130,41 +106,28 @@ class JudgmentProcessor:
             return JudgmentConditionResult(
                 metric_name=metric_name,
                 comparison_operator=condition.comparison_operator,
-                expected_value=condition.value,
+                expected_value=condition.condition_value,
                 actual_value=None,
                 passed=False,
                 error=f"Metric '{metric_name}' not found in evaluation results",
             )
 
-        # Resolve the comparison value (right side)
-        try:
-            resolved_value = JudgmentProcessor._resolve_comparison_value(
-                condition, variable_values
-            )
-        except ValueError as e:
-            return JudgmentConditionResult(
-                metric_name=metric_name,
-                comparison_operator=condition.comparison_operator,
-                expected_value=condition.value,
-                actual_value=actual_value,
-                passed=False,
-                error=str(e),
-            )
+        resolved_value = condition.condition_value
 
         # Dispatch to the appropriate type handler
         try:
             match condition.condition_type:
                 case JudgmentConditionType.DATETIME:
-                    passed = _evaluate_datetime_condition(
-                        actual_value, condition.comparison_operator, resolved_value
-                    )
+                    passed = _evaluate_datetime_condition(actual_value, condition.comparison_operator, resolved_value)
                 case JudgmentConditionType.NUMBER:
-                    passed = _evaluate_number_condition(
-                        actual_value, condition.comparison_operator, resolved_value
-                    )
+                    passed = _evaluate_number_condition(actual_value, condition.comparison_operator, resolved_value)
                 case _:  # STRING (default) — delegate to workflow engine
+                    if condition.comparison_operator in {"before", "after"}:
+                        raise ValueError(
+                            f"Operator '{condition.comparison_operator}' is not supported for string conditions"
+                        )
                     passed = _evaluate_condition(
-                        operator=condition.comparison_operator,
+                        operator=cast(SupportedComparisonOperator, condition.comparison_operator),
                         value=actual_value,
                         expected=resolved_value,
                     )
@@ -190,51 +153,6 @@ class JudgmentProcessor:
                 passed=False,
                 error=str(e),
             )
-
-    @staticmethod
-    def _resolve_comparison_value(
-        condition: JudgmentCondition,
-        variable_values: dict[str, Any] | None,
-    ) -> str | Sequence[str] | None:
-        """Resolve the right-side comparison value.
-
-        For ``value_source == "constant"``, returns ``condition.value`` as-is.
-        For ``value_source == "variable"``, looks up ``condition.value`` (as a key)
-        in ``variable_values`` and returns the resolved value (converted to string
-        for compatibility with the comparison engine).
-
-        Raises:
-            ValueError: If the variable cannot be resolved.
-        """
-        if condition.value_source == JudgmentValueSource.CONSTANT:
-            return condition.value
-
-        # Variable resolution
-        if condition.value is None:
-            raise ValueError("Variable name (value) must be provided when value_source is 'variable'")
-
-        if not variable_values:
-            raise ValueError(
-                f"Cannot resolve variable '{condition.value}': no variable values provided"
-            )
-
-        var_key = condition.value if isinstance(condition.value, str) else str(condition.value)
-        if var_key not in variable_values:
-            raise ValueError(
-                f"Variable '{var_key}' not found in evaluation target data. "
-                f"Available variables: {list(variable_values.keys())}"
-            )
-
-        resolved = variable_values[var_key]
-        # Convert to string for the comparison engine, unless it's already
-        # a str/Sequence[str]/None which the engine expects.
-        if resolved is None:
-            return None
-        if isinstance(resolved, str):
-            return resolved
-        if isinstance(resolved, Sequence) and all(isinstance(v, str) for v in resolved):
-            return resolved
-        return str(resolved)
 
 
 _DATETIME_FORMATS = [
@@ -348,7 +266,11 @@ def _evaluate_number_condition(
     """
     # Unary operators — delegate to workflow engine as-is
     if operator in _UNARY_OPERATORS:
-        return _evaluate_condition(operator=operator, value=actual, expected=expected)
+        return _evaluate_condition(
+            operator=cast(SupportedComparisonOperator, operator),
+            value=actual,
+            expected=cast(str | Sequence[str] | bool | Sequence[bool] | None, expected),
+        )
 
     if actual is None:
         return False
@@ -356,7 +278,7 @@ def _evaluate_number_condition(
     # Coerce actual to numeric
     if not isinstance(actual, (int, float)):
         try:
-            actual = float(actual)
+            actual = float(cast(str | int | float, actual))
         except (TypeError, ValueError) as e:
             raise ValueError(f"Cannot convert actual value '{actual}' to number") from e
 
@@ -365,4 +287,8 @@ def _evaluate_number_condition(
     if expected is not None and not isinstance(expected, str):
         expected = str(expected)
 
-    return _evaluate_condition(operator=operator, value=actual, expected=expected)
+    return _evaluate_condition(
+        operator=cast(SupportedComparisonOperator, operator),
+        value=actual,
+        expected=expected,
+    )

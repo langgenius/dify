@@ -1,11 +1,6 @@
 """Judgment condition entities for evaluation metric assessment.
 
 Key concepts:
-  - **value_source**: Where the comparison target comes from.
-    - "constant": a literal value supplied by the user (e.g. threshold "0.8").
-    - "variable": a named field from the evaluation target's runtime data
-      (inputs, actual_output, expected_output). The ``value`` field holds the
-      variable key; the actual comparison value is resolved at evaluation time.
   - **condition_type**: Determines operator semantics and type coercion.
     - "string": string operators (contains, is, start with, …).
     - "number": numeric operators (>, <, =, ≠, ≥, ≤).
@@ -18,32 +13,17 @@ Typical usage:
             JudgmentCondition(
                 metric_name="faithfulness",
                 comparison_operator=">",
-                value="0.8",
+                condition_value="0.8",
                 condition_type="number",
-            ),
-            JudgmentCondition(
-                metric_name="output",
-                comparison_operator="contains",
-                value="expected_output",
-                value_source="variable",
-                condition_type="string",
-            ),
+            )
         ],
     )
 """
 
-from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
-
-class JudgmentValueSource(StrEnum):
-    """Where the comparison target value comes from."""
-
-    CONSTANT = "constant"
-    VARIABLE = "variable"
 
 
 class JudgmentConditionType(StrEnum):
@@ -90,22 +70,15 @@ class JudgmentCondition(BaseModel):
         metric_name: The name of the evaluation metric to check (left side).
             Must match an EvaluationMetric.name in the results.
         comparison_operator: The comparison operator to apply.
-        value: The comparison target (right side).
-            - When value_source is "constant": the literal threshold/expected value.
-            - When value_source is "variable": the variable key name to look up
-              from the evaluation target's runtime data.
-            For unary operators (empty, null, etc.), this can be None.
-        value_source: Where the comparison value comes from.
-            "constant" (default) for user-supplied literals,
-            "variable" for references to evaluation target data.
+        condition_value: The comparison target (right side). For unary operators
+            such as ``empty`` or ``null`` this can be ``None``.
         condition_type: Controls type coercion and which operators are valid.
             "string" (default), "number", or "datetime".
     """
 
     metric_name: str
     comparison_operator: JudgmentComparisonOperator
-    value: str | Sequence[str] | None = None
-    value_source: JudgmentValueSource = JudgmentValueSource.CONSTANT
+    condition_value: Any | None = None
     condition_type: JudgmentConditionType = JudgmentConditionType.STRING
 
 

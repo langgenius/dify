@@ -15,6 +15,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
     EvaluationRunData,
 )
+from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
@@ -87,23 +88,20 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     )
 
     results: list[EvaluationItemResult] = _execute_evaluation_runner(
-        session, 
-        run_data, 
-        evaluation_instance, 
+        session,
+        run_data,
+        evaluation_instance,
         node_run_result_mapping_list,
     )
 
-
     # Compute summary metrics
-    metrics_summary = _compute_metrics_summary(results)
+    metrics_summary = _compute_metrics_summary(results, run_data.judgment_config)
 
     # Generate result XLSX
     result_xlsx = _generate_result_xlsx(run_data.items, results)
 
     # Store result file
-    result_file_id = _store_result_file(
-        run_data.tenant_id, run_data.evaluation_run_id, result_xlsx, session
-    )
+    result_file_id = _store_result_file(run_data.tenant_id, run_data.evaluation_run_id, result_xlsx, session)
 
     # Update run to completed
     evaluation_run = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
@@ -119,9 +117,9 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
 
 
 def _execute_evaluation_runner(
-    session: Any, 
-    run_data: EvaluationRunData, 
-    evaluation_instance: BaseEvaluationInstance, 
+    session: Any,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
     node_run_result_mapping_list: list[dict[str, NodeRunResult]],
 ) -> list[EvaluationItemResult]:
     """Execute the evaluation runner."""
@@ -137,31 +135,37 @@ def _execute_evaluation_runner(
                     node_run_result_list.append(node_run_result)
             if node_run_result_list:
                 runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance, session)
-                results.extend(runner.run(
-                    evaluation_run_id=run_data.evaluation_run_id,
-                    tenant_id=run_data.tenant_id,
-                    target_id=run_data.target_id,
-                    target_type=run_data.target_type,
-                    default_metric=default_metric,
-                    customized_metrics=None,
-                    model_provider=run_data.evaluation_model_provider,
-                    model_name=run_data.evaluation_model,
-                    node_run_result_list=node_run_result_list,
-                ))
+                results.extend(
+                    runner.run(
+                        evaluation_run_id=run_data.evaluation_run_id,
+                        tenant_id=run_data.tenant_id,
+                        target_id=run_data.target_id,
+                        target_type=run_data.target_type,
+                        default_metric=default_metric,
+                        customized_metrics=None,
+                        model_provider=run_data.evaluation_model_provider,
+                        model_name=run_data.evaluation_model,
+                        node_run_result_list=node_run_result_list,
+                        judgment_config=run_data.judgment_config,
+                    )
+                )
     if customized_metrics:
         runner = _create_runner(EvaluationCategory.WORKFLOW, evaluation_instance, session)
-        results.extend(runner.run(
-            evaluation_run_id=run_data.evaluation_run_id,
-            tenant_id=run_data.tenant_id,
-            target_id=run_data.target_id,
-            target_type=run_data.target_type,
-            default_metric=None,
-            customized_metrics=customized_metrics,
-            node_run_result_list=None,
-            node_run_result_mapping_list=node_run_result_mapping_list,
-        ))
+        results.extend(
+            runner.run(
+                evaluation_run_id=run_data.evaluation_run_id,
+                tenant_id=run_data.tenant_id,
+                target_id=run_data.target_id,
+                target_type=run_data.target_type,
+                default_metric=None,
+                customized_metrics=customized_metrics,
+                node_run_result_list=None,
+                node_run_result_mapping_list=node_run_result_mapping_list,
+                judgment_config=run_data.judgment_config,
+            )
+        )
     return results
-    
+
 
 def _create_runner(
     category: EvaluationCategory,
@@ -197,34 +201,32 @@ def _mark_run_failed(session: Any, run_id: str, error: str) -> None:
         logger.exception("Failed to mark run %s as failed", run_id)
 
 
-def _compute_metrics_summary(results: list[EvaluationItemResult]) -> dict[str, Any]:
-    """Compute average scores per metric across all results."""
-    metric_scores: dict[str, list[float]] = {}
-    for result in results:
-        if result.error:
-            continue
-        for metric in result.metrics:
-            if metric.name not in metric_scores:
-                metric_scores[metric.name] = []
-            metric_scores[metric.name].append(float(metric.value))
+def _compute_metrics_summary(
+    results: list[EvaluationItemResult],
+    judgment_config: JudgmentConfig | None,
+) -> dict[str, Any]:
+    """Compute aggregate metric and judgment summaries for an evaluation run.
+
+    Metric statistics are calculated from successful item results only. When a
+    judgment config is present, the summary also reports how many successful
+    items passed or failed the configured judgment rules.
+    """
 
     summary: dict[str, Any] = {}
-    for name, scores in metric_scores.items():
-        summary[name] = {
-            "average": sum(scores) / len(scores) if scores else 0.0,
-            "min": min(scores) if scores else 0.0,
-            "max": max(scores) if scores else 0.0,
-            "count": len(scores),
-        }
 
-    # Overall average
-    all_scores = [s for scores in metric_scores.values() for s in scores]
-    summary["_overall"] = {
-        "average": sum(all_scores) / len(all_scores) if all_scores else 0.0,
-        "total_items": len(results),
-        "successful_items": sum(1 for r in results if r.error is None),
-        "failed_items": sum(1 for r in results if r.error is not None),
-    }
+    if judgment_config is not None and judgment_config.conditions:
+        evaluated_results: list[EvaluationItemResult] = [result for result in results if result.error is None and result.metrics]
+        passed_items = sum(1 for result in evaluated_results if result.judgment.passed)
+        evaluated_items = len(evaluated_results)
+        summary["_judgment"] = {
+            "enabled": True,
+            "logical_operator": judgment_config.logical_operator,
+            "configured_conditions": len(judgment_config.conditions),
+            "evaluated_items": evaluated_items,
+            "passed_items": passed_items,
+            "failed_items": evaluated_items - passed_items,
+            "pass_rate": passed_items / evaluated_items if evaluated_items else 0.0,
+        }
 
     return summary
 
@@ -266,11 +268,7 @@ def _generate_result_xlsx(
 
     # Build headers
     headers = (
-        ["index"]
-        + input_keys
-        + ["expected_output", "actual_output"]
-        + all_metric_names
-        + ["overall_score", "error"]
+        ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + ["overall_score", "error"]
     )
 
     # Write header row
@@ -320,9 +318,7 @@ def _generate_result_xlsx(
             col += 1
 
         # Overall score
-        ws.cell(
-            row=row_idx, column=col, value=result.overall_score if result else ""
-        ).border = thin_border
+        ws.cell(row=row_idx, column=col, value=result.overall_score if result else "").border = thin_border
         col += 1
 
         # Error

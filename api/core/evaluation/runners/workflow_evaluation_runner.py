@@ -13,7 +13,6 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.workflow.node_events import NodeRunResult
-from models.model import App
 
 logger = logging.getLogger(__name__)
 

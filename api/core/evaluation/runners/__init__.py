@@ -20,11 +20,7 @@ def get_service_account_for_app(session: Session, app_id: str) -> Account:
     if not account:
         raise ValueError(f"Creator account not found for app {app_id}")
 
-    current_tenant = (
-        session.query(TenantAccountJoin)
-        .filter_by(account_id=account.id, current=True)
-        .first()
-    )
+    current_tenant = session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
     if not current_tenant:
         raise ValueError(f"Current tenant not found for account {account.id}")
 
@@ -48,11 +44,7 @@ def get_service_account_for_snippet(session: Session, snippet_id: str) -> Accoun
     if not account:
         raise ValueError(f"Creator account not found for snippet {snippet_id}")
 
-    current_tenant = (
-        session.query(TenantAccountJoin)
-        .filter_by(account_id=account.id, current=True)
-        .first()
-    )
+    current_tenant = session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
     if not current_tenant:
         raise ValueError(f"Current tenant not found for account {account.id}")
 
