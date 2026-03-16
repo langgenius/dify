@@ -25,7 +25,7 @@ import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
 import ParameterTable from './components/parameter-table'
-import useConfig from './use-config'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, useConfig } from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
 
 const i18nPrefix = 'nodes.triggerWebhook'
@@ -63,7 +63,6 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     handleParamsChange,
     handleBodyChange,
     handleStatusCodeChange,
-    handleStatusCodeBlur,
     handleResponseBodyChange,
     generateWebhookUrl,
   } = useConfig(id, data)
@@ -141,7 +140,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   </div>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="system-xs-regular mt-1 px-0 py-[2px] text-text-warning">
+                  <div className="mt-1 px-0 py-[2px] text-text-warning system-xs-regular">
                     {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
                   </div>
                 )}
@@ -199,22 +198,21 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="system-sm-medium text-text-tertiary">
+              <label className="text-text-tertiary system-sm-medium">
                 {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
               <NumberField
                 className="w-[120px]"
-                value={inputs.status_code ?? null}
+                min={DEFAULT_STATUS_CODE}
+                max={MAX_STATUS_CODE}
+                value={inputs.status_code ?? DEFAULT_STATUS_CODE}
                 disabled={readOnly}
-                onValueChange={value => handleStatusCodeChange(value ?? 200)}
+                onValueChange={value => handleStatusCodeChange(value ?? DEFAULT_STATUS_CODE)}
               >
                 <NumberFieldGroup size="regular">
                   <NumberFieldInput
                     size="regular"
                     className="h-8"
-                    onBlur={() => {
-                      handleStatusCodeBlur(inputs.status_code)
-                    }}
                   />
                   <NumberFieldControls>
                     <NumberFieldIncrement size="regular" />
@@ -224,7 +222,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               </NumberField>
             </div>
             <div>
-              <label className="system-sm-medium mb-2 block text-text-tertiary">
+              <label className="mb-2 block text-text-tertiary system-sm-medium">
                 {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
               </label>
               <ParagraphInput
