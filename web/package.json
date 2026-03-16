@@ -295,9 +295,11 @@
       "svgo@>=3.0.0,<3.3.3": "3.3.3",
       "tar@<=7.5.10": "7.5.11",
       "typed-array-buffer": "npm:@nolyfill/typed-array-buffer@^1.0.44",
+      "undici@>=7.0.0,<7.24.0": "7.24.0",
       "vite": "npm:@voidzero-dev/vite-plus-core@0.1.11",
       "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.11",
-      "which-typed-array": "npm:@nolyfill/which-typed-array@^1.0.44"
+      "which-typed-array": "npm:@nolyfill/which-typed-array@^1.0.44",
+      "yauzl@<3.2.1": "3.2.1"
     },
     "ignoredBuiltDependencies": [
       "canvas",
