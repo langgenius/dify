@@ -32,6 +32,12 @@ IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
+# List of node types that are not allowed in snippets
+FORBIDDEN_NODE_TYPES = [
+    NodeType.START.value,  # "start"
+    NodeType.HUMAN_INPUT.value,  # "human-input"
+]
+
 
 class ImportMode(StrEnum):
     YAML_CONTENT = "yaml-content"
@@ -212,6 +218,28 @@ class SnippetDslService:
                     status=ImportStatus.FAILED,
                     error="Missing snippet data in YAML content",
                 )
+
+            # Validate workflow nodes - check for forbidden node types
+            workflow_data = data.get("workflow", {})
+            if workflow_data:
+                graph = workflow_data.get("graph", {})
+                nodes = graph.get("nodes", [])
+                forbidden_nodes_found = []
+                for node in nodes:
+                    node_data = node.get("data", {})
+                    if not node_data:
+                        continue
+                    node_type = node_data.get("type", "")
+                    if node_type in FORBIDDEN_NODE_TYPES:
+                        forbidden_nodes_found.append(node_type)
+                
+                if forbidden_nodes_found:
+                    forbidden_types_str = ", ".join(set(forbidden_nodes_found))
+                    return SnippetImportInfo(
+                        id=import_id,
+                        status=ImportStatus.FAILED,
+                        error=f"Snippet cannot contain the following node types: {forbidden_types_str}",
+                    )
 
             # If snippet_id is provided, check if it exists
             snippet = None
