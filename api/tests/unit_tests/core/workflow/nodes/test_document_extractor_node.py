@@ -7,7 +7,7 @@ from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from dify_graph.entities import GraphInitParams
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
@@ -250,7 +250,7 @@ def test_extract_text_from_docx(mock_document):
 
 
 def test_node_type(document_extractor_node):
-    assert document_extractor_node.node_type == NodeType.DOCUMENT_EXTRACTOR
+    assert document_extractor_node.node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR
 
 
 @patch("pandas.ExcelFile")

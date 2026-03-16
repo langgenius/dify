@@ -98,7 +98,7 @@ class TestAccountModelValidation:
         )
 
         # Assert
-        assert account.status == "active"
+        assert account.status == AccountStatus.ACTIVE
 
     def test_account_get_status_method(self):
         """Test the get_status method returns AccountStatus enum."""
@@ -106,7 +106,7 @@ class TestAccountModelValidation:
         account = Account(
             name="Test User",
             email="test@example.com",
-            status="pending",
+            status=AccountStatus.PENDING,
         )
 
         # Act

@@ -123,7 +123,7 @@ dify_graph/nodes/human_input/human_input_node.py
 dify_graph/nodes/if_else/if_else_node.py
 dify_graph/nodes/iteration/iteration_node.py
 dify_graph/nodes/knowledge_index/knowledge_index_node.py
-dify_graph/nodes/knowledge_retrieval/knowledge_retrieval_node.py
+core/workflow/nodes/knowledge_retrieval/knowledge_retrieval_node.py
 dify_graph/nodes/list_operator/node.py
 dify_graph/nodes/llm/node.py
 dify_graph/nodes/loop/loop_node.py

@@ -22,6 +22,7 @@ from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.trigger.debug.event_selectors import (
     TriggerDebugEvent,
     TriggerDebugEventPoller,
@@ -1209,7 +1210,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None
         # for schedule trigger, when run single node, just execute directly
-        if node_type == NodeType.TRIGGER_SCHEDULE:
+        if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
             event = TriggerDebugEvent(
                 workflow_args={},
                 node_id=node_id,

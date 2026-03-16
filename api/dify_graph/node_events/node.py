@@ -1,9 +1,9 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from dify_graph.entities.pause_reason import PauseReason
 from dify_graph.file import File
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
@@ -13,7 +13,7 @@ from .base import NodeEventBase
 
 
 class RunRetrieverResourceEvent(NodeEventBase):
-    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[Mapping[str, Any]] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
     context_files: list[File] | None = Field(default=None, description="context files")
 
