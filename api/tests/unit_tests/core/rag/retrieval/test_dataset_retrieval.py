@@ -37,6 +37,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrieval
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.model_entities import ModelFeature
 from models.dataset import Dataset
+from models.enums import CreatorUserRole
 
 # ==================== Helper Functions ====================
 
@@ -3745,6 +3746,24 @@ class TestDatasetRetrievalAdditionalHelpers:
             )
             mock_session.add_all.assert_called()
             mock_session.commit.assert_called()
+
+    def test_on_query_normalizes_workflow_end_user_role(self, retrieval: DatasetRetrieval) -> None:
+        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+            retrieval._on_query(
+                query="python",
+                attachment_ids=None,
+                dataset_ids=["d1"],
+                app_id="a1",
+                user_from="end-user",
+                user_id="u1",
+            )
+
+            mock_session.add_all.assert_called_once()
+            added_queries = mock_session.add_all.call_args.args[0]
+
+            assert len(added_queries) == 1
+            assert added_queries[0].created_by_role == CreatorUserRole.END_USER
+            mock_session.commit.assert_called_once()
 
     def test_handle_invoke_result(self, retrieval: DatasetRetrieval) -> None:
         usage = LLMUsage.empty_usage()

@@ -984,6 +984,24 @@ class DatasetRetrieval:
                 )
             )
 
+    @staticmethod
+    def _resolve_creator_user_role(user_from: str) -> CreatorUserRole | None:
+        """Map runtime user source values to dataset query audit roles.
+
+        Workflow run context uses the hyphenated ``end-user`` value, while
+        ``DatasetQuery.created_by_role`` persists the underscore-based
+        ``CreatorUserRole.END_USER`` enum. Query logging is a side effect, so an
+        unsupported value should be skipped instead of aborting retrieval.
+        """
+        normalized_user_from = str(user_from).strip().lower().replace("-", "_")
+        if normalized_user_from == CreatorUserRole.ACCOUNT.value:
+            return CreatorUserRole.ACCOUNT
+        if normalized_user_from == CreatorUserRole.END_USER.value:
+            return CreatorUserRole.END_USER
+
+        logger.warning("Skipping dataset query audit log for unsupported user_from=%r", user_from)
+        return None
+
     def _on_query(
         self,
         query: str | None,
@@ -994,9 +1012,12 @@ class DatasetRetrieval:
         user_id: str,
     ):
         """
-        Handle query.
+        Persist dataset query audit rows for retrieval requests.
         """
         if not query and not attachment_ids:
+            return
+        created_by_role = self._resolve_creator_user_role(user_from)
+        if created_by_role is None:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1012,7 +1033,7 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source="app",
                     source_app_id=app_id,
-                    created_by_role=CreatorUserRole(user_from),
+                    created_by_role=created_by_role,
                     created_by=user_id,
                 )
                 dataset_queries.append(dataset_query)
