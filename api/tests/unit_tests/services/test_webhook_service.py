@@ -573,7 +573,12 @@ from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from dify_graph.nodes.trigger_webhook.entities import ContentType, WebhookBodyParameter, WebhookData, WebhookParameter
+from core.workflow.nodes.trigger_webhook.entities import (
+    ContentType,
+    WebhookBodyParameter,
+    WebhookData,
+    WebhookParameter,
+)
 from dify_graph.variables.types import SegmentType
 from models.enums import AppTriggerStatus
 from models.model import App

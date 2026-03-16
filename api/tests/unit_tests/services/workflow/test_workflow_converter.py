@@ -451,7 +451,7 @@ from core.app.app_config.entities import (
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.nodes import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from models.model import Account, App, AppMode, AppModelConfig
 from services.workflow import workflow_converter as converter_module
 from services.workflow.workflow_converter import WorkflowConverter
@@ -480,7 +480,7 @@ def _build_start_graph() -> dict[str, Any]:
             {
                 "id": "start",
                 "position": None,
-                "data": {"type": NodeType.START, "variables": [{"variable": "name"}, {"variable": "city"}]},
+                "data": {"type": BuiltinNodeTypes.START, "variables": [{"variable": "name"}, {"variable": "city"}]},
             }
         ],
         "edges": [],
@@ -609,14 +609,16 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch.setattr(
         converter,
         "_convert_to_start_node",
-        MagicMock(return_value={"id": "start", "position": None, "data": {"type": NodeType.START, "variables": []}}),
+        MagicMock(
+            return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}
+        ),
     )
     monkeypatch.setattr(
         converter,
         "_convert_to_http_request_node",
         MagicMock(
             return_value=(
-                [{"id": "http", "position": None, "data": {"type": NodeType.HTTP_REQUEST}}],
+                [{"id": "http", "position": None, "data": {"type": BuiltinNodeTypes.HTTP_REQUEST}}],
                 {"ext": "code_1"},
             )
         ),
@@ -624,17 +626,19 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch.setattr(
         converter,
         "_convert_to_knowledge_retrieval_node",
-        MagicMock(return_value={"id": "knowledge", "position": None, "data": {"type": NodeType.KNOWLEDGE_RETRIEVAL}}),
+        MagicMock(
+            return_value={"id": "knowledge", "position": None, "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}}
+        ),
     )
     monkeypatch.setattr(
         converter,
         "_convert_to_llm_node",
-        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": NodeType.LLM}}),
+        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}),
     )
     monkeypatch.setattr(
         converter,
         "_convert_to_answer_node",
-        MagicMock(return_value={"id": "answer", "position": None, "data": {"type": NodeType.ANSWER}}),
+        MagicMock(return_value={"id": "answer", "position": None, "data": {"type": BuiltinNodeTypes.ANSWER}}),
     )
     monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
     db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
@@ -689,18 +693,20 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     monkeypatch.setattr(
         converter,
         "_convert_to_start_node",
-        MagicMock(return_value={"id": "start", "position": None, "data": {"type": NodeType.START, "variables": []}}),
+        MagicMock(
+            return_value={"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START, "variables": []}}
+        ),
     )
     monkeypatch.setattr(converter, "_convert_to_knowledge_retrieval_node", MagicMock(return_value=None))
     monkeypatch.setattr(
         converter,
         "_convert_to_llm_node",
-        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": NodeType.LLM}}),
+        MagicMock(return_value={"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}),
     )
     monkeypatch.setattr(
         converter,
         "_convert_to_end_node",
-        MagicMock(return_value={"id": "end", "position": None, "data": {"type": NodeType.END}}),
+        MagicMock(return_value={"id": "end", "position": None, "data": {"type": BuiltinNodeTypes.END}}),
     )
     monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
     db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
@@ -955,8 +961,8 @@ def test_replace_template_variables_should_replace_start_and_external_references
 
 def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converter: WorkflowConverter) -> None:
     # Arrange
-    graph = {"nodes": [{"id": "start", "position": None, "data": {"type": NodeType.START}}], "edges": []}
-    node = {"id": "llm", "position": None, "data": {"type": NodeType.LLM}}
+    graph = {"nodes": [{"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START}}], "edges": []}
+    node = {"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}
 
     # Act
     edge = converter._create_edge("start", "llm")
