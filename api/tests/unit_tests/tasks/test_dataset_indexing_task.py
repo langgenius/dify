@@ -12,7 +12,6 @@ This module tests the document indexing task functionality including:
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -1577,7 +1576,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             ),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
         monkeypatch.setattr("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", "1")
 
         # Act
@@ -1648,7 +1649,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
 
         indexing_runner = MagicMock()
         monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
@@ -1707,7 +1710,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
 
         indexing_runner = MagicMock()
         monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=indexing_runner))
@@ -1749,7 +1754,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
         monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
 
         # Act
@@ -1792,7 +1799,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
         monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
 
         delay_mock = MagicMock()
@@ -1829,7 +1838,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
 
         runner = MagicMock()
         runner.run.side_effect = DocumentIsPausedError("paused")
@@ -1870,7 +1881,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
 
         runner = MagicMock()
         runner.run.side_effect = RuntimeError("boom")
@@ -1887,6 +1900,7 @@ class TestDocumentIndexingTaskSummaryFlow:
 
     def test_should_log_missing_document_entry_in_summary_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test falsey document entries are handled in summary iteration."""
+
         # Arrange
         class _FalseyDocument:
             def __init__(self, doc_id: str) -> None:
@@ -1930,7 +1944,9 @@ class TestDocumentIndexingTaskSummaryFlow:
             billing=SimpleNamespace(enabled=False),
             vector_space=SimpleNamespace(limit=0, size=0),
         )
-        monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features))
+        monkeypatch.setattr(
+            "tasks.document_indexing_task.FeatureService.get_features", MagicMock(return_value=features)
+        )
         monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", MagicMock(return_value=MagicMock()))
 
         delay_mock = MagicMock()
@@ -1964,6 +1980,4 @@ class TestDocumentIndexingTaskSummaryFlow:
         priority_document_indexing_task("tenant-1", "dataset-1", ["doc-1"])
 
         # Assert
-        handler.assert_called_once_with(
-            "tenant-1", "dataset-1", ["doc-1"], priority_document_indexing_task
-        )
+        handler.assert_called_once_with("tenant-1", "dataset-1", ["doc-1"], priority_document_indexing_task)
