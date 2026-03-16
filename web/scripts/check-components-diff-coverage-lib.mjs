@@ -131,14 +131,15 @@ export function getChangedBranchCoverage(entry, changedLines) {
   let total = 0
 
   for (const [branchId, branch] of Object.entries(entry.branchMap ?? {})) {
-    if (!branchIntersectsChangedLines(branch, changedLines))
-      continue
-
     const hits = Array.isArray(entry.b?.[branchId]) ? entry.b[branchId] : []
     const locations = getBranchLocations(branch)
     const armCount = Math.max(locations.length, hits.length)
+    const impactedArmIndexes = getImpactedBranchArmIndexes(branch, changedLines, armCount)
 
-    for (let armIndex = 0; armIndex < armCount; armIndex += 1) {
+    if (impactedArmIndexes.length === 0)
+      continue
+
+    for (const armIndex of impactedArmIndexes) {
       total += 1
       if ((hits[armIndex] ?? 0) > 0) {
         covered += 1
@@ -219,22 +220,50 @@ function emptyIgnoreResult(changedLines = []) {
   }
 }
 
-function branchIntersectsChangedLines(branch, changedLines) {
+function getBranchLocations(branch) {
+  return Array.isArray(branch?.locations) ? branch.locations.filter(Boolean) : []
+}
+
+function getImpactedBranchArmIndexes(branch, changedLines, armCount) {
+  if (!changedLines || changedLines.size === 0 || armCount === 0)
+    return []
+
+  const locations = getBranchLocations(branch)
+  if (isWholeBranchTouched(branch, changedLines, locations, armCount))
+    return Array.from({ length: armCount }, (_, armIndex) => armIndex)
+
+  const impactedArmIndexes = []
+  for (let armIndex = 0; armIndex < armCount; armIndex += 1) {
+    const location = locations[armIndex]
+    if (rangeIntersectsChangedLines(location, changedLines))
+      impactedArmIndexes.push(armIndex)
+  }
+
+  return impactedArmIndexes
+}
+
+function isWholeBranchTouched(branch, changedLines, locations, armCount) {
   if (!changedLines || changedLines.size === 0)
     return false
 
-  if (rangeIntersectsChangedLines(branch.loc, changedLines))
+  if (branch.line && changedLines.has(branch.line))
     return true
 
-  const locations = getBranchLocations(branch)
-  if (locations.some(location => rangeIntersectsChangedLines(location, changedLines)))
+  const branchRange = branch.loc ?? branch
+  if (!rangeIntersectsChangedLines(branchRange, changedLines))
+    return false
+
+  if (locations.length === 0 || locations.length < armCount)
     return true
 
-  return branch.line ? changedLines.has(branch.line) : false
-}
+  for (const lineNumber of changedLines) {
+    if (!lineTouchesLocation(lineNumber, branchRange))
+      continue
+    if (!locations.some(location => lineTouchesLocation(lineNumber, location)))
+      return true
+  }
 
-function getBranchLocations(branch) {
-  return Array.isArray(branch?.locations) ? branch.locations.filter(Boolean) : []
+  return false
 }
 
 function rangeIntersectsChangedLines(location, changedLines) {
@@ -266,6 +295,15 @@ function getFirstChangedLineInRange(location, changedLines, fallbackLine = 1) {
   }
 
   return startLine ?? fallbackLine
+}
+
+function lineTouchesLocation(lineNumber, location) {
+  const startLine = getLocationStartLine(location)
+  const endLine = getLocationEndLine(location) ?? startLine
+  if (!startLine || !endLine)
+    return false
+
+  return lineNumber >= startLine && lineNumber <= endLine
 }
 
 function getLocationStartLine(location) {
