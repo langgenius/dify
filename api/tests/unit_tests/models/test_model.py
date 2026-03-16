@@ -3,7 +3,9 @@ import types
 
 import pytest
 
-from models.model import Message
+from core.workflow.file_reference import build_file_reference
+from dify_graph.file import FILE_MODEL_IDENTITY, FileTransferMethod
+from models.model import Conversation, Message
 
 
 @pytest.fixture(autouse=True)
@@ -81,3 +83,131 @@ def test_image_preview_misspelled_not_replaced():
     out = msg.re_sign_file_url_answer
     # Expect NO replacement, should not rewrite misspelled image-previe URL
     assert out == original
+
+
+def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -> dict[str, object]:
+    mapping: dict[str, object] = {
+        "dify_model_identity": FILE_MODEL_IDENTITY,
+        "transfer_method": FileTransferMethod.LOCAL_FILE,
+        "reference": build_file_reference(record_id=record_id),
+        "type": "document",
+        "filename": "example.txt",
+        "extension": ".txt",
+        "mime_type": "text/plain",
+        "size": 1,
+    }
+    if tenant_id is not None:
+        mapping["tenant_id"] = tenant_id
+    return mapping
+
+
+@pytest.mark.parametrize("owner_cls", [Conversation, Message])
+def test_inputs_resolve_owner_tenant_for_single_file_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+    owner_cls: type[Conversation] | type[Message],
+):
+    model_module = importlib.import_module("models.model")
+    build_calls: list[tuple[dict[str, object], str]] = []
+
+    monkeypatch.setattr(model_module.db.session, "scalar", lambda _: "tenant-from-app")
+
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+        _ = config, strict_type_validation
+        build_calls.append((dict(mapping), tenant_id))
+        return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
+
+    monkeypatch.setattr("factories.file_factory.build_from_mapping", fake_build_from_mapping)
+
+    owner = owner_cls(app_id="app-1")
+    owner.inputs = {"file": _build_local_file_mapping("upload-1")}
+
+    restored_inputs = owner.inputs
+
+    assert restored_inputs["file"] == {"tenant_id": "tenant-from-app", "upload_file_id": "upload-1"}
+    assert build_calls == [
+        (
+            {
+                **_build_local_file_mapping("upload-1"),
+                "upload_file_id": "upload-1",
+            },
+            "tenant-from-app",
+        )
+    ]
+
+
+@pytest.mark.parametrize("owner_cls", [Conversation, Message])
+def test_inputs_resolve_owner_tenant_for_file_list_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+    owner_cls: type[Conversation] | type[Message],
+):
+    model_module = importlib.import_module("models.model")
+    build_calls: list[tuple[dict[str, object], str]] = []
+
+    monkeypatch.setattr(model_module.db.session, "scalar", lambda _: "tenant-from-app")
+
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+        _ = config, strict_type_validation
+        build_calls.append((dict(mapping), tenant_id))
+        return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
+
+    monkeypatch.setattr("factories.file_factory.build_from_mapping", fake_build_from_mapping)
+
+    owner = owner_cls(app_id="app-1")
+    owner.inputs = {
+        "files": [
+            _build_local_file_mapping("upload-1"),
+            _build_local_file_mapping("upload-2"),
+        ]
+    }
+
+    restored_inputs = owner.inputs
+
+    assert restored_inputs["files"] == [
+        {"tenant_id": "tenant-from-app", "upload_file_id": "upload-1"},
+        {"tenant_id": "tenant-from-app", "upload_file_id": "upload-2"},
+    ]
+    assert build_calls == [
+        (
+            {
+                **_build_local_file_mapping("upload-1"),
+                "upload_file_id": "upload-1",
+            },
+            "tenant-from-app",
+        ),
+        (
+            {
+                **_build_local_file_mapping("upload-2"),
+                "upload_file_id": "upload-2",
+            },
+            "tenant-from-app",
+        ),
+    ]
+
+
+@pytest.mark.parametrize("owner_cls", [Conversation, Message])
+def test_inputs_prefer_serialized_tenant_id_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+    owner_cls: type[Conversation] | type[Message],
+):
+    model_module = importlib.import_module("models.model")
+
+    def fail_if_called(_):
+        raise AssertionError("App tenant lookup should not run when tenant_id exists in the file mapping")
+
+    monkeypatch.setattr(model_module.db.session, "scalar", fail_if_called)
+
+    def fake_build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+        _ = config, strict_type_validation
+        return {"tenant_id": tenant_id, "upload_file_id": mapping.get("upload_file_id")}
+
+    monkeypatch.setattr("factories.file_factory.build_from_mapping", fake_build_from_mapping)
+
+    owner = owner_cls(app_id="app-1")
+    owner.inputs = {"file": _build_local_file_mapping("upload-1", tenant_id="tenant-from-payload")}
+
+    restored_inputs = owner.inputs
+
+    assert restored_inputs["file"] == {
+        "tenant_id": "tenant-from-payload",
+        "upload_file_id": "upload-1",
+    }
