@@ -29,9 +29,18 @@ def test_render_markdown_body_sanitizes_unsafe_html():
     )
 
     assert "<script" not in rendered
+    assert "<a" not in rendered
     assert "onclick" not in rendered
     assert "javascript:" not in rendered
     assert "Click" in rendered
+
+
+def test_render_markdown_body_does_not_allow_raw_html_tags():
+    rendered = EmailDeliveryConfig.render_markdown_body("<b>raw html</b> and **markdown**")
+
+    assert "<b>" not in rendered
+    assert "raw html" in rendered
+    assert "<strong>markdown</strong>" in rendered
 
 
 def test_render_markdown_body_does_not_support_table_syntax():

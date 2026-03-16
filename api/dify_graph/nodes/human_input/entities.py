@@ -126,7 +126,14 @@ class EmailDeliveryConfig(BaseModel):
     @classmethod
     def render_markdown_body(cls, body: str) -> str:
         """Render markdown to safe HTML for email delivery."""
-        rendered_html = markdown.markdown(body, extensions=["nl2br"])
+        sanitized_markdown = bleach.clean(
+            body,
+            tags=[],
+            attributes={},
+            strip=True,
+            strip_comments=True,
+        )
+        rendered_html = markdown.markdown(sanitized_markdown, extensions=["nl2br"])
         return bleach.clean(
             rendered_html,
             tags=cls._ALLOWED_HTML_TAGS,
