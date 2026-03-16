@@ -1,6 +1,7 @@
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import Button from '../../base/button'
 import DifyLogo from '../../base/logo/dify-logo'
 import styles from './header.module.css'
@@ -21,7 +22,11 @@ const Header = ({
           <div className="py-[5px]">
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
-          <span className={`bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent ${styles.instrumentSerif}`}>
+          <span className={cn(
+            'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent',
+            styles.instrumentSerif,
+          )}
+          >
             {t('plansCommon.title.plans', { ns: 'billing' })}
           </span>
         </div>
