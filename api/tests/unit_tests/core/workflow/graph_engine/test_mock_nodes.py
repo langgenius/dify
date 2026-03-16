@@ -400,7 +400,7 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    def _run(self) -> NodeRunResult:
         """Execute mock HTTP request node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -408,16 +408,13 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response
         default_response = (
@@ -431,17 +428,15 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         )
         outputs = self._get_mock_outputs(default_response)
 
-        # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"url": "http://mock.url", "method": "GET"},
-                process_data={
-                    "request_url": "http://mock.url",
-                    "request_method": "GET",
-                },
-                outputs=outputs,
-            )
+        # Return result
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"url": "http://mock.url", "method": "GET"},
+            process_data={
+                "request_url": "http://mock.url",
+                "request_method": "GET",
+            },
+            outputs=outputs,
         )
 
 
@@ -871,3 +866,4 @@ class MockCodeNode(MockNodeMixin, CodeNode):
             inputs={},
             outputs=outputs,
         )
+
