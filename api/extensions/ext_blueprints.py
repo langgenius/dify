@@ -90,6 +90,17 @@ def init_app(app: DifyApp):
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
 
+    # Register WebSocket blueprints for persistent streaming connections
+    from controllers.service_api.app.websocket import sock as service_ws_sock
+    from controllers.service_api.app.websocket import ws_bp as service_ws_bp
+    from controllers.web.websocket import sock as web_ws_sock
+    from controllers.web.websocket import ws_web_bp
+
+    service_ws_sock.init_app(app)
+    app.register_blueprint(service_ws_bp)
+    web_ws_sock.init_app(app)
+    app.register_blueprint(ws_web_bp)
+
     # Register trigger blueprint with CORS for webhook calls
     _apply_cors_once(
         trigger_bp,
