@@ -4,7 +4,6 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -389,7 +388,7 @@ function AppScreenShot({ mode, show }: { mode: AppModeEnum, show: boolean }) {
       <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
       <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
       <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
-      <Image
+      <img
         className={show ? '' : 'hidden'}
         src={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
         alt="App Screen Shot"
