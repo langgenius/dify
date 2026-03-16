@@ -5,18 +5,18 @@ from __future__ import annotations
 import queue
 from unittest import mock
 
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.event_management.event_handlers import EventHandler
-from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
-from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
-from core.workflow.graph_events import (
+from dify_graph.entities.pause_reason import SchedulingPause
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from dify_graph.graph_engine.event_management.event_handlers import EventHandler
+from dify_graph.graph_engine.orchestration.dispatcher import Dispatcher
+from dify_graph.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
+from dify_graph.graph_events import (
     GraphNodeEventBase,
     NodeRunPauseRequestedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeRunResult
+from dify_graph.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 
 
@@ -26,7 +26,7 @@ def test_dispatcher_should_consume_remains_events_after_pause():
         GraphNodeEventBase(
             id="test",
             node_id="test",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
         )
     )
     event_handler = mock.Mock(spec=EventHandler)
@@ -107,7 +107,7 @@ def _make_started_event() -> NodeRunStartedEvent:
     return NodeRunStartedEvent(
         id="start-event",
         node_id="node-1",
-        node_type=NodeType.CODE,
+        node_type=BuiltinNodeTypes.CODE,
         node_title="Test Node",
         start_at=naive_utc_now(),
     )
@@ -117,7 +117,7 @@ def _make_succeeded_event() -> NodeRunSucceededEvent:
     return NodeRunSucceededEvent(
         id="success-event",
         node_id="node-1",
-        node_type=NodeType.CODE,
+        node_type=BuiltinNodeTypes.CODE,
         node_title="Test Node",
         start_at=naive_utc_now(),
         node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
@@ -151,20 +151,20 @@ def test_dispatcher_drain_event_queue():
         NodeRunStartedEvent(
             id="start-event",
             node_id="node-1",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             node_title="Code",
             start_at=naive_utc_now(),
         ),
         NodeRunPauseRequestedEvent(
             id="pause-event",
             node_id="node-1",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             reason=SchedulingPause(message="test pause"),
         ),
         NodeRunSucceededEvent(
             id="success-event",
             node_id="node-1",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             start_at=naive_utc_now(),
             node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
         ),

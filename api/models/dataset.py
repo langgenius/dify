@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file
@@ -29,8 +30,9 @@ from services.entities.knowledge_entities.knowledge_entities import ParentMode, 
 from .account import Account
 from .base import Base, TypeBase
 from .engine import db
+from .enums import CreatorUserRole
 from .model import App, Tag, TagBinding, UploadFile
-from .types import AdjustedJSON, BinaryData, LongText, StringUUID, adjusted_json_index
+from .types import AdjustedJSON, BinaryData, EnumText, LongText, StringUUID, adjusted_json_index
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +53,18 @@ class Dataset(Base):
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
+    DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'"))
+    permission: Mapped[DatasetPermissionEnum] = mapped_column(
+        EnumText(DatasetPermissionEnum, length=255),
+        server_default=sa.text("'only_me'"),
+        default=DatasetPermissionEnum.ONLY_ME,
+    )
     data_source_type = mapped_column(String(255))
     indexing_technique: Mapped[str | None] = mapped_column(String(255))
     index_struct = mapped_column(LongText, nullable=True)
@@ -1001,7 +1008,7 @@ class DatasetQuery(TypeBase):
     content: Mapped[str] = mapped_column(LongText, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False

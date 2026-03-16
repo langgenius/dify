@@ -6,7 +6,7 @@ import pytest
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval import exc
-from core.workflow.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset
 
 # ==================== Helper Functions ====================

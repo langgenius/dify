@@ -11,11 +11,11 @@
 
 # import pytest
 
-# from core.workflow.entities.workflow_node_execution import (
+# from dify_graph.entities.workflow_node_execution import (
 #     WorkflowNodeExecution,
 #     WorkflowNodeExecutionStatus,
 # )
-# from core.workflow.enums import NodeType
+# from dify_graph.enums import BuiltinNodeTypes
 # from libs.datetime_utils import naive_utc_now
 # from models import WorkflowNodeExecutionModel
 # from models.enums import ExecutionOffLoadType
@@ -41,7 +41,7 @@
 #         workflow_execution_id=str(uuid4()),
 #         index=1,
 #         node_id="test_node",
-#         node_type=NodeType.LLM,
+#         node_type=BuiltinNodeTypes.LLM,
 #         title="Test Node",
 #         inputs={"input_key": "input_value"},
 #         outputs={"output_key": "output_value"},
@@ -134,7 +134,7 @@
 #             workflow_execution_id=str(uuid4()),
 #             index=1,
 #             node_id="test_node",
-#             node_type=NodeType.LLM,
+#             node_type=BuiltinNodeTypes.LLM,
 #             title="Test Node",
 #             inputs=large_data,
 #             outputs=large_data,

@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from core.workflow.repositories.index_processor_protocol import Preview, PreviewItem, QaPreview
+from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 
 from .index_processor_factory import IndexProcessorFactory
