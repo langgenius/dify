@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 
 class TestWorkflowNodeExecutionProcessDataTruncation:
@@ -25,7 +25,7 @@ class TestWorkflowNodeExecutionProcessDataTruncation:
             workflow_id="test-workflow-id",
             index=1,
             node_id="test-node-id",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Test Node",
             process_data=process_data,
             created_at=datetime.now(),
@@ -212,7 +212,7 @@ class TestWorkflowNodeExecutionProcessDataScenarios:
             workflow_id="test-workflow-id",
             index=1,
             node_id="test-node-id",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             title="Test Node",
             process_data=scenario.original_data,
             created_at=datetime.now(),

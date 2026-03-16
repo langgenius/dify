@@ -2,13 +2,14 @@ from datetime import datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import TypeBase
 from .engine import db
+from .enums import CreatorUserRole
 from .model import Message
-from .types import StringUUID
+from .types import EnumText, StringUUID
 
 
 class SavedMessage(TypeBase):
@@ -24,7 +25,9 @@ class SavedMessage(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'end_user'"))
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255), nullable=False, server_default=sa.text("'end_user'")
+    )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -50,8 +53,8 @@ class PinnedConversation(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
-    created_by_role: Mapped[str] = mapped_column(
-        String(255),
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255),
         nullable=False,
         server_default=sa.text("'end_user'"),
     )

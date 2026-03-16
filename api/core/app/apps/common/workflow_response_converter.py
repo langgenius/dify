@@ -48,12 +48,13 @@ from core.app.entities.task_entities import (
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
@@ -442,7 +443,7 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
-        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
+        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
         snapshot = self._store_snapshot(event)
@@ -464,13 +465,13 @@ class WorkflowResponseConverter:
         )
 
         try:
-            if event.node_type == NodeType.TOOL:
+            if event.node_type == BuiltinNodeTypes.TOOL:
                 response.data.extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     provider_type=ToolProviderType(event.provider_type),
                     provider_id=event.provider_id,
                 )
-            elif event.node_type == NodeType.DATASOURCE:
+            elif event.node_type == BuiltinNodeTypes.DATASOURCE:
                 manager = PluginDatasourceManager()
                 provider_entity = manager.fetch_datasource_provider(
                     self._application_generate_entity.app_config.tenant_id,
@@ -479,7 +480,7 @@ class WorkflowResponseConverter:
                 response.data.extras["icon"] = provider_entity.declaration.identity.generate_datasource_icon_url(
                     self._application_generate_entity.app_config.tenant_id
                 )
-            elif event.node_type == NodeType.TRIGGER_PLUGIN:
+            elif event.node_type == TRIGGER_PLUGIN_NODE_TYPE:
                 response.data.extras["icon"] = TriggerManager.get_trigger_plugin_icon(
                     self._application_generate_entity.app_config.tenant_id,
                     event.provider_id,
@@ -496,7 +497,7 @@ class WorkflowResponseConverter:
         event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent,
         task_id: str,
     ) -> NodeFinishStreamResponse | None:
-        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
+        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
         snapshot = self._pop_snapshot(event.node_execution_id)
@@ -554,7 +555,7 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
     ) -> NodeRetryStreamResponse | None:
-        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
+        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
 
@@ -612,7 +613,7 @@ class WorkflowResponseConverter:
             data=IterationNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
@@ -635,7 +636,7 @@ class WorkflowResponseConverter:
             data=IterationNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 index=event.index,
                 created_at=int(time.time()),
@@ -662,7 +663,7 @@ class WorkflowResponseConverter:
             data=IterationNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 outputs=new_outputs,
                 outputs_truncated=outputs_truncated,
@@ -692,7 +693,7 @@ class WorkflowResponseConverter:
             data=LoopNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
@@ -715,7 +716,7 @@ class WorkflowResponseConverter:
             data=LoopNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 index=event.index,
                 # The `pre_loop_output` field is not utilized by the frontend.
@@ -744,7 +745,7 @@ class WorkflowResponseConverter:
             data=LoopNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type.value,
+                node_type=event.node_type,
                 title=event.node_title,
                 outputs=new_outputs,
                 outputs_truncated=outputs_truncated,
