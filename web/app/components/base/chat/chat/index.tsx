@@ -250,7 +250,7 @@ const Chat: FC<ChatProps> = ({
 
   useEffect(() => {
     if (!sidebarCollapseState) {
-      const timer = setTimeout(() => handleWindowResize(), 200)
+      const timer = setTimeout(handleWindowResize, 200)
       return () => clearTimeout(timer)
     }
   }, [handleWindowResize, sidebarCollapseState])
@@ -289,7 +289,7 @@ const Chat: FC<ChatProps> = ({
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {
-                  const isLast = item.id === chatList[chatList.length - 1]?.id
+                  const isLast = item.id === chatList.at(-1)?.id
                   return (
                     <Answer
                       appData={appData}

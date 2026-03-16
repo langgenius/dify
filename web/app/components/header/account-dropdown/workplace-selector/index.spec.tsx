@@ -111,10 +111,7 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByRole('button'))
       const workspacesInMenu = screen.getAllByText('Workspace 1')
-      const currentWorkspaceMenuItem = workspacesInMenu[workspacesInMenu.length - 1]
-      expect(currentWorkspaceMenuItem).toBeDefined()
-      if (currentWorkspaceMenuItem)
-        fireEvent.click(currentWorkspaceMenuItem)
+      fireEvent.click(workspacesInMenu[workspacesInMenu.length - 1])
 
       // Assert
       expect(switchWorkspace).not.toHaveBeenCalled()
