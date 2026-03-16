@@ -53,6 +53,7 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'next/no-img-element': 'off',
     },
   },
   {
