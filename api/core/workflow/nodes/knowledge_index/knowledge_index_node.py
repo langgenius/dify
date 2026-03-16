@@ -203,17 +203,20 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: KnowledgeIndexNodeData,
     ) -> Mapping[str, Sequence[str]]:
         variable_mapping: dict[str, Sequence[str]] = {}
-        node_data_obj = KnowledgeIndexNodeData(**node_data)
 
         # index chunk variable
-        variable_mapping[node_id + ".index_chunk_variable_selector"] = node_data_obj.index_chunk_variable_selector
+        variable_mapping[node_id + ".index_chunk_variable_selector"] = node_data.index_chunk_variable_selector
 
         # doc_metadata variables
-        if node_data_obj.doc_metadata:
-            for item in node_data_obj.doc_metadata:
+        if node_data.doc_metadata:
+            for item in node_data.doc_metadata:
                 if isinstance(item.value, list):
                     variable_mapping[node_id + "." + item.metadata_id] = item.value
 
