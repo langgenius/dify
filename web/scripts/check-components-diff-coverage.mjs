@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  buildGitDiffRevisionArgs,
   getChangedBranchCoverage,
   getChangedStatementCoverage,
   getIgnoredChangedLinesFromFile,
@@ -24,6 +25,7 @@ const APP_COMPONENTS_COVERAGE_PREFIX = 'app/components/'
 const SHARED_TEST_PREFIX = 'web/__tests__/'
 const STRICT_TEST_FILE_TOUCH = process.env.STRICT_COMPONENT_TEST_TOUCH === 'true'
 const EXCLUDED_MODULES_LABEL = [...EXCLUDED_COMPONENT_MODULES].sort().join(', ')
+const DIFF_RANGE_MODE = process.env.DIFF_RANGE_MODE === 'exact' ? 'exact' : 'merge-base'
 
 const repoRoot = repoRootFromCwd()
 const webRoot = path.join(repoRoot, 'web')
@@ -216,6 +218,7 @@ function buildSummary({
     '### app/components Diff Coverage',
     '',
     `Compared \`${baseSha.slice(0, 12)}\` -> \`${headSha.slice(0, 12)}\``,
+    `Diff range mode: \`${DIFF_RANGE_MODE}\``,
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
     `Excluded file kinds: \`${COMPONENT_COVERAGE_EXCLUDE_LABEL}\``,
@@ -365,7 +368,7 @@ function buildSkipSummary(changedExcludedSourceFiles) {
 }
 
 function getChangedFiles(base, head) {
-  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', `${base}...${head}`, '--', 'web/app/components', 'web/__tests__'])
+  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(base, head, DIFF_RANGE_MODE), '--', 'web/app/components', 'web/__tests__'])
   return output
     .split('\n')
     .map(line => line.trim())
@@ -373,7 +376,7 @@ function getChangedFiles(base, head) {
 }
 
 function getChangedLineMap(base, head) {
-  const diff = execGit(['diff', '--unified=0', '--no-color', '--diff-filter=ACMR', `${base}...${head}`, '--', 'web/app/components'])
+  const diff = execGit(['diff', '--unified=0', '--no-color', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(base, head, DIFF_RANGE_MODE), '--', 'web/app/components'])
   return parseChangedLineMap(diff, isTrackedComponentSourceFile)
 }
 
