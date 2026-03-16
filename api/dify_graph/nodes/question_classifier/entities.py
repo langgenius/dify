@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.llm import ModelConfig, VisionConfig
 
 
@@ -12,7 +12,7 @@ class ClassConfig(BaseModel):
 
 
 class QuestionClassifierNodeData(BaseNodeData):
-    type: NodeType = NodeType.QUESTION_CLASSIFIER
+    type: NodeType = BuiltinNodeTypes.QUESTION_CLASSIFIER
     query_variable_selector: list[str]
     model: ModelConfig
     classes: list[ClassConfig]

@@ -22,12 +22,13 @@ from typing import Any, cast
 
 from sqlalchemy.orm import sessionmaker
 
+from dify_graph.enums import WorkflowExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun, WorkflowType
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.types import (
     AverageInteractionStats,
@@ -59,11 +60,37 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.tenant_id = data.get("tenant_id") or ""
     model.app_id = data.get("app_id") or ""
     model.workflow_id = data.get("workflow_id") or ""
-    model.type = data.get("type") or ""
-    model.triggered_from = data.get("triggered_from") or ""
+    type_val = data.get("type")
+    try:
+        model.type = WorkflowType(str(type_val)) if type_val else WorkflowType.WORKFLOW
+    except ValueError:
+        logger.warning("Invalid type value: %s, falling back to WORKFLOW", type_val)
+        model.type = WorkflowType.WORKFLOW
+    triggered_from_val = data.get("triggered_from")
+    try:
+        model.triggered_from = (
+            WorkflowRunTriggeredFrom(str(triggered_from_val))
+            if triggered_from_val
+            else WorkflowRunTriggeredFrom.APP_RUN
+        )
+    except ValueError:
+        logger.warning("Invalid triggered_from value: %s, falling back to APP_RUN", triggered_from_val)
+        model.triggered_from = WorkflowRunTriggeredFrom.APP_RUN
     model.version = data.get("version") or ""
-    model.status = data.get("status") or "running"  # Default status if missing
-    model.created_by_role = data.get("created_by_role") or ""
+    status_val = data.get("status")
+    try:
+        model.status = WorkflowExecutionStatus(str(status_val)) if status_val else WorkflowExecutionStatus.RUNNING
+    except ValueError:
+        logger.warning("Invalid status value: %s, falling back to RUNNING", status_val)
+        model.status = WorkflowExecutionStatus.RUNNING
+    created_by_role_val = data.get("created_by_role")
+    try:
+        model.created_by_role = (
+            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
+        )
+    except ValueError:
+        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
+        model.created_by_role = CreatorUserRole.ACCOUNT
     model.created_by = data.get("created_by") or ""
 
     model.total_tokens = safe_int(data.get("total_tokens", 0))

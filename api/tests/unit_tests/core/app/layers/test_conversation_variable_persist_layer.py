@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events.node import NodeRunSucceededEvent
 from dify_graph.node_events import NodeRunResult
@@ -78,7 +78,7 @@ def test_persists_conversation_variables_from_assigner_output():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_called_once_with(conversation_id=conversation_id, variable=variable)
@@ -100,7 +100,7 @@ def test_skips_when_outputs_missing():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER)
     layer.on_event(event)
 
     updater.update.assert_not_called()
@@ -112,7 +112,7 @@ def test_skips_non_assigner_nodes():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool()), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.LLM)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.LLM)
     layer.on_event(event)
 
     updater.update.assert_not_called()
@@ -137,7 +137,7 @@ def test_skips_non_conversation_variables():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
+    event = _build_node_run_succeeded_event(node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_not_called()

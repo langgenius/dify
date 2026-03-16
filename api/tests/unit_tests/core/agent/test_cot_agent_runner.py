@@ -5,8 +5,8 @@ import pytest
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
-from dify_graph.nodes.agent.exc import AgentMaxIterationError
 
 
 class DummyRunner(CotAgentRunner):
