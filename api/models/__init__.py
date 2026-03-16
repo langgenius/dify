@@ -26,13 +26,6 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .evaluation import (
-    EvaluationConfiguration,
-    EvaluationRun,
-    EvaluationRunItem,
-    EvaluationRunStatus,
-    EvaluationTargetType,
-)
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -40,6 +33,13 @@ from .enums import (
     UserFrom,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
+)
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunStatus,
+    EvaluationTargetType,
 )
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm
@@ -165,12 +165,12 @@ __all__ = [
     "Document",
     "DocumentSegment",
     "Embedding",
+    "EndUser",
     "EvaluationConfiguration",
     "EvaluationRun",
     "EvaluationRunItem",
     "EvaluationRunStatus",
     "EvaluationTargetType",
-    "EndUser",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",

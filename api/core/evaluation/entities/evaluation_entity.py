@@ -40,15 +40,8 @@ class EvaluationItemResult(BaseModel):
     actual_output: str | None = None
     metrics: list[EvaluationMetric] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-    judgment: JudgmentResult | None = None
+    judgment: JudgmentResult = Field(default_factory=JudgmentResult)
     error: str | None = None
-
-    @property
-    def overall_score(self) -> float | None:
-        if not self.metrics:
-            return None
-        scores = [m.score for m in self.metrics]
-        return sum(scores) / len(scores)
 
 
 class NodeInfo(BaseModel):
@@ -75,6 +68,7 @@ class CustomizedMetrics(BaseModel):
 
 class EvaluationConfigData(BaseModel):
     """Structured data for saving evaluation configuration."""
+
     evaluation_model: str = ""
     evaluation_model_provider: str = ""
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
@@ -84,11 +78,13 @@ class EvaluationConfigData(BaseModel):
 
 class EvaluationRunRequest(EvaluationConfigData):
     """Request body for starting an evaluation run."""
+
     file_id: str
 
 
 class EvaluationRunData(BaseModel):
     """Serializable data for Celery task."""
+
     evaluation_run_id: str
     tenant_id: str
     target_type: str

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEvaluationInstance(ABC):
-    """Abstract base class for evaluation framework adapters. """
+    """Abstract base class for evaluation framework adapters."""
 
     @abstractmethod
     def evaluate_llm(
@@ -95,33 +95,26 @@ class BaseEvaluationInstance(ABC):
 
         workflow_id = customized_metrics.evaluation_workflow_id
         if not workflow_id:
-            raise ValueError(
-                "customized_metrics must contain 'evaluation_workflow_id' for customized evaluator"
-            )
+            raise ValueError("customized_metrics must contain 'evaluation_workflow_id' for customized evaluator")
 
         # Load the evaluator workflow resources using a dedicated session
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            app = session.query(App).filter_by(
-                id=workflow_id, tenant_id=tenant_id
-            ).first()
+            app = session.query(App).filter_by(id=workflow_id, tenant_id=tenant_id).first()
             if not app:
-                raise ValueError(
-                    f"Evaluation workflow app {workflow_id} not found in tenant {tenant_id}"
-                )
+                raise ValueError(f"Evaluation workflow app {workflow_id} not found in tenant {tenant_id}")
             service_account = get_service_account_for_app(session, workflow_id)
 
         workflow_service = WorkflowService()
         published_workflow = workflow_service.get_published_workflow(app_model=app)
         if not published_workflow:
-            raise ValueError(
-                f"No published workflow found for evaluation app {workflow_id}"
-            )
+            raise ValueError(f"No published workflow found for evaluation app {workflow_id}")
 
         eval_results: list[EvaluationItemResult] = []
         for idx, node_run_result_mapping in enumerate(node_run_result_mapping_list):
             try:
                 workflow_inputs = self._build_workflow_inputs(
-                    customized_metrics.input_fields, node_run_result_mapping,
+                    customized_metrics.input_fields,
+                    node_run_result_mapping,
                 )
 
                 generator = WorkflowAppGenerator()
@@ -183,14 +176,13 @@ class BaseEvaluationInstance(ABC):
             full_match = VARIABLE_REGEX.fullmatch(value_source)
             if full_match:
                 workflow_inputs[field_name] = resolve_variable_selector(
-                    full_match.group(1), node_run_result_mapping,
+                    full_match.group(1),
+                    node_run_result_mapping,
                 )
             elif VARIABLE_REGEX.search(value_source):
                 # Mixed template: interpolate all expressions as strings.
                 workflow_inputs[field_name] = VARIABLE_REGEX.sub(
-                    lambda m: str(
-                        resolve_variable_selector(m.group(1), node_run_result_mapping)
-                    ),
+                    lambda m: str(resolve_variable_selector(m.group(1), node_run_result_mapping)),
                     value_source,
                 )
             else:
@@ -213,9 +205,7 @@ class BaseEvaluationInstance(ABC):
 
         outputs = data.get("outputs")
         if not isinstance(outputs, dict):
-            logger.warning(
-                "Unexpected workflow response format: 'outputs' is not a dict"
-            )
+            logger.warning("Unexpected workflow response format: 'outputs' is not a dict")
             return metrics
 
         for key, raw_value in outputs.items():
@@ -239,7 +229,8 @@ def resolve_variable_selector(
 
     if len(parts) < 2:
         logger.warning(
-            "Selector '%s' must have at least node_id.output_key", selector_raw,
+            "Selector '%s' must have at least node_id.output_key",
+            selector_raw,
         )
         return ""
 
@@ -250,7 +241,8 @@ def resolve_variable_selector(
     if not node_result or not node_result.outputs:
         logger.warning(
             "Selector '%s': node '%s' not found or has no outputs",
-            selector_raw, node_id,
+            selector_raw,
+            node_id,
         )
         return ""
 
@@ -262,14 +254,17 @@ def resolve_variable_selector(
             if next_val is None:
                 logger.warning(
                     "Selector '%s': key '%s' not found in node '%s' outputs",
-                    selector_raw, key, node_id,
+                    selector_raw,
+                    key,
+                    node_id,
                 )
                 return ""
             current = next_val
         else:
             logger.warning(
                 "Selector '%s': cannot traverse into non-dict value at key '%s'",
-                selector_raw, key,
+                selector_raw,
+                key,
             )
             return ""
 

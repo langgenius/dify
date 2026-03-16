@@ -57,9 +57,7 @@ class RagasEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
-        )
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL)
 
     def evaluate_agent(
         self,
@@ -79,9 +77,7 @@ class RagasEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
-        )
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
 
     def _evaluate(
         self,
@@ -94,11 +90,7 @@ class RagasEvaluator(BaseEvaluationInstance):
     ) -> list[EvaluationItemResult]:
         """Core evaluation logic using RAGAS."""
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        requested_metrics = (
-            [metric_name]
-            if metric_name
-            else self.get_supported_metrics(category)
-        )
+        requested_metrics = [metric_name] if metric_name else self.get_supported_metrics(category)
 
         try:
             return self._evaluate_with_ragas(items, requested_metrics, model_wrapper, category)
@@ -237,9 +229,7 @@ class RagasEvaluator(BaseEvaluationInstance):
             parts.append(f"\nExpected Output: {item.expected_output}")
         if item.context:
             parts.append(f"\nContext: {'; '.join(item.context)}")
-        parts.append(
-            "\nRespond with ONLY a single floating point number between 0.0 and 1.0, nothing else."
-        )
+        parts.append("\nRespond with ONLY a single floating point number between 0.0 and 1.0, nothing else.")
         return "\n".join(parts)
 
     @staticmethod

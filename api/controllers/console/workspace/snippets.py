@@ -238,9 +238,7 @@ class CustomizedSnippetExportApi(Resource):
 
         with Session(db.engine) as session:
             export_service = SnippetDslService(session)
-            result = export_service.export_snippet_dsl(
-                snippet=snippet, include_secret=query.include_secret == "true"
-            )
+            result = export_service.export_snippet_dsl(snippet=snippet, include_secret=query.include_secret == "true")
 
         # Set filename with .snippet extension
         filename = f"{snippet.name}.snippet"

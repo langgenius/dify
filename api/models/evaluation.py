@@ -50,9 +50,7 @@ class EvaluationConfiguration(Base):
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     updated_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
@@ -97,17 +95,13 @@ class EvaluationRun(Base):
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     evaluation_config_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=EvaluationRunStatus.PENDING
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=EvaluationRunStatus.PENDING)
     dataset_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     result_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -115,22 +109,10 @@ class EvaluationRun(Base):
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-
-    @property
-    def metrics_summary_dict(self) -> dict[str, Any]:
-        if self.metrics_summary:
-            return json.loads(self.metrics_summary)
-        return {}
-
-    @metrics_summary_dict.setter
-    def metrics_summary_dict(self, value: dict[str, Any]) -> None:
-        self.metrics_summary = json.dumps(value)
 
     @property
     def progress(self) -> float:
@@ -168,9 +150,7 @@ class EvaluationRunItem(Base):
 
     overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def inputs_dict(self) -> dict[str, Any]:
@@ -183,6 +163,12 @@ class EvaluationRunItem(Base):
         if self.metrics:
             return json.loads(self.metrics)
         return []
+
+    @property
+    def judgment_dict(self) -> dict[str, Any]:
+        if self.judgment:
+            return json.loads(self.judgment)
+        return {}
 
     @property
     def metadata_dict(self) -> dict[str, Any]:

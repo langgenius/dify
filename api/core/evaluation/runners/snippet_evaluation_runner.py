@@ -75,11 +75,15 @@ class SnippetEvaluationRunner(BaseEvaluationRunner):
 
         # Retrieve per-node execution records from DB
         workflow_run_id = self._extract_workflow_run_id(response)
-        node_executions = self._query_node_executions(
-            tenant_id=tenant_id,
-            app_id=target_id,
-            workflow_run_id=workflow_run_id,
-        ) if workflow_run_id else []
+        node_executions = (
+            self._query_node_executions(
+                tenant_id=tenant_id,
+                app_id=target_id,
+                workflow_run_id=workflow_run_id,
+            )
+            if workflow_run_id
+            else []
+        )
 
         return EvaluationItemResult(
             index=item.index,
@@ -189,17 +193,17 @@ class SnippetEvaluationRunner(BaseEvaluationRunner):
 
         Returns a list of serialisable dicts for storage in ``metadata``.
         """
-        stmt = WorkflowNodeExecutionModel.preload_offload_data(
-            select(WorkflowNodeExecutionModel)
-        ).where(
-            WorkflowNodeExecutionModel.tenant_id == tenant_id,
-            WorkflowNodeExecutionModel.app_id == app_id,
-            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
-
-        node_models: Sequence[WorkflowNodeExecutionModel] = (
-            self.session.execute(stmt).scalars().all()
+        stmt = (
+            WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            )
+            .order_by(asc(WorkflowNodeExecutionModel.created_at))
         )
+
+        node_models: Sequence[WorkflowNodeExecutionModel] = self.session.execute(stmt).scalars().all()
 
         return [self._serialize_node_execution(node) for node in node_models]
 
@@ -211,6 +215,7 @@ class SnippetEvaluationRunner(BaseEvaluationRunner):
         status, error, and elapsed_time.  The virtual Start node injected by
         SnippetGenerateService is filtered out by the caller if needed.
         """
+
         def _safe_parse_json(value: str | None) -> Any:
             if not value:
                 return None

@@ -67,9 +67,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL
-        )
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL)
 
     def evaluate_agent(
         self,
@@ -79,9 +77,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.AGENT
-        )
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
 
     def evaluate_workflow(
         self,
@@ -91,9 +87,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(
-            items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW
-        )
+        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
 
     def _evaluate(
         self,
@@ -106,11 +100,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
     ) -> list[EvaluationItemResult]:
         """Core evaluation logic using DeepEval."""
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        requested_metrics = (
-            [metric_name]
-            if metric_name
-            else self.get_supported_metrics(category)
-        )
+        requested_metrics = [metric_name] if metric_name else self.get_supported_metrics(category)
 
         try:
             return self._evaluate_with_deepeval(items, requested_metrics, category)
@@ -144,9 +134,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
                 try:
                     metric.measure(test_case)
                     if metric.score is not None:
-                        metrics.append(
-                            EvaluationMetric(name=metric.__class__.__name__, value=float(metric.score))
-                        )
+                        metrics.append(EvaluationMetric(name=metric.__class__.__name__, value=float(metric.score)))
                 except Exception:
                     logger.exception(
                         "Failed to compute metric %s for item %d",
@@ -229,9 +217,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
             parts.append(f"\nExpected Output: {item.expected_output}")
         if item.context:
             parts.append(f"\nContext: {'; '.join(item.context)}")
-        parts.append(
-            "\nRespond with ONLY a single floating point number between 0.0 and 1.0, nothing else."
-        )
+        parts.append("\nRespond with ONLY a single floating point number between 0.0 and 1.0, nothing else.")
         return "\n".join(parts)
 
     @staticmethod

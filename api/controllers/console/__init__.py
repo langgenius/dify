@@ -106,6 +106,9 @@ from .datasets.rag_pipeline import (
     rag_pipeline_workflow,
 )
 
+# Import evaluation controllers
+from .evaluation import evaluation
+
 # Import explore controllers
 from .explore import (
     banner,
@@ -115,9 +118,6 @@ from .explore import (
     saved_message,
     trial,
 )
-
-# Import evaluation controllers
-from .evaluation import evaluation
 
 # Import snippet controllers
 from .snippets import snippet_workflow

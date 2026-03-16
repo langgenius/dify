@@ -480,8 +480,9 @@ class SnippetDslService:
             },
         }
 
-        self._append_workflow_export_data(export_data=export_data, snippet=snippet, workflow=workflow,
-                                          include_secret=include_secret)
+        self._append_workflow_export_data(
+            export_data=export_data, snippet=snippet, workflow=workflow, include_secret=include_secret
+        )
 
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 

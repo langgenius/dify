@@ -153,9 +153,7 @@ def get_evaluation_target(view_func: Callable[P, R]):
         target: Union[App, CustomizedSnippet] | None = None
 
         if target_type == "app":
-            target = (
-                db.session.query(App).where(App.id == target_id, App.tenant_id == current_tenant_id).first()
-            )
+            target = db.session.query(App).where(App.id == target_id, App.tenant_id == current_tenant_id).first()
         elif target_type == "snippets":
             target = (
                 db.session.query(CustomizedSnippet)
@@ -229,9 +227,7 @@ class EvaluationDetailApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         with Session(db.engine, expire_on_commit=False) as session:
-            config = EvaluationService.get_evaluation_config(
-                session, current_tenant_id, target_type, str(target.id)
-            )
+            config = EvaluationService.get_evaluation_config(session, current_tenant_id, target_type, str(target.id))
 
         if config is None:
             return {
@@ -360,9 +356,7 @@ class EvaluationRunApi(Resource):
 
         # Load dataset file
         upload_file = (
-            db.session.query(UploadFile)
-            .filter_by(id=run_request.file_id, tenant_id=current_tenant_id)
-            .first()
+            db.session.query(UploadFile).filter_by(id=run_request.file_id, tenant_id=current_tenant_id).first()
         )
         if not upload_file:
             raise NotFound("Dataset file not found.")
@@ -397,9 +391,7 @@ class EvaluationRunApi(Resource):
             return {"message": str(e.description)}, 400
 
 
-@console_ns.route(
-    "/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>"
-)
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>")
 class EvaluationRunDetailApi(Resource):
     @console_ns.doc("get_evaluation_run_detail")
     @console_ns.response(200, "Evaluation run detail retrieved")
@@ -444,9 +436,7 @@ class EvaluationRunDetailApi(Resource):
             return {"message": str(e.description)}, 404
 
 
-@console_ns.route(
-    "/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/cancel"
-)
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/cancel")
 class EvaluationRunCancelApi(Resource):
     @console_ns.doc("cancel_evaluation_run")
     @console_ns.response(200, "Evaluation run cancelled")
@@ -599,6 +589,7 @@ def _serialize_evaluation_run_item(item: EvaluationRunItem) -> dict[str, object]
         "expected_output": item.expected_output,
         "actual_output": item.actual_output,
         "metrics": item.metrics_list,
+        "judgment": item.judgment_dict,
         "metadata": item.metadata_dict,
         "error": item.error,
         "overall_score": item.overall_score,

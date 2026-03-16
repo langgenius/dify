@@ -1,11 +1,14 @@
 """Base evaluation runner.
 
 Orchestrates the evaluation lifecycle in four phases:
-  1. execute_target   — run the target and collect actual outputs  (abstract)
+  1. execute_target    — run the target and collect actual outputs  (abstract)
   2. evaluate_metrics  — compute metrics via framework or customized workflow
   3. apply_judgment    — evaluate pass/fail judgment conditions on metrics
   4. persist           — save results to the database
 
+The persisted ``EvaluationRunItem.judgment`` payload must reflect the final
+judgment result for each evaluated item, so judgment evaluation happens before
+the persistence phase whenever a ``JudgmentConfig`` is supplied.
 """
 
 import json
@@ -30,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEvaluationRunner(ABC):
-    """Abstract base class for evaluation runners. """
+    """Abstract base class for evaluation runners."""
 
     def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
         self.evaluation_instance = evaluation_instance
@@ -62,6 +65,7 @@ class BaseEvaluationRunner(ABC):
         model_provider: str = "",
         model_name: str = "",
         node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None = None,
+        judgment_config: JudgmentConfig | None = None,
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
@@ -115,9 +119,16 @@ class BaseEvaluationRunner(ABC):
 
         results = list(results_by_index.values())
 
+        if judgment_config is not None:
+            results = self._apply_judgment(
+                results=results,
+                judgment_config=judgment_config,
+                node_run_result_mapping_list=node_run_result_mapping_list,
+            )
+
         # Phase 4: Persist individual items
         for result in results:
-            item_input = next((item for item in items if item.index == result.index), None)
+            item_input = next((item for item in evaluation_run.input_list if item.index == result.index), None)
             run_item = EvaluationRunItem(
                 evaluation_run_id=evaluation_run_id,
                 item_index=result.index,
@@ -129,7 +140,7 @@ class BaseEvaluationRunner(ABC):
                 judgment=json.dumps(result.judgment.model_dump()) if result.judgment else None,
                 metadata_json=json.dumps(result.metadata) if result.metadata else None,
                 error=result.error,
-                overall_score=result.overall_score,
+                overall_score=getattr(result, "overall_score", None),
             )
             self.session.add(run_item)
 
@@ -145,54 +156,21 @@ class BaseEvaluationRunner(ABC):
     ) -> list[EvaluationItemResult]:
         """Apply judgment conditions to each result's metrics.
 
-        Left side (``metric_name``): looked up from evaluate-phase metrics only.
-        Right side: when ``value_source="variable"``, ``condition.value``
-        contains an expression (e.g. ``{{#node_id.output_key#}}``).  The
-        expression is parsed and resolved against the corresponding
-        ``node_run_result_mapping`` to obtain the actual comparison value.
+        Judgment is computed only from the per-item metric values and the
+        supplied ``JudgmentConfig``. ``metric_name`` selects the left-hand side
+        metric, and ``condition_value`` is used as the comparison target.
         """
-        from core.evaluation.base_evaluation_instance import resolve_variable_selector
-        from core.evaluation.entities.judgment_entity import JudgmentValueSource
-        from core.workflow.nodes.base.variable_template_parser import REGEX as VARIABLE_REGEX
 
         judged_results: list[EvaluationItemResult] = []
 
-        for idx, result in enumerate(results):
+        for result in results:
             if result.error is not None or not result.metrics:
                 judged_results.append(result)
                 continue
 
             # Left side: only metrics
             metric_values: dict[str, object] = {m.name: m.value for m in result.metrics}
+            judgment_result = JudgmentProcessor.evaluate(metric_values, judgment_config)
 
-            # Right side: pre-resolve variable expressions against node run results.
-            # Each condition.value expression (e.g. "{{#llm1.text#}}") is resolved
-            # and stored in variable_values keyed by the raw expression string, so
-            # that JudgmentProcessor._resolve_comparison_value can look it up.
-            variable_values: dict[str, object] = {}
-            node_run_result_mapping = (
-                node_run_result_mapping_list[idx]
-                if node_run_result_mapping_list and idx < len(node_run_result_mapping_list)
-                else {}
-            )
-            for condition in judgment_config.conditions:
-                if (
-                    condition.value_source == JudgmentValueSource.VARIABLE
-                    and isinstance(condition.value, str)
-                    and node_run_result_mapping
-                ):
-                    match = VARIABLE_REGEX.fullmatch(condition.value)
-                    if match:
-                        resolved = resolve_variable_selector(
-                            match.group(1), node_run_result_mapping
-                        )
-                        variable_values[condition.value] = resolved
-
-            judgment_result = JudgmentProcessor.evaluate(
-                metric_values, judgment_config, variable_values=variable_values
-            )
-
-            judged_results.append(
-                result.model_copy(update={"judgment": judgment_result})
-            )
+            judged_results.append(result.model_copy(update={"judgment": judgment_result}))
         return judged_results

@@ -11,14 +11,17 @@ class EvaluationFrameworkEnum(StrEnum):
 
 class BaseEvaluationConfig(BaseModel):
     """Base configuration for evaluation frameworks."""
+
     pass
 
 
 class RagasConfig(BaseEvaluationConfig):
     """RAGAS-specific configuration."""
+
     pass
 
 
 class DeepEvalConfig(BaseEvaluationConfig):
     """DeepEval-specific configuration."""
+
     pass

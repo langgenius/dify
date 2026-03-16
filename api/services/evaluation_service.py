@@ -15,7 +15,6 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
     EvaluationConfigData,
     EvaluationDatasetInput,
-    EvaluationItemInput,
     EvaluationRunData,
     EvaluationRunRequest,
 )
@@ -156,6 +155,8 @@ class EvaluationService:
         """
         wb = Workbook()
         ws = wb.active
+        if ws is None:
+            ws = wb.create_sheet("Evaluation Dataset")
 
         sheet_name = "Evaluation Dataset"
         ws.title = sheet_name
@@ -174,7 +175,7 @@ class EvaluationService:
         headers = ["index"]
 
         for field in input_fields:
-            field_label = field.get("label") or field.get("variable")
+            field_label = str(field.get("label") or field.get("variable") or "")
             headers.append(field_label)
 
         # Write header row
@@ -244,13 +245,13 @@ class EvaluationService:
 
         config.evaluation_model_provider = data.evaluation_model_provider
         config.evaluation_model = data.evaluation_model
-        config.metrics_config = json.dumps({
-            "default_metrics": [m.model_dump() for m in data.default_metrics],
-            "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
-        })
-        config.judgement_conditions = json.dumps(
-            data.judgment_config.model_dump() if data.judgment_config else {}
+        config.metrics_config = json.dumps(
+            {
+                "default_metrics": [m.model_dump() for m in data.default_metrics],
+                "customized_metrics": data.customized_metrics.model_dump() if data.customized_metrics else None,
+            }
         )
+        config.judgement_conditions = json.dumps(data.judgment_config.model_dump() if data.judgment_config else {})
         config.updated_by = account_id
         session.commit()
         session.refresh(config)
@@ -279,9 +280,6 @@ class EvaluationService:
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
 
-        # Derive evaluation_category from default_metrics node types
-        evaluation_category = cls._resolve_evaluation_category(run_request.default_metrics)
-
         # Save as latest EvaluationConfiguration
         config = cls.save_evaluation_config(
             session=session,
@@ -301,9 +299,7 @@ class EvaluationService:
         )
         max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
         if active_runs >= max_concurrent:
-            raise EvaluationMaxConcurrentRunsError(
-                f"Maximum concurrent runs ({max_concurrent}) reached."
-            )
+            raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
 
         # Parse dataset
         items = cls._parse_dataset(dataset_file_content)
@@ -333,12 +329,10 @@ class EvaluationService:
             target_id=target_id,
             evaluation_model_provider=run_request.evaluation_model_provider,
             evaluation_model=run_request.evaluation_model,
-            default_metrics=[m.model_dump() for m in run_request.default_metrics],
-            customized_metrics=(
-                run_request.customized_metrics.model_dump() if run_request.customized_metrics else None
-            ),
+            default_metrics=run_request.default_metrics,
+            customized_metrics=run_request.customized_metrics,
             judgment_config=run_request.judgment_config,
-            items=items,
+            input_list=items,
         )
 
         # Dispatch Celery task
@@ -377,11 +371,7 @@ class EvaluationService:
         tenant_id: str,
         run_id: str,
     ) -> EvaluationRun:
-        run = (
-            session.query(EvaluationRun)
-            .filter_by(id=run_id, tenant_id=tenant_id)
-            .first()
-        )
+        run = session.query(EvaluationRun).filter_by(id=run_id, tenant_id=tenant_id).first()
         if not run:
             raise EvaluationNotFoundError("Evaluation run not found.")
         return run
@@ -591,8 +581,7 @@ class EvaluationService:
 
     @staticmethod
     def _extract_workflow_run_id(response: Mapping[str, object]) -> str | None:
-        """Extract ``workflow_run_id`` from a blocking workflow response.
-        """
+        """Extract ``workflow_run_id`` from a blocking workflow response."""
         wf_run_id = response.get("workflow_run_id")
         if wf_run_id:
             return str(wf_run_id)
@@ -614,13 +603,15 @@ class EvaluationService:
         from core.workflow.enums import WorkflowNodeExecutionStatus
         from models.workflow import WorkflowNodeExecutionModel
 
-        stmt = WorkflowNodeExecutionModel.preload_offload_data(
-            select(WorkflowNodeExecutionModel)
-        ).where(
-            WorkflowNodeExecutionModel.tenant_id == tenant_id,
-            WorkflowNodeExecutionModel.app_id == app_id,
-            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
+        stmt = (
+            WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            )
+            .order_by(asc(WorkflowNodeExecutionModel.created_at))
+        )
 
         node_models: list[WorkflowNodeExecutionModel] = list(session.execute(stmt).scalars().all())
 
@@ -648,7 +639,7 @@ class EvaluationService:
     # ---- Dataset Parsing ----
 
     @classmethod
-    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationItemInput]:
+    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from XLSX bytes."""
         wb = load_workbook(io.BytesIO(xlsx_content), read_only=True)
         ws = wb.active
@@ -672,7 +663,7 @@ class EvaluationService:
 
             index_val = values[0] if values else row_idx
             try:
-                index = int(index_val)
+                index = int(str(index_val))
             except (TypeError, ValueError):
                 index = row_idx
 
@@ -681,17 +672,14 @@ class EvaluationService:
                 val = values[col_idx + 1] if col_idx + 1 < len(values) else None
                 inputs[header] = str(val) if val is not None else ""
 
-            # Check for expected_output column
+            # Extract expected_output column into dedicated field
             expected_output = inputs.pop("expected_output", None)
-            context_str = inputs.pop("context", None)
-            context = context_str.split(";") if context_str else None
 
             items.append(
-                EvaluationItemInput(
+                EvaluationDatasetInput(
                     index=index,
                     inputs=inputs,
                     expected_output=expected_output,
-                    context=context,
                 )
             )
 

@@ -1383,7 +1383,7 @@ class EvaluationConfig(BaseSettings):
 
     EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
         description="Maximum number of rows allowed in an evaluation dataset",
-        default=1000,
+        default=500,
     )
 
     EVALUATION_TASK_TIMEOUT: PositiveInt = Field(
