@@ -37,7 +37,7 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-50 outline-none', className)}
+        className={cn('z-[1002] outline-none', className)}
       >
         <BaseTooltip.Popup
           className={cn(

@@ -8,6 +8,7 @@ document embeddings used in retrieval-augmented generation workflows.
 import datetime
 import json
 import logging
+import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -31,6 +32,9 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+_weaviate_client: weaviate.WeaviateClient | None = None
+_weaviate_client_lock = threading.Lock()
 
 
 class WeaviateConfig(BaseModel):
@@ -99,43 +103,52 @@ class WeaviateVector(BaseVector):
 
         Configures both HTTP and gRPC connections with proper authentication.
         """
-        p = urlparse(config.endpoint)
-        host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
-        http_secure = p.scheme == "https"
-        http_port = p.port or (443 if http_secure else 80)
+        global _weaviate_client
+        if _weaviate_client and _weaviate_client.is_ready():
+            return _weaviate_client
 
-        # Parse gRPC configuration
-        if config.grpc_endpoint:
-            # Urls without scheme won't be parsed correctly in some python versions,
-            # see https://bugs.python.org/issue27657
-            grpc_endpoint_with_scheme = (
-                config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+        with _weaviate_client_lock:
+            if _weaviate_client and _weaviate_client.is_ready():
+                return _weaviate_client
+
+            p = urlparse(config.endpoint)
+            host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
+            http_secure = p.scheme == "https"
+            http_port = p.port or (443 if http_secure else 80)
+
+            # Parse gRPC configuration
+            if config.grpc_endpoint:
+                # Urls without scheme won't be parsed correctly in some python versions,
+                # see https://bugs.python.org/issue27657
+                grpc_endpoint_with_scheme = (
+                    config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+                )
+                grpc_p = urlparse(grpc_endpoint_with_scheme)
+                grpc_host = grpc_p.hostname or "localhost"
+                grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
+                grpc_secure = grpc_p.scheme == "grpcs"
+            else:
+                # Infer from HTTP endpoint as fallback
+                grpc_host = host
+                grpc_secure = http_secure
+                grpc_port = 443 if grpc_secure else 50051
+
+            client = weaviate.connect_to_custom(
+                http_host=host,
+                http_port=http_port,
+                http_secure=http_secure,
+                grpc_host=grpc_host,
+                grpc_port=grpc_port,
+                grpc_secure=grpc_secure,
+                auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
+                skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
             )
-            grpc_p = urlparse(grpc_endpoint_with_scheme)
-            grpc_host = grpc_p.hostname or "localhost"
-            grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
-            grpc_secure = grpc_p.scheme == "grpcs"
-        else:
-            # Infer from HTTP endpoint as fallback
-            grpc_host = host
-            grpc_secure = http_secure
-            grpc_port = 443 if grpc_secure else 50051
 
-        client = weaviate.connect_to_custom(
-            http_host=host,
-            http_port=http_port,
-            http_secure=http_secure,
-            grpc_host=grpc_host,
-            grpc_port=grpc_port,
-            grpc_secure=grpc_secure,
-            auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
-            skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
-        )
+            if not client.is_ready():
+                raise ConnectionError("Vector database is not ready")
 
-        if not client.is_ready():
-            raise ConnectionError("Vector database is not ready")
-
-        return client
+            _weaviate_client = client
+            return client
 
     def get_type(self) -> str:
         """Returns the vector database type identifier."""
@@ -196,6 +209,7 @@ class WeaviateVector(BaseVector):
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
+                            wc.Property(name="doc_type", data_type=wc.DataType.TEXT),
                             wc.Property(name="chunk_index", data_type=wc.DataType.INT),
                         ],
                         vector_config=wc.Configure.Vectors.self_provided(),
@@ -225,6 +239,8 @@ class WeaviateVector(BaseVector):
             to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
         if "doc_id" not in existing:
             to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT))
+        if "doc_type" not in existing:
+            to_add.append(wc.Property(name="doc_type", data_type=wc.DataType.TEXT))
         if "chunk_index" not in existing:
             to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
 

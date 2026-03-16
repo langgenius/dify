@@ -147,4 +147,32 @@ describe('input-field scenario schema generator', () => {
       other: { key: 'value' },
     }).success).toBe(false)
   })
+
+  it('should ignore constraints for irrelevant field types', () => {
+    const schema = generateZodSchema([
+      {
+        type: InputFieldType.numberInput,
+        variable: 'num',
+        label: 'Num',
+        required: true,
+        maxLength: 10, // maxLength is for textInput, should be ignored
+        showConditions: [],
+      },
+      {
+        type: InputFieldType.textInput,
+        variable: 'text',
+        label: 'Text',
+        required: true,
+        min: 1, // min is for numberInput, should be ignored
+        max: 5, // max is for numberInput, should be ignored
+        showConditions: [],
+      },
+    ])
+
+    // Should still work based on their base types
+    // num: 12345678901 (violates maxLength: 10 if it were applied)
+    // text: 'long string here' (violates max: 5 if it were applied)
+    expect(schema.safeParse({ num: 12345678901, text: 'long string here' }).success).toBe(true)
+    expect(schema.safeParse({ num: 'not a number', text: 'hello' }).success).toBe(false)
+  })
 })

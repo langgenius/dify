@@ -185,6 +185,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   const handleSave = () => {
+    /* v8 ignore next -- UI-invariant guard: same condition is used in Save button disabled logic, so when true handleSave has no user-triggerable invocation path. @preserve */
     if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
       return
 

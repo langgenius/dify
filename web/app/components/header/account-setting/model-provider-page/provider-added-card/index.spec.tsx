@@ -125,6 +125,48 @@ describe('ProviderAddedCard', () => {
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
   })
 
+  it('should show loading spinner while model list is being fetched', async () => {
+    let resolvePromise: (value: unknown) => void = () => {}
+    const pendingPromise = new Promise((resolve) => {
+      resolvePromise = resolve
+    })
+    vi.mocked(fetchModelProviderModelList).mockReturnValue(pendingPromise as ReturnType<typeof fetchModelProviderModelList>)
+
+    render(<ProviderAddedCard provider={mockProvider} />)
+
+    fireEvent.click(screen.getByTestId('show-models-button'))
+
+    expect(document.querySelector('.i-ri-loader-2-line.animate-spin')).toBeInTheDocument()
+
+    await act(async () => {
+      resolvePromise({ data: [] })
+    })
+  })
+
+  it('should show modelsNum text after models have loaded', async () => {
+    const models = [
+      { model: 'gpt-4' },
+      { model: 'gpt-3.5' },
+    ]
+    vi.mocked(fetchModelProviderModelList).mockResolvedValue({ data: models } as unknown as { data: ModelItem[] })
+
+    render(<ProviderAddedCard provider={mockProvider} />)
+
+    fireEvent.click(screen.getByTestId('show-models-button'))
+
+    await screen.findByTestId('model-list')
+
+    const collapseBtn = screen.getByRole('button', { name: 'collapse list' })
+    fireEvent.click(collapseBtn)
+
+    await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
+
+    const numTexts = screen.getAllByText(/modelProvider\.modelsNum/)
+    expect(numTexts.length).toBeGreaterThan(0)
+
+    expect(screen.getByText(/modelProvider\.showModelsNum/)).toBeInTheDocument()
+  })
+
   it('should render configure tip when provider is not in quota list and not configured', () => {
     const providerWithoutQuota = {
       ...mockProvider,
@@ -163,6 +205,16 @@ describe('ProviderAddedCard', () => {
     expect(fetchModelProviderModelList).toHaveBeenCalledTimes(1)
   })
 
+  it('should apply anthropic background class for anthropic provider', () => {
+    const anthropicProvider = {
+      ...mockProvider,
+      provider: 'langgenius/anthropic/anthropic',
+    } as unknown as ModelProvider
+    const { container } = render(<ProviderAddedCard provider={anthropicProvider} />)
+
+    expect(container.querySelector('.bg-third-party-model-bg-anthropic')).toBeInTheDocument()
+  })
+
   it('should render custom model actions for workspace managers', () => {
     const customConfigProvider = {
       ...mockProvider,
@@ -176,5 +228,37 @@ describe('ProviderAddedCard', () => {
     mockIsCurrentWorkspaceManager = false
     rerender(<ProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+  })
+
+  it('should render credential panel when showCredential is true', () => {
+    // Arrange: use ConfigurationMethodEnum.predefinedModel ('predefined-model') so showCredential=true
+    const predefinedProvider = {
+      ...mockProvider,
+      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+    } as unknown as ModelProvider
+
+    mockIsCurrentWorkspaceManager = true
+
+    // Act
+    render(<ProviderAddedCard provider={predefinedProvider} />)
+
+    // Assert: credential-panel is rendered (showCredential = true branch)
+    expect(screen.getByTestId('credential-panel')).toBeInTheDocument()
+  })
+
+  it('should not render credential panel when user is not workspace manager', () => {
+    // Arrange: predefined-model but manager=false so showCredential=false
+    const predefinedProvider = {
+      ...mockProvider,
+      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+    } as unknown as ModelProvider
+
+    mockIsCurrentWorkspaceManager = false
+
+    // Act
+    render(<ProviderAddedCard provider={predefinedProvider} />)
+
+    // Assert: credential-panel is not rendered (showCredential = false)
+    expect(screen.queryByTestId('credential-panel')).not.toBeInTheDocument()
   })
 })

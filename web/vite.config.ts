@@ -2,25 +2,32 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { defineConfig } from 'vite-plus'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { reactGrabOpenFilePlugin } from './plugins/vite/react-grab-open-file'
+import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
+import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
+const coverageScope = process.env.VITEST_COVERAGE_SCOPE
 const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
+const excludedAppComponentsCoveragePaths = [...EXCLUDED_COMPONENT_MODULES]
+  .map(moduleName => `app/components/${moduleName}/**`)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
+  const isAppComponentsCoverage = coverageScope === 'app-components'
+  const excludedComponentCoverageFiles = isAppComponentsCoverage
+    ? collectComponentCoverageExcludedFiles(path.join(projectRoot, 'app/components'), { pathPrefix: 'app/components' })
+    : []
 
   return {
     plugins: isTest
       ? [
-          tsconfigPaths(),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
@@ -34,37 +41,34 @@ export default defineConfig(({ mode }) => {
         ]
       : isStorybook
         ? [
-            tsconfigPaths(),
             react(),
           ]
         : [
             Inspect(),
-            react(),
-            vinext(),
-            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
-            reactGrabOpenFilePlugin({
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
               injectTarget: browserInitializerInjectTarget,
               projectRoot,
             }),
+            react(),
+            vinext({ react: false }),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
           ],
     resolve: {
-      alias: {
-        '~@': projectRoot,
-      },
+      tsconfigPaths: true,
     },
 
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['nuqs'],
-            // Make Prism in lexical works
-            // https://github.com/vitejs/rolldown-vite/issues/396
-            rolldownOptions: {
-              output: {
-                strictExecutionOrder: true,
-              },
-            },
+            exclude: ['@tanstack/react-query'],
           },
           server: {
             port: 3000,
@@ -72,15 +76,6 @@ export default defineConfig(({ mode }) => {
           ssr: {
             // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
             noExternal: ['emoji-mart'],
-          },
-          // Make Prism in lexical works
-          // https://github.com/vitejs/rolldown-vite/issues/396
-          build: {
-            rolldownOptions: {
-              output: {
-                strictExecutionOrder: true,
-              },
-            },
           },
         }
       : {}),
@@ -90,9 +85,25 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
+      reporters: ['agent'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
+        ...(isAppComponentsCoverage
+          ? {
+              include: ['app/components/**/*.{ts,tsx}'],
+              exclude: [
+                'app/components/**/*.d.ts',
+                'app/components/**/*.spec.{ts,tsx}',
+                'app/components/**/*.test.{ts,tsx}',
+                'app/components/**/__tests__/**',
+                'app/components/**/__mocks__/**',
+                'app/components/**/*.stories.{ts,tsx}',
+                ...excludedComponentCoverageFiles,
+                ...excludedAppComponentsCoveragePaths,
+              ],
+            }
+          : {}),
       },
     },
   }

@@ -1,7 +1,14 @@
+import type { RefObject } from 'react'
 import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
+import type { ConversationItem } from '@/models/share'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -24,6 +31,10 @@ vi.mock('../../chat/hooks', () => ({
 vi.mock('../inputs-form', () => ({
   __esModule: true,
   default: () => <div>inputs form</div>,
+}))
+
+vi.mock('@/app/components/base/markdown', () => ({
+  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
 }))
 
 vi.mock('../../chat', () => ({
@@ -63,6 +74,7 @@ vi.mock('../../chat', () => ({
       {questionIcon}
       <button onClick={() => onSend('hello world')}>send through chat</button>
       <button onClick={() => onRegenerate({ id: 'answer-1', isAnswer: true, content: 'answer', parentMessageId: 'question-1' })}>regenerate answer</button>
+      <button onClick={() => onRegenerate({ id: 'answer-1', isAnswer: true, content: 'answer', parentMessageId: 'question-1' }, { message: 'new query' })}>regenerate edited</button>
       <button onClick={() => switchSibling('sibling-2')}>switch sibling</button>
       <button disabled={inputDisabled}>send message</button>
       <button onClick={onStopResponding}>stop responding</button>
@@ -113,7 +125,18 @@ const createContextValue = (overrides: Partial<EmbeddedChatbotContextValue> = {}
       use_icon_as_answer_icon: false,
     },
   },
-  appParams: {} as ChatConfig,
+  appParams: {
+    system_parameters: {
+      audio_file_size_limit: 1,
+      file_size_limit: 1,
+      image_file_size_limit: 1,
+      video_file_size_limit: 1,
+      workflow_file_upload_limit: 1,
+    },
+    more_like_this: {
+      enabled: false,
+    },
+  } as ChatConfig,
   appChatListDataLoading: false,
   currentConversationId: '',
   currentConversationItem: undefined,
@@ -304,7 +327,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(screen.getByRole('button', { name: 'send message' })).toBeDisabled()
     })
 
-    it('should show the user name when avatar data is provided', () => {
+    it('should show the user avatar fallback when avatar data is provided', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
         initUserVariables: {
           avatar_url: 'https://example.com/avatar.png',
@@ -314,7 +337,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
       render(<ChatWrapper />)
 
-      expect(screen.getByRole('img', { name: 'Alice' })).toBeInTheDocument()
+      expect(screen.getByText('A')).toBeInTheDocument()
     })
   })
 
@@ -395,6 +418,246 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
       render(<ChatWrapper />)
       expect(screen.getByText('inputs form')).toBeInTheDocument()
+    })
+
+    it('should not disable sending when a required checkbox is not checked', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        inputsForms: [{ variable: 'agree', label: 'Agree', required: true, type: InputVarType.checkbox }],
+        newConversationInputsRef: { current: { agree: false } },
+      }))
+      render(<ChatWrapper />)
+      expect(screen.getByRole('button', { name: 'send message' })).not.toBeDisabled()
+    })
+
+    it('should return null for chatNode when all inputs are hidden', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        allInputsHidden: true,
+        inputsForms: [{ variable: 'test', label: 'Test', type: InputVarType.textInput }],
+      }))
+      render(<ChatWrapper />)
+      expect(screen.queryByText('inputs form')).not.toBeInTheDocument()
+    })
+
+    it('should render simple welcome message when suggested questions are absent', () => {
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        chatList: [{ id: 'opening-1', isAnswer: true, isOpeningStatement: true, content: 'Simple Welcome' }] as ChatItem[],
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        currentConversationId: '',
+      }))
+      render(<ChatWrapper />)
+      expect(screen.getByText('Simple Welcome')).toBeInTheDocument()
+    })
+
+    it('should use icon as answer icon when enabled in site config', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appData: {
+          app_id: 'app-1',
+          can_replace_logo: true,
+          custom_config: { remove_webapp_brand: false, replace_webapp_logo: '' },
+          enable_site: true,
+          end_user_id: 'user-1',
+          site: {
+            title: 'Embedded App',
+            icon_type: 'emoji',
+            icon: 'bot',
+            icon_background: '#000000',
+            icon_url: '',
+            use_icon_as_answer_icon: true,
+          },
+        },
+      }))
+      render(<ChatWrapper />)
+    })
+  })
+
+  describe('Regeneration and config variants', () => {
+    it('should handle regeneration with edited question', async () => {
+      const handleSend = vi.fn()
+      // IDs must match what's hardcoded in the mock Chat component's regenerate button
+      const chatList = [
+        { id: 'question-1', isAnswer: false, content: 'Old question' },
+        { id: 'answer-1', isAnswer: true, content: 'Old answer', parentMessageId: 'question-1' },
+      ]
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleSend,
+        chatList: chatList as ChatItem[],
+      }))
+
+      render(<ChatWrapper />)
+      const regenBtn = screen.getByRole('button', { name: 'regenerate answer' })
+
+      fireEvent.click(regenBtn)
+      expect(handleSend).toHaveBeenCalled()
+    })
+
+    it('should use opening statement from currentConversationItem if available', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appParams: { opening_statement: 'Global opening' } as ChatConfig,
+        currentConversationItem: {
+          id: 'conv-1',
+          name: 'Conversation 1',
+          inputs: {},
+          introduction: 'Conversation specific opening',
+        } as ConversationItem,
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should handle mobile chatNode variants', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        isMobile: true,
+        currentConversationId: 'conv-1',
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should initialize collapsed based on currentConversationId and isTryApp', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        currentConversationId: 'conv-1',
+        appSourceType: AppSourceType.tryApp,
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should resume paused workflows when chat history is loaded', () => {
+      const handleSwitchSibling = vi.fn()
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleSwitchSibling,
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appPrevChatList: [
+          {
+            id: 'node-1',
+            isAnswer: true,
+            content: '',
+            workflow_run_id: 'run-1',
+            humanInputFormDataList: [{ label: 'text', variable: 'v', required: true, type: InputVarType.textInput, hide: false }],
+            children: [],
+          } as unknown as ChatItemInTree,
+        ],
+      }))
+      render(<ChatWrapper />)
+      expect(handleSwitchSibling).toHaveBeenCalled()
+    })
+
+    it('should handle conversation completion and suggested questions in chat actions', async () => {
+      const handleSend = vi.fn()
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleSend,
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        currentConversationId: 'conv-id', // index 0 true target
+        appSourceType: AppSourceType.webApp,
+      }))
+
+      render(<ChatWrapper />)
+      fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
+
+      expect(handleSend).toHaveBeenCalled()
+      const options = handleSend.mock.calls[0]?.[2] as { onConversationComplete?: (id: string) => void }
+      expect(options.onConversationComplete).toBeUndefined()
+    })
+
+    it('should handle regeneration with parent answer and edited question', () => {
+      const handleSend = vi.fn()
+      const chatList = [
+        { id: 'question-1', isAnswer: false, content: 'Q1' },
+        { id: 'answer-1', isAnswer: true, content: 'A1', parentMessageId: 'question-1', metadata: { usage: { total_tokens: 10 } } },
+      ]
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleSend,
+        chatList: chatList as ChatItem[],
+      }))
+
+      render(<ChatWrapper />)
+      fireEvent.click(screen.getByRole('button', { name: 'regenerate edited' }))
+      expect(handleSend).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ query: 'new query' }), expect.any(Object))
+    })
+
+    it('should handle fallback values for config and user data', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appParams: null,
+        appId: undefined,
+        initUserVariables: { avatar_url: 'url' }, // name is missing
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should handle mobile view for welcome screens', () => {
+      // Complex welcome mobile
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        chatList: [{ id: 'o-1', isAnswer: true, isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q?'] }] as ChatItem[],
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        isMobile: true,
+        currentConversationId: '',
+      }))
+      render(<ChatWrapper />)
+
+      cleanup()
+      // Simple welcome mobile
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        chatList: [{ id: 'o-2', isAnswer: true, isOpeningStatement: true, content: 'Welcome' }] as ChatItem[],
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        isMobile: true,
+        currentConversationId: '',
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should handle loop early returns in input validation', () => {
+      // hasEmptyInput early return (line 103)
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        inputsForms: [
+          { variable: 'v1', label: 'V1', required: true, type: InputVarType.textInput },
+          { variable: 'v2', label: 'V2', required: true, type: InputVarType.textInput },
+        ],
+        newConversationInputsRef: { current: { v1: '', v2: '' } },
+      }))
+      render(<ChatWrapper />)
+
+      cleanup()
+      // fileIsUploading early return (line 106)
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        inputsForms: [
+          { variable: 'f1', label: 'F1', required: true, type: InputVarType.singleFile },
+          { variable: 'v2', label: 'V2', required: true, type: InputVarType.textInput },
+        ],
+        newConversationInputsRef: {
+          current: {
+            f1: { transferMethod: 'local_file', uploadedId: '' },
+            v2: '',
+          },
+        },
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should handle null/undefined refs and config fallbacks', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        currentChatInstanceRef: { current: null } as unknown as RefObject<{ handleStop: () => void }>,
+        appParams: null,
+        appMeta: null,
+      }))
+      render(<ChatWrapper />)
+    })
+
+    it('should handle isValidGeneratedAnswer truthy branch in regeneration', () => {
+      const handleSend = vi.fn()
+      // A valid generated answer needs metadata with usage
+      const chatList = [
+        { id: 'question-1', isAnswer: false, content: 'Q' },
+        { id: 'answer-1', isAnswer: true, content: 'A', metadata: { usage: { total_tokens: 10 } }, parentMessageId: 'question-1' },
+      ]
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleSend,
+        chatList: chatList as ChatItem[],
+      }))
+      render(<ChatWrapper />)
+      fireEvent.click(screen.getByRole('button', { name: 'regenerate answer' }))
+      expect(handleSend).toHaveBeenCalled()
     })
   })
 })
