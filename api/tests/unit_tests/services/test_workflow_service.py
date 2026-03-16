@@ -2436,7 +2436,10 @@ class TestWorkflowServiceHumanInputOperations:
         draft.tenant_id = "tenant-1"
         draft.app_id = "app-1"
         draft.graph_dict = {"nodes": []}
-        draft.get_node_config_by_id.return_value = {"id": "node-1", "data": MagicMock(type=BuiltinNodeTypes.HUMAN_INPUT)}
+        draft.get_node_config_by_id.return_value = {
+            "id": "node-1",
+            "data": MagicMock(type=BuiltinNodeTypes.HUMAN_INPUT),
+        }
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         mock_node = MagicMock()
