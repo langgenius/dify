@@ -1,4 +1,4 @@
-# `hoist-modern-monaco.mjs`
+# `hoist-modern-monaco.ts`
 
 This script does more than just download and copy assets. It also applies a few targeted customizations so the hoisted `modern-monaco` setup works reliably in Dify.
 

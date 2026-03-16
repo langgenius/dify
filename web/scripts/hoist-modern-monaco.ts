@@ -3,6 +3,12 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+type Args = {
+  force: boolean
+  themes: string[]
+  languages: string[]
+}
+
 const DEFAULT_THEMES = ['light-plus', 'dark-plus']
 const DEFAULT_LANGUAGES = ['javascript', 'json', 'python']
 const ESM_SH = 'https://esm.sh'
@@ -18,8 +24,8 @@ const TYPESCRIPT_PKG_PATH = path.join(ROOT_DIR, 'node_modules', 'typescript', 'p
 const MODERN_MONACO_PUBLIC_DIR = path.join(HOIST_PUBLIC_DIR, 'modern-monaco')
 const TYPESCRIPT_SETUP_PATH = path.join(MODERN_MONACO_PUBLIC_DIR, 'lsp', 'typescript', 'setup.mjs')
 
-function parseArgs(argv) {
-  const args = {
+function parseArgs(argv: string[]): Args {
+  const args: Args = {
     force: false,
     themes: [...DEFAULT_THEMES],
     languages: [...DEFAULT_LANGUAGES],
@@ -58,22 +64,22 @@ function parseArgs(argv) {
   return args
 }
 
-function log(message) {
+function log(message: string) {
   process.stdout.write(`${message}\n`)
 }
 
-async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, 'utf8'))
+async function readJson<T>(filePath: string): Promise<T> {
+  return JSON.parse(await readFile(filePath, 'utf8')) as T
 }
 
-function requireMatch(text, pattern, description) {
+function requireMatch(text: string, pattern: RegExp, description: string): string {
   const match = text.match(pattern)
   if (!match?.[1])
     throw new Error(`Failed to resolve ${description}`)
   return match[1]
 }
 
-function getEmbeddedLanguages(shikiText, language) {
+function getEmbeddedLanguages(shikiText: string, language: string): string[] {
   const anchor = `name: "${language}"`
   const start = shikiText.indexOf(anchor)
   if (start === -1)
@@ -86,7 +92,7 @@ function getEmbeddedLanguages(shikiText, language) {
   return [...match[1].matchAll(/"([^"]+)"/g)].map(([, name]) => name)
 }
 
-function resolveLanguages(shikiText, initialLanguages) {
+function resolveLanguages(shikiText: string, initialLanguages: string[]): string[] {
   const resolved = new Set(initialLanguages)
   const queue = [...initialLanguages]
 
@@ -105,8 +111,8 @@ function resolveLanguages(shikiText, initialLanguages) {
   return [...resolved]
 }
 
-async function fetchWithRetry(url, retries = 2) {
-  let lastError
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  let lastError: unknown
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       const response = await fetch(url)
@@ -124,14 +130,14 @@ async function fetchWithRetry(url, retries = 2) {
   throw new Error(`Failed to fetch ${url}: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
 
-async function writeResponseToFile(url, filePath) {
+async function writeResponseToFile(url: string, filePath: string) {
   const response = await fetchWithRetry(url)
   const content = Buffer.from(await response.arrayBuffer())
   await mkdir(path.dirname(filePath), { recursive: true })
   await writeFile(filePath, content)
 }
 
-async function resolveTypeScriptEsmPath(version) {
+async function resolveTypeScriptEsmPath(version: string): Promise<string> {
   const response = await fetchWithRetry(`${ESM_SH}/typescript@${version}`)
   const esmPath = response.headers.get('x-esm-path')
   if (!esmPath)
@@ -139,11 +145,11 @@ async function resolveTypeScriptEsmPath(version) {
   return esmPath
 }
 
-function getRelativeImportPath(fromFilePath, toFilePath) {
+function getRelativeImportPath(fromFilePath: string, toFilePath: string): string {
   return path.relative(path.dirname(fromFilePath), toFilePath).replaceAll(path.sep, '/')
 }
 
-async function patchTypeScriptWorkerImport(workerFilePath, localTypeScriptPath) {
+async function patchTypeScriptWorkerImport(workerFilePath: string, localTypeScriptPath: string) {
   const original = await readFile(workerFilePath, 'utf8')
   const relativeImportPath = getRelativeImportPath(
     workerFilePath,
@@ -155,7 +161,7 @@ async function patchTypeScriptWorkerImport(workerFilePath, localTypeScriptPath) 
   await writeFile(workerFilePath, next)
 }
 
-async function patchTypeScriptWorkerBootstrap(setupFilePath) {
+async function patchTypeScriptWorkerBootstrap(setupFilePath: string) {
   const original = await readFile(setupFilePath, 'utf8')
   const currentBlock = `function createWebWorker() {
   const workerUrl = new URL("./worker.mjs", import.meta.url);
@@ -180,14 +186,14 @@ async function patchTypeScriptWorkerBootstrap(setupFilePath) {
   await writeFile(setupFilePath, next)
 }
 
-async function writeManifest(filePath, manifest) {
+async function writeManifest(filePath: string, manifest: object) {
   await writeFile(filePath, `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
-  const modernMonacoPkg = await readJson(MODERN_MONACO_PKG_PATH)
-  const typescriptPkg = await readJson(TYPESCRIPT_PKG_PATH)
+  const modernMonacoPkg = await readJson<{ version: string }>(MODERN_MONACO_PKG_PATH)
+  const typescriptPkg = await readJson<{ version: string }>(TYPESCRIPT_PKG_PATH)
   const shikiText = await readFile(SHIKI_DIST_PATH, 'utf8')
   const tmGrammarsVersion = requireMatch(shikiText, /var version = "([^"]+)";/, 'tm-grammars version')
   const tmThemesVersion = requireMatch(shikiText, /var version2 = "([^"]+)";/, 'tm-themes version')
