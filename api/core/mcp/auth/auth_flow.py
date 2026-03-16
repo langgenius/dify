@@ -55,15 +55,31 @@ def build_protected_resource_metadata_discovery_urls(
     """
     urls = []
 
+    parsed_server_url = urlparse(server_url)
+    base_url = f"{parsed_server_url.scheme}://{parsed_server_url.netloc}"
+    path = parsed_server_url.path.rstrip("/")
+
     # First priority: URL from WWW-Authenticate header
     if www_auth_resource_metadata_url:
-        urls.append(www_auth_resource_metadata_url)
+        parsed_metadata_url = urlparse(www_auth_resource_metadata_url)
+        normalized_metadata_url = None
+        if parsed_metadata_url.scheme and parsed_metadata_url.netloc:
+            normalized_metadata_url = www_auth_resource_metadata_url
+        elif not parsed_metadata_url.scheme and parsed_metadata_url.netloc:
+            normalized_metadata_url = f"{parsed_server_url.scheme}:{www_auth_resource_metadata_url}"
+        elif (
+            not parsed_metadata_url.scheme
+            and not parsed_metadata_url.netloc
+            and parsed_metadata_url.path.startswith("/")
+        ):
+            first_segment = parsed_metadata_url.path.lstrip("/").split("/", 1)[0]
+            if first_segment == ".well-known" or "." not in first_segment:
+                normalized_metadata_url = urljoin(base_url, parsed_metadata_url.path)
+
+        if normalized_metadata_url:
+            urls.append(normalized_metadata_url)
 
     # Fallback: construct from server URL
-    parsed = urlparse(server_url)
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
-    path = parsed.path.rstrip("/")
-
     # Priority 2: With path insertion (e.g., /.well-known/oauth-protected-resource/public/mcp)
     if path:
         path_url = f"{base_url}/.well-known/oauth-protected-resource{path}"

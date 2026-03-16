@@ -28,7 +28,7 @@ jobs:
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           filters: |
@@ -63,8 +63,9 @@ jobs:
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
     with:
-      base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-      head_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      base_sha: ${{ github.event.before || github.event.pull_request.base.sha }}
+      diff_range_mode: ${{ github.event.before && 'exact' || 'merge-base' }}
+      head_sha: ${{ github.event.after || github.event.pull_request.head.sha || github.sha }}
 
   style-check:
     name: Style Check
