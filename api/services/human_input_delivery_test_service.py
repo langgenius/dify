@@ -155,13 +155,15 @@ class EmailDeliveryTestHandler:
                 context=context,
                 recipient_email=recipient_email,
             )
-            subject = render_email_template(method.config.subject, substitutions)
+            subject_template = render_email_template(method.config.subject, substitutions)
+            subject = EmailDeliveryConfig.sanitize_subject(subject_template)
             templated_body = EmailDeliveryConfig.render_body_template(
                 body=method.config.body,
                 url=substitutions.get("form_link"),
                 variable_pool=context.variable_pool,
             )
             body = render_email_template(templated_body, substitutions)
+            body = EmailDeliveryConfig.render_markdown_body(body)
 
             mail.send(
                 to=recipient_email,

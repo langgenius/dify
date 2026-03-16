@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.answer.entities import AnswerNodeData
 from dify_graph.nodes.base.node import Node
@@ -11,7 +11,7 @@ from dify_graph.variables import ArrayFileSegment, FileSegment, Segment
 
 
 class AnswerNode(Node[AnswerNodeData]):
-    node_type = NodeType.ANSWER
+    node_type = BuiltinNodeTypes.ANSWER
     execution_type = NodeExecutionType.RESPONSE
 
     @classmethod
