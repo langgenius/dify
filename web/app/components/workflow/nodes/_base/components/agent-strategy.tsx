@@ -127,7 +127,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             return false
 
           const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
-          const value = props.value[schema.variable] || defaultValue
+          const value = props.value[schema.variable] ?? defaultValue
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -154,10 +154,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                 />
                 <NumberField
                   value={value}
-                  defaultValue={defaultValue}
                   min={def.min}
                   max={def.max}
-                  onValueChange={nextValue => nextValue !== null && onChange(nextValue)}
+                  onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
                 >
                   <NumberFieldGroup size="regular">
                     <NumberFieldInput size="regular" className="w-12" />

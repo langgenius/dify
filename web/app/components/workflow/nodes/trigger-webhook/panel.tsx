@@ -25,7 +25,7 @@ import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
 import ParameterTable from './components/parameter-table'
-import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, useConfig } from './use-config'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
 
 const i18nPrefix = 'nodes.triggerWebhook'
@@ -203,11 +203,13 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               </label>
               <NumberField
                 className="w-[120px]"
+                allowOutOfRange
                 min={DEFAULT_STATUS_CODE}
                 max={MAX_STATUS_CODE}
                 value={inputs.status_code ?? DEFAULT_STATUS_CODE}
                 disabled={readOnly}
                 onValueChange={value => handleStatusCodeChange(value ?? DEFAULT_STATUS_CODE)}
+                onValueCommitted={value => handleStatusCodeChange(normalizeStatusCode(value ?? DEFAULT_STATUS_CODE))}
               >
                 <NumberFieldGroup size="regular">
                   <NumberFieldInput

@@ -15,6 +15,7 @@ import { WEBHOOK_RAW_VARIABLE_NAME } from './utils/raw-variable'
 
 export const DEFAULT_STATUS_CODE = 200
 export const MAX_STATUS_CODE = 399
+export const normalizeStatusCode = (statusCode: number) => Math.min(Math.max(statusCode, DEFAULT_STATUS_CODE), MAX_STATUS_CODE)
 
 export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
