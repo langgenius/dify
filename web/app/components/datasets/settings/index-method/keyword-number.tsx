@@ -24,8 +24,7 @@ const KeyWordNumber = ({
   const { t } = useTranslation()
 
   const handleInputChange = useCallback((value: number | null) => {
-    if (value !== null)
-      onKeywordNumberChange(value)
+    onKeywordNumberChange(value ?? 0)
   }, [onKeywordNumberChange])
 
   return (

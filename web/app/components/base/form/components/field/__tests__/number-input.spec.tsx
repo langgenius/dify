@@ -30,4 +30,10 @@ describe('NumberInputField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.increment' }))
     expect(mockField.handleChange).toHaveBeenCalledWith(3)
   })
+
+  it('should reset field value when users clear the input', () => {
+    render(<NumberInputField label="Count" />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(mockField.handleChange).toHaveBeenCalledWith(0)
+  })
 })

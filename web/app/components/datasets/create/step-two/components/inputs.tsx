@@ -81,7 +81,7 @@ function CompoundNumberInput({
       required={required}
       id={id}
       name={name}
-      onValueChange={value => value !== null && onChange(value)}
+      onValueChange={value => onChange(value ?? 0)}
     >
       <NumberFieldGroup size={size}>
         <NumberFieldInput

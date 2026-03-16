@@ -76,7 +76,7 @@ const TopKAndScoreThreshold = ({
           min={TOP_K_VALUE_LIMIT.min}
           max={TOP_K_VALUE_LIMIT.max}
           value={topK}
-          onValueChange={value => value !== null && handleTopKChange(value)}
+          onValueChange={value => handleTopKChange(value ?? 0)}
         >
           <NumberFieldGroup size="regular">
             <NumberFieldInput size="regular" />
@@ -111,7 +111,7 @@ const TopKAndScoreThreshold = ({
               min={SCORE_THRESHOLD_VALUE_LIMIT.min}
               max={SCORE_THRESHOLD_VALUE_LIMIT.max}
               value={scoreThreshold ?? null}
-              onValueChange={value => value !== null && handleScoreThresholdChange(value)}
+              onValueChange={value => handleScoreThresholdChange(value ?? 0)}
             >
               <NumberFieldGroup size="regular">
                 <NumberFieldInput size="regular" />

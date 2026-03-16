@@ -60,10 +60,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             value={value}
-            onValueChange={(nextValue) => {
-              if (nextValue !== null)
-                onChange(id, nextValue)
-            }}
+            onValueChange={nextValue => onChange(id, nextValue ?? 0)}
           >
             <NumberFieldGroup size="regular">
               <NumberFieldInput size="regular" className="w-[72px]" />

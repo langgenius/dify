@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
@@ -61,6 +61,13 @@ describe('MaxLengthInput', () => {
     const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
+
+  it('should report 0 when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(0)
+  })
 })
 
 describe('OverlapInput', () => {
@@ -88,5 +95,12 @@ describe('OverlapInput', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
+  })
+
+  it('should report 0 when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(0)
   })
 })

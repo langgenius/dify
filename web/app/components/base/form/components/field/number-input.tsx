@@ -64,7 +64,7 @@ const NumberInputField = ({
         disabled={disabled}
         readOnly={readOnly}
         required={required}
-        onValueChange={value => value !== null && field.handleChange(value)}
+        onValueChange={value => field.handleChange(value ?? 0)}
       >
         <NumberFieldGroup size={size}>
           <NumberFieldInput

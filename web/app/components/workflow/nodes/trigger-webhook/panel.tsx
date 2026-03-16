@@ -206,14 +206,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 className="w-[120px]"
                 value={inputs.status_code ?? null}
                 disabled={readOnly}
-                onValueChange={(value) => {
-                  if (value !== null)
-                    handleStatusCodeChange(value)
-                }}
-                onValueCommitted={(value) => {
-                  if (value === null)
-                    handleStatusCodeChange(200)
-                }}
+                onValueChange={value => handleStatusCodeChange(value ?? 200)}
               >
                 <NumberFieldGroup size="regular">
                   <NumberFieldInput
