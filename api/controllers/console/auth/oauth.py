@@ -1,6 +1,10 @@
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import secrets
+import time
 
 import httpx
 from flask import current_app, redirect, request, session
@@ -34,6 +38,45 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 ACEDATACLOUD_PROVIDER = "acedatacloud"
+
+# Maximum age (in seconds) for a signed OAuth state to be considered valid.
+_STATE_MAX_AGE = 600  # 10 minutes
+
+
+def _sign_state(payload: dict) -> str:
+    """Create an HMAC-signed, base64url-encoded state string.
+
+    The state embeds the payload as JSON together with a timestamp.  On the
+    callback side we can verify it without relying on server-side session
+    storage — which is fragile across cross-domain redirects (especially on
+    mobile browsers where 302 Set-Cookie headers are often dropped).
+    """
+    payload_with_ts = {**payload, "_ts": int(time.time())}
+    data = json.dumps(payload_with_ts, separators=(",", ":"), sort_keys=True)
+    sig = hmac.new(dify_config.SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
+    # URL-safe encoding: use the compact "<hex_sig>.<json>" format.
+    encoded = base64.urlsafe_b64encode(data.encode()).decode().rstrip("=")
+    return f"{sig}.{encoded}"
+
+
+def _verify_state(token: str, max_age: int = _STATE_MAX_AGE) -> dict | None:
+    """Verify and decode a signed state token.  Returns the payload dict or
+    *None* if the token is invalid / expired."""
+    try:
+        sig, encoded = token.split(".", 1)
+        # Restore padding
+        padded = encoded + "=" * (-len(encoded) % 4)
+        data = base64.urlsafe_b64decode(padded).decode()
+        expected_sig = hmac.new(dify_config.SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        payload = json.loads(data)
+        ts = payload.pop("_ts", 0)
+        if time.time() - ts > max_age:
+            return None
+        return payload
+    except Exception:
+        return None
 
 
 def get_oauth_providers():
@@ -93,20 +136,29 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        nonce = secrets.token_urlsafe(32)
-        session[f"oauth_state_{provider}"] = {
-            "nonce": nonce,
-            "invite_token": invite_token,
-        }
-
-        redirect_override = None
         if provider == ACEDATACLOUD_PROVIDER:
+            # Use HMAC-signed state instead of session-based state.
+            # Mobile browsers often drop Set-Cookie headers on 302 redirects to
+            # a different domain, which causes the Flask session to be empty when
+            # the user is redirected back.  A self-contained signed state avoids
+            # this problem entirely.
+            state_token = _sign_state({
+                "nonce": secrets.token_urlsafe(32),
+                "invite_token": invite_token,
+            })
             redirect_override = f"{request.host_url.rstrip('/')}{dify_config.OAUTH_REDIRECT_PATH}/{provider}"
-
-        auth_url = oauth_provider.get_authorization_url(state=nonce, redirect_override=redirect_override)
-        response = redirect(auth_url)
-        if provider == ACEDATACLOUD_PROVIDER:
+            auth_url = oauth_provider.get_authorization_url(state=state_token, redirect_override=redirect_override)
+            response = redirect(auth_url)
             response.delete_cookie("no_acedatacloud_oauth", path="/")
+        else:
+            nonce = secrets.token_urlsafe(32)
+            session[f"oauth_state_{provider}"] = {
+                "nonce": nonce,
+                "invite_token": invite_token,
+            }
+            auth_url = oauth_provider.get_authorization_url(state=nonce, redirect_override=None)
+            response = redirect(auth_url)
+
         return response
 
 
@@ -132,16 +184,28 @@ class OAuthCallback(Resource):
 
         code = request.args.get("code")
         state = request.args.get("state")
-        session_key = f"oauth_state_{provider}"
-        state_payload = session.pop(session_key, None)
 
         if not code:
             return {"error": "Authorization code is required"}, 400
+
         invite_token = None
-        if state_payload and state and state_payload.get("nonce") == state:
+        if provider == ACEDATACLOUD_PROVIDER:
+            # Verify the HMAC-signed state token (session-free).
+            if not state:
+                return {"error": "State parameter is required"}, 400
+            state_payload = _verify_state(state)
+            if state_payload is None:
+                logger.warning("AceDataCloud OAuth state verification failed for state=%s", state[:40] if state else "")
+                return {"error": "Invalid or expired OAuth state"}, 400
             invite_token = state_payload.get("invite_token")
-        elif state_payload:
-            return {"error": "Invalid or expired OAuth state"}, 400
+        else:
+            # GitHub / Google: use session-based state verification (same domain, cookies work).
+            session_key = f"oauth_state_{provider}"
+            state_payload = session.pop(session_key, None)
+            if state_payload and state and state_payload.get("nonce") == state:
+                invite_token = state_payload.get("invite_token")
+            elif state_payload:
+                return {"error": "Invalid or expired OAuth state"}, 400
 
         token_response: dict | None = None
         try:
