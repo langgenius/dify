@@ -9,9 +9,16 @@ import Link from 'next/link'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import { InputNumber } from '@/app/components/base/input-number'
 import ListEmpty from '@/app/components/base/list-empty'
 import Slider from '@/app/components/base/slider'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -145,16 +152,21 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   min={def.min}
                   max={def.max}
                 />
-                <InputNumber
+                <NumberField
                   value={value}
-                  // TODO: maybe empty, handle this
-                  onChange={onChange as any}
                   defaultValue={defaultValue}
-                  size="regular"
                   min={def.min}
                   max={def.max}
-                  className="w-12"
-                />
+                  onValueChange={nextValue => nextValue !== null && onChange(nextValue)}
+                >
+                  <NumberFieldGroup size="regular">
+                    <NumberFieldInput size="regular" className="w-12" />
+                    <NumberFieldControls>
+                      <NumberFieldIncrement size="regular" />
+                      <NumberFieldDecrement size="regular" />
+                    </NumberFieldControls>
+                  </NumberFieldGroup>
+                </NumberField>
               </div>
             </Field>
           )

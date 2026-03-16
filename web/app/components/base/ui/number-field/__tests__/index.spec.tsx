@@ -37,6 +37,8 @@ describe('NumberField wrapper', () => {
 
       expect(group).toHaveClass('radius-md')
       expect(group).toHaveClass('custom-group')
+      expect(input).toHaveAttribute('autoComplete', 'off')
+      expect(input).toHaveAttribute('inputMode', 'decimal')
       expect(input).toHaveAttribute('placeholder', 'Regular placeholder')
       expect(input).toHaveClass('px-3')
       expect(input).toHaveClass('py-[7px]')
@@ -108,6 +110,25 @@ describe('NumberField wrapper', () => {
       expect(increment).toHaveAttribute('data-track-id', 'increment-track')
       expect(decrement).toHaveClass('custom-decrement')
       expect(decrement).toHaveAttribute('data-track-id', 'decrement-track')
+    })
+
+    it('should provide default icons and localized aria labels for control buttons', () => {
+      render(
+        <NumberField defaultValue={8}>
+          <NumberFieldGroup size="regular">
+            <NumberFieldInput aria-label="Amount" size="regular" />
+            <NumberFieldControls>
+              <NumberFieldIncrement size="regular" />
+              <NumberFieldDecrement size="regular" />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>,
+      )
+
+      expect(screen.getByRole('button', { name: 'common.operation.increment' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.decrement' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.increment' }).querySelector('.i-ri-arrow-up-s-line')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.decrement' }).querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
   })
 })

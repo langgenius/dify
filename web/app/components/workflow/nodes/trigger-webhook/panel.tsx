@@ -6,11 +6,18 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -195,19 +202,33 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <label className="system-sm-medium text-text-tertiary">
                 {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
-              <InputNumber
-                value={inputs.status_code}
-                onChange={(value) => {
-                  handleStatusCodeChange(value || 200)
-                }}
+              <NumberField
+                className="w-[120px]"
+                value={inputs.status_code ?? null}
                 disabled={readOnly}
-                wrapClassName="w-[120px]"
-                className="h-8"
-                defaultValue={200}
-                onBlur={() => {
-                  handleStatusCodeBlur(inputs.status_code)
+                onValueChange={(value) => {
+                  if (value !== null)
+                    handleStatusCodeChange(value)
                 }}
-              />
+                onValueCommitted={(value) => {
+                  if (value === null)
+                    handleStatusCodeChange(200)
+                }}
+              >
+                <NumberFieldGroup size="regular">
+                  <NumberFieldInput
+                    size="regular"
+                    className="h-8"
+                    onBlur={() => {
+                      handleStatusCodeBlur(inputs.status_code)
+                    }}
+                  />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement size="regular" />
+                    <NumberFieldDecrement size="regular" />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
             </div>
             <div>
               <label className="system-sm-medium mb-2 block text-text-tertiary">

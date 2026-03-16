@@ -2230,14 +2230,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-number/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/input/index.stories.tsx": {
     "no-console": {
       "count": 2
@@ -6627,7 +6619,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/workflow/nodes/_base/components/before-run-form/bool-input.tsx": {

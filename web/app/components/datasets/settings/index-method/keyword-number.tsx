@@ -1,10 +1,16 @@
-import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
 import Slider from '@/app/components/base/slider'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/app/components/base/ui/number-field'
 
 type KeyWordNumberProps = {
   keywordNumber: number
@@ -17,21 +23,21 @@ const KeyWordNumber = ({
 }: KeyWordNumberProps) => {
   const { t } = useTranslation()
 
-  const handleInputChange = useCallback((value: number | undefined) => {
-    if (value)
+  const handleInputChange = useCallback((value: number | null) => {
+    if (value !== null)
       onKeywordNumberChange(value)
   }, [onKeywordNumberChange])
 
   return (
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
-        <div className="system-xs-medium truncate text-text-secondary">
+        <div className="truncate text-text-secondary system-xs-medium">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
           popupContent="number of keywords"
         >
-          <RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" />
+          <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
         </Tooltip>
       </div>
       <Slider
@@ -40,12 +46,19 @@ const KeyWordNumber = ({
         max={50}
         onChange={onKeywordNumberChange}
       />
-      <InputNumber
-        wrapperClassName="shrink-0 w-12"
-        type="number"
+      <NumberField
+        className="w-12 shrink-0"
         value={keywordNumber}
-        onChange={handleInputChange}
-      />
+        onValueChange={handleInputChange}
+      >
+        <NumberFieldGroup size="regular">
+          <NumberFieldInput size="regular" />
+          <NumberFieldControls>
+            <NumberFieldIncrement size="regular" />
+            <NumberFieldDecrement size="regular" />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
     </div>
   )
 }
