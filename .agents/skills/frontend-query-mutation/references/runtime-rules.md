@@ -1,12 +1,12 @@
-# Query & Mutation Rules
+# Runtime Rules
 
-This document complements `orpc-contract-first`.
-Use that skill for contract shape and query/mutation call-site patterns.
-Use this file for Dify-specific rules:
+## Table of Contents
 
-- conditional queries
-- cache invalidation
-- mutation error handling
+- Conditional queries
+- Cache invalidation
+- Key API guide
+- `mutate` vs `mutateAsync`
+- Legacy migration
 
 ## Conditional Queries
 
@@ -17,7 +17,7 @@ Use `enabled` only for extra business gating after the input itself is already v
 ```typescript
 import { skipToken, useQuery } from '@tanstack/react-query'
 
-// ✅ disable the query by skipping input construction
+// Disable the query by skipping input construction.
 function useAccessMode(appId: string | undefined) {
   return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
     input: appId
@@ -26,7 +26,7 @@ function useAccessMode(appId: string | undefined) {
   }))
 }
 
-// ❌ non-null assertion + enabled guard — runtime-only, bypasses type checking
+// Avoid runtime-only guards that bypass type checking.
 function useBadAccessMode(appId: string | undefined) {
   return useQuery(consoleQuery.accessControl.appAccessMode.queryOptions({
     input: { params: { appId: appId! } },
@@ -49,7 +49,7 @@ Use:
 Do not use deprecated `useInvalid` from `use-base.ts`.
 
 ```typescript
-// ✅ service layer owns cache invalidation
+// Service layer owns cache invalidation.
 export const useUpdateAccessMode = () => {
   const queryClient = useQueryClient()
 
@@ -62,12 +62,12 @@ export const useUpdateAccessMode = () => {
   }))
 }
 
-// ✅ component only adds UI behavior
+// Component only adds UI behavior.
 updateAccessMode({ appId, mode }, {
   onSuccess: () => Toast.notify({ type: 'success', message: '...' }),
 })
 
-// ❌ component should not own invalidation knowledge
+// Avoid putting invalidation knowledge in the component.
 mutate({ appId, mode }, {
   onSuccess: () => {
     queryClient.invalidateQueries({
@@ -77,24 +77,37 @@ mutate({ appId, mode }, {
 })
 ```
 
+## Key API Guide
+
+- `.key(...)`
+  - Use for partial matching operations.
+  - Prefer it for invalidation, refetch, and cancel patterns.
+  - Example: `queryClient.invalidateQueries({ queryKey: consoleQuery.billing.key() })`
+- `.queryKey(...)`
+  - Use for a specific query's full key.
+  - Prefer it for exact cache addressing and direct reads or writes.
+- `.mutationKey(...)`
+  - Use for a specific mutation's full key.
+  - Prefer it for mutation defaults registration, mutation-status filtering, and devtools grouping.
+
 ## `mutate` vs `mutateAsync`
 
 Prefer `mutate` by default.
-Use `mutateAsync` only when you truly need Promise semantics, such as parallel mutations or sequential steps with result dependencies.
+Use `mutateAsync` only when Promise semantics are truly required, such as parallel mutations or sequential steps with result dependencies.
 
 Rules:
 
-- Event handlers should usually call `mutate(...)` with `onSuccess` / `onError`
-- Every `await mutateAsync(...)` must be wrapped in `try/catch`
-- Do not use `mutateAsync` when callbacks already express the flow clearly
+- Event handlers should usually call `mutate(...)` with `onSuccess` or `onError`.
+- Every `await mutateAsync(...)` must be wrapped in `try/catch`.
+- Do not use `mutateAsync` when callbacks already express the flow clearly.
 
 ```typescript
-// ✅ default
+// Default case.
 mutation.mutate(data, {
   onSuccess: result => router.push(result.url),
 })
 
-// ✅ Promise is required
+// Promise semantics are required.
 try {
   const order = await createOrder.mutateAsync(orderData)
   await confirmPayment.mutateAsync({ orderId: order.id, token })

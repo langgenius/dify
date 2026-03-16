@@ -10,9 +10,7 @@
 
 ## Query & Mutation (Mandatory)
 
-- Use `orpc-contract-first` for contracts, query shape, data-fetching wrappers, and query/mutation call-site patterns.
-- Use `./docs/query-mutation.md` for Dify-specific conditional query, invalidation, and mutation error-handling rules.
-- If a task touches both, follow both.
+- `frontend-query-mutation` is the source of truth for Dify frontend contracts, query and mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
 
 ## Automated Test Generation
 
