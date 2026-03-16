@@ -37,11 +37,11 @@ class DatasetMetadataCreateApi(Resource):
     @marshal_with(dataset_metadata_fields)
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     def post(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
@@ -54,8 +54,9 @@ class DatasetMetadataCreateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def get(self, dataset_id):
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         return MetadataService.get_dataset_metadatas(dataset), 200
@@ -70,13 +71,13 @@ class DatasetMetadataApi(Resource):
     @marshal_with(dataset_metadata_fields)
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     def patch(self, dataset_id, metadata_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
@@ -89,10 +90,10 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def delete(self, dataset_id, metadata_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
@@ -119,9 +120,9 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, dataset_id, action: Literal["enable", "disable"]):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
@@ -142,9 +143,9 @@ class DocumentMetadataEditApi(Resource):
     @enterprise_license_required
     @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
     def post(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)

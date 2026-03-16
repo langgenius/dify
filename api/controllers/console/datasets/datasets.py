@@ -488,12 +488,11 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
         current_user, current_tenant_id = current_account_with_tenant()
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
         # check embedding model setting
         if (
             payload.indexing_technique == "high_quality"
@@ -576,9 +575,9 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
@@ -709,9 +708,9 @@ class DatasetRelatedAppListApi(Resource):
     @account_initialization_required
     @marshal_with(related_app_list_model)
     def get(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
@@ -934,8 +933,9 @@ class DatasetErrorDocs(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
@@ -955,9 +955,9 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:
@@ -983,8 +983,9 @@ class DatasetAutoDisableLogApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset_in_tenant(dataset_id_str, current_tenant_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
         return DatasetService.get_dataset_auto_disable_logs(dataset_id_str), 200
