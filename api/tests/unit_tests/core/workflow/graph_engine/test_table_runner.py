@@ -21,7 +21,7 @@ from typing import Any, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
@@ -257,7 +257,11 @@ class WorkflowRunner:
         else:
             node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
 
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=get_default_root_node_id(graph_config),
+        )
 
         return graph, graph_runtime_state
 

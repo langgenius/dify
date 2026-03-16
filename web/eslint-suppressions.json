@@ -2839,11 +2839,6 @@
       "count": 2
     }
   },
-  "app/components/billing/pricing/header.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/billing/pricing/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -5964,11 +5959,8 @@
     }
   },
   "app/components/share/text-generation/result/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/share/text-generation/run-batch/csv-download/index.tsx": {

@@ -234,6 +234,7 @@ class TestAdvancedChatAppGeneratorInternals:
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
         var_loader = SimpleNamespace(loader="draft")
+        workflow = SimpleNamespace(id="workflow-id")
 
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
@@ -260,8 +261,8 @@ class TestAdvancedChatAppGeneratorInternals:
             def __init__(self, session):
                 _ = session
 
-            def prefill_conversation_variable_default_values(self, workflow):
-                prefill_calls.append(workflow)
+            def prefill_conversation_variable_default_values(self, workflow, user_id):
+                prefill_calls.append((workflow, user_id))
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.WorkflowDraftVariableService", _DraftVarService)
 
@@ -273,7 +274,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         result = generator.single_iteration_generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
-            workflow=SimpleNamespace(id="workflow-id"),
+            workflow=workflow,
             node_id="node-1",
             user=SimpleNamespace(id="user-id"),
             args={"inputs": {"foo": "bar"}},
@@ -281,7 +282,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         assert result == {"ok": True}
-        assert prefill_calls
+        assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
 
@@ -291,6 +292,7 @@ class TestAdvancedChatAppGeneratorInternals:
         captured: dict[str, object] = {}
         prefill_calls: list[object] = []
         var_loader = SimpleNamespace(loader="draft")
+        workflow = SimpleNamespace(id="workflow-id")
 
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
@@ -317,8 +319,8 @@ class TestAdvancedChatAppGeneratorInternals:
             def __init__(self, session):
                 _ = session
 
-            def prefill_conversation_variable_default_values(self, workflow):
-                prefill_calls.append(workflow)
+            def prefill_conversation_variable_default_values(self, workflow, user_id):
+                prefill_calls.append((workflow, user_id))
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.WorkflowDraftVariableService", _DraftVarService)
 
@@ -330,7 +332,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         result = generator.single_loop_generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
-            workflow=SimpleNamespace(id="workflow-id"),
+            workflow=workflow,
             node_id="node-2",
             user=SimpleNamespace(id="user-id"),
             args=SimpleNamespace(inputs={"foo": "bar"}),
@@ -338,7 +340,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         assert result == {"ok": True}
-        assert prefill_calls
+        assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
 

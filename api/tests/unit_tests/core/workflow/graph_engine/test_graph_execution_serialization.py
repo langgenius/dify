@@ -6,7 +6,7 @@ import json
 from collections import deque
 from unittest.mock import MagicMock
 
-from dify_graph.enums import NodeExecutionType, NodeState, NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeState
 from dify_graph.graph_engine.domain import GraphExecution
 from dify_graph.graph_engine.response_coordinator import ResponseStreamCoordinator
 from dify_graph.graph_engine.response_coordinator.path import Path
@@ -101,7 +101,9 @@ def test_response_stream_coordinator_serialization_round_trip(monkeypatch) -> No
     class DummyNode:
         def __init__(self, node_id: str, template: Template, execution_type: NodeExecutionType) -> None:
             self.id = node_id
-            self.node_type = NodeType.ANSWER if execution_type == NodeExecutionType.RESPONSE else NodeType.LLM
+            self.node_type = (
+                BuiltinNodeTypes.ANSWER if execution_type == NodeExecutionType.RESPONSE else BuiltinNodeTypes.LLM
+            )
             self.execution_type = execution_type
             self.state = NodeState.UNKNOWN
             self.title = node_id
@@ -160,7 +162,7 @@ def test_response_stream_coordinator_serialization_round_trip(monkeypatch) -> No
     event = NodeRunStreamChunkEvent(
         id="exec-1",
         node_id="response-1",
-        node_type=NodeType.ANSWER,
+        node_type=BuiltinNodeTypes.ANSWER,
         selector=["node-source", "text"],
         chunk="chunk-1",
         is_final=False,
