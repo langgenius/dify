@@ -84,7 +84,7 @@ vi.mock('../../metadata-dataset/select-metadata-modal', () => ({
     <div data-testid="select-modal">
       {trigger}
       <button data-testid="select-metadata" onClick={() => onSelect({ id: 'new-1', name: 'new_field', type: DataType.string, value: null, isMultipleValue: false })}>Select</button>
-      <button data-testid="save-metadata" onClick={() => onSave({ name: 'created_field', type: DataType.string }).catch(() => {})}>Save</button>
+      <button data-testid="save-metadata" onClick={() => onSave({ name: 'created_field', type: DataType.string }).catch(() => { })}>Save</button>
       <button data-testid="manage-metadata" onClick={onManage}>Manage</button>
     </div>
   ),
@@ -202,7 +202,7 @@ describe('EditMetadataBatchModal', () => {
       if (checkboxContainer) {
         fireEvent.click(checkboxContainer)
         await waitFor(() => {
-          const checkIcon = checkboxContainer.querySelector('svg')
+          const checkIcon = screen.getByTestId('check-icon-apply-to-all')
           expect(checkIcon).toBeInTheDocument()
         })
       }

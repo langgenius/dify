@@ -23,11 +23,23 @@ jobs:
             docker/.env.example
             docker/docker-compose-template.yaml
             docker/docker-compose.yaml
+      - name: Check web inputs
+        id: web-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            web/**
+      - name: Check api inputs
+        id: api-changes
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            api/**
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
+      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
 
       - name: Generate Docker Compose
         if: steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -35,7 +47,8 @@ jobs:
           cd docker
           ./generate_docker_compose
 
-      - run: |
+      - if: steps.api-changes.outputs.any_changed == 'true'
+        run: |
           cd api
           uv sync --dev
           # fmt first to avoid line too long
@@ -46,11 +59,13 @@ jobs:
           uv run ruff format ..
 
       - name: count migration progress
+        if: steps.api-changes.outputs.any_changed == 'true'
         run: |
           cd api
           ./cnt_base.sh
 
       - name: ast-grep
+        if: steps.api-changes.outputs.any_changed == 'true'
         run: |
           # ast-grep exits 1 if no matches are found; allow idempotent runs.
           uvx --from ast-grep-cli ast-grep --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all || true
@@ -85,13 +100,13 @@ jobs:
           uvx --python 3.13 mdformat . --exclude ".agents/skills/**"
 
       - name: Setup web environment
+        if: steps.web-changes.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
-        with:
-          node-version: "24"
 
       - name: ESLint autofix
+        if: steps.web-changes.outputs.any_changed == 'true'
         run: |
           cd web
-          pnpm eslint --concurrency=2 --prune-suppressions
+          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
 
       - uses: autofix-ci/action@7a166d7532b277f34e16238930461bf77f9d7ed8 # v1.3.3

@@ -23,7 +23,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from extensions.ext_database import db
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
@@ -145,10 +145,10 @@ class MLflowDataTrace(BaseTraceInstance):
                     "app_name": node.title,
                 }
 
-                if node.node_type in (NodeType.LLM, NodeType.QUESTION_CLASSIFIER):
+                if node.node_type in (BuiltinNodeTypes.LLM, BuiltinNodeTypes.QUESTION_CLASSIFIER):
                     inputs, llm_attributes = self._parse_llm_inputs_and_attributes(node)
                     attributes.update(llm_attributes)
-                elif node.node_type == NodeType.HTTP_REQUEST:
+                elif node.node_type == BuiltinNodeTypes.HTTP_REQUEST:
                     inputs = node.process_data  # contains request URL
 
                 if not inputs:
@@ -180,9 +180,9 @@ class MLflowDataTrace(BaseTraceInstance):
                 # End node span
                 finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
                 outputs = json.loads(node.outputs) if node.outputs else {}
-                if node.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+                if node.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                     outputs = self._parse_knowledge_retrieval_outputs(outputs)
-                elif node.node_type == NodeType.LLM:
+                elif node.node_type == BuiltinNodeTypes.LLM:
                     outputs = outputs.get("text", outputs)
                 node_span.end(
                     outputs=outputs,
@@ -471,13 +471,13 @@ class MLflowDataTrace(BaseTraceInstance):
     def _get_node_span_type(self, node_type: str) -> str:
         """Map Dify node types to MLflow span types"""
         node_type_mapping = {
-            NodeType.LLM: SpanType.LLM,
-            NodeType.QUESTION_CLASSIFIER: SpanType.LLM,
-            NodeType.KNOWLEDGE_RETRIEVAL: SpanType.RETRIEVER,
-            NodeType.TOOL: SpanType.TOOL,
-            NodeType.CODE: SpanType.TOOL,
-            NodeType.HTTP_REQUEST: SpanType.TOOL,
-            NodeType.AGENT: SpanType.AGENT,
+            BuiltinNodeTypes.LLM: SpanType.LLM,
+            BuiltinNodeTypes.QUESTION_CLASSIFIER: SpanType.LLM,
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: SpanType.RETRIEVER,
+            BuiltinNodeTypes.TOOL: SpanType.TOOL,
+            BuiltinNodeTypes.CODE: SpanType.TOOL,
+            BuiltinNodeTypes.HTTP_REQUEST: SpanType.TOOL,
+            BuiltinNodeTypes.AGENT: SpanType.AGENT,
         }
         return node_type_mapping.get(node_type, "CHAIN")  # type: ignore[arg-type,call-overload]
 

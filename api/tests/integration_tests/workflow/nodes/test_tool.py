@@ -1,6 +1,6 @@
 import time
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -54,7 +54,7 @@ def init_tool_node(config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
 
@@ -87,17 +87,20 @@ def test_tool_variable_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
+    with patch.object(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        return_value={"format": "%Y-%m-%d %H:%M:%S"},
+    ):
+        node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
-
-    # execute node
-    result = node._run()
-    for item in result:
-        if isinstance(item, StreamCompletedEvent):
-            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.node_run_result.outputs is not None
-            assert item.node_run_result.outputs.get("text") is not None
+        # execute node
+        result = node._run()
+        for item in result:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None
 
 
 def test_tool_mixed_invoke():
@@ -121,12 +124,15 @@ def test_tool_mixed_invoke():
         }
     )
 
-    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
-
-    # execute node
-    result = node._run()
-    for item in result:
-        if isinstance(item, StreamCompletedEvent):
-            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.node_run_result.outputs is not None
-            assert item.node_run_result.outputs.get("text") is not None
+    with patch.object(
+        ToolParameterConfigurationManager,
+        "decrypt_tool_parameters",
+        return_value={"format": "%Y-%m-%d %H:%M:%S"},
+    ):
+        # execute node
+        result = node._run()
+        for item in result:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None

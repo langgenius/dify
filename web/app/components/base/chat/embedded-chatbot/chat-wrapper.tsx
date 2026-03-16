@@ -23,7 +23,7 @@ import {
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import Avatar from '../../avatar'
+import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -262,7 +262,7 @@ const ChatWrapper = () => {
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className="body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary">
+            <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
             </div>
@@ -280,7 +280,7 @@ const ChatWrapper = () => {
           imageUrl={appData?.site.icon_url}
         />
         <div className="max-w-[768px] px-4">
-          <Markdown className="!body-2xl-regular !text-text-tertiary" content={welcomeMessage.content} />
+          <Markdown className="!text-text-tertiary !body-2xl-regular" content={welcomeMessage.content} />
         </div>
       </div>
     )
@@ -337,7 +337,7 @@ const ChatWrapper = () => {
               <Avatar
                 avatar={initUserVariables.avatar_url}
                 name={initUserVariables.name || 'user'}
-                size={40}
+                size="xl"
               />
             )
           : undefined
