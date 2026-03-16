@@ -5646,11 +5646,8 @@
     }
   },
   "app/components/share/text-generation/result/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/share/text-generation/run-batch/csv-download/index.tsx": {
