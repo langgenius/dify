@@ -7,7 +7,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url("/fonts/instrument-serif/InstrumentSerif-Italic-Latin.woff2") format("woff2");
+  src: url("./InstrumentSerif-Italic-Latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF,
     U+0100-024F,
