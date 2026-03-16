@@ -730,36 +730,32 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
     # Merge consecutive utterances by the same speaker
     merged_results = []
-    if raw_results:
-        current_speaker, current_text = raw_results[0]
+    current_speaker = None
+    current_text = ""
 
-        for i in range(1, len(raw_results)):
-            spk, txt = raw_results[i]
-            if spk is None:
-                # Flush the current speaker's accumulated text before the speakerless caption
+    for spk, txt in raw_results:
+        if spk is None:
+            # Flush the current speaker's accumulated text before the speakerless caption
+            if current_speaker is not None or current_text:
                 merged_results.append((current_speaker, current_text))
-                merged_results.append((None, txt))
-                # Reset: next caption with a speaker starts fresh
-                current_speaker = None
-                current_text = ""
-                continue
-
-            if current_speaker is None:
-                # Previous caption was speakerless; start a new speaker run
-                current_speaker, current_text = spk, txt
-            elif spk == current_speaker:
-                # If it is the same speaker, merge the utterances (joined by space)
-                current_text += " " + txt
-            else:
-                # If the speaker changes, register the utterance so far and move on
-                merged_results.append((current_speaker, current_text))
-                current_speaker, current_text = spk, txt
-
-        # Add the last element (skip if already flushed by a trailing speakerless caption)
-        if current_speaker is not None or current_text:
+            merged_results.append((None, txt))
+            # Reset: next caption with a speaker starts fresh
+            current_speaker = None
+            current_text = ""
+        elif current_speaker is None:
+            # Previous caption was speakerless (or start of stream); begin a new speaker run
+            current_speaker, current_text = spk, txt
+        elif spk == current_speaker:
+            # If it is the same speaker, merge the utterances (joined by space)
+            current_text += " " + txt
+        else:
+            # If the speaker changes, register the utterance so far and move on
             merged_results.append((current_speaker, current_text))
-    else:
-        merged_results = raw_results
+            current_speaker, current_text = spk, txt
+
+    # Add the last element (skip if already flushed by a trailing speakerless caption)
+    if current_speaker is not None or current_text:
+        merged_results.append((current_speaker, current_text))
 
     # Return the result in the specified format: Speaker "text" style
     formatted = [f'{spk or ""} "{txt}"' for spk, txt in merged_results]
