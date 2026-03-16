@@ -196,6 +196,7 @@ class WeaviateVector(BaseVector):
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
+                            wc.Property(name="doc_type", data_type=wc.DataType.TEXT),
                             wc.Property(name="chunk_index", data_type=wc.DataType.INT),
                         ],
                         vector_config=wc.Configure.Vectors.self_provided(),
@@ -225,6 +226,8 @@ class WeaviateVector(BaseVector):
             to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
         if "doc_id" not in existing:
             to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT))
+        if "doc_type" not in existing:
+            to_add.append(wc.Property(name="doc_type", data_type=wc.DataType.TEXT))
         if "chunk_index" not in existing:
             to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
 

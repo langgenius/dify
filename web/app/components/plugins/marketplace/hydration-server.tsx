@@ -38,10 +38,6 @@ export async function HydrateQueryClient({
   children: React.ReactNode
 }) {
   const dehydratedState = await getDehydratedState(searchParams)
-  // TODO: vinext do not handle hydration boundary well for now.
-  if (!dehydratedState) {
-    return <>{children}</>
-  }
   return (
     <HydrationBoundary state={dehydratedState}>
       {children}

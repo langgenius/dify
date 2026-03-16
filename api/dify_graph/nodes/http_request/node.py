@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import variable_template_parser
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
-    node_type = NodeType.HTTP_REQUEST
+    node_type = BuiltinNodeTypes.HTTP_REQUEST
 
     def __init__(
         self,

@@ -1,5 +1,5 @@
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from dify_graph.nodes.iteration.exc import (
     InvalidIteratorValueError,
@@ -91,7 +91,7 @@ class TestIterationNodeClassAttributes:
 
     def test_node_type(self):
         """Test IterationNode node_type attribute."""
-        assert IterationNode.node_type == NodeType.ITERATION
+        assert IterationNode.node_type == BuiltinNodeTypes.ITERATION
 
     def test_version(self):
         """Test IterationNode version method."""

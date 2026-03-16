@@ -6,9 +6,9 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "aliyun-log-python-sdk~=0.9.37",
     "arize-phoenix-otel~=0.15.0",
-    "azure-identity==1.25.2",
+    "azure-identity==1.25.3",
     "beautifulsoup4==4.14.3",
-    "boto3==1.42.65",
+    "boto3==1.42.68",
     "bs4~=0.0.1",
     "cachetools~=5.3.0",
     "celery~=5.6.2",
@@ -40,7 +40,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.10.37",
-    "litellm==1.82.1",                                  # Pinned to avoid madoka dependency issue
+    "litellm==1.82.2",                                  # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.28.0",
     "opentelemetry-distro==0.49b0",
     "opentelemetry-exporter-otlp==1.28.0",
@@ -65,7 +65,7 @@ dependencies = [
     "pydantic~=2.12.5",
     "pydantic-extra-types~=2.11.0",
     "pydantic-settings~=2.13.1",
-    "pyjwt~=2.11.0",
+    "pyjwt~=2.12.0",
     "pypdfium2==5.6.0",
     "python-docx~=1.2.0",
     "python-dotenv==1.2.2",
@@ -111,7 +111,7 @@ package = false
 dev = [
     "coverage~=7.13.4",
     "dotenv-linter~=0.7.0",
-    "faker~=40.8.0",
+    "faker~=40.11.0",
     "lxml-stubs~=0.5.1",
     "basedpyright~=1.38.2",
     "ruff~=0.15.5",
@@ -226,6 +226,7 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
     "mysql-connector-python>=9.3.0",
+    "holo-search-sdk>=0.4.1",
 ]
 
 [tool.mypy]

@@ -11,7 +11,7 @@ from typing import Annotated, Any, ClassVar, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
 from dify_graph.runtime import VariablePool
 from dify_graph.variables.consts import SELECTORS_LENGTH
@@ -72,8 +72,8 @@ class EmailDeliveryConfig(BaseModel):
     body: str
     debug_mode: bool = False
 
-    def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
-        if not user_id:
+    def with_debug_recipient(self, user_id: str | None) -> "EmailDeliveryConfig":
+        if user_id is None:
             debug_recipients = EmailRecipients(whole_workspace=False, items=[])
             return self.model_copy(update={"recipients": debug_recipients})
         debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
@@ -141,7 +141,7 @@ def apply_debug_email_recipient(
     method: DeliveryChannelConfig,
     *,
     enabled: bool,
-    user_id: str,
+    user_id: str | None,
 ) -> DeliveryChannelConfig:
     if not enabled:
         return method
@@ -149,7 +149,7 @@ def apply_debug_email_recipient(
         return method
     if not method.config.debug_mode:
         return method
-    debug_config = method.config.with_debug_recipient(user_id or "")
+    debug_config = method.config.with_debug_recipient(user_id)
     return method.model_copy(update={"config": debug_config})
 
 
@@ -215,7 +215,7 @@ class UserAction(BaseModel):
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
 
-    type: NodeType = NodeType.HUMAN_INPUT
+    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
     delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
     form_content: str = ""
     inputs: list[FormInput] = Field(default_factory=list)
