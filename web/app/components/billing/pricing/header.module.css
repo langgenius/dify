@@ -1,0 +1,11 @@
+.instrumentSerif {
+  font-family: "Instrument Serif", serif;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif/InstrumentSerif-Italic.woff2") format("woff2");
+}

@@ -3,6 +3,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 import DifyLogo from '../../base/logo/dify-logo'
+import styles from './header.module.css'
 
 type HeaderProps = {
   onClose: () => void
@@ -20,11 +21,11 @@ const Header = ({
           <div className="py-[5px]">
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
-          <span className="bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent">
+          <span className={`bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] italic leading-[1.2] text-transparent ${styles.instrumentSerif}`}>
             {t('plansCommon.title.plans', { ns: 'billing' })}
           </span>
         </div>
-        <p className="system-sm-regular text-text-tertiary">
+        <p className="text-text-tertiary system-sm-regular">
           {t('plansCommon.title.description', { ns: 'billing' })}
         </p>
         <Button
