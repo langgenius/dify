@@ -592,7 +592,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             {
                 "workflow_id": self.workflow_id,
                 "graph_config": self.graph_config,
-                "run_context": self.run_context,
+                "run_context": self.graph_init_params.run_context,
                 "call_depth": self.workflow_call_depth,
             }
         )
