@@ -5,3 +5,6 @@ class AuthType(StrEnum):
     FIRECRAWL = "firecrawl"
     WATERCRAWL = "watercrawl"
     JINA = "jinareader"
+
+
+AuthProvider = AuthType | str

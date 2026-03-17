@@ -30,7 +30,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         allowed_special: Union[Literal["all"], Set[str]] = set(),  # noqa: UP037
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",  # noqa: UP037
         **kwargs: Any,
-    ):
+    ) -> TS:
         def _token_encoder(texts: list[str]) -> list[int]:
             if not texts:
                 return []

@@ -130,8 +130,11 @@ class LindormVectorStore(BaseVector):
                     Field.METADATA_KEY: documents[i].metadata,
                 }
                 if self._using_ugc:
-                    action_header["index"]["routing"] = self._routing
-                    action_values[ROUTING_FIELD] = self._routing
+                    routing = self._routing
+                    if routing is None:
+                        raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
+                    action_header["index"]["routing"] = routing
+                    action_values[ROUTING_FIELD] = routing
 
                 actions.append(action_header)
                 actions.append(action_values)

@@ -2,7 +2,8 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, TypedDict
 
 from sqlalchemy import select
 
@@ -13,7 +14,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -24,19 +25,40 @@ from models.model import UploadFile
 logger = logging.getLogger(__name__)
 
 
+class VectorStoreIndexConfig(TypedDict):
+    class_prefix: str
+
+
+class VectorIndexStructDict(TypedDict):
+    type: VectorType
+    vector_store: VectorStoreIndexConfig
+
+
+class MultimodalEmbeddingPayload(TypedDict):
+    content: str
+    content_type: str
+    file_id: str
+
+
+VectorDocumentInput = Document | ChildDocument | AttachmentDocument
+
+
 class AbstractVectorFactory(ABC):
     @abstractmethod
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(self, dataset: Dataset, attributes: list[str], embeddings: Embeddings) -> BaseVector:
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
-        index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:
+        index_struct_dict: VectorIndexStructDict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name},
+        }
         return index_struct_dict
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None):
+    def __init__(self, dataset: Dataset, attributes: list[str] | None = None) -> None:
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
         self._dataset = dataset
@@ -198,7 +220,7 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: list | None = None, **kwargs):
+    def create(self, texts: Sequence[Document | ChildDocument] | None = None, **kwargs: Any) -> None:
         if texts:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
@@ -212,10 +234,12 @@ class Vector:
                 logger.info(
                     "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
-                self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
+                self._vector_processor.create(
+                    texts=self._normalize_documents(batch), embeddings=batch_embeddings, **kwargs
+                )
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
-    def create_multimodal(self, file_documents: list | None = None, **kwargs):
+    def create_multimodal(self, file_documents: list[AttachmentDocument] | None = None, **kwargs: Any) -> None:
         if file_documents:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
@@ -227,14 +251,16 @@ class Vector:
                 logger.info("Processing batch %s/%s (%s files)", i // batch_size + 1, total_batches, len(batch))
 
                 # Batch query all upload files to avoid N+1 queries
-                attachment_ids = [doc.metadata["doc_id"] for doc in batch]
+                attachment_ids = [doc.metadata["doc_id"] for doc in batch if doc.metadata is not None]
                 stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
                 upload_files = db.session.scalars(stmt).all()
                 upload_file_map = {str(f.id): f for f in upload_files}
 
-                file_base64_list = []
-                real_batch = []
+                file_base64_list: list[dict[str, str]] = []
+                real_batch: list[AttachmentDocument] = []
                 for document in batch:
+                    if document.metadata is None:
+                        continue
                     attachment_id = document.metadata["doc_id"]
                     doc_type = document.metadata["doc_type"]
                     upload_file = upload_file_map.get(attachment_id)
@@ -249,14 +275,20 @@ class Vector:
                             }
                         )
                         real_batch.append(document)
+                if not real_batch:
+                    continue
                 batch_embeddings = self._embeddings.embed_multimodal_documents(file_base64_list)
                 logger.info(
                     "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
-                self._vector_processor.create(texts=real_batch, embeddings=batch_embeddings, **kwargs)
+                self._vector_processor.create(
+                    texts=self._normalize_documents(real_batch),
+                    embeddings=batch_embeddings,
+                    **kwargs,
+                )
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
-    def add_texts(self, documents: list[Document], **kwargs):
+    def add_texts(self, documents: list[Document], **kwargs: Any) -> None:
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
 
@@ -266,10 +298,10 @@ class Vector:
     def text_exists(self, id: str) -> bool:
         return self._vector_processor.text_exists(id)
 
-    def delete_by_ids(self, ids: list[str]):
+    def delete_by_ids(self, ids: list[str]) -> None:
         self._vector_processor.delete_by_ids(ids)
 
-    def delete_by_metadata_field(self, key: str, value: str):
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
@@ -295,7 +327,7 @@ class Vector:
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
-    def delete(self):
+    def delete(self) -> None:
         self._vector_processor.delete()
         # delete collection redis cache
         if self._vector_processor.collection_name:
@@ -325,7 +357,26 @@ class Vector:
 
         return texts
 
-    def __getattr__(self, name):
+    @staticmethod
+    def _normalize_documents(documents: Sequence[VectorDocumentInput]) -> list[Document]:
+        normalized_documents: list[Document] = []
+        for document in documents:
+            if isinstance(document, Document):
+                normalized_documents.append(document)
+                continue
+
+            normalized_documents.append(
+                Document(
+                    page_content=document.page_content,
+                    vector=document.vector,
+                    metadata=document.metadata,
+                    provider=document.provider if isinstance(document, AttachmentDocument) else "dify",
+                )
+            )
+
+        return normalized_documents
+
+    def __getattr__(self, name: str) -> Any:
         if self._vector_processor is not None:
             method = getattr(self._vector_processor, name)
             if callable(method):

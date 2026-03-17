@@ -10,7 +10,7 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 class IndexProcessorFactory:
     """IndexProcessorInit."""
 
-    def __init__(self, index_type: str | None):
+    def __init__(self, index_type: str | None) -> None:
         self._index_type = index_type
 
     def init_index_processor(self) -> BaseIndexProcessor:
@@ -19,11 +19,12 @@ class IndexProcessorFactory:
         if not self._index_type:
             raise ValueError("Index type must be specified.")
 
-        if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
-            return ParagraphIndexProcessor()
-        elif self._index_type == IndexStructureType.QA_INDEX:
-            return QAIndexProcessor()
-        elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
-            return ParentChildIndexProcessor()
-        else:
-            raise ValueError(f"Index type {self._index_type} is not supported.")
+        match self._index_type:
+            case IndexStructureType.PARAGRAPH_INDEX:
+                return ParagraphIndexProcessor()
+            case IndexStructureType.QA_INDEX:
+                return QAIndexProcessor()
+            case IndexStructureType.PARENT_CHILD_INDEX:
+                return ParentChildIndexProcessor()
+            case _:
+                raise ValueError(f"Index type {self._index_type} is not supported.")

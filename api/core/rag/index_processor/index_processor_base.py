@@ -138,18 +138,20 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter  # type: ignore
+        return character_splitter
 
     def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
         """
         multi_model_documents: list[AttachmentDocument] = []
+        if document.metadata is None:
+            return multi_model_documents
         text = document.page_content
         images = self._extract_markdown_images(text)
         if not images:
             return multi_model_documents
-        upload_file_id_list = []
+        upload_file_id_list: list[str] = []
 
         for image in images:
             # Collect all upload_file_ids including duplicates to preserve occurrence count

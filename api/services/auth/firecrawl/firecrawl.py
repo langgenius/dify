@@ -7,7 +7,7 @@ from services.auth.api_key_auth_base import ApiKeyAuthBase
 
 class FirecrawlAuth(ApiKeyAuthBase):
     def __init__(self, credentials: dict):
-        super().__init__(credentials)
+        super().__init__(credentials)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
             raise ValueError("Invalid auth type, Firecrawl auth type must be Bearer")

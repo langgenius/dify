@@ -30,7 +30,7 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
                     For large files, reading only a sample is sufficient and prevents timeout.
     """
 
-    def read_and_detect(filename: str):
+    def read_and_detect(filename: str) -> list[FileEncoding]:
         rst = charset_normalizer.from_path(filename)
         best = rst.best()
         if best is None:

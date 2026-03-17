@@ -1,40 +1,75 @@
 import json
+from collections.abc import Mapping
+from typing import Annotated, TypedDict, TypeVar
 
+from pydantic import StringConstraints, TypeAdapter, ValidationError
 from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
+from services.auth.api_key_auth_base import ApiKeyAuthConfig, ApiKeyAuthCredentials
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
+from services.auth.auth_type import AuthProvider
+
+NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
+ValidatedPayload = TypeVar("ValidatedPayload")
+
+
+class ApiKeyAuthCreateArgs(TypedDict):
+    category: NonEmptyString
+    provider: NonEmptyString
+    credentials: ApiKeyAuthCredentials
+
+
+AUTH_CREDENTIALS_ADAPTER = TypeAdapter(ApiKeyAuthCredentials)
+AUTH_CREATE_ARGS_ADAPTER = TypeAdapter(ApiKeyAuthCreateArgs)
 
 
 class ApiKeyAuthService:
     @staticmethod
-    def get_provider_auth_list(tenant_id: str):
+    def get_provider_auth_list(tenant_id: str) -> list[DataSourceApiKeyAuthBinding]:
         data_source_api_key_bindings = db.session.scalars(
             select(DataSourceApiKeyAuthBinding).where(
                 DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.disabled.is_(False)
             )
         ).all()
-        return data_source_api_key_bindings
+        return list(data_source_api_key_bindings)
 
-    @staticmethod
-    def create_provider_auth(tenant_id: str, args: dict):
-        auth_result = ApiKeyAuthFactory(args["provider"], args["credentials"]).validate_credentials()
+    @classmethod
+    def create_provider_auth(cls, tenant_id: str, args: Mapping[str, object] | ApiKeyAuthCreateArgs) -> None:
+        validated_args = cls.validate_api_key_auth_args(args)
+        auth_result = ApiKeyAuthFactory(
+            validated_args["provider"], validated_args["credentials"]
+        ).validate_credentials()
         if auth_result:
+            stored_config: ApiKeyAuthConfig = {}
+            if "api_key" in validated_args["credentials"]["config"]:
+                stored_config["api_key"] = validated_args["credentials"]["config"]["api_key"]
+            if "base_url" in validated_args["credentials"]["config"]:
+                stored_config["base_url"] = validated_args["credentials"]["config"]["base_url"]
+            stored_credentials: ApiKeyAuthCredentials = {
+                "auth_type": validated_args["credentials"]["auth_type"],
+                "config": stored_config,
+            }
             # Encrypt the api key
-            api_key = encrypter.encrypt_token(tenant_id, args["credentials"]["config"]["api_key"])
-            args["credentials"]["config"]["api_key"] = api_key
+            api_key_value = stored_credentials["config"].get("api_key")
+            if api_key_value is None:
+                raise ValueError("credentials config api_key is required")
+            api_key = encrypter.encrypt_token(tenant_id, api_key_value)
+            stored_credentials["config"]["api_key"] = api_key
 
             data_source_api_key_binding = DataSourceApiKeyAuthBinding(
-                tenant_id=tenant_id, category=args["category"], provider=args["provider"]
+                tenant_id=tenant_id,
+                category=validated_args["category"],
+                provider=validated_args["provider"],
             )
-            data_source_api_key_binding.credentials = json.dumps(args["credentials"], ensure_ascii=False)
+            data_source_api_key_binding.credentials = json.dumps(stored_credentials, ensure_ascii=False)
             db.session.add(data_source_api_key_binding)
             db.session.commit()
 
     @staticmethod
-    def get_auth_credentials(tenant_id: str, category: str, provider: str):
+    def get_auth_credentials(tenant_id: str, category: str, provider: AuthProvider) -> ApiKeyAuthCredentials | None:
         data_source_api_key_bindings = (
             db.session.query(DataSourceApiKeyAuthBinding)
             .where(
@@ -49,11 +84,11 @@ class ApiKeyAuthService:
             return None
         if not data_source_api_key_bindings.credentials:
             return None
-        credentials = json.loads(data_source_api_key_bindings.credentials)
-        return credentials
+        raw_credentials = json.loads(data_source_api_key_bindings.credentials)
+        return ApiKeyAuthService._validate_credentials_payload(raw_credentials)
 
     @staticmethod
-    def delete_provider_auth(tenant_id: str, binding_id: str):
+    def delete_provider_auth(tenant_id: str, binding_id: str) -> None:
         data_source_api_key_binding = (
             db.session.query(DataSourceApiKeyAuthBinding)
             .where(DataSourceApiKeyAuthBinding.tenant_id == tenant_id, DataSourceApiKeyAuthBinding.id == binding_id)
@@ -64,14 +99,16 @@ class ApiKeyAuthService:
             db.session.commit()
 
     @classmethod
-    def validate_api_key_auth_args(cls, args):
-        if "category" not in args or not args["category"]:
-            raise ValueError("category is required")
-        if "provider" not in args or not args["provider"]:
-            raise ValueError("provider is required")
-        if "credentials" not in args or not args["credentials"]:
-            raise ValueError("credentials is required")
-        if not isinstance(args["credentials"], dict):
-            raise ValueError("credentials must be a dictionary")
-        if "auth_type" not in args["credentials"] or not args["credentials"]["auth_type"]:
-            raise ValueError("auth_type is required")
+    def validate_api_key_auth_args(cls, args: Mapping[str, object] | None) -> ApiKeyAuthCreateArgs:
+        return cls._validate_payload(AUTH_CREATE_ARGS_ADAPTER, args)
+
+    @staticmethod
+    def _validate_credentials_payload(raw_credentials: object) -> ApiKeyAuthCredentials:
+        return ApiKeyAuthService._validate_payload(AUTH_CREDENTIALS_ADAPTER, raw_credentials)
+
+    @staticmethod
+    def _validate_payload(adapter: TypeAdapter[ValidatedPayload], payload: object) -> ValidatedPayload:
+        try:
+            return adapter.validate_python(payload)
+        except ValidationError as exc:
+            raise ValueError(exc.errors()[0]["msg"]) from exc

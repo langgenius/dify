@@ -7,7 +7,9 @@ from core.rag.models.document import Document
 
 
 class BaseVector(ABC):
-    def __init__(self, collection_name: str):
+    _collection_name: str
+
+    def __init__(self, collection_name: str) -> None:
         self._collection_name = collection_name
 
     @abstractmethod
@@ -30,7 +32,7 @@ class BaseVector(ABC):
     def delete_by_ids(self, ids: list[str]) -> None:
         raise NotImplementedError
 
-    def get_ids_by_metadata_field(self, key: str, value: str):
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod
@@ -63,5 +65,5 @@ class BaseVector(ABC):
         return [text.metadata["doc_id"] for text in texts if text.metadata and "doc_id" in text.metadata]
 
     @property
-    def collection_name(self):
+    def collection_name(self) -> str:
         return self._collection_name

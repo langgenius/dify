@@ -121,7 +121,7 @@ import pytest
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, DatasetDocument, DatasetProcessRule, DocumentSegment
 from services.vector_service import VectorService
 
@@ -1299,6 +1299,68 @@ class TestVector:
         assert mock_embeddings.embed_documents.call_count == 3
 
         assert mock_vector_processor.create.call_count == 3
+
+    @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
+    @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
+    def test_vector_create_normalizes_child_documents(self, mock_get_embeddings, mock_init_vector):
+        dataset = VectorServiceTestDataFactory.create_dataset_mock()
+        documents = [
+            ChildDocument(page_content="Child content", metadata={"doc_id": "child-1", "dataset_id": "dataset-123"})
+        ]
+
+        mock_embeddings = Mock()
+        mock_embeddings.embed_documents = Mock(return_value=[[0.1] * 1536])
+        mock_get_embeddings.return_value = mock_embeddings
+
+        mock_vector_processor = VectorServiceTestDataFactory.create_vector_processor_mock()
+        mock_init_vector.return_value = mock_vector_processor
+
+        vector = Vector(dataset=dataset)
+
+        vector.create(texts=documents)
+
+        create_call = mock_vector_processor.create.call_args.kwargs
+        normalized_document = create_call["texts"][0]
+        assert isinstance(normalized_document, Document)
+        assert normalized_document.page_content == "Child content"
+        assert normalized_document.metadata["doc_id"] == "child-1"
+
+    @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
+    @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
+    @patch("core.rag.datasource.vdb.vector_factory.storage")
+    @patch("core.rag.datasource.vdb.vector_factory.db.session")
+    def test_vector_create_multimodal_normalizes_attachment_documents(
+        self, mock_session, mock_storage, mock_get_embeddings, mock_init_vector
+    ):
+        dataset = VectorServiceTestDataFactory.create_dataset_mock()
+        file_document = AttachmentDocument(
+            page_content="Attachment content",
+            provider="custom-provider",
+            metadata={"doc_id": "file-1", "doc_type": "image/png"},
+        )
+        upload_file = Mock(id="file-1", key="upload-key")
+
+        mock_scalars = Mock()
+        mock_scalars.all.return_value = [upload_file]
+        mock_session.scalars.return_value = mock_scalars
+        mock_storage.load_once.return_value = b"binary-content"
+
+        mock_embeddings = Mock()
+        mock_embeddings.embed_multimodal_documents = Mock(return_value=[[0.2] * 1536])
+        mock_get_embeddings.return_value = mock_embeddings
+
+        mock_vector_processor = VectorServiceTestDataFactory.create_vector_processor_mock()
+        mock_init_vector.return_value = mock_vector_processor
+
+        vector = Vector(dataset=dataset)
+
+        vector.create_multimodal(file_documents=[file_document])
+
+        create_call = mock_vector_processor.create.call_args.kwargs
+        normalized_document = create_call["texts"][0]
+        assert isinstance(normalized_document, Document)
+        assert normalized_document.provider == "custom-provider"
+        assert normalized_document.metadata["doc_id"] == "file-1"
 
     # ========================================================================
     # Tests for Vector.add_texts

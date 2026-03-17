@@ -8,7 +8,7 @@ class BaseStorage(ABC):
     """Interface for file storage."""
 
     @abstractmethod
-    def save(self, filename: str, data: bytes):
+    def save(self, filename: str, data: bytes) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -16,7 +16,7 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_stream(self, filename: str) -> Generator:
+    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
         raise NotImplementedError
 
     @abstractmethod
@@ -28,10 +28,10 @@ class BaseStorage(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, filename: str):
+    def delete(self, filename: str) -> None:
         raise NotImplementedError
 
-    def scan(self, path, files=True, directories=False) -> list[str]:
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         """
         Scan files and directories in the given path.
         This method is implemented only in some storage backends.
