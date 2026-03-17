@@ -601,6 +601,9 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         if self._form_repository is not None:
             return self._form_repository
 
+        return self._build_form_repository()
+
+    def _build_form_repository(self) -> HumanInputFormRepository:
         invoke_source = self._invoke_source()
         return HumanInputFormRepositoryImpl(
             tenant_id=self._run_context.tenant_id,

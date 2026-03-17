@@ -15,6 +15,7 @@ from core.workflow.human_input_compat import (
     EmailRecipients,
     ExternalRecipient,
     InteractiveSurfaceDeliveryMethod,
+    is_human_input_webapp_enabled,
 )
 from dify_graph.nodes.human_input.entities import FormDefinition, HumanInputNodeData
 from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
@@ -406,7 +407,7 @@ class HumanInputFormRepositoryImpl:
         if self._invoke_source == "debugger":
             return True
         if self._invoke_source == "explore":
-            return form_config.is_webapp_enabled()
+            return is_human_input_webapp_enabled(form_config)
         return False
 
     def _should_create_backstage_recipient(self, *, form_kind: HumanInputFormKind) -> bool:

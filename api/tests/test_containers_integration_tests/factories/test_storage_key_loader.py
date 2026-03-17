@@ -311,7 +311,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         with pytest.raises(ValueError) as context:
             self.loader.load_storage_keys([file_other])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert "Upload file not found for id:" in str(context.value)
 
         # Current tenant's file should still work
         self.loader.load_storage_keys([file_current])
@@ -335,7 +335,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         with pytest.raises(ValueError) as context:
             self.loader.load_storage_keys([file_current, file_other])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert "Upload file not found for id:" in str(context.value)
 
     def test_load_storage_keys_duplicate_file_ids(self):
         """Test handling of duplicate file IDs in the batch."""

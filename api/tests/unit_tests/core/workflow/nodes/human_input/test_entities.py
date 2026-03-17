@@ -305,8 +305,9 @@ class TestRecipients:
         with pytest.raises(ValidationError):
             MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")
 
-        with pytest.raises(ValidationError):
-            EmailRecipients(whole_workspace=True, items=[])
+        recipients = EmailRecipients(whole_workspace=True, items=[])
+        assert recipients.include_bound_group is True
+        assert recipients.items == []
 
 
 class TestHumanInputNodeVariableResolution:

@@ -19,6 +19,10 @@ VariableValue = Union[str, int, float, dict[str, object], list[object], File]
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
 
+def _default_variable_dictionary() -> defaultdict[str, dict[str, Variable]]:
+    return defaultdict(dict)
+
+
 class VariablePool(BaseModel):
     _SYSTEM_VARIABLE_NODE_ID = "sys"
     _ENVIRONMENT_VARIABLE_NODE_ID = "env"
@@ -31,7 +35,7 @@ class VariablePool(BaseModel):
     # elements of the selector except the first one.
     variable_dictionary: defaultdict[str, Annotated[dict[str, Variable], Field(default_factory=dict)]] = Field(
         description="Variables mapping",
-        default_factory=lambda: defaultdict(dict),
+        default_factory=_default_variable_dictionary,
     )
     system_variables: Sequence[Variable] = Field(default_factory=tuple, exclude=True)
     environment_variables: Sequence[Variable] = Field(default_factory=tuple, exclude=True)
