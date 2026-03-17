@@ -8,6 +8,7 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
+import MonacoImportMap from './components/base/modern-monaco/import-map'
 import { ToastProvider } from './components/base/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import BrowserInitializer from './components/browser-initializer'
@@ -37,6 +38,7 @@ const LocaleLayout = async ({
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
+        <MonacoImportMap />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#1C64F2" />
         <meta name="mobile-web-app-capable" content="yes" />
