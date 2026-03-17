@@ -898,22 +898,7 @@ class DraftVariableSaver:
         for name, value in output.items():
             value_seg = _build_segment_for_serialized_values(value)
             node_id, name = self._normalize_variable_for_start_node(name)
-            if node_id == self._node_id:
-                # Variables without a reserved prefix belong to the Start node itself.
-                draft_vars.append(
-                    WorkflowDraftVariable.new_node_variable(
-                        app_id=self._app_id,
-                        user_id=self._user.id,
-                        node_id=self._node_id,
-                        name=name,
-                        node_execution_id=self._node_execution_id,
-                        value=value_seg,
-                        visible=True,
-                        editable=True,
-                    )
-                )
-                has_non_sys_variables = True
-            elif node_id == SYSTEM_VARIABLE_NODE_ID:
+            if node_id == SYSTEM_VARIABLE_NODE_ID:
                 if name == SystemVariableKey.FILES:
                     # Here we know the type of variable must be `array[file]`, we
                     # just build files from the value.
@@ -947,6 +932,7 @@ class DraftVariableSaver:
                         value=value_seg,
                     )
                 )
+                has_non_sys_variables = True
             else:
                 draft_vars.append(
                     WorkflowDraftVariable.new_node_variable(
@@ -960,6 +946,7 @@ class DraftVariableSaver:
                         editable=self._should_variable_be_editable(node_id, name),
                     )
                 )
+                has_non_sys_variables = True
         if not has_non_sys_variables:
             draft_vars.append(self._create_dummy_output_variable())
         return draft_vars

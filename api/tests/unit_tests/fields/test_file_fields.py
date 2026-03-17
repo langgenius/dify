@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from core.workflow.file_reference import build_file_reference
 from dify_graph.file import File, FileTransferMethod, FileType
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
@@ -91,12 +92,13 @@ def test_remote_file_info_and_upload_config() -> None:
 )
 def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPatch, formatter) -> None:
     monkeypatch.setattr(File, "generate_url", lambda self, for_external=True: "https://preview.example/file")
+    reference = build_file_reference(record_id="upload-1", storage_key="files/source.pdf")
 
     file = File(
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         remote_url="https://storage.example/source.pdf",
-        reference="dify-file-ref:opaque-upload-1",
+        reference=reference,
         filename="source.pdf",
         extension=".pdf",
         mime_type="application/pdf",
@@ -105,7 +107,7 @@ def test_file_formatters_preserve_legacy_file_keys(monkeypatch: pytest.MonkeyPat
 
     serialized = formatter(file)
 
-    assert serialized["reference"] == "dify-file-ref:opaque-upload-1"
-    assert serialized["related_id"] == "dify-file-ref:opaque-upload-1"
+    assert serialized["reference"] == reference
+    assert serialized["related_id"] == "upload-1"
     assert serialized["remote_url"] == "https://storage.example/source.pdf"
     assert serialized["url"] == "https://preview.example/file"

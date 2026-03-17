@@ -227,6 +227,7 @@ def test_build_segment_array_file_single_file():
     """Test building ArrayFileSegment from list with single file."""
     file = File(
         id="test_file_id",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
@@ -246,6 +247,7 @@ def test_build_segment_array_file_multiple_files():
     """Test building ArrayFileSegment from list with multiple files."""
     file1 = File(
         id="test_file_id_1",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file1.png",
@@ -256,6 +258,7 @@ def test_build_segment_array_file_multiple_files():
     )
     file2 = File(
         id="test_file_id_2",
+        tenant_id="test_tenant_id",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_relation_id",
@@ -302,6 +305,7 @@ def test_build_segment_array_any_mixed_with_files():
     """Test building ArrayAnySegment from list with files and other types."""
     file = File(
         id="test_file_id",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
@@ -330,6 +334,7 @@ def test_build_segment_array_file_properties():
     """Test ArrayFileSegment properties and methods."""
     file1 = File(
         id="test_file_id_1",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file1.png",
@@ -340,6 +345,7 @@ def test_build_segment_array_file_properties():
     )
     file2 = File(
         id="test_file_id_2",
+        tenant_id="test_tenant_id",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file2.txt",
@@ -388,6 +394,7 @@ def test_build_segment_file_array_with_different_file_types():
     """Test ArrayFileSegment with different file types."""
     image_file = File(
         id="image_id",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/image.png",
@@ -399,6 +406,7 @@ def test_build_segment_file_array_with_different_file_types():
 
     video_file = File(
         id="video_id",
+        tenant_id="test_tenant_id",
         type=FileType.VIDEO,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="video_relation_id",
@@ -410,6 +418,7 @@ def test_build_segment_file_array_with_different_file_types():
 
     audio_file = File(
         id="audio_id",
+        tenant_id="test_tenant_id",
         type=FileType.AUDIO,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="audio_relation_id",
@@ -447,6 +456,7 @@ def _generate_file(draw) -> File:
         url = "https://test.example.com/test-file"
         file = File(
             id="test_file_id",
+            tenant_id="test_tenant_id",
             type=file_type,
             transfer_method=transfer_method,
             remote_url=url,
@@ -461,6 +471,7 @@ def _generate_file(draw) -> File:
 
         file = File(
             id="test_file_id",
+            tenant_id="test_tenant_id",
             type=file_type,
             transfer_method=transfer_method,
             related_id=str(relation_id),
@@ -508,6 +519,7 @@ def test_build_segment_type_for_scalar():
 
     file = File(
         id="test_file_id",
+        tenant_id="test_tenant_id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
@@ -564,6 +576,7 @@ class TestBuildSegmentWithType:
         """Test building a file segment with correct type."""
         test_file = File(
             id="test_file_id",
+            tenant_id="test_tenant_id",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://test.example.com/test-file.png",

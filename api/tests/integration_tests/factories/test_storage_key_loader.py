@@ -118,6 +118,7 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         return File(
             id=str(uuid4()),  # Generate new UUID for File.id
+            tenant_id=tenant_id,
             type=FileType.DOCUMENT,
             transfer_method=transfer_method,
             related_id=file_related_id,
@@ -191,19 +192,16 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Should not raise any exceptions
         self.loader.load_storage_keys([])
 
-    def test_load_storage_keys_tenant_mismatch(self):
-        """Test tenant_id validation."""
-        # Create file with different tenant_id
+    def test_load_storage_keys_ignores_legacy_file_tenant_id(self):
+        """Legacy file tenant_id should not override the loader tenant scope."""
         upload_file = self._create_upload_file()
         file = self._create_file(
             related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=str(uuid4())
         )
 
-        # Should raise ValueError for tenant mismatch
-        with pytest.raises(ValueError) as context:
-            self.loader.load_storage_keys([file])
+        self.loader.load_storage_keys([file])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert file._storage_key == upload_file.key
 
     def test_load_storage_keys_missing_file_id(self):
         """Test with None file.related_id."""

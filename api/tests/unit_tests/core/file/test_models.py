@@ -1,11 +1,10 @@
-import pytest
-
 from dify_graph.file import File, FileTransferMethod, FileType
 
 
 def test_file():
     file = File(
         id="test-file",
+        tenant_id="test-tenant-id",
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="test-related-id",
@@ -19,13 +18,14 @@ def test_file():
     assert file.type == FileType.IMAGE
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.related_id == "test-related-id"
+    assert file.storage_key == "test-storage-key"
     assert file.filename == "image.png"
     assert file.extension == ".png"
     assert file.mime_type == "image/png"
     assert file.size == 67
 
 
-def test_file_model_validate_rejects_removed_tenant_id():
+def test_file_model_validate_accepts_legacy_tenant_id():
     data = {
         "id": "test-file",
         "tenant_id": "test-tenant-id",
@@ -44,5 +44,8 @@ def test_file_model_validate_rejects_removed_tenant_id():
         "datasource_file_id": "datasource-file-789",
     }
 
-    with pytest.raises(TypeError, match="tenant_id"):
-        File.model_validate(data)
+    file = File.model_validate(data)
+
+    assert file.related_id == "test-related-id"
+    assert file.storage_key == "test-storage-key"
+    assert "tenant_id" not in file.model_dump()

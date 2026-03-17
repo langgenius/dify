@@ -35,6 +35,7 @@ def create_test_file(
 ) -> File:
     """Factory function to create File objects for testing."""
     return File(
+        tenant_id="test-tenant",
         type=file_type,
         transfer_method=transfer_method,
         filename=filename,

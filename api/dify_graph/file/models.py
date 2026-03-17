@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -10,6 +12,8 @@ from dify_graph.model_runtime.entities.message_entities import ImagePromptMessag
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
+
+_FILE_REFERENCE_PREFIX = "dify-file-ref:"
 
 
 def sign_tool_file(*, tool_file_id: str, extension: str, for_external: bool = True) -> str:
@@ -43,6 +47,31 @@ class FileUploadConfig(BaseModel):
     number_limits: int = 0
 
 
+def _parse_reference(reference: str | None) -> tuple[str | None, str | None]:
+    """Best-effort parser for legacy aliases backed by the opaque file reference."""
+    if not reference:
+        return None, None
+
+    if not reference.startswith(_FILE_REFERENCE_PREFIX):
+        return reference, None
+
+    encoded_payload = reference.removeprefix(_FILE_REFERENCE_PREFIX)
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
+    except (ValueError, json.JSONDecodeError):
+        return reference, None
+
+    record_id = payload.get("record_id")
+    if not isinstance(record_id, str) or not record_id:
+        return reference, None
+
+    storage_key = payload.get("storage_key")
+    if not isinstance(storage_key, str):
+        storage_key = None
+
+    return record_id, storage_key
+
+
 class File(BaseModel):
     """Graph-owned file reference.
 
@@ -67,11 +96,13 @@ class File(BaseModel):
     extension: str | None = Field(default=None, description="File extension, should contain dot")
     mime_type: str | None = None
     size: int = -1
+    _storage_key: str
 
     def __init__(
         self,
         *,
         id: str | None = None,
+        tenant_id: str | None = None,
         type: FileType,
         transfer_method: FileTransferMethod,
         remote_url: str | None = None,
@@ -89,10 +120,11 @@ class File(BaseModel):
         upload_file_id: str | None = None,
         datasource_file_id: str | None = None,
     ):
-        legacy_record_id = tool_file_id or upload_file_id or datasource_file_id or related_id
+        legacy_record_id = related_id or tool_file_id or upload_file_id or datasource_file_id
         normalized_reference = reference
         if normalized_reference is None and legacy_record_id is not None:
             normalized_reference = str(legacy_record_id)
+        _, parsed_storage_key = _parse_reference(normalized_reference)
 
         super().__init__(
             id=id,
@@ -107,12 +139,15 @@ class File(BaseModel):
             dify_model_identity=dify_model_identity,
             url=url,
         )
+        # Accept legacy constructor fields without promoting them back into the graph model.
+        _ = tenant_id
+        self._storage_key = storage_key or parsed_storage_key or ""
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump(mode="json")
         return {
             **data,
-            "related_id": self.reference,
+            "related_id": self.related_id,
             "url": self.generate_url(),
         }
 
@@ -161,7 +196,8 @@ class File(BaseModel):
 
     @property
     def related_id(self) -> str | None:
-        return self.reference
+        record_id, _ = _parse_reference(self.reference)
+        return record_id
 
     @related_id.setter
     def related_id(self, value: str | None) -> None:
@@ -169,4 +205,9 @@ class File(BaseModel):
 
     @property
     def storage_key(self) -> str:
-        return ""
+        _, storage_key = _parse_reference(self.reference)
+        return storage_key or self._storage_key
+
+    @storage_key.setter
+    def storage_key(self, value: str) -> None:
+        self._storage_key = value

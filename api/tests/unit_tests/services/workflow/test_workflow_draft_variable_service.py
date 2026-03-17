@@ -264,7 +264,7 @@ class TestDraftVariableSaver:
         mock_batch_upsert.assert_called_once()
         draft_vars = mock_batch_upsert.call_args[0][1]
 
-        assert len(draft_vars) == 4
+        assert len(draft_vars) == 3
 
         env_var = next(v for v in draft_vars if v.node_id == ENVIRONMENT_VARIABLE_NODE_ID)
         assert env_var.name == "API_KEY"

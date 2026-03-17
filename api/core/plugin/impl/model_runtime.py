@@ -481,9 +481,12 @@ class PluginModelRuntime(ModelRuntime):
     ) -> str:
         cache_key = f"{self.tenant_id}:{provider}:{model_type.value}:{model}"
         sorted_credentials = sorted(credentials.items()) if credentials else []
-        return cache_key + ":".join(
+        if not sorted_credentials:
+            return cache_key
+        hashed_credentials = ":".join(
             [hashlib.md5(f"{key}:{value}".encode()).hexdigest() for key, value in sorted_credentials]
         )
+        return f"{cache_key}:{hashed_credentials}"
 
     def _split_provider(self, provider: str) -> tuple[str, str]:
         provider_id = ModelProviderID(provider)
