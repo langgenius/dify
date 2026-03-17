@@ -587,6 +587,8 @@
   "theme.dark": "escuro",
   "theme.light": "luz",
   "theme.theme": "Tema",
+  "toast.close": "Dispensar notificação",
+  "toast.notifications": "Notificações",
   "unit.char": "caracteres",
   "userProfile.about": "Sobre",
   "userProfile.community": "Comunidade",

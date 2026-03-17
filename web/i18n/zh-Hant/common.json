@@ -587,6 +587,8 @@
   "theme.dark": "黑暗",
   "theme.light": "光",
   "theme.theme": "主題",
+  "toast.close": "關閉通知",
+  "toast.notifications": "通知",
   "unit.char": "個字元",
   "userProfile.about": "關於",
   "userProfile.community": "社群",

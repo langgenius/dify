@@ -587,6 +587,8 @@
   "theme.dark": "koyu",
   "theme.light": "ışık",
   "theme.theme": "Tema",
+  "toast.close": "Bildirimi kapat",
+  "toast.notifications": "Bildirimler",
   "unit.char": "karakter",
   "userProfile.about": "Hakkında",
   "userProfile.community": "Topluluk",

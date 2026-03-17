@@ -587,6 +587,8 @@
   "theme.dark": "întunecat",
   "theme.light": "lumina",
   "theme.theme": "Temă",
+  "toast.close": "Închide notificarea",
+  "toast.notifications": "Notificări",
   "unit.char": "caractere",
   "userProfile.about": "Despre",
   "userProfile.community": "Comunitate",

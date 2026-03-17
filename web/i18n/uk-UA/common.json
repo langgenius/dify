@@ -587,6 +587,8 @@
   "theme.dark": "темний",
   "theme.light": "світло",
   "theme.theme": "Тема",
+  "toast.close": "Закрити сповіщення",
+  "toast.notifications": "Сповіщення",
   "unit.char": "символів",
   "userProfile.about": "Про нас",
   "userProfile.community": "Спільнота",
