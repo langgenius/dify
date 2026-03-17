@@ -4,6 +4,7 @@ import logging
 
 from core.sandbox.sandbox import Sandbox
 from core.skill import SkillAttrs
+from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.skill_manager import SkillManager
 
 from .base import SandboxInitializer
@@ -31,11 +32,8 @@ class SkillInitializer(SandboxInitializer):
             self._assets_id,
         )
         if bundle is None:
-            raise ValueError(
-                f"No skill bundle found for tenant_id={self._tenant_id},"
-                f"app_id={self._app_id}, "
-                f"assets_id={self._assets_id} "
-            )
+            # Create empty bundle for apps without skills
+            bundle = SkillBundle(assets_id=self._assets_id)
 
         sandbox.attrs.set(
             SkillAttrs.BUNDLE,
