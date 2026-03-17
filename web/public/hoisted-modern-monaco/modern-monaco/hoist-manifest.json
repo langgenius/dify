@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-03-17T02:53:27.971Z",
+  "modernMonacoVersion": "0.4.0",
+  "tmGrammarsVersion": "1.31.2",
+  "tmThemesVersion": "1.12.1",
+  "typescriptVersion": "5.9.3",
+  "localTypeScriptPath": "/hoisted-modern-monaco/typescript@5.9.3/es2022/typescript.mjs",
+  "themes": [
+    "light-plus",
+    "dark-plus"
+  ],
+  "languages": [
+    "javascript",
+    "json",
+    "python",
+    "html",
+    "css"
+  ],
+  "importMap": {
+    "modern-monaco/editor-core": "/hoisted-modern-monaco/modern-monaco/editor-core.mjs",
+    "modern-monaco/lsp": "/hoisted-modern-monaco/modern-monaco/lsp/index.mjs"
+  }
+}

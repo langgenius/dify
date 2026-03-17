@@ -36,6 +36,7 @@
     "dev:vinext": "vinext dev",
     "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
     "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
+    "hoist:modern-monaco": "tsx ./scripts/hoist-modern-monaco.ts",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
     "lint": "eslint --cache --concurrency=auto",

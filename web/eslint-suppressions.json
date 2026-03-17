@@ -897,12 +897,6 @@
   "app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
