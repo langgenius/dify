@@ -2,11 +2,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 
 
 class DocumentExtractorNodeData(BaseNodeData):
-    type: NodeType = NodeType.DOCUMENT_EXTRACTOR
+    type: NodeType = BuiltinNodeTypes.DOCUMENT_EXTRACTOR
     variable_selector: Sequence[str]
 
 

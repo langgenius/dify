@@ -22,7 +22,7 @@ from controllers.console.extension import (
 )
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
-    delattr(builtins, "MethodView")
+    del builtins.MethodView
 from models.account import AccountStatus
 from models.api_based_extension import APIBasedExtension
 

@@ -29,7 +29,7 @@ from libs.uuid_utils import uuidv7
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
 from .engine import db
-from .enums import CreatorUserRole, MessageStatus
+from .enums import AppMCPServerStatus, AppStatus, ConversationStatus, CreatorUserRole, MessageStatus
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
@@ -343,7 +343,9 @@ class App(Base):
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
-    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"))
+    status: Mapped[AppStatus] = mapped_column(
+        EnumText(AppStatus, length=255), server_default=sa.text("'normal'"), default=AppStatus.NORMAL
+    )
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
     api_rpm: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"))
@@ -1007,7 +1009,9 @@ class Conversation(Base):
     introduction = mapped_column(LongText)
     system_instruction = mapped_column(LongText)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    status: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[ConversationStatus] = mapped_column(
+        EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL
+    )
 
     # The `invoke_from` records how the conversation is created.
     #
@@ -1771,7 +1775,9 @@ class MessageFile(TypeBase):
     )
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    transfer_method: Mapped[FileTransferMethod] = mapped_column(String(255), nullable=False)
+    transfer_method: Mapped[FileTransferMethod] = mapped_column(
+        EnumText(FileTransferMethod, length=255), nullable=False
+    )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
@@ -1981,7 +1987,9 @@ class AppMCPServer(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
+    status: Mapped[AppMCPServerStatus] = mapped_column(
+        EnumText(AppMCPServerStatus, length=255), nullable=False, server_default=sa.text("'normal'")
+    )
     parameters: Mapped[str] = mapped_column(LongText, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -2035,7 +2043,9 @@ class Site(Base):
     customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
+    status: Mapped[AppStatus] = mapped_column(
+        EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
+    )
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)

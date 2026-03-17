@@ -860,8 +860,8 @@ class TestWorkflowService:
         # Act
         try:
             result = workflow_service.get_default_block_config(node_type=invalid_node_type)
-            # If we get here, the service should return None for invalid types
-            assert result is None
+            # If we get here, the service should return an empty config for invalid types.
+            assert result == {}
         except ValueError:
             # It's also acceptable for the service to raise a ValueError for invalid types
             pass
@@ -1428,14 +1428,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunSucceededEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.START
+            mock_node.node_type = BuiltinNodeTypes.START
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1452,7 +1452,7 @@ class TestWorkflowService:
             mock_event = NodeRunSucceededEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_run_result=mock_result,
                 start_at=datetime.now(),
             )
@@ -1473,9 +1473,9 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from dify_graph.enums import NodeType
+        from dify_graph.enums import BuiltinNodeTypes
 
-        assert result.node_type == NodeType.START  # Should match the mock node type
+        assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
         from dify_graph.enums import WorkflowNodeExecutionStatus
@@ -1503,14 +1503,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunFailedEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.LLM
+            mock_node.node_type = BuiltinNodeTypes.LLM
             mock_node.title = "Test Node"
             mock_node.error_strategy = None
 
@@ -1525,7 +1525,7 @@ class TestWorkflowService:
             mock_event = NodeRunFailedEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.LLM,
+                node_type=BuiltinNodeTypes.LLM,
                 node_run_result=mock_result,
                 error="Test error message",
                 start_at=datetime.now(),
@@ -1572,14 +1572,14 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+            from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
             from dify_graph.graph_events import NodeRunFailedEvent
             from dify_graph.node_events import NodeRunResult
             from dify_graph.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
-            mock_node.node_type = NodeType.TOOL
+            mock_node.node_type = BuiltinNodeTypes.TOOL
             mock_node.title = "Test Node"
             mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
             mock_node.default_value_dict = {"default_output": "default_value"}
@@ -1595,7 +1595,7 @@ class TestWorkflowService:
             mock_event = NodeRunFailedEvent(
                 id=str(uuid.uuid4()),
                 node_id=node_id,
-                node_type=NodeType.TOOL,
+                node_type=BuiltinNodeTypes.TOOL,
                 node_run_result=mock_result,
                 error="Test error message",
                 start_at=datetime.now(),

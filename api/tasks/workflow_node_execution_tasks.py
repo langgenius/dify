@@ -103,7 +103,7 @@ def _create_node_execution_from_domain(
     node_execution.index = execution.index
     node_execution.predecessor_node_id = execution.predecessor_node_id
     node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
+    node_execution.node_type = execution.node_type
     node_execution.title = execution.title
     node_execution.node_execution_id = execution.node_execution_id
 

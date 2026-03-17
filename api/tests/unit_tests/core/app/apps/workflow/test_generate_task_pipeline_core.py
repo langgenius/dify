@@ -44,7 +44,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from models.enums import CreatorUserRole
@@ -190,7 +190,7 @@ class TestWorkflowGenerateTaskPipeline:
         event = QueueNodeSucceededEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},
@@ -243,7 +243,7 @@ class TestWorkflowGenerateTaskPipeline:
         event = QueueNodeFailedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},
@@ -300,7 +300,7 @@ class TestWorkflowGenerateTaskPipeline:
         iter_start = QueueIterationStartEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -309,14 +309,14 @@ class TestWorkflowGenerateTaskPipeline:
             index=1,
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             node_run_index=1,
         )
         iter_done = QueueIterationCompletedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -324,7 +324,7 @@ class TestWorkflowGenerateTaskPipeline:
         loop_start = QueueLoopStartEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -333,14 +333,14 @@ class TestWorkflowGenerateTaskPipeline:
             index=1,
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             node_run_index=1,
         )
         loop_done = QueueLoopCompletedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -348,7 +348,7 @@ class TestWorkflowGenerateTaskPipeline:
         filled_event = QueueHumanInputFormFilledEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="title",
             rendered_content="content",
             action_id="action",
@@ -356,7 +356,7 @@ class TestWorkflowGenerateTaskPipeline:
         )
         timeout_event = QueueHumanInputFormTimeoutEvent(
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="title",
             expiration_time=datetime.utcnow(),
         )
@@ -645,7 +645,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_title="title",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
             start_at=datetime.utcnow(),
             provider_type="provider",
@@ -657,7 +657,7 @@ class TestWorkflowGenerateTaskPipeline:
             node_execution_id="exec",
             node_id="node",
             node_title="title",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_run_index=1,
             start_at=datetime.utcnow(),
             provider_type="provider",
@@ -683,7 +683,7 @@ class TestWorkflowGenerateTaskPipeline:
         event = QueueNodeExceptionEvent(
             node_execution_id="exec-id",
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},
@@ -855,7 +855,7 @@ class TestWorkflowGenerateTaskPipeline:
         event = QueueNodeSucceededEvent(
             node_execution_id="exec-id",
             node_id="node-id",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             in_loop_id="loop-id",
             start_at=datetime.utcnow(),
             process_data={"k": "v"},
