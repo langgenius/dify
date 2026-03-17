@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, RunContextDict
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.file import File, FileUploadConfig
 from dify_graph.model_runtime.entities.model_entities import AIModelEntity
 
@@ -59,15 +59,15 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
-    extra_context: RunContextDict | None = None,
-) -> RunContextDict:
+    extra_context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
 
     `extra_context` can carry user-defined context keys. The reserved `_dify`
     payload is always overwritten by this function to keep one canonical source.
     """
-    run_context: RunContextDict = {}
+    run_context: dict[str, Any] = {}
     if extra_context:
         run_context.update(extra_context)
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
