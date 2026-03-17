@@ -2,7 +2,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import TypeAlias
+from typing import TypeAlias, cast
 from urllib.parse import unquote
 
 from configs import dify_config
@@ -120,8 +120,8 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        assert upload_file is not None, "upload_file is required for PDF extraction"
-                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        pdf_upload_file = cast(UploadFile, upload_file)
+                        extractor = PdfExtractor(file_path, pdf_upload_file.tenant_id, pdf_upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -131,8 +131,8 @@ class ExtractProcessor:
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        assert upload_file is not None, "upload_file is required for DOCX extraction"
-                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        docx_upload_file = cast(UploadFile, upload_file)
+                        extractor = WordExtractor(file_path, docx_upload_file.tenant_id, docx_upload_file.created_by)
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
@@ -158,15 +158,15 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        assert upload_file is not None, "upload_file is required for PDF extraction"
-                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        pdf_upload_file = cast(UploadFile, upload_file)
+                        extractor = PdfExtractor(file_path, pdf_upload_file.tenant_id, pdf_upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        assert upload_file is not None, "upload_file is required for DOCX extraction"
-                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
+                        docx_upload_file = cast(UploadFile, upload_file)
+                        extractor = WordExtractor(file_path, docx_upload_file.tenant_id, docx_upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":
