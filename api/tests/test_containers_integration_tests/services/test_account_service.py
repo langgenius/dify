@@ -3331,7 +3331,7 @@ class TestRegisterService:
         TenantService.create_tenant_member(tenant, account, role="normal")
 
         # Change tenant status to non-normal
-        tenant.status = "suspended"
+        tenant.status = "archive"
 
         db_session_with_containers.commit()
 

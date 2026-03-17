@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import (
     HumanInputFormFilledEvent,
     HumanInputFormTimeoutEvent,
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class HumanInputNode(Node[HumanInputNodeData]):
-    node_type = NodeType.HUMAN_INPUT
+    node_type = BuiltinNodeTypes.HUMAN_INPUT
     execution_type = NodeExecutionType.BRANCH
 
     _BRANCH_SELECTION_KEYS: tuple[str, ...] = (

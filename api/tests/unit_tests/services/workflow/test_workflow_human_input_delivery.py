@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -31,7 +31,7 @@ def _build_node_config(delivery_methods: list[EmailDeliveryMethod]) -> NodeConfi
         inputs=[],
         user_actions=[],
     ).model_dump(mode="json")
-    node_data["type"] = NodeType.HUMAN_INPUT.value
+    node_data["type"] = BuiltinNodeTypes.HUMAN_INPUT
     return NodeConfigDictAdapter.validate_python({"id": "node-1", "data": node_data})
 
 

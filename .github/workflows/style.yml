@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+        uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7.5.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -88,7 +88,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint:ci
+          vp run lint:ci
         # pnpm run lint:report
         # continue-on-error: true
 
@@ -102,17 +102,17 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run lint:tss
+        run: vp run lint:tss
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check
+        run: vp run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run knip
+        run: vp run knip
 
   superlinter:
     name: SuperLinter

@@ -137,4 +137,31 @@ describe('SelectDataSet', () => {
     expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute('href', '/datasets/create')
     expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
   })
+
+  it('uses selectedIds as the initial modal selection', async () => {
+    const datasetOne = makeDataset({
+      id: 'set-1',
+      name: 'Dataset One',
+    })
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [datasetOne] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    const onSelect = vi.fn()
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
+    })
+
+    expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    })
+
+    expect(onSelect).toHaveBeenCalledWith([datasetOne])
+  })
 })

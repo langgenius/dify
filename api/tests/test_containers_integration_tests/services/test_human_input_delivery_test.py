@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -68,7 +68,7 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
         inputs=[],
         user_actions=[],
     ).model_dump(mode="json")
-    node_data["type"] = NodeType.HUMAN_INPUT.value
+    node_data["type"] = BuiltinNodeTypes.HUMAN_INPUT
     graph = json.dumps({"nodes": [{"id": "human-node", "data": node_data}], "edges": []})
 
     workflow = Workflow.new(
