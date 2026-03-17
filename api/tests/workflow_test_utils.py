@@ -2,7 +2,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from dify_graph.entities.graph_init_params import GraphInitParams, RunContextDict
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.graph_init_params import RunContextDict
 
 
 def build_test_run_context(
