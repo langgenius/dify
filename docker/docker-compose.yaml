@@ -1067,6 +1067,10 @@ services:
       REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
       SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     networks:
       - ssrf_proxy_network
       - default
