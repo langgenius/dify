@@ -589,6 +589,8 @@
   "theme.dark": "มืด",
   "theme.light": "แสง",
   "theme.theme": "ธีม",
+  "toast.close": "ปิดการแจ้งเตือน",
+  "toast.notifications": "การแจ้งเตือน",
   "unit.char": "รถ ถัง",
   "userProfile.about": "ประมาณ",
   "userProfile.community": "ชุมชน",

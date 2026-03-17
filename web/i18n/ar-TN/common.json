@@ -589,6 +589,8 @@
   "theme.dark": "داكن",
   "theme.light": "فاتح",
   "theme.theme": "السمة",
+  "toast.close": "إغلاق الإشعار",
+  "toast.notifications": "الإشعارات",
   "unit.char": "أحرف",
   "userProfile.about": "حول",
   "userProfile.community": "المجتمع",

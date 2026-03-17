@@ -589,6 +589,8 @@
   "theme.dark": "temno",
   "theme.light": "svetloba",
   "theme.theme": "Tema",
+  "toast.close": "Zapri obvestilo",
+  "toast.notifications": "Obvestila",
   "unit.char": "znaki",
   "userProfile.about": "O nas",
   "userProfile.community": "Skupnost",

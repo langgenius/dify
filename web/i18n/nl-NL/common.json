@@ -589,6 +589,8 @@
   "theme.dark": "dark",
   "theme.light": "light",
   "theme.theme": "Theme",
+  "toast.close": "Melding sluiten",
+  "toast.notifications": "Meldingen",
   "unit.char": "chars",
   "userProfile.about": "About",
   "userProfile.community": "Community",

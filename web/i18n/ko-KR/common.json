@@ -589,6 +589,8 @@
   "theme.dark": "어두운",
   "theme.light": "밝은",
   "theme.theme": "테마",
+  "toast.close": "알림 닫기",
+  "toast.notifications": "알림",
   "unit.char": "문자",
   "userProfile.about": "Dify 소개",
   "userProfile.community": "커뮤니티",

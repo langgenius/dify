@@ -589,6 +589,8 @@
   "theme.dark": "Gelap",
   "theme.light": "Terang",
   "theme.theme": "Tema",
+  "toast.close": "Tutup notifikasi",
+  "toast.notifications": "Notifikasi",
   "unit.char": "karakter",
   "userProfile.about": "Tentang",
   "userProfile.community": "Masyarakat",
