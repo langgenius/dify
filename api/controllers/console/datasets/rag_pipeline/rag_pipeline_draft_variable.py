@@ -102,6 +102,7 @@ class RagPipelineVariableCollectionApi(Resource):
             app_id=pipeline.id,
             page=query.page,
             limit=query.limit,
+            user_id=current_user.id,
         )
 
         return workflow_vars
@@ -111,7 +112,7 @@ class RagPipelineVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        draft_var_srv.delete_workflow_variables(pipeline.id)
+        draft_var_srv.delete_user_workflow_variables(pipeline.id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -144,7 +145,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id)
+            node_vars = draft_var_srv.list_node_variables(pipeline.id, node_id, user_id=current_user.id)
 
         return node_vars
 
@@ -152,7 +153,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
     def delete(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(pipeline.id, node_id)
+        srv.delete_node_variables(pipeline.id, node_id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -283,11 +284,11 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_conversation_variables(pipeline.id, user_id=current_user.id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(pipeline.id)
+            draft_vars = draft_var_srv.list_system_variables(pipeline.id, user_id=current_user.id)
         else:
-            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id)
+            draft_vars = draft_var_srv.list_node_variables(app_id=pipeline.id, node_id=node_id, user_id=current_user.id)
     return draft_vars
 
 

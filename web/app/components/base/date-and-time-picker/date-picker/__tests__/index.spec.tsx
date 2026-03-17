@@ -65,6 +65,14 @@ describe('DatePicker', () => {
 
       expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
     })
+
+    it('should normalize non-Dayjs value input', () => {
+      const value = new Date('2024-06-15T14:30:00Z') as unknown as DatePickerProps['value']
+      const props = createDatePickerProps({ value })
+      render(<DatePicker {...props} />)
+
+      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
+    })
   })
 
   // Open/close behavior
@@ -243,6 +251,31 @@ describe('DatePicker', () => {
 
       expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
+
+    it('should update time when no selectedDate exists and minute is selected', () => {
+      const props = createDatePickerProps({ needTimePicker: true })
+      render(<DatePicker {...props} />)
+
+      openPicker()
+      fireEvent.click(screen.getByText('--:-- --'))
+
+      const allLists = screen.getAllByRole('list')
+      const minuteItems = within(allLists[1]).getAllByRole('listitem')
+      fireEvent.click(minuteItems[15])
+
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
+    })
+
+    it('should update time when no selectedDate exists and period is selected', () => {
+      const props = createDatePickerProps({ needTimePicker: true })
+      render(<DatePicker {...props} />)
+
+      openPicker()
+      fireEvent.click(screen.getByText('--:-- --'))
+      fireEvent.click(screen.getByText('PM'))
+
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
+    })
   })
 
   // Date selection
@@ -294,6 +327,17 @@ describe('DatePicker', () => {
       // Click on a day
       const dayButton = screen.getByRole('button', { name: '20' })
       fireEvent.click(dayButton)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('should clone time from timezone default when selecting a date without initial value', () => {
+      const onChange = vi.fn()
+      const props = createDatePickerProps({ onChange, noConfirm: true })
+      render(<DatePicker {...props} />)
+
+      openPicker()
+      fireEvent.click(screen.getByRole('button', { name: '20' }))
 
       expect(onChange).toHaveBeenCalledTimes(1)
     })
@@ -597,6 +641,22 @@ describe('DatePicker', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
       const emitted = onChange.mock.calls[0][0]
       expect(emitted.isValid()).toBe(true)
+    })
+
+    it('should preserve selected date when timezone changes after selecting now without initial value', () => {
+      const onChange = vi.fn()
+      const props = createDatePickerProps({
+        timezone: 'UTC',
+        onChange,
+      })
+      const { rerender } = render(<DatePicker {...props} />)
+
+      openPicker()
+      fireEvent.click(screen.getByText(/operation\.now/))
+      rerender(<DatePicker {...props} timezone="Asia/Tokyo" />)
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 

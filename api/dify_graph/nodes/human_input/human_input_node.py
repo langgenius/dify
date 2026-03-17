@@ -3,9 +3,9 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import InvokeFrom, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import (
     HumanInputFormFilledEvent,
     HumanInputFormTimeoutEvent,
@@ -21,7 +21,6 @@ from dify_graph.repositories.human_input_form_repository import (
     HumanInputFormRepository,
 )
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 
 from .entities import DeliveryChannelConfig, HumanInputNodeData, apply_debug_email_recipient
@@ -33,13 +32,15 @@ if TYPE_CHECKING:
 
 
 _SELECTED_BRANCH_KEY = "selected_branch"
+_INVOKE_FROM_DEBUGGER = "debugger"
+_INVOKE_FROM_EXPLORE = "explore"
 
 
 logger = logging.getLogger(__name__)
 
 
 class HumanInputNode(Node[HumanInputNodeData]):
-    node_type = NodeType.HUMAN_INPUT
+    node_type = BuiltinNodeTypes.HUMAN_INPUT
     execution_type = NodeExecutionType.BRANCH
 
     _BRANCH_SELECTION_KEYS: tuple[str, ...] = (
@@ -63,10 +64,10 @@ class HumanInputNode(Node[HumanInputNodeData]):
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        form_repository: HumanInputFormRepository | None = None,
+        form_repository: HumanInputFormRepository,
     ) -> None:
         super().__init__(
             id=id,
@@ -74,11 +75,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        if form_repository is None:
-            form_repository = HumanInputFormRepositoryImpl(
-                session_factory=db.engine,
-                tenant_id=self.tenant_id,
-            )
         self._form_repository = form_repository
 
     @classmethod
@@ -162,29 +158,38 @@ class HumanInputNode(Node[HumanInputNodeData]):
         return resolved_defaults
 
     def _should_require_console_recipient(self) -> bool:
-        if self.invoke_from == InvokeFrom.DEBUGGER:
+        invoke_from = self._invoke_from_value()
+        if invoke_from == _INVOKE_FROM_DEBUGGER:
             return True
-        if self.invoke_from == InvokeFrom.EXPLORE:
+        if invoke_from == _INVOKE_FROM_EXPLORE:
             return self._node_data.is_webapp_enabled()
         return False
 
     def _display_in_ui(self) -> bool:
-        if self.invoke_from == InvokeFrom.DEBUGGER:
+        if self._invoke_from_value() == _INVOKE_FROM_DEBUGGER:
             return True
         return self._node_data.is_webapp_enabled()
 
     def _effective_delivery_methods(self) -> Sequence[DeliveryChannelConfig]:
+        dify_ctx = self.require_dify_context()
+        invoke_from = self._invoke_from_value()
         enabled_methods = [method for method in self._node_data.delivery_methods if method.enabled]
-        if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}:
+        if invoke_from in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}:
             enabled_methods = [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
         return [
             apply_debug_email_recipient(
                 method,
-                enabled=self.invoke_from == InvokeFrom.DEBUGGER,
-                user_id=self.user_id or "",
+                enabled=invoke_from == _INVOKE_FROM_DEBUGGER,
+                user_id=dify_ctx.user_id,
             )
             for method in enabled_methods
         ]
+
+    def _invoke_from_value(self) -> str:
+        invoke_from = self.require_dify_context().invoke_from
+        if isinstance(invoke_from, str):
+            return invoke_from
+        return str(getattr(invoke_from, "value", invoke_from))
 
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
@@ -219,10 +224,11 @@ class HumanInputNode(Node[HumanInputNodeData]):
         """
         repo = self._form_repository
         form = repo.get_form(self._workflow_execution_id, self.id)
+        dify_ctx = self.require_dify_context()
         if form is None:
             display_in_ui = self._display_in_ui()
             params = FormCreateParams(
-                app_id=self.app_id,
+                app_id=dify_ctx.app_id,
                 workflow_execution_id=self._workflow_execution_id,
                 node_id=self.id,
                 form_config=self._node_data,
@@ -232,7 +238,9 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 resolved_default_values=self.resolve_default_values(),
                 console_recipient_required=self._should_require_console_recipient(),
                 console_creator_account_id=(
-                    self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
+                    dify_ctx.user_id
+                    if self._invoke_from_value() in {_INVOKE_FROM_DEBUGGER, _INVOKE_FROM_EXPLORE}
+                    else None
                 ),
                 backstage_recipient_required=True,
             )
@@ -341,7 +349,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: HumanInputNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selectors referenced in form content and input default values.
@@ -350,5 +358,4 @@ class HumanInputNode(Node[HumanInputNodeData]):
         1. Variables referenced in form_content ({{#node_name.var_name#}})
         2. Variables referenced in input default values
         """
-        validated_node_data = HumanInputNodeData.model_validate(node_data)
-        return validated_node_data.extract_variable_selector_to_variable_mapping(node_id)
+        return node_data.extract_variable_selector_to_variable_mapping(node_id)

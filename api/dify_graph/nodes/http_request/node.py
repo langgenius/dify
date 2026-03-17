@@ -3,7 +3,8 @@ import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import variable_template_parser
@@ -32,12 +33,12 @@ if TYPE_CHECKING:
 
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
-    node_type = NodeType.HTTP_REQUEST
+    node_type = BuiltinNodeTypes.HTTP_REQUEST
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -163,18 +164,15 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = HttpRequestNodeData.model_validate(node_data)
-
         selectors: list[VariableSelector] = []
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.url)
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.headers)
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.params)
-        if typed_node_data.body:
-            body_type = typed_node_data.body.type
-            data = typed_node_data.body.data
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
+        if node_data.body:
+            body_type = node_data.body.type
+            data = node_data.body.data
             match body_type:
                 case "none":
                     pass
@@ -212,6 +210,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         """
         Extract files from response by checking both Content-Type header and URL
         """
+        dify_ctx = self.require_dify_context()
         files: list[File] = []
         is_file = response.is_file
         content_type = response.content_type
@@ -236,8 +235,8 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
+            user_id=dify_ctx.user_id,
+            tenant_id=dify_ctx.tenant_id,
             conversation_id=None,
             file_binary=content,
             mimetype=mime_type,
@@ -249,7 +248,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         }
         file = file_factory.build_from_mapping(
             mapping=mapping,
-            tenant_id=self.tenant_id,
+            tenant_id=dify_ctx.tenant_id,
         )
         files.append(file)
 

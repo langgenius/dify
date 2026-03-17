@@ -17,7 +17,8 @@ from dify_graph.enums import WorkflowNodeExecutionStatus
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
-from models.workflow import WorkflowNodeExecutionModel
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
@@ -47,12 +48,28 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.tenant_id = data.get("tenant_id") or ""
     model.app_id = data.get("app_id") or ""
     model.workflow_id = data.get("workflow_id") or ""
-    model.triggered_from = data.get("triggered_from") or ""
+    triggered_from_val = data.get("triggered_from")
+    try:
+        model.triggered_from = (
+            WorkflowNodeExecutionTriggeredFrom(str(triggered_from_val))
+            if triggered_from_val
+            else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        )
+    except ValueError:
+        logger.warning("Invalid triggered_from value: %s, falling back to WORKFLOW_RUN", triggered_from_val)
+        model.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
     model.node_id = data.get("node_id") or ""
     model.node_type = data.get("node_type") or ""
     model.status = data.get("status") or "running"  # Default status if missing
     model.title = data.get("title") or ""
-    model.created_by_role = data.get("created_by_role") or ""
+    created_by_role_val = data.get("created_by_role")
+    try:
+        model.created_by_role = (
+            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
+        )
+    except ValueError:
+        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
+        model.created_by_role = CreatorUserRole.ACCOUNT
     model.created_by = data.get("created_by") or ""
 
     model.index = safe_int(data.get("index", 0))

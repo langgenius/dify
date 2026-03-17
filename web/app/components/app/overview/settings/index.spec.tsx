@@ -6,7 +6,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -59,16 +59,12 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => buildModalContext(),
 }))
 
-vi.mock('@/app/components/base/toast', async () => {
-  const actual = await vi.importActual<typeof import('@/app/components/base/toast')>('@/app/components/base/toast')
-  return {
-    ...actual,
-    useToastContext: () => ({
-      notify: mockNotify,
-      close: vi.fn(),
-    }),
-  }
-})
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+    close: vi.fn(),
+  }),
+}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')
@@ -133,6 +129,10 @@ describe('SettingsModal', () => {
       },
       webappCopyrightEnabled: true,
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should render the modal and expose the expanded settings section', async () => {
@@ -215,5 +215,55 @@ describe('SettingsModal', () => {
       enable_sso: mockAppInfo.enable_sso,
     }))
     expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should clear the delayed hide-more timer when the modal unmounts after closing', () => {
+    vi.useFakeTimers()
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+    const { unmount } = renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    fireEvent.click(screen.getByText('common.operation.cancel'))
+    unmount()
+
+    expect(clearTimeoutSpy).toHaveBeenCalled()
+    vi.runAllTimers()
+  })
+
+  it('should replace the pending hide-more timer and clear the ref after the timeout completes', async () => {
+    const hideCallbacks: Array<() => void> = []
+    const originalSetTimeout = globalThis.setTimeout
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      callback: TimerHandler,
+      delay?: number,
+      ...args: unknown[]
+    ) => {
+      if (delay === 200) {
+        hideCallbacks.push(() => {
+          if (typeof callback === 'function')
+            callback(...args)
+        })
+        return hideCallbacks.length as unknown as ReturnType<typeof setTimeout>
+      }
+
+      return originalSetTimeout(callback, delay, ...args)
+    }) as unknown as typeof setTimeout)
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+    renderSettingsModal()
+
+    act(() => {
+      fireEvent.click(screen.getByText('common.operation.cancel'))
+      fireEvent.click(screen.getByText('common.operation.cancel'))
+    })
+
+    expect(clearTimeoutSpy).toHaveBeenCalled()
+    expect(hideCallbacks.length).toBeGreaterThanOrEqual(2)
+
+    act(() => {
+      hideCallbacks.at(-1)?.()
+    })
+
+    setTimeoutSpy.mockRestore()
+    clearTimeoutSpy.mockRestore()
   })
 })

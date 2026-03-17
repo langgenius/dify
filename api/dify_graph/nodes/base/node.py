@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import operator
-import pkgutil
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
 from types import MappingProxyType
-from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
+from typing import Any, ClassVar, Generic, Protocol, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
-from dify_graph.entities import AgentNodeStrategyInit, GraphInitParams
+from dify_graph.entities import GraphInitParams
+from dify_graph.entities.base_node_data import BaseNodeData, RetryConfig
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
 from dify_graph.enums import (
     ErrorStrategy,
     NodeExecutionType,
@@ -61,11 +62,27 @@ from dify_graph.node_events import (
 from dify_graph.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 
-from .entities import BaseNodeData, RetryConfig
-
 NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
+_MISSING_RUN_CONTEXT_VALUE = object()
 
 logger = logging.getLogger(__name__)
+
+
+class DifyRunContextProtocol(Protocol):
+    tenant_id: str
+    app_id: str
+    user_id: str
+    user_from: Any
+    invoke_from: Any
+
+
+class _MappingDifyRunContext:
+    def __init__(self, mapping: Mapping[str, Any]) -> None:
+        self.tenant_id = str(mapping["tenant_id"])
+        self.app_id = str(mapping["app_id"])
+        self.user_id = str(mapping["user_id"])
+        self.user_from = mapping["user_from"]
+        self.invoke_from = mapping["invoke_from"]
 
 
 class Node(Generic[NodeDataT]):
@@ -134,15 +151,15 @@ class Node(Generic[NodeDataT]):
         Later, in __init__:
         ::
 
-            config["data"] ──► _hydrate_node_data() ──► _node_data_type.model_validate()
-                                                                │
-                                                                ▼
-                                                        CodeNodeData instance
-                                                        (stored in self._node_data)
+            config["data"] ──► _node_data_type.model_validate(..., from_attributes=True)
+                                               │
+                                               ▼
+                                       CodeNodeData instance
+                                       (stored in self._node_data)
 
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
-                node_type = NodeType.CODE
+                node_type = BuiltinNodeTypes.CODE
                 # No need to implement _get_title, _get_error_strategy, etc.
         """
         super().__init_subclass__(**kwargs)
@@ -160,7 +177,8 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under dify_graph.nodes.*
+        # Only register production node implementations defined under the
+        # canonical workflow namespaces.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -168,7 +186,7 @@ class Node(Generic[NodeDataT]):
         node_type = cls.node_type
         version = cls.version()
         bucket = Node._registry.setdefault(node_type, {})
-        if module_name.startswith("dify_graph.nodes."):
+        if module_name.startswith(("dify_graph.nodes.", "core.workflow.nodes.")):
             # Production node definitions take precedence and may override
             bucket[version] = cls  # type: ignore[index]
         else:
@@ -184,6 +202,7 @@ class Node(Generic[NodeDataT]):
         else:
             latest_key = max(version_keys) if version_keys else version
         bucket["latest"] = bucket[latest_key]
+        Node._registry_version += 1
 
     @classmethod
     def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:
@@ -218,42 +237,46 @@ class Node(Generic[NodeDataT]):
 
     # Global registry populated via __init_subclass__
     _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
+    _registry_version: ClassVar[int] = 0
+
+    @classmethod
+    def get_registry_version(cls) -> int:
+        return cls._registry_version
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
+        self._run_context = MappingProxyType(dict(graph_init_params.run_context))
         self.id = id
-        self.tenant_id = graph_init_params.tenant_id
-        self.app_id = graph_init_params.app_id
         self.workflow_id = graph_init_params.workflow_id
         self.graph_config = graph_init_params.graph_config
-        self.user_id = graph_init_params.user_id
-        self.user_from = graph_init_params.user_from
-        self.invoke_from = graph_init_params.invoke_from
         self.workflow_call_depth = graph_init_params.call_depth
         self.graph_runtime_state = graph_runtime_state
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
 
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required.")
+        node_id = config["id"]
 
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-        raw_node_data = config.get("data") or {}
-        if not isinstance(raw_node_data, Mapping):
-            raise ValueError("Node config data must be a mapping.")
-
-        self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
+        self._node_data = self.validate_node_data(config["data"])
 
         self.post_init()
+
+    @classmethod
+    def validate_node_data(cls, node_data: BaseNodeData) -> NodeDataT:
+        """Validate shared graph node payloads against the subclass-declared NodeData model."""
+        return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
+
+    def init_node_data(self, data: BaseNodeData | Mapping[str, Any]) -> None:
+        """Hydrate `_node_data` for legacy callers that bypass `__init__`."""
+        self._node_data = self.validate_node_data(cast(BaseNodeData, data))
 
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
@@ -262,6 +285,38 @@ class Node(Generic[NodeDataT]):
     @property
     def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
+
+    @property
+    def run_context(self) -> Mapping[str, Any]:
+        return self._run_context
+
+    def get_run_context_value(self, key: str, default: Any = None) -> Any:
+        return self._run_context.get(key, default)
+
+    def require_run_context_value(self, key: str) -> Any:
+        value = self.get_run_context_value(key, _MISSING_RUN_CONTEXT_VALUE)
+        if value is _MISSING_RUN_CONTEXT_VALUE:
+            raise ValueError(f"run_context missing required key: {key}")
+        return value
+
+    def require_dify_context(self) -> DifyRunContextProtocol:
+        raw_ctx = self.require_run_context_value(DIFY_RUN_CONTEXT_KEY)
+        if raw_ctx is None:
+            raise ValueError(f"run_context missing required key: {DIFY_RUN_CONTEXT_KEY}")
+
+        if isinstance(raw_ctx, Mapping):
+            missing_keys = [
+                key for key in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from") if key not in raw_ctx
+            ]
+            if missing_keys:
+                raise ValueError(f"dify context missing required keys: {', '.join(missing_keys)}")
+            return _MappingDifyRunContext(raw_ctx)
+
+        for attr in ("tenant_id", "app_id", "user_id", "user_from", "invoke_from"):
+            if not hasattr(raw_ctx, attr):
+                raise TypeError(f"invalid dify context object, missing attribute: {attr}")
+
+        return cast(DifyRunContextProtocol, raw_ctx)
 
     @property
     def execution_id(self) -> str:
@@ -295,9 +350,6 @@ class Node(Generic[NodeDataT]):
             return None
         return str(execution_id)
 
-    def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
-        return cast(NodeDataT, self._node_data_type.model_validate(data))
-
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
         """
@@ -305,6 +357,10 @@ class Node(Generic[NodeDataT]):
         :return:
         """
         raise NotImplementedError
+
+    def populate_start_event(self, event: NodeRunStartedEvent) -> None:
+        """Allow subclasses to enrich the started event without cross-node imports in the base class."""
+        _ = event
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
@@ -319,41 +375,10 @@ class Node(Generic[NodeDataT]):
             in_iteration_id=None,
             start_at=self._start_at,
         )
-
-        # === FIXME(-LAN-): Needs to refactor.
-        from dify_graph.nodes.tool.tool_node import ToolNode
-
-        if isinstance(self, ToolNode):
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from dify_graph.nodes.datasource.datasource_node import DatasourceNode
-
-        if isinstance(self, DatasourceNode):
-            plugin_id = getattr(self.node_data, "plugin_id", "")
-            provider_name = getattr(self.node_data, "provider_name", "")
-
-            start_event.provider_id = f"{plugin_id}/{provider_name}"
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from dify_graph.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
-
-        if isinstance(self, TriggerEventNode):
-            start_event.provider_id = getattr(self.node_data, "provider_id", "")
-            start_event.provider_type = getattr(self.node_data, "provider_type", "")
-
-        from typing import cast
-
-        from dify_graph.nodes.agent.agent_node import AgentNode
-        from dify_graph.nodes.agent.entities import AgentNodeData
-
-        if isinstance(self, AgentNode):
-            start_event.agent_strategy = AgentNodeStrategyInit(
-                name=cast(AgentNodeData, self.node_data).agent_strategy_name,
-                icon=self.agent_strategy_icon,
-            )
-
-        # ===
+        try:
+            self.populate_start_event(start_event)
+        except Exception:
+            logger.warning("Failed to populate start event for node %s", self._node_id, exc_info=True)
         yield start_event
 
         try:
@@ -395,7 +420,7 @@ class Node(Generic[NodeDataT]):
         cls,
         *,
         graph_config: Mapping[str, Any],
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
     ) -> Mapping[str, Sequence[str]]:
         """Extracts references variable selectors from node configuration.
 
@@ -433,13 +458,12 @@ class Node(Generic[NodeDataT]):
         :param config: node config
         :return:
         """
-        node_id = config.get("id")
-        if not node_id:
-            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
-
-        # Pass raw dict data instead of creating NodeData instance
+        node_id = config["id"]
+        node_data = cls.validate_node_data(config["data"])
         data = cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config, node_id=node_id, node_data=config.get("data", {})
+            graph_config=graph_config,
+            node_id=node_id,
+            node_data=node_data,
         )
         return data
 
@@ -449,7 +473,7 @@ class Node(Generic[NodeDataT]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: NodeDataT,
     ) -> Mapping[str, Sequence[str]]:
         return {}
 
@@ -473,30 +497,20 @@ class Node(Generic[NodeDataT]):
     @abstractmethod
     def version(cls) -> str:
         """`node_version` returns the version of current node type."""
-        # NOTE(QuantumGhost): This should be in sync with `NODE_TYPE_CLASSES_MAPPING`.
-        #
-        # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
-        # in `api/dify_graph/nodes/__init__.py`.
+        # NOTE(QuantumGhost): Node versions must remain unique per `NodeType` so
+        # registry lookups can resolve numeric versions and `latest`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @classmethod
     def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
-        """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
+        """Return a read-only view of the currently registered node classes.
 
-        Import all modules under dify_graph.nodes so subclasses register themselves on import.
-        Then we return a readonly view of the registry to avoid accidental mutation.
+        This accessor intentionally performs no imports. The embedding layer that
+        owns bootstrap (for example `core.workflow.node_factory`) must import any
+        extension node packages before calling it so their subclasses register via
+        `__init_subclass__`.
         """
-        # Import all node modules to ensure they are loaded (thus registered)
-        import dify_graph.nodes as _nodes_pkg
-
-        for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
-            # Avoid importing modules that depend on the registry to prevent circular imports.
-            if _modname == "dify_graph.nodes.node_mapping":
-                continue
-            importlib.import_module(_modname)
-
-        # Return a readonly view so callers can't mutate the registry by accident
-        return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
+        return {node_type: MappingProxyType(version_map) for node_type, version_map in cls._registry.items()}
 
     @property
     def retry(self) -> bool:
@@ -771,11 +785,16 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
+        from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+
+        retriever_resources = [
+            RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+        ]
         return NodeRunRetrieverResourceEvent(
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            retriever_resources=event.retriever_resources,
+            retriever_resources=retriever_resources,
             context=event.context,
             node_version=self.version(),
         )

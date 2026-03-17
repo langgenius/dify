@@ -1,15 +1,91 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import dify from './eslint-rules/index.js'
+import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts
 process.env.TAILWIND_MODE ??= 'ESLINT'
+
+const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
+
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: ['next/image'],
+    message: 'Do not import next/image. Use native img tags instead.',
+  },
+  {
+    group: ['next/font', 'next/font/*'],
+    message: 'Do not import next/font. Use the project font styles instead.',
+  },
+]
+
+const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '**/portal-to-follow-elem',
+      '**/portal-to-follow-elem/index',
+    ],
+    message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/tooltip',
+      '**/base/tooltip/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/modal',
+      '**/base/modal/index',
+      '**/base/modal/modal',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/select',
+      '**/base/select/index',
+      '**/base/select/custom',
+      '**/base/select/pure',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/confirm',
+      '**/base/confirm/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/popover',
+      '**/base/popover/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/dropdown',
+      '**/base/dropdown/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/dialog',
+      '**/base/dialog/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+  },
+]
 
 export default antfu(
   {
@@ -45,10 +121,12 @@ export default antfu(
         'antfu/top-level-function': 'off',
       },
     },
+    e18e: false,
   },
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'next/no-img-element': 'off',
     },
   },
   {
@@ -145,4 +223,43 @@ export default antfu(
       'hyoban/no-dependency-version-prefix': 'error',
     },
   },
+  {
+    name: 'dify/base-ui-primitives',
+    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    name: 'dify/no-next-image-or-font',
+    files: [GLOB_TS, GLOB_TSX],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
+    name: 'dify/overlay-migration',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      ...GLOB_TESTS,
+      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
+    },
+  },
 )
+  .disableRulesFix(disableRuleAutoFix
+    ? [
+        'tailwindcss/enforce-consistent-class-order',
+        'tailwindcss/no-duplicate-classes',
+        'tailwindcss/no-unnecessary-whitespace',
+      ]
+    : [])
