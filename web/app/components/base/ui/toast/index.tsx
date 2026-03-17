@@ -2,7 +2,6 @@
 
 import type {
   ToastManagerAddOptions,
-  ToastManagerPromiseOptions,
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
@@ -34,33 +33,32 @@ export type ToastHostProps = {
   limit?: number
 }
 
-const TOAST_ICON_CLASSNAMES: Record<ToastType, string> = {
-  success: 'i-ri-checkbox-circle-fill text-text-success',
-  error: 'i-ri-error-warning-fill text-text-destructive',
-  warning: 'i-ri-alert-fill text-text-warning-secondary',
-  info: 'i-ri-information-2-fill text-text-accent',
-}
-
-const TOAST_TONE_GRADIENT_CLASSNAMES: Record<ToastType, string> = {
-  success: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
-  error: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
-  warning: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
-  info: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+const TOAST_TONE_STYLES: Record<ToastType, {
+  gradientClassName: string
+  iconClassName: string
+}> = {
+  success: {
+    iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
+    gradientClassName: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
+  },
+  error: {
+    iconClassName: 'i-ri-error-warning-fill text-text-destructive',
+    gradientClassName: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
+  },
+  warning: {
+    iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
+    gradientClassName: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
+  },
+  info: {
+    iconClassName: 'i-ri-information-2-fill text-text-accent',
+    gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+  },
 }
 
 const toastManager = BaseToast.createToastManager<ToastData>()
 
-function createToastPromiseResultOption<Value>(
-  option: ToastPromiseResultOption<Value>,
-): ToastManagerPromiseOptions<Value, ToastData>['success'] {
-  if (typeof option !== 'function')
-    return option
-
-  return option
-}
-
 function getToastType(type?: string): ToastType | undefined {
-  if (type && Object.prototype.hasOwnProperty.call(TOAST_ICON_CLASSNAMES, type))
+  if (type && Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type))
     return type as ToastType
 
   return undefined
@@ -77,23 +75,19 @@ export const toast = {
     toastManager.update(toastId, options)
   },
   promise<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-    return toastManager.promise(promiseValue, {
-      loading: options.loading,
-      success: createToastPromiseResultOption(options.success),
-      error: createToastPromiseResultOption(options.error),
-    })
+    return toastManager.promise(promiseValue, options)
   },
 }
 
 function ToastIcon({ type }: { type?: ToastType }) {
   return type
-    ? <span aria-hidden="true" className={cn('h-5 w-5', TOAST_ICON_CLASSNAMES[type])} />
+    ? <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
     : null
 }
 
 function getToneGradientClasses(type?: ToastType) {
   if (type)
-    return TOAST_TONE_GRADIENT_CLASSNAMES[type]
+    return TOAST_TONE_STYLES[type].gradientClassName
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
