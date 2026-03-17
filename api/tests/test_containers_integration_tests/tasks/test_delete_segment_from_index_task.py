@@ -14,6 +14,7 @@ from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
+from models.enums import IndexingStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
 logger = logging.getLogger(__name__)
@@ -386,7 +387,7 @@ class TestDeleteSegmentFromIndexTask:
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(
-            db_session_with_containers, dataset, account, fake, indexing_status="indexing"
+            db_session_with_containers, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
         )
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 

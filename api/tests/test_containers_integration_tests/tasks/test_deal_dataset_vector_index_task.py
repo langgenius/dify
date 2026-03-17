@@ -13,6 +13,7 @@ import pytest
 from faker import Faker
 
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -108,7 +109,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -168,7 +169,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -188,7 +189,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -209,7 +210,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -220,7 +221,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load method was called
         mock_factory = mock_index_processor_factory.return_value
@@ -269,7 +270,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="parent_child_index",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -289,7 +290,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="parent_child_index",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -310,7 +311,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -321,7 +322,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor clean and load methods were called
         mock_factory = mock_index_processor_factory.return_value
@@ -417,7 +418,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -430,7 +431,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify that no index processor load was called since no segments exist
         mock_factory = mock_index_processor_factory.return_value
@@ -506,7 +507,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -526,7 +527,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -547,7 +548,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -563,7 +564,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to error
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "error"
+        assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Test exception during indexing" in updated_document.error
 
     def test_deal_dataset_vector_index_task_with_custom_index_type(
@@ -602,7 +603,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="qa_index",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -623,7 +624,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -634,7 +635,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
         mock_index_processor_factory.assert_called_once_with("qa_index")
@@ -678,7 +679,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -699,7 +700,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -710,7 +711,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
         mock_index_processor_factory.assert_called_once_with("text_model")
@@ -754,7 +755,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -776,7 +777,7 @@ class TestDealDatasetVectorIndexTask:
                 created_by=account.id,
                 doc_form="text_model",
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=False,
                 batch="test_batch",
@@ -801,7 +802,7 @@ class TestDealDatasetVectorIndexTask:
                     index_node_id=f"node_{i}_{j}",
                     index_node_hash=f"hash_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                     enabled=True,
                 )
                 db_session_with_containers.add(segment)
@@ -814,7 +815,7 @@ class TestDealDatasetVectorIndexTask:
         # Verify all documents were processed
         for document in documents:
             updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-            assert updated_document.indexing_status == "completed"
+            assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times
         mock_factory = mock_index_processor_factory.return_value
@@ -857,7 +858,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -877,7 +878,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -898,7 +899,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -916,7 +917,7 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify final document status
         updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
     def test_deal_dataset_vector_index_task_with_disabled_documents(
         self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
@@ -954,7 +955,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -974,7 +975,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -993,7 +994,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=False,  # This document should be skipped
             archived=False,
             batch="test_batch",
@@ -1015,7 +1016,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -1026,13 +1027,13 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify only enabled document was processed
         updated_enabled_document = db_session_with_containers.query(Document).filter_by(id=enabled_document.id).first()
-        assert updated_enabled_document.indexing_status == "completed"
+        assert updated_enabled_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify disabled document status remains unchanged
         updated_disabled_document = (
             db_session_with_containers.query(Document).filter_by(id=disabled_document.id).first()
         )
-        assert updated_disabled_document.indexing_status == "completed"  # Should not change
+        assert updated_disabled_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
         # Verify index processor load was called only once (for enabled document)
         mock_factory = mock_index_processor_factory.return_value
@@ -1075,7 +1076,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -1095,7 +1096,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -1114,7 +1115,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=True,  # This document should be skipped
             batch="test_batch",
@@ -1136,7 +1137,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -1147,13 +1148,13 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify only active document was processed
         updated_active_document = db_session_with_containers.query(Document).filter_by(id=active_document.id).first()
-        assert updated_active_document.indexing_status == "completed"
+        assert updated_active_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify archived document status remains unchanged
         updated_archived_document = (
             db_session_with_containers.query(Document).filter_by(id=archived_document.id).first()
         )
-        assert updated_archived_document.indexing_status == "completed"  # Should not change
+        assert updated_archived_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
         # Verify index processor load was called only once (for active document)
         mock_factory = mock_index_processor_factory.return_value
@@ -1196,7 +1197,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -1216,7 +1217,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -1235,7 +1236,7 @@ class TestDealDatasetVectorIndexTask:
             created_by=account.id,
             doc_form="text_model",
             doc_language="en",
-            indexing_status="indexing",  # This document should be skipped
+            indexing_status=IndexingStatus.INDEXING,  # This document should be skipped
             enabled=True,
             archived=False,
             batch="test_batch",
@@ -1257,7 +1258,7 @@ class TestDealDatasetVectorIndexTask:
             index_node_id=f"node_{uuid.uuid4()}",
             index_node_hash=f"hash_{uuid.uuid4()}",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             enabled=True,
         )
         db_session_with_containers.add(segment)
@@ -1270,13 +1271,13 @@ class TestDealDatasetVectorIndexTask:
         updated_completed_document = (
             db_session_with_containers.query(Document).filter_by(id=completed_document.id).first()
         )
-        assert updated_completed_document.indexing_status == "completed"
+        assert updated_completed_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify incomplete document status remains unchanged
         updated_incomplete_document = (
             db_session_with_containers.query(Document).filter_by(id=incomplete_document.id).first()
         )
-        assert updated_incomplete_document.indexing_status == "indexing"  # Should not change
+        assert updated_incomplete_document.indexing_status == IndexingStatus.INDEXING  # Should not change
 
         # Verify index processor load was called only once (for completed document)
         mock_factory = mock_index_processor_factory.return_value

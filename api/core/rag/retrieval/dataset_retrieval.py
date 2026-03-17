@@ -83,7 +83,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as DocumentModel
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DatasetQuerySource
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
@@ -1008,7 +1008,7 @@ class DatasetRetrieval:
                 dataset_query = DatasetQuery(
                     dataset_id=dataset_id,
                     content=json.dumps(contents),
-                    source="app",
+                    source=DatasetQuerySource.APP,
                     source_app_id=app_id,
                     created_by_role=CreatorUserRole(user_from),
                     created_by=user_id,

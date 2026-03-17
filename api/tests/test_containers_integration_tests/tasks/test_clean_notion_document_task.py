@@ -13,6 +13,7 @@ import pytest
 from faker import Faker
 
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -88,7 +89,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -105,7 +106,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": f"workspace_{i}", "notion_page_id": f"page_{i}", "type": "page"}
                 ),
@@ -115,7 +116,7 @@ class TestCleanNotionDocumentTask:
                 created_by=account.id,
                 doc_form="text_model",  # Set doc_form to ensure dataset.doc_form works
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
@@ -134,7 +135,7 @@ class TestCleanNotionDocumentTask:
                     tokens=50,
                     index_node_id=f"node_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                 )
                 db_session_with_containers.add(segment)
                 segments.append(segment)
@@ -220,7 +221,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -269,7 +270,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 name=f"{fake.company()}_{index_type}",
                 description=fake.text(max_nb_chars=100),
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 created_by=account.id,
             )
             db_session_with_containers.add(dataset)
@@ -281,7 +282,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": "workspace_test", "notion_page_id": "page_test", "type": "page"}
                 ),
@@ -291,7 +292,7 @@ class TestCleanNotionDocumentTask:
                 created_by=account.id,
                 doc_form=index_type,
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
@@ -308,7 +309,7 @@ class TestCleanNotionDocumentTask:
                 tokens=50,
                 index_node_id="test_node",
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
             )
             db_session_with_containers.add(segment)
             db_session_with_containers.commit()
@@ -357,7 +358,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -369,7 +370,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info=json.dumps(
                 {"notion_workspace_id": "workspace_test", "notion_page_id": "page_test", "type": "page"}
             ),
@@ -378,7 +379,7 @@ class TestCleanNotionDocumentTask:
             created_from="notion_import",
             created_by=account.id,
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
@@ -397,7 +398,7 @@ class TestCleanNotionDocumentTask:
                 tokens=50,
                 index_node_id=None,  # No index node ID
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
             )
             db_session_with_containers.add(segment)
             segments.append(segment)
@@ -443,7 +444,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -460,7 +461,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": f"workspace_{i}", "notion_page_id": f"page_{i}", "type": "page"}
                 ),
@@ -469,7 +470,7 @@ class TestCleanNotionDocumentTask:
                 created_from="notion_import",
                 created_by=account.id,
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
@@ -488,7 +489,7 @@ class TestCleanNotionDocumentTask:
                     tokens=50,
                     index_node_id=f"node_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                 )
                 db_session_with_containers.add(segment)
                 all_segments.append(segment)
@@ -558,7 +559,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -570,7 +571,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info=json.dumps(
                 {"notion_workspace_id": "workspace_test", "notion_page_id": "page_test", "type": "page"}
             ),
@@ -579,7 +580,7 @@ class TestCleanNotionDocumentTask:
             created_from="notion_import",
             created_by=account.id,
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
@@ -654,7 +655,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -666,7 +667,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info=json.dumps(
                 {"notion_workspace_id": "workspace_test", "notion_page_id": "page_test", "type": "page"}
             ),
@@ -675,7 +676,7 @@ class TestCleanNotionDocumentTask:
             created_from="notion_import",
             created_by=account.id,
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
@@ -692,7 +693,7 @@ class TestCleanNotionDocumentTask:
             tokens=50,
             index_node_id="test_node",
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
         )
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()
@@ -736,7 +737,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -754,7 +755,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": f"workspace_{i}", "notion_page_id": f"page_{i}", "type": "page"}
                 ),
@@ -763,7 +764,7 @@ class TestCleanNotionDocumentTask:
                 created_from="notion_import",
                 created_by=account.id,
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
@@ -783,7 +784,7 @@ class TestCleanNotionDocumentTask:
                     tokens=50,
                     index_node_id=f"node_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                 )
                 db_session_with_containers.add(segment)
                 all_segments.append(segment)
@@ -848,7 +849,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 name=f"{fake.company()}_{i}",
                 description=fake.text(max_nb_chars=100),
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 created_by=account.id,
             )
             db_session_with_containers.add(dataset)
@@ -866,7 +867,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=account.current_tenant.id,
                 dataset_id=dataset.id,
                 position=0,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": f"workspace_{i}", "notion_page_id": f"page_{i}", "type": "page"}
                 ),
@@ -875,7 +876,7 @@ class TestCleanNotionDocumentTask:
                 created_from="notion_import",
                 created_by=account.id,
                 doc_language="en",
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
@@ -894,7 +895,7 @@ class TestCleanNotionDocumentTask:
                     tokens=50,
                     index_node_id=f"node_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                 )
                 db_session_with_containers.add(segment)
                 all_segments.append(segment)
@@ -963,7 +964,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -981,7 +982,7 @@ class TestCleanNotionDocumentTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
-                data_source_type="notion_import",
+                data_source_type=DataSourceType.NOTION_IMPORT,
                 data_source_info=json.dumps(
                     {"notion_workspace_id": f"workspace_{i}", "notion_page_id": f"page_{i}", "type": "page"}
                 ),
@@ -1009,7 +1010,7 @@ class TestCleanNotionDocumentTask:
                     tokens=50,
                     index_node_id=f"node_{i}_{j}",
                     created_by=account.id,
-                    status="completed",
+                    status=SegmentStatus.COMPLETED,
                 )
                 db_session_with_containers.add(segment)
                 all_segments.append(segment)
@@ -1066,7 +1067,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             created_by=account.id,
             built_in_field_enabled=True,
         )
@@ -1079,7 +1080,7 @@ class TestCleanNotionDocumentTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info=json.dumps(
                 {
                     "notion_workspace_id": "workspace_test",
@@ -1094,7 +1095,7 @@ class TestCleanNotionDocumentTask:
             created_from="notion_import",
             created_by=account.id,
             doc_language="en",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             doc_metadata={
                 "document_name": "Test Notion Page with Metadata",
                 "uploader": account.name,
@@ -1122,7 +1123,7 @@ class TestCleanNotionDocumentTask:
                 tokens=75,
                 index_node_id=f"node_{i}",
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 keywords={"key1": ["value1", "value2"], "key2": ["value3"]},
             )
             db_session_with_containers.add(segment)

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from models import Account, Dataset, DocumentSegment
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
+from models.enums import DataSourceType
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 
 
@@ -100,7 +101,7 @@ class TestDisableSegmentsFromIndexTask:
             description=fake.text(max_nb_chars=200),
             provider="vendor",
             permission="only_me",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=account.id,
             updated_by=account.id,
