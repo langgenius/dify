@@ -126,6 +126,7 @@ class TestWorkflowRunCleanupInit:
 
         assert c._metrics._base_attributes["task_label"] == "custom"
 
+
 # ---------------------------------------------------------------------------
 # _empty_related_counts / _format_related_counts
 # ---------------------------------------------------------------------------
