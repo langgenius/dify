@@ -6,7 +6,6 @@ back to the database.
 """
 
 import io
-import json
 import logging
 import time
 import zipfile
@@ -17,6 +16,7 @@ from datetime import datetime
 from typing import Any, cast
 
 import click
+from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -244,7 +244,7 @@ class WorkflowRunRestore:
             data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        return json.loads(data.decode("utf-8"))
+        return TypeAdapter(dict[str, Any]).validate_json(data)
 
     def _restore_table_records(
         self,

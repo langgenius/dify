@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
@@ -1590,7 +1590,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation: dict = json.loads(data)
+            invitation: dict[str, str] = TypeAdapter(dict[str, str]).validate_json(data)
             return invitation
 
     @classmethod

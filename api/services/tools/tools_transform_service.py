@@ -1,9 +1,8 @@
-import json
 import logging
 from collections.abc import Mapping
 from typing import Any, Union
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from yarl import URL
 
 from configs import dify_config
@@ -31,6 +30,9 @@ from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
+_icon_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
+_mcp_tools_adapter: TypeAdapter[list[MCPTool]] = TypeAdapter(list[MCPTool])
+
 
 class ToolTransformService:
     _MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH = 10
@@ -51,9 +53,9 @@ class ToolTransformService:
         elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
             try:
                 if isinstance(icon, str):
-                    return json.loads(icon)
+                    return _icon_adapter.validate_json(icon)
                 return icon
-            except Exception:
+            except (ValidationError, ValueError):
                 return {"background": "#252525", "content": "\ud83d\ude01"}
         elif provider_type == ToolProviderType.MCP:
             return icon
@@ -247,8 +249,8 @@ class ToolTransformService:
 
         response = provider_entity.to_api_response(user_name=user_name, include_sensitive=include_sensitive)
         try:
-            mcp_tools = [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
-        except (ValidationError, json.JSONDecodeError):
+            mcp_tools = _mcp_tools_adapter.validate_json(db_provider.tools)
+        except (ValidationError, ValueError):
             mcp_tools = []
         # Add additional fields specific to the transform
         response["id"] = db_provider.server_identifier if not for_list else db_provider.id

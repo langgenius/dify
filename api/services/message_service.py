@@ -1,7 +1,7 @@
-import json
 from collections.abc import Sequence
-from typing import Union
+from typing import Any, Union
 
+from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -286,7 +286,9 @@ class MessageService:
                     .first()
                 )
             else:
-                conversation_override_model_configs = json.loads(conversation.override_model_configs)
+                conversation_override_model_configs = TypeAdapter(dict[str, Any]).validate_json(
+                    conversation.override_model_configs
+                )
                 app_model_config = AppModelConfig(
                     app_id=app_model.id,
                 )

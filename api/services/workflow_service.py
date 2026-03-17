@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1117,8 +1118,8 @@ class WorkflowService:
             if not recipient.access_token:
                 continue
             try:
-                payload = json.loads(recipient.recipient_payload)
-            except Exception:
+                payload = TypeAdapter(dict[str, Any]).validate_json(recipient.recipient_payload)
+            except (ValidationError, ValueError):
                 logger.exception("Failed to parse human input recipient payload for delivery test.")
                 continue
             email = payload.get("email")

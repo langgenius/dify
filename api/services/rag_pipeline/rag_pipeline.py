@@ -9,6 +9,7 @@ from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
+from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1422,7 +1423,9 @@ class RagPipelineService:
                 "inputs": document_pipeline_execution_log.input_data,
                 "start_node_id": document_pipeline_execution_log.datasource_node_id,
                 "datasource_type": document_pipeline_execution_log.datasource_type,
-                "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
+                "datasource_info_list": [
+                    TypeAdapter(dict[str, Any]).validate_json(document_pipeline_execution_log.datasource_info)
+                ],
                 "original_document_id": document.id,
             },
             invoke_from=InvokeFrom.PUBLISHED_PIPELINE,

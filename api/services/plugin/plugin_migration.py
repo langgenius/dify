@@ -12,7 +12,9 @@ import click
 import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
@@ -31,6 +33,14 @@ from services.plugin.plugin_service import PluginService
 logger = logging.getLogger(__name__)
 
 excluded_providers = ["time", "audio", "code", "webscraper"]
+
+
+class _TenantPluginRecord(TypedDict):
+    tenant_id: str
+    plugins: list[str]
+
+
+_tenant_plugin_adapter: TypeAdapter[_TenantPluginRecord] = TypeAdapter(_TenantPluginRecord)
 
 
 class PluginMigration:
@@ -308,7 +318,7 @@ class PluginMigration:
         logger.info("Extracting unique plugins from %s", extracted_plugins)
         with open(extracted_plugins) as f:
             for line in f:
-                data = json.loads(line)
+                data = _tenant_plugin_adapter.validate_json(line)
                 new_plugin_ids = data.get("plugins", [])
                 for plugin_id in new_plugin_ids:
                     if plugin_id not in plugin_ids:
@@ -381,7 +391,7 @@ class PluginMigration:
             Read line by line, and install plugins for each tenant.
             """
             for line in f:
-                data = json.loads(line)
+                data = _tenant_plugin_adapter.validate_json(line)
                 tenant_id = data.get("tenant_id")
                 plugin_ids = data.get("plugins", [])
                 current_not_installed = {

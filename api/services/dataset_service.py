@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from typing import Any, Literal, cast
 
 import sqlalchemy as sa
+from pydantic import TypeAdapter
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
@@ -641,7 +642,7 @@ class DatasetService:
             # update knowledge nodes
             def update_knowledge_nodes(workflow_graph: str) -> str:
                 """Update knowledge-index nodes in workflow graph."""
-                data: dict[str, Any] = json.loads(workflow_graph)
+                data: dict[str, Any] = TypeAdapter(dict[str, Any]).validate_json(workflow_graph)
 
                 nodes = data.get("nodes", [])
                 updated = False
@@ -2089,7 +2090,9 @@ class DocumentService:
                         )
                         if documents:
                             for document in documents:
-                                data_source_info = json.loads(document.data_source_info)
+                                data_source_info = TypeAdapter(dict[str, Any]).validate_json(
+                                    document.data_source_info
+                                )
                                 exist_page_ids.append(data_source_info["notion_page_id"])
                                 exist_document[data_source_info["notion_page_id"]] = document.id
                         for notion_info in notion_info_list:

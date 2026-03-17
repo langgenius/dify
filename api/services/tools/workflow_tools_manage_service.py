@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime
 
+from pydantic import TypeAdapter
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,8 @@ from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
+
+_icon_adapter: TypeAdapter[dict[str, str]] = TypeAdapter(dict[str, str])
 
 
 class WorkflowToolManageService:
@@ -309,7 +312,7 @@ class WorkflowToolManageService:
             "label": db_tool.label,
             "workflow_tool_id": db_tool.id,
             "workflow_app_id": db_tool.app_id,
-            "icon": json.loads(db_tool.icon),
+            "icon": _icon_adapter.validate_json(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
             "output_schema": output_schema,
