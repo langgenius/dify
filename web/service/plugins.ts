@@ -104,3 +104,27 @@ export const updatePermission = async (permissions: Permissions) => {
 export const uninstallPlugin = async (pluginId: string) => {
   return post<UninstallPluginResponse>('/workspaces/current/plugin/uninstall', { body: { plugin_installation_id: pluginId } })
 }
+
+export const batchUpgradePlugins = async () => {
+  return post<{
+    success: Array<{
+      plugin_id: string
+      from_version: string
+      to_version: string
+      from_identifier: string
+      to_identifier: string
+    }>
+    failed: Array<{
+      plugin_id: string
+      current_version: string
+      error: string
+    }>
+    skipped: Array<{
+      plugin_id: string
+      reason: string
+      current_version: string
+    }>
+  }>('/workspaces/current/plugin/upgrade/batch', {
+    body: {},
+  })
+}
