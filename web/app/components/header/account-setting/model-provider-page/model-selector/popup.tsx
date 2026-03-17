@@ -19,7 +19,11 @@ import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
-import { CustomConfigurationStatusEnum, ModelFeatureEnum } from '../declarations'
+import {
+  CustomConfigurationStatusEnum,
+  ModelFeatureEnum,
+  ModelStatusEnum,
+} from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
@@ -58,6 +62,19 @@ const Popup: FC<PopupProps> = ({
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
   const { data: systemFeatures } = useSystemFeaturesQuery()
   const trialModels = systemFeatures?.trial_models
+  const installedProviderMap = useMemo(() => new Map(
+    modelProviders.map(provider => [provider.provider, provider]),
+  ), [modelProviders])
+  const aiCreditVisibleProviders = useMemo(() => {
+    if (isCreditsExhausted)
+      return new Set<string>()
+
+    return new Set(
+      modelProviders
+        .filter(provider => providerSupportsCredits(provider, trialModels))
+        .map(provider => provider.provider),
+    )
+  }, [isCreditsExhausted, modelProviders, trialModels])
   const showCreditsExhaustedAlert = isCreditsExhausted
     && modelProviders.some(provider => providerSupportsCredits(provider, trialModels))
   const hasApiKeyFallback = modelProviders.some((provider) => {
@@ -92,18 +109,31 @@ const Popup: FC<PopupProps> = ({
   const installedModelList = useMemo(() => {
     const modelMap = new Map(modelList.map(model => [model.provider, model]))
     const installedMarketplaceModels = MODEL_PROVIDER_QUOTA_GET_PAID.flatMap((providerKey) => {
-      const installedProvider = modelProviders.find(provider => provider.provider === providerKey)
+      const installedProvider = installedProviderMap.get(providerKey)
 
       if (!installedProvider)
         return []
 
       const matchedModel = modelMap.get(providerKey)
-      return matchedModel ? [matchedModel] : []
+      if (matchedModel)
+        return [matchedModel]
+
+      if (!aiCreditVisibleProviders.has(providerKey))
+        return []
+
+      return [{
+        provider: installedProvider.provider,
+        icon_small: installedProvider.icon_small,
+        icon_small_dark: installedProvider.icon_small_dark,
+        label: installedProvider.label,
+        models: [],
+        status: ModelStatusEnum.active,
+      }]
     })
     const otherModels = modelList.filter(model => !MODEL_PROVIDER_QUOTA_GET_PAID.includes(model.provider as ModelProviderQuotaGetPaid))
 
     return [...installedMarketplaceModels, ...otherModels]
-  }, [modelList, modelProviders])
+  }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
   const filteredModelList = useMemo(() => {
     const filtered = installedModelList.map((model) => {
@@ -128,7 +158,7 @@ const Popup: FC<PopupProps> = ({
             return modelItem.features?.includes(feature) ?? false
           })
         })
-      if (!matchesProviderSearch || filteredModels.length === 0)
+      if (!matchesProviderSearch || (filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider)))
         return null
 
       return { ...model, models: filteredModels }
@@ -143,7 +173,7 @@ const Popup: FC<PopupProps> = ({
     }
 
     return filtered
-  }, [defaultModel?.provider, installedModelList, language, scopeFeatures, searchText])
+  }, [aiCreditVisibleProviders, defaultModel?.provider, installedModelList, language, scopeFeatures, searchText])
 
   const marketplaceProviders = useMemo(() => {
     const installedProviders = new Set(modelProviders.map(provider => provider.provider))

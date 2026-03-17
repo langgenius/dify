@@ -27,7 +27,7 @@ type MockMarketplacePlugin = {
   latest_package_identifier: string
 }
 
-type MockContextProvider = Pick<ModelProvider, 'provider' | 'custom_configuration' | 'system_configuration'>
+type MockContextProvider = Pick<ModelProvider, 'provider' | 'label' | 'icon_small' | 'icon_small_dark' | 'custom_configuration' | 'system_configuration'>
 
 const mockMarketplacePlugins = vi.hoisted(() => ({
   current: [] as MockMarketplacePlugin[],
@@ -152,6 +152,9 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
 
 const makeContextProvider = (overrides: Partial<MockContextProvider> = {}): MockContextProvider => ({
   provider: 'test-openai',
+  label: { en_US: 'Test OpenAI', zh_Hans: 'Test OpenAI' },
+  icon_small: { en_US: '', zh_Hans: '' },
+  icon_small_dark: { en_US: '', zh_Hans: '' },
   custom_configuration: {
     status: 'no-configure',
   } as MockContextProvider['custom_configuration'],
@@ -443,8 +446,38 @@ describe('Popup', () => {
     expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).toBeInTheDocument()
   })
 
-  it('should hide installed marketplace providers when they are absent from the current modelList', () => {
-    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-anthropic' })]
+  it('should show installed marketplace providers without models when AI credits are available', () => {
+    mockContextModelProviders.current = [makeContextProvider({
+      provider: 'test-anthropic',
+      system_configuration: {
+        enabled: true,
+      } as MockContextProvider['system_configuration'],
+    })]
+
+    render(
+      <Popup
+        modelList={[]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('test-anthropic')).toBeInTheDocument()
+    expect(screen.getByText('TestOpenAI')).toBeInTheDocument()
+  })
+
+  it('should hide installed marketplace providers without models when AI credits are exhausted', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockContextModelProviders.current = [makeContextProvider({
+      provider: 'test-anthropic',
+      system_configuration: {
+        enabled: true,
+      } as MockContextProvider['system_configuration'],
+    })]
 
     render(
       <Popup
