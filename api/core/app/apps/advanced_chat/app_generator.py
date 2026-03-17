@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -47,7 +47,6 @@ from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.base import Base
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.workflow_draft_variable_service import (
@@ -524,6 +523,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         with Session(bind=db.engine, expire_on_commit=False) as session:
             workflow = _refresh_model(session, workflow)
             message = _refresh_model(session, message)
+        assert message is not None
         #     workflow_ = session.get(Workflow, workflow.id)
         #     assert workflow_ is not None
         #     workflow = workflow_
@@ -690,11 +690,22 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 raise e
 
 
-_T = TypeVar("_T", bound=Base)
+@overload
+def _refresh_model(session: object, model: Workflow) -> Workflow: ...
 
 
-def _refresh_model(session, model: _T) -> _T:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
-        detach_model = session.get(type(model), model.id)
-        assert detach_model is not None
-        return detach_model
+@overload
+def _refresh_model(session: object, model: Message) -> Message: ...
+
+
+def _refresh_model(session: object, model: Workflow | Message) -> Workflow | Message:
+    _ = session
+    with Session(bind=db.engine, expire_on_commit=False) as db_session:
+        if isinstance(model, Workflow):
+            detached_workflow = db_session.get(Workflow, model.id)
+            assert detached_workflow is not None
+            return detached_workflow
+
+        detached_message = db_session.get(Message, model.id)
+        assert detached_message is not None
+        return detached_message

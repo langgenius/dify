@@ -443,7 +443,10 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         # Keep track of paragraph and table positions
         content_items: list[tuple[int, str, Table | Paragraph]] = []
 
-        it = iter(doc.element.body)
+        doc_body = getattr(doc.element, "body", None)
+        if doc_body is None:
+            raise TextExtractionError("DOCX body not found")
+        it = iter(doc_body)
         part = next(it, None)
         i = 0
         while part is not None:

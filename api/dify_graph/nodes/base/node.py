@@ -336,16 +336,13 @@ class Node(Generic[NodeDataT]):
 
     def _restore_execution_id_from_runtime_state(self) -> str | None:
         graph_execution = self.graph_runtime_state.graph_execution
-        try:
-            node_executions = graph_execution.node_executions
-        except AttributeError:
-            return None
+        node_executions = getattr(graph_execution, "node_executions", None)
         if not isinstance(node_executions, dict):
             return None
         node_execution = node_executions.get(self._node_id)
         if node_execution is None:
             return None
-        execution_id = node_execution.execution_id
+        execution_id = getattr(node_execution, "execution_id", None)
         if not execution_id:
             return None
         return str(execution_id)
@@ -395,8 +392,7 @@ class Node(Generic[NodeDataT]):
                 if isinstance(event, NodeEventBase):  # pyright: ignore[reportUnnecessaryIsInstance]
                     yield self._dispatch(event)
                 elif isinstance(event, GraphNodeEventBase) and not event.in_iteration_id and not event.in_loop_id:  # pyright: ignore[reportUnnecessaryIsInstance]
-                    event.id = self.execution_id
-                    yield event
+                    yield event.model_copy(update={"id": self.execution_id})
                 else:
                     yield event
         except Exception as e:

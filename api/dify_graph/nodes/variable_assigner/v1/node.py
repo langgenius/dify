@@ -9,7 +9,7 @@ from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from dify_graph.variables import SegmentType, VariableBase
+from dify_graph.variables import Segment, SegmentType, VariableBase
 
 from .node_data import VariableAssignerData, WriteMode
 
@@ -74,23 +74,29 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         if not isinstance(original_variable, VariableBase):
             raise VariableOperatorNodeError("assigned variable not found")
 
+        income_value: Segment
+        updated_variable: VariableBase
         match self.node_data.write_mode:
             case WriteMode.OVER_WRITE:
-                income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
-                if not income_value:
+                input_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
+                if input_value is None:
                     raise VariableOperatorNodeError("input value not found")
+                income_value = input_value
                 updated_variable = original_variable.model_copy(update={"value": income_value.value})
 
             case WriteMode.APPEND:
-                income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
-                if not income_value:
+                input_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
+                if input_value is None:
                     raise VariableOperatorNodeError("input value not found")
+                income_value = input_value
                 updated_value = original_variable.value + [income_value.value]
                 updated_variable = original_variable.model_copy(update={"value": updated_value})
 
             case WriteMode.CLEAR:
                 income_value = SegmentType.get_zero_value(original_variable.value_type)
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
+            case _:
+                raise VariableOperatorNodeError(f"unsupported write mode: {self.node_data.write_mode}")
 
         # Over write the variable.
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
