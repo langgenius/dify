@@ -1,6 +1,10 @@
 'use client'
 
-import type { editor as MonacoEditor } from 'modern-monaco/editor-core'
+import type {
+  IEditorOptions,
+  IStandaloneCodeEditor,
+  ITextModel,
+} from 'modern-monaco/editor-core'
 import type { FC } from 'react'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -13,11 +17,11 @@ type ModernMonacoEditorProps = {
   value: string
   language: string
   readOnly?: boolean
-  options?: MonacoEditor.IEditorOptions
+  options?: IEditorOptions
   onChange?: (value: string) => void
   onFocus?: () => void
   onBlur?: () => void
-  onReady?: (editor: MonacoEditor.IStandaloneCodeEditor, monaco: typeof import('modern-monaco/editor-core')) => void
+  onReady?: (editor: IStandaloneCodeEditor, monaco: typeof import('modern-monaco/editor-core')) => void
   loading?: React.ReactNode
   className?: string
   style?: React.CSSProperties
@@ -26,15 +30,15 @@ type ModernMonacoEditorProps = {
 type MonacoModule = typeof import('modern-monaco/editor-core')
 type EditorCallbacks = Pick<ModernMonacoEditorProps, 'onBlur' | 'onChange' | 'onFocus' | 'onReady'>
 type EditorSetup = {
-  editorOptions: MonacoEditor.IEditorOptions
+  editorOptions: IEditorOptions
   language: string
   resolvedTheme: string
 }
 
 const syncEditorValue = (
-  editor: MonacoEditor.IStandaloneCodeEditor,
+  editor: IStandaloneCodeEditor,
   monaco: MonacoModule,
-  model: MonacoEditor.ITextModel,
+  model: ITextModel,
   value: string,
   preventTriggerChangeEventRef: React.RefObject<boolean>,
 ) => {
@@ -62,7 +66,7 @@ const syncEditorValue = (
 }
 
 const bindEditorCallbacks = (
-  editor: MonacoEditor.IStandaloneCodeEditor,
+  editor: IStandaloneCodeEditor,
   monaco: MonacoModule,
   callbacksRef: React.RefObject<EditorCallbacks>,
   preventTriggerChangeEventRef: React.RefObject<boolean>,
@@ -109,14 +113,14 @@ export const ModernMonacoEditor: FC<ModernMonacoEditorProps> = ({
   const resolvedTheme = appTheme === Theme.light ? LIGHT_THEME_ID : DARK_THEME_ID
   const [isEditorReady, setIsEditorReady] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
-  const modelRef = useRef<MonacoEditor.ITextModel | null>(null)
+  const editorRef = useRef<IStandaloneCodeEditor | null>(null)
+  const modelRef = useRef<ITextModel | null>(null)
   const monacoRef = useRef<MonacoModule | null>(null)
   const preventTriggerChangeEventRef = useRef(false)
   const valueRef = useRef(value)
   const callbacksRef = useRef<EditorCallbacks>({ onChange, onFocus, onBlur, onReady })
 
-  const editorOptions = useMemo<MonacoEditor.IEditorOptions>(() => ({
+  const editorOptions = useMemo<IEditorOptions>(() => ({
     automaticLayout: true,
     readOnly,
     domReadOnly: true,
