@@ -1,12 +1,23 @@
-from enum import IntEnum, StrEnum, auto
-from typing import Any, Literal, Union
+from __future__ import annotations
 
-from pydantic import BaseModel
+from enum import IntEnum, StrEnum, auto
+from typing import Literal, TypeAlias
+
+from pydantic import BaseModel, TypeAdapter, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
 from dify_graph.entities.base_node_data import BaseNodeData
 from dify_graph.enums import BuiltinNodeTypes, NodeType
+
+AgentInputConstantValue: TypeAlias = (
+    list[ToolSelector] | str | int | float | bool | dict[str, object] | list[object] | None
+)
+VariableSelector: TypeAlias = list[str]
+
+_AGENT_INPUT_VALUE_ADAPTER: TypeAdapter[AgentInputConstantValue] = TypeAdapter(AgentInputConstantValue)
+_AGENT_VARIABLE_SELECTOR_ADAPTER: TypeAdapter[VariableSelector] = TypeAdapter(VariableSelector)
 
 
 class AgentNodeData(BaseNodeData):
@@ -21,8 +32,20 @@ class AgentNodeData(BaseNodeData):
     tool_node_version: str | None = None
 
     class AgentInput(BaseModel):
-        value: Union[list[str], list[ToolSelector], Any]
         type: Literal["mixed", "variable", "constant"]
+        value: AgentInputConstantValue | VariableSelector
+
+        @field_validator("value", mode="before")
+        @classmethod
+        def validate_value(
+            cls, value: object, validation_info: ValidationInfo
+        ) -> AgentInputConstantValue | VariableSelector:
+            input_type = validation_info.data.get("type")
+            if input_type == "variable":
+                return _AGENT_VARIABLE_SELECTOR_ADAPTER.validate_python(value)
+            if input_type in {"mixed", "constant"}:
+                return _AGENT_INPUT_VALUE_ADAPTER.validate_python(value)
+            raise ValueError(f"Unknown agent input type: {input_type}")
 
     agent_parameters: dict[str, AgentInput]
 
