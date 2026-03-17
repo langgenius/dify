@@ -174,7 +174,7 @@ def test_human_input_node_includes_submitted_data_in_tracing_inputs():
 
     events = list(node.run())
 
-    assert len(events) >= 3
+    assert len(events) == 3
     succeeded_event = events[2]
     assert isinstance(succeeded_event, NodeRunSucceededEvent)
     assert succeeded_event.node_run_result.inputs == {"name": "Alice"}
