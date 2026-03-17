@@ -36,7 +36,6 @@
     "dev:vinext": "vinext dev",
     "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
     "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
-    "hoist:modern-monaco": "tsx ./scripts/hoist-modern-monaco.ts",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
     "lint": "eslint --cache --concurrency=auto",
@@ -75,6 +74,7 @@
     "@lexical/selection": "0.41.0",
     "@lexical/text": "0.41.0",
     "@lexical/utils": "0.41.0",
+    "@monaco-editor/react": "4.7.0",
     "@octokit/core": "7.0.6",
     "@octokit/request-error": "7.1.0",
     "@orpc/client": "1.13.6",
@@ -126,7 +126,6 @@
     "mermaid": "11.13.0",
     "mime": "4.1.0",
     "mitt": "3.0.1",
-    "modern-monaco": "0.4.0",
     "negotiator": "1.0.0",
     "next": "16.1.6",
     "next-themes": "0.4.6",
@@ -252,6 +251,7 @@
   "pnpm": {
     "overrides": {
       "@lexical/code": "npm:lexical-code-no-prism@0.41.0",
+      "@monaco-editor/loader": "1.7.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
       "array-includes": "npm:@nolyfill/array-includes@^1.0.44",
       "array.prototype.findlast": "npm:@nolyfill/array.prototype.findlast@^1.0.44",
