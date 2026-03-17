@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
-from dify_graph.enums import BuiltinNodeTypes
+from dify_graph.enums import BuiltinNodeTypes, SystemVariableKey
 from dify_graph.variables.segments import StringSegment
 from dify_graph.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
@@ -181,6 +181,42 @@ class TestDraftVariableSaver:
         mock_batch_upsert.assert_called_once()
         draft_vars = mock_batch_upsert.call_args[0][1]
         assert len(draft_vars) == 2
+
+    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(self, mock_batch_upsert):
+        """Start node should persist common `sys.*` variables, not only `sys.files`."""
+        mock_session = MagicMock(spec=Session)
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.tenant_id = "test-tenant-id"
+
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id="test-app-id",
+            node_id="start-node-id",
+            node_type=BuiltinNodeTypes.START,
+            node_execution_id="exec-id",
+            user=mock_user,
+        )
+
+        outputs = {
+            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.TIMESTAMP}": 1700000000,
+            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.WORKFLOW_EXECUTION_ID}": "run-id-123",
+        }
+
+        saver.save(outputs=outputs)
+
+        mock_batch_upsert.assert_called_once()
+        draft_vars = mock_batch_upsert.call_args[0][1]
+
+        # plus one dummy output because there are no non-sys Start inputs
+        assert len(draft_vars) == 3
+
+        sys_vars = [v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID]
+        assert {v.name for v in sys_vars} == {
+            str(SystemVariableKey.TIMESTAMP),
+            str(SystemVariableKey.WORKFLOW_EXECUTION_ID),
+        }
 
 
 class TestWorkflowDraftVariableService:
