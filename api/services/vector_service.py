@@ -156,7 +156,8 @@ class VectorService:
         )
         # use full doc mode to generate segment's child chunk
         processing_rule_dict = processing_rule.to_dict()
-        processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC
+        if processing_rule_dict["rules"] is not None:
+            processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,

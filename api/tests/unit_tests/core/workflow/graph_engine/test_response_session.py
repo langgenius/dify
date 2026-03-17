@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import dify_graph.graph_engine.response_coordinator.session as response_session_module
 from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeState, NodeType
-from dify_graph.graph_engine.response_coordinator import RESPONSE_SESSION_NODE_TYPES
 from dify_graph.graph_engine.response_coordinator.session import ResponseSession
 from dify_graph.nodes.base.template import Template, TextSegment
 
@@ -35,27 +33,13 @@ class DummyNodeWithoutStreamingTemplate:
         self.state = NodeState.UNKNOWN
 
 
-def test_response_session_from_node_rejects_node_types_outside_allowlist() -> None:
-    """Unsupported node types are rejected even if they expose a template."""
+def test_response_session_from_node_accepts_nodes_outside_previous_allowlist() -> None:
+    """Session creation depends on the streaming-template contract rather than node type."""
     node = DummyResponseNode(
         node_id="llm-node",
         node_type=BuiltinNodeTypes.LLM,
         template=Template(segments=[TextSegment(text="hello")]),
     )
-
-    with pytest.raises(TypeError, match="RESPONSE_SESSION_NODE_TYPES"):
-        ResponseSession.from_node(node)
-
-
-def test_response_session_from_node_supports_downstream_allowlist_extension(monkeypatch) -> None:
-    """Downstream applications can extend the supported node-type list."""
-    node = DummyResponseNode(
-        node_id="llm-node",
-        node_type=BuiltinNodeTypes.LLM,
-        template=Template(segments=[TextSegment(text="hello")]),
-    )
-    extended_node_types = [*RESPONSE_SESSION_NODE_TYPES, BuiltinNodeTypes.LLM]
-    monkeypatch.setattr(response_session_module, "RESPONSE_SESSION_NODE_TYPES", extended_node_types)
 
     session = ResponseSession.from_node(node)
 
