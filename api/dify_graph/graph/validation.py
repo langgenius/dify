@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from dify_graph.enums import NodeExecutionType, NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 
 if TYPE_CHECKING:
     from .graph import Graph
@@ -71,7 +71,7 @@ class _RootNodeValidator:
     """Validates root node invariants."""
 
     invalid_root_code: str = "INVALID_ROOT"
-    container_entry_types: tuple[NodeType, ...] = (NodeType.ITERATION_START, NodeType.LOOP_START)
+    container_entry_types: tuple[NodeType, ...] = (BuiltinNodeTypes.ITERATION_START, BuiltinNodeTypes.LOOP_START)
 
     def validate(self, graph: Graph) -> Sequence[GraphValidationIssue]:
         root_node = graph.root_node
@@ -86,7 +86,7 @@ class _RootNodeValidator:
             )
             return issues
 
-        node_type = getattr(root_node, "node_type", None)
+        node_type = root_node.node_type
         if root_node.execution_type != NodeExecutionType.ROOT and node_type not in self.container_entry_types:
             issues.append(
                 GraphValidationIssue(
@@ -114,45 +114,9 @@ class GraphValidator:
             raise GraphValidationError(issues)
 
 
-@dataclass(frozen=True, slots=True)
-class _TriggerStartExclusivityValidator:
-    """Ensures trigger nodes do not coexist with UserInput (start) nodes."""
-
-    conflict_code: str = "TRIGGER_START_NODE_CONFLICT"
-
-    def validate(self, graph: Graph) -> Sequence[GraphValidationIssue]:
-        start_node_id: str | None = None
-        trigger_node_ids: list[str] = []
-
-        for node in graph.nodes.values():
-            node_type = getattr(node, "node_type", None)
-            if not isinstance(node_type, NodeType):
-                continue
-
-            if node_type == NodeType.START:
-                start_node_id = node.id
-            elif node_type.is_trigger_node:
-                trigger_node_ids.append(node.id)
-
-        if start_node_id and trigger_node_ids:
-            trigger_list = ", ".join(trigger_node_ids)
-            return [
-                GraphValidationIssue(
-                    code=self.conflict_code,
-                    message=(
-                        f"UserInput (start) node '{start_node_id}' cannot coexist with trigger nodes: {trigger_list}."
-                    ),
-                    node_id=start_node_id,
-                )
-            ]
-
-        return []
-
-
 _DEFAULT_RULES: tuple[GraphValidationRule, ...] = (
     _EdgeEndpointValidator(),
     _RootNodeValidator(),
-    _TriggerStartExclusivityValidator(),
 )
 
 

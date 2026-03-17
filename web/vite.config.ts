@@ -1,13 +1,12 @@
-/// <reference types="vitest/config" />
-
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
-import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
+import { defineConfig } from 'vite-plus'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
+import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
 import { collectComponentCoverageExcludedFiles } from './scripts/component-coverage-filters.mjs'
 import { EXCLUDED_COMPONENT_MODULES } from './scripts/components-coverage-thresholds.mjs'
 
@@ -30,6 +29,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: isTest
       ? [
+          nextStaticImageTestPlugin({ projectRoot }),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
