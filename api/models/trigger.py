@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime
 from functools import cached_property
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -22,6 +22,44 @@ from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
+
+
+class WorkflowTriggerLogDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    workflow_run_id: str | None
+    root_node_id: str | None
+    trigger_metadata: Any
+    trigger_type: str
+    trigger_data: Any
+    inputs: Any
+    outputs: Any
+    status: str
+    error: str | None
+    queue_name: str
+    celery_task_id: str | None
+    retry_count: int
+    elapsed_time: float | None
+    total_tokens: int | None
+    created_by_role: str
+    created_by: str
+    created_at: str | None
+    triggered_at: str | None
+    finished_at: str | None
+
+
+class WorkflowSchedulePlanDict(TypedDict):
+    id: str
+    app_id: str
+    node_id: str
+    tenant_id: str
+    cron_expression: str
+    timezone: str
+    next_run_at: str | None
+    created_at: str
+    updated_at: str
 
 
 class TriggerSubscription(TypeBase):
@@ -250,7 +288,7 @@ class WorkflowTriggerLog(TypeBase):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> WorkflowTriggerLogDict:
         """Convert to dictionary for API responses"""
         return {
             "id": self.id,
@@ -481,7 +519,7 @@ class WorkflowSchedulePlan(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> WorkflowSchedulePlanDict:
         """Convert to dictionary representation"""
         return {
             "id": self.id,
