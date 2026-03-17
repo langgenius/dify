@@ -30,7 +30,7 @@ _INVOKE_FROM_DEBUGGER = "debugger"
 
 class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     node_type = KNOWLEDGE_INDEX_NODE_TYPE
-    execution_type = NodeExecutionType.EXECUTABLE
+    execution_type = NodeExecutionType.RESPONSE
 
     def __init__(
         self,
