@@ -286,3 +286,25 @@ def test_celery_broker_url_with_special_chars_password(
     assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
     assert redis_config["password"] == expected_password
     assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'
+
+
+def test_redis_max_connections_empty_string_treated_as_none(monkeypatch: pytest.MonkeyPatch):
+    """Ensure empty string in REDIS_MAX_CONNECTIONS is normalized to None and does not raise on config creation."""
+    # clear system environment variables
+    os.environ.clear()
+
+    # Minimal required env for DifyConfig instantiation
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    # Set REDIS_MAX_CONNECTIONS to empty string to simulate "unset" via env/.env
+    monkeypatch.setenv("REDIS_MAX_CONNECTIONS", "")
+
+    config = DifyConfig(_env_file=None)
+
+    # Should be normalized to None (library default behaviour)
+    assert config.REDIS_MAX_CONNECTIONS is None
