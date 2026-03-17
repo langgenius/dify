@@ -76,12 +76,6 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     is_flag=True,
     help="Preview cleanup results without deleting any workflow run data.",
 )
-@click.option(
-    "--task-label",
-    default="daily",
-    show_default=True,
-    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
-)
 def clean_workflow_runs(
     before_days: int,
     batch_size: int,
@@ -90,7 +84,6 @@ def clean_workflow_runs(
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
-    task_label: str,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
@@ -112,6 +105,13 @@ def clean_workflow_runs(
         start_from = now - datetime.timedelta(days=from_days_ago)
         end_before = now - datetime.timedelta(days=to_days_ago)
         before_days = 0
+
+    if from_days_ago is not None and to_days_ago is not None:
+        task_label = f"{from_days_ago}to{to_days_ago}"
+    elif start_from is None:
+        task_label = f"before-{before_days}"
+    else:
+        task_label = "custom"
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
@@ -660,12 +660,6 @@ def cleanup_orphaned_draft_variables(
     help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
-@click.option(
-    "--task-label",
-    default="daily",
-    show_default=True,
-    help="Stable label value used to distinguish multiple cleanup CronJobs in metrics.",
-)
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
@@ -674,7 +668,6 @@ def clean_expired_messages(
     from_days_ago: int | None,
     before_days: int | None,
     dry_run: bool,
-    task_label: str,
 ):
     """
     Clean expired messages and related data for tenants based on clean policy.
@@ -719,6 +712,13 @@ def clean_expired_messages(
         # Create policy based on billing configuration
         # NOTE: graceful_period will be ignored when billing is disabled.
         policy = create_message_clean_policy(graceful_period_days=graceful_period)
+
+        if from_days_ago is not None and before_days is not None:
+            task_label = f"{from_days_ago}to{before_days}"
+        elif start_from is None and before_days is not None:
+            task_label = f"before-{before_days}"
+        else:
+            task_label = "custom"
 
         # Create and run the cleanup service
         if abs_mode:

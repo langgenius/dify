@@ -179,7 +179,7 @@ class WorkflowRunCleanup:
         end_before: datetime.datetime | None = None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
         dry_run: bool = False,
-        task_label: str = "daily",
+        task_label: str = "custom",
     ):
         if (start_from is None) ^ (end_before is None):
             raise ValueError("start_from and end_before must be both set or both omitted.")
@@ -197,12 +197,10 @@ class WorkflowRunCleanup:
         self.batch_size = batch_size
         self._cleanup_whitelist: set[str] | None = None
         self.dry_run = dry_run
-        normalized_task_label = task_label.strip()
-        self.task_label = normalized_task_label or "daily"
         self._metrics = WorkflowRunCleanupMetrics(
             dry_run=dry_run,
             has_window=bool(start_from),
-            task_label=self.task_label,
+            task_label=task_label,
         )
         self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
         self.workflow_run_repo: APIWorkflowRunRepository

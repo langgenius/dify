@@ -170,7 +170,7 @@ class MessagesCleanService:
         start_from: datetime.datetime | None = None,
         batch_size: int = 1000,
         dry_run: bool = False,
-        task_label: str = "daily",
+        task_label: str = "custom",
     ) -> None:
         """
         Initialize the service with cleanup parameters.
@@ -181,19 +181,17 @@ class MessagesCleanService:
             start_from: Optional start time (inclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
-            task_label: Stable task label to distinguish multiple cleanup CronJobs
+            task_label: Optional task label for retention metrics
         """
         self._policy = policy
         self._end_before = end_before
         self._start_from = start_from
         self._batch_size = batch_size
         self._dry_run = dry_run
-        normalized_task_label = task_label.strip()
-        self._task_label = normalized_task_label or "daily"
         self._metrics = MessagesCleanupMetrics(
             dry_run=dry_run,
             has_window=bool(start_from),
-            task_label=self._task_label,
+            task_label=task_label,
         )
 
     @classmethod
@@ -204,7 +202,7 @@ class MessagesCleanService:
         end_before: datetime.datetime,
         batch_size: int = 1000,
         dry_run: bool = False,
-        task_label: str = "daily",
+        task_label: str = "custom",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages within a specific time range.
@@ -217,7 +215,7 @@ class MessagesCleanService:
             end_before: End time (exclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
-            task_label: Stable task label to distinguish multiple cleanup CronJobs
+            task_label: Optional task label for retention metrics
 
         Returns:
             MessagesCleanService instance
@@ -255,7 +253,7 @@ class MessagesCleanService:
         days: int = 30,
         batch_size: int = 1000,
         dry_run: bool = False,
-        task_label: str = "daily",
+        task_label: str = "custom",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages older than specified days.
@@ -265,7 +263,7 @@ class MessagesCleanService:
             days: Number of days to look back from now
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
-            task_label: Stable task label to distinguish multiple cleanup CronJobs
+            task_label: Optional task label for retention metrics
 
         Returns:
             MessagesCleanService instance

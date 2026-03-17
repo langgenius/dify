@@ -540,6 +540,20 @@ class TestMessagesCleanServiceFromTimeRange:
         assert service._batch_size == 1000  # default
         assert service._dry_run is False  # default
 
+    def test_explicit_task_label(self):
+        start_from = datetime.datetime(2024, 1, 1)
+        end_before = datetime.datetime(2024, 1, 2)
+        policy = BillingDisabledPolicy()
+
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=start_from,
+            end_before=end_before,
+            task_label="60to30",
+        )
+
+        assert service._metrics._base_attributes["task_label"] == "60to30"
+
 
 class TestMessagesCleanServiceFromDays:
     """Unit tests for MessagesCleanService.from_days factory method."""
@@ -619,6 +633,7 @@ class TestMessagesCleanServiceFromDays:
         assert service._end_before == expected_end_before
         assert service._batch_size == 1000  # default
         assert service._dry_run is False  # default
+        assert service._metrics._base_attributes["task_label"] == "custom"
 
 
 class TestMessagesCleanServiceRun:
