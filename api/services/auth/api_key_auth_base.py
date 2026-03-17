@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, NotRequired
 
-from typing_extensions import TypedDict
-
 from pydantic import StringConstraints
+from typing_extensions import TypedDict
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 

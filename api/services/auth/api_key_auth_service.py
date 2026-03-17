@@ -2,10 +2,9 @@ import json
 from collections.abc import Mapping
 from typing import Annotated, TypeVar
 
-from typing_extensions import TypedDict
-
 from pydantic import StringConstraints, TypeAdapter, ValidationError
 from sqlalchemy import select
+from typing_extensions import TypedDict
 
 from core.helper import encrypter
 from extensions.ext_database import db
