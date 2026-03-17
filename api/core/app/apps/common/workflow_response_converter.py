@@ -263,7 +263,7 @@ class WorkflowResponseConverter:
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
-        created_by: CreatedByDict
+        created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
         if isinstance(user, Account):
             created_by = AccountCreatedByDict(
@@ -271,7 +271,7 @@ class WorkflowResponseConverter:
                 name=user.name,
                 email=user.email,
             )
-        else:
+        elif isinstance(user, EndUser):
             created_by = EndUserCreatedByDict(
                 id=user.id,
                 user=user.session_id,

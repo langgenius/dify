@@ -14,17 +14,17 @@ class SystemParametersDict(TypedDict):
 
 
 class AppParametersDict(TypedDict):
-    opening_statement: Any
-    suggested_questions: Any
-    suggested_questions_after_answer: Any
-    speech_to_text: Any
-    text_to_speech: Any
-    retriever_resource: Any
-    annotation_reply: Any
-    more_like_this: Any
+    opening_statement: str | None
+    suggested_questions: list[str]
+    suggested_questions_after_answer: dict[str, Any]
+    speech_to_text: dict[str, Any]
+    text_to_speech: dict[str, Any]
+    retriever_resource: dict[str, Any]
+    annotation_reply: dict[str, Any]
+    more_like_this: dict[str, Any]
     user_input_form: list[dict[str, Any]]
-    sensitive_word_avoidance: Any
-    file_upload: Any
+    sensitive_word_avoidance: dict[str, Any]
+    file_upload: dict[str, Any]
     system_parameters: SystemParametersDict
 
 
