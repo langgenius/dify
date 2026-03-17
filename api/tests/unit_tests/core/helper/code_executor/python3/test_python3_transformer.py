@@ -8,5 +8,17 @@ def test_get_runner_script():
     script = Python3TemplateTransformer.assemble_runner_script(code, inputs)
     script_lines = script.splitlines()
     code_lines = code.splitlines()
-    # Check that the first lines of script are exactly the same as code
-    assert script_lines[: len(code_lines)] == code_lines
+    # First line is a random anti-KPA padding comment
+    assert script_lines[0].startswith("# ")
+    # User code follows immediately after the padding line
+    assert script_lines[1 : 1 + len(code_lines)] == code_lines
+
+
+def test_anti_kpa_padding_is_unique():
+    code = Python3CodeProvider.get_default_code()
+    inputs = {"arg1": "a", "arg2": "b"}
+    script_a = Python3TemplateTransformer.assemble_runner_script(code, inputs)
+    script_b = Python3TemplateTransformer.assemble_runner_script(code, inputs)
+    padding_a = script_a.splitlines()[0]
+    padding_b = script_b.splitlines()[0]
+    assert padding_a != padding_b, "Each assembled script must have unique random padding"

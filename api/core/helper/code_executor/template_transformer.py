@@ -1,5 +1,6 @@
 import json
 import re
+import secrets
 from abc import ABC, abstractmethod
 from base64 import b64encode
 from collections.abc import Mapping
@@ -7,11 +8,16 @@ from typing import Any
 
 from dify_graph.variables.utils import dumps_with_segments
 
+# Minimum random padding bytes to exceed the sandbox XOR key length (64 bytes).
+_ANTI_KPA_MIN_PADDING = 512
+_ANTI_KPA_JITTER = 256
+
 
 class TemplateTransformer(ABC):
     _code_placeholder: str = "{{code}}"
     _inputs_placeholder: str = "{{inputs}}"
     _result_tag: str = "<<RESULT>>"
+    _comment_prefix: str = "#"
 
     @classmethod
     def serialize_code(cls, code: str) -> str:
@@ -107,13 +113,19 @@ class TemplateTransformer(ABC):
         return input_base64_encoded
 
     @classmethod
+    def _generate_anti_kpa_padding(cls) -> str:
+        padding_size = secrets.randbelow(_ANTI_KPA_JITTER) + _ANTI_KPA_MIN_PADDING
+        nonce = secrets.token_hex(padding_size)
+        return f"{cls._comment_prefix} {nonce}\n"
+
+    @classmethod
     def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         # assemble runner script
         script = cls.get_runner_script()
         script = script.replace(cls._code_placeholder, code)
         inputs_str = cls.serialize_inputs(inputs)
         script = script.replace(cls._inputs_placeholder, inputs_str)
-        return script
+        return cls._generate_anti_kpa_padding() + script
 
     @classmethod
     def get_preload_script(cls) -> str:

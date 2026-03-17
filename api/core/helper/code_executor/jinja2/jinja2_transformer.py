@@ -31,7 +31,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         script = script.replace(cls._template_b64_placeholder, code_b64)
         inputs_str = cls.serialize_inputs(inputs)
         script = script.replace(cls._inputs_placeholder, inputs_str)
-        return script
+        return cls._generate_anti_kpa_padding() + script
 
     @classmethod
     def get_runner_script(cls) -> str:
