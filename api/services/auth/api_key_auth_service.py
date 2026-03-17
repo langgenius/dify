@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping
 from typing import Annotated, TypeVar
 
-from pydantic import StringConstraints, TypeAdapter, ValidationError
+from pydantic import StringConstraints, TypeAdapter
 from sqlalchemy import select
 from typing_extensions import TypedDict
 
@@ -109,7 +109,4 @@ class ApiKeyAuthService:
 
     @staticmethod
     def _validate_payload(adapter: TypeAdapter[ValidatedPayload], payload: object) -> ValidatedPayload:
-        try:
-            return adapter.validate_python(payload)
-        except ValidationError as exc:
-            raise ValueError(exc.errors()[0]["msg"]) from exc
+        return adapter.validate_python(payload)

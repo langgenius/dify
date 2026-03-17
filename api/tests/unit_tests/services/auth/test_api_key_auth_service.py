@@ -2,6 +2,7 @@ import json
 from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -232,7 +233,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["category"]
 
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValidationError, match="Field required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_empty_category(self):
@@ -240,7 +241,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["category"] = ""
 
-        with pytest.raises(ValueError, match="at least 1 character"):
+        with pytest.raises(ValidationError, match="at least 1 character"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_missing_provider(self):
@@ -248,7 +249,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["provider"]
 
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValidationError, match="Field required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_empty_provider(self):
@@ -256,7 +257,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["provider"] = ""
 
-        with pytest.raises(ValueError, match="at least 1 character"):
+        with pytest.raises(ValidationError, match="at least 1 character"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_missing_credentials(self):
@@ -264,7 +265,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["credentials"]
 
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValidationError, match="Field required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_empty_credentials(self):
@@ -272,7 +273,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["credentials"] = None
 
-        with pytest.raises(ValueError, match="valid dictionary"):
+        with pytest.raises(ValidationError, match="valid dictionary"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_invalid_credentials_type(self):
@@ -280,7 +281,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["credentials"] = "not_a_dict"
 
-        with pytest.raises(ValueError, match="valid dictionary"):
+        with pytest.raises(ValidationError, match="valid dictionary"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_missing_auth_type(self):
@@ -288,7 +289,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["credentials"]["auth_type"]
 
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValidationError, match="Field required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     def test_validate_api_key_auth_args_empty_auth_type(self):
@@ -296,7 +297,7 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ""
 
-        with pytest.raises(ValueError, match="at least 1 character"):
+        with pytest.raises(ValidationError, match="at least 1 character"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
 
     @pytest.mark.parametrize(
@@ -376,7 +377,7 @@ class TestApiKeyAuthService:
 
     def test_validate_api_key_auth_args_none_input(self):
         """Test API key auth args validation - None input"""
-        with pytest.raises(ValueError, match="valid dictionary"):
+        with pytest.raises(ValidationError, match="valid dictionary"):
             ApiKeyAuthService.validate_api_key_auth_args(None)
 
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
@@ -384,5 +385,5 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ["api_key"]
 
-        with pytest.raises(ValueError, match="valid string"):
+        with pytest.raises(ValidationError, match="valid string"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
