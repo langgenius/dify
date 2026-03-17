@@ -11,19 +11,19 @@ export type DerivedModelStatus
     | 'disabled'
     | 'incompatible'
 
-export const DERIVED_MODEL_STATUS_BADGE_I18N: Partial<Record<DerivedModelStatus, string>> = {
+export const DERIVED_MODEL_STATUS_BADGE_I18N = {
   'configure-required': 'modelProvider.selector.configureRequired',
   'credits-exhausted': 'modelProvider.selector.creditsExhausted',
   'api-key-unavailable': 'modelProvider.selector.apiKeyUnavailable',
   'disabled': 'modelProvider.selector.disabled',
   'incompatible': 'modelProvider.selector.incompatible',
-}
+} as const satisfies Partial<Record<DerivedModelStatus, string>>
 
-export const DERIVED_MODEL_STATUS_TOOLTIP_I18N: Partial<Record<DerivedModelStatus, string>> = {
+export const DERIVED_MODEL_STATUS_TOOLTIP_I18N = {
   'credits-exhausted': 'modelProvider.selector.creditsExhaustedTip',
   'api-key-unavailable': 'modelProvider.selector.apiKeyUnavailableTip',
   'incompatible': 'modelProvider.selector.incompatibleTip',
-}
+} as const satisfies Partial<Record<DerivedModelStatus, string>>
 
 export const deriveModelStatus = (
   modelId: string | undefined,

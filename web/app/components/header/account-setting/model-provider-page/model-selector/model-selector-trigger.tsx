@@ -62,10 +62,10 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
 
   const isActive = status === 'active'
   const isDisabled = status !== 'active' && status !== 'empty'
-  const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status]
-  const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status]
-  const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common', defaultValue: statusI18nKey }) : null
-  const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common', defaultValue: tooltipI18nKey }) : null
+  const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
+  const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
+  const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common' }) : null
+  const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = status === 'active'
 

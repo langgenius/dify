@@ -40,10 +40,10 @@ const Trigger: FC<TriggerProps> = ({
   const currentModelProvider = modelProviders.find(p => p.provider === providerName)
   const credentialState = useCredentialPanelState(currentModelProvider)
   const status = deriveTriggerStatus(modelId, providerName, currentModelProvider, currentModel, credentialState)
-  const badgeKey = TRIGGER_STATUS_BADGE_I18N[status]
-  const tooltipKey = TRIGGER_STATUS_TOOLTIP_I18N[status]
-  const badgeLabel = badgeKey ? t(badgeKey, { ns: 'common', defaultValue: badgeKey }) : null
-  const tooltipLabel = tooltipKey ? t(tooltipKey, { ns: 'common', defaultValue: tooltipKey }) : null
+  const badgeKey = TRIGGER_STATUS_BADGE_I18N[status as keyof typeof TRIGGER_STATUS_BADGE_I18N]
+  const tooltipKey = TRIGGER_STATUS_TOOLTIP_I18N[status as keyof typeof TRIGGER_STATUS_TOOLTIP_I18N]
+  const badgeLabel = badgeKey ? t(badgeKey, { ns: 'common' }) : null
+  const tooltipLabel = tooltipKey ? t(tooltipKey, { ns: 'common' }) : null
   const isActive = status === 'active'
   const iconProvider = currentProvider || modelProviders.find(item => item.provider === providerName)
 

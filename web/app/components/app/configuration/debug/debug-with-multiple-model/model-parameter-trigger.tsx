@@ -78,8 +78,8 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           credentialState,
         )
         const iconProvider = currentProvider || providerMeta
-        const statusLabelKey = DERIVED_MODEL_STATUS_BADGE_I18N[status]
-        const statusTooltipKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status]
+        const statusLabelKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
+        const statusTooltipKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
         const isEmpty = status === 'empty'
         const isActive = status === 'active'
 
