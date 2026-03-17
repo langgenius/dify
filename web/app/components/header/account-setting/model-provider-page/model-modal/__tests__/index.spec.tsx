@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type * as React from 'react'
 import type { Credential, CredentialFormSchema, ModelProvider } from '../../declarations'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import {
