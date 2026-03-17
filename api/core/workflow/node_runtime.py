@@ -15,7 +15,11 @@ from core.model_manager import ModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+)
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
@@ -43,6 +47,7 @@ from dify_graph.nodes.llm.runtime_protocols import (
 )
 from dify_graph.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 from dify_graph.nodes.runtime import (
+    HumanInputFormStateProtocol,
     HumanInputNodeRuntimeProtocol,
     ToolNodeRuntimeProtocol,
 )
@@ -360,7 +365,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         provider_name: str,
     ) -> Generator[ToolRuntimeMessage, None, None]:
         runtime_binding = self._binding_from_handle(tool_runtime)
-        tool = cast("Tool", runtime_binding.tool)
+        tool = runtime_binding.tool
         callback = DifyWorkflowCallbackHandler()
 
         try:
@@ -432,7 +437,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
     @staticmethod
     def _tool_from_handle(tool_runtime: ToolRuntimeHandle) -> Tool:
-        return cast("Tool", DifyToolNodeRuntime._binding_from_handle(tool_runtime).tool)
+        return DifyToolNodeRuntime._binding_from_handle(tool_runtime).tool
 
     @staticmethod
     def _binding_from_handle(tool_runtime: ToolRuntimeHandle) -> _WorkflowToolRuntimeBinding:
@@ -561,9 +566,11 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
         workflow_execution_id_getter: Callable[[], str | None] | None = None,
+        form_repository: HumanInputFormRepository | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._workflow_execution_id_getter = workflow_execution_id_getter
+        self._form_repository = form_repository
 
     def _invoke_source(self) -> str:
         invoke_from = self._run_context.invoke_from
@@ -590,7 +597,10 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             return True
         return is_human_input_webapp_enabled(node_data)
 
-    def _build_form_repository(self) -> HumanInputFormRepositoryImpl:
+    def build_form_repository(self) -> HumanInputFormRepository:
+        if self._form_repository is not None:
+            return self._form_repository
+
         invoke_source = self._invoke_source()
         return HumanInputFormRepositoryImpl(
             tenant_id=self._run_context.tenant_id,
@@ -600,8 +610,15 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             submission_actor_id=self._run_context.user_id if invoke_source in {"debugger", "explore"} else None,
         )
 
-    def get_form(self, *, node_id: str):
-        repo = self._build_form_repository()
+    def with_form_repository(self, form_repository: HumanInputFormRepository) -> DifyHumanInputNodeRuntime:
+        return DifyHumanInputNodeRuntime(
+            self._run_context,
+            workflow_execution_id_getter=self._workflow_execution_id_getter,
+            form_repository=form_repository,
+        )
+
+    def get_form(self, *, node_id: str) -> HumanInputFormStateProtocol | None:
+        repo = self.build_form_repository()
         return repo.get_form(node_id)
 
     def create_form(
@@ -611,8 +628,8 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         node_data: HumanInputNodeData,
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
-    ):
-        repo = self._build_form_repository()
+    ) -> HumanInputFormStateProtocol:
+        repo = self.build_form_repository()
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id_getter() if self._workflow_execution_id_getter else None,
             node_id=node_id,

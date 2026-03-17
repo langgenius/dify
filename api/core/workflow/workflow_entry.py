@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class _WorkflowChildEngineBuilder:
-    def __init__(self, execution_context: AbstractContextManager[object] | None) -> None:
+    def __init__(self, execution_context: AbstractContextManager[object] | None = None) -> None:
         self._execution_context = execution_context
 
     @staticmethod
@@ -88,15 +88,27 @@ class _WorkflowChildEngineBuilder:
             root_node_id=root_node_id,
         )
 
-        child_engine = GraphEngine(
-            workflow_id=workflow_id,
-            graph=child_graph,
-            graph_runtime_state=graph_runtime_state,
-            command_channel=InMemoryChannel(),
-            config=GraphEngineConfig(),
-            child_engine_builder=self,
-            execution_context=self._execution_context,
-        )
+        command_channel = InMemoryChannel()
+        config = GraphEngineConfig()
+        if self._execution_context is None:
+            child_engine = GraphEngine(
+                workflow_id=workflow_id,
+                graph=child_graph,
+                graph_runtime_state=graph_runtime_state,
+                command_channel=command_channel,
+                config=config,
+                child_engine_builder=self,
+            )
+        else:
+            child_engine = GraphEngine(
+                workflow_id=workflow_id,
+                graph=child_graph,
+                graph_runtime_state=graph_runtime_state,
+                command_channel=command_channel,
+                config=config,
+                child_engine_builder=self,
+                execution_context=self._execution_context,
+            )
         child_engine.layer(LLMQuotaLayer())
         for layer in layers:
             child_engine.layer(cast(GraphEngineLayer, layer))

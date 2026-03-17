@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Protocol
 
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
@@ -102,4 +103,4 @@ class HumanInputFormStateProtocol(Protocol):
     def status(self) -> HumanInputFormStatus: ...
 
     @property
-    def expiration_time(self): ...
+    def expiration_time(self) -> datetime: ...

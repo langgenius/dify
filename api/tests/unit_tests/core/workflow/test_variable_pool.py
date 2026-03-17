@@ -107,6 +107,26 @@ class TestVariablePool:
         assert pool.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"]) is not None
         assert pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"]) is not None
 
+    def test_constructor_loads_legacy_bootstrap_kwargs(self):
+        pool = VariablePool(
+            system_variables=build_system_variables(user_id="test_user_id"),
+            environment_variables=[StringVariable(name="env_var", value="env-value")],
+            conversation_variables=[StringVariable(name="conv_var", value="conv-value")],
+            user_inputs={"ignored": "value"},
+        )
+
+        system_value = pool.get([SYSTEM_VARIABLE_NODE_ID, "user_id"])
+        environment_value = pool.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_var"])
+        conversation_value = pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var"])
+
+        assert system_value is not None
+        assert system_value.value == "test_user_id"
+        assert environment_value is not None
+        assert environment_value.value == "env-value"
+        assert conversation_value is not None
+        assert conversation_value.value == "conv-value"
+        assert "system_variables" not in pool.model_dump()
+
     def test_get_system_variables(self):
         sys_var = build_system_variables(
             user_id="test_user_id",

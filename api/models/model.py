@@ -57,7 +57,7 @@ def _resolve_app_tenant_id(app_id: str) -> str:
     resolved_tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
     if not resolved_tenant_id:
         raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
-    return cast(str, resolved_tenant_id)
+    return resolved_tenant_id
 
 
 def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) -> Callable[[], str]:

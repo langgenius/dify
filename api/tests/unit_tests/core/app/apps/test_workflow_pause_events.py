@@ -74,7 +74,6 @@ def test_graph_run_paused_event_emits_queue_pause_event():
         actions=[],
         node_id="node-human",
         node_title="Human Step",
-        form_token="tok",
     )
     event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
     workflow_entry = SimpleNamespace(

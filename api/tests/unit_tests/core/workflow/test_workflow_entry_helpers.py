@@ -129,6 +129,7 @@ class TestWorkflowEntryInit:
             patch.object(workflow_entry.dify_config, "DEBUG", True),
             patch.object(workflow_entry.dify_config, "ENABLE_OTEL", False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
+            patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
             patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
@@ -164,6 +165,7 @@ class TestWorkflowEntryInit:
             command_channel=sentinel.command_channel,
             config=sentinel.graph_engine_config,
             child_engine_builder=entry._child_engine_builder,
+            execution_context=sentinel.execution_context,
         )
         debug_logging_layer.assert_called_once_with(
             level="DEBUG",

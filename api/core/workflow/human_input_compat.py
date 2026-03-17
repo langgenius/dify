@@ -12,7 +12,10 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+import bleach
+import markdown
+from markdown.extensions.tables import TableExtension
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
 
 from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.nodes.base.variable_template_parser import VariableTemplateParser
@@ -56,12 +59,39 @@ EmailRecipient = Annotated[BoundRecipient | ExternalRecipient, Field(discriminat
 class EmailRecipients(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    include_bound_group: bool = False
+    include_bound_group: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("include_bound_group", "whole_workspace"),
+    )
     items: list[EmailRecipient] = Field(default_factory=list)
 
 
 class EmailDeliveryConfig(BaseModel):
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+    _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
+        "a",
+        "br",
+        "code",
+        "em",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "strong",
+        "table",
+        "tbody",
+        "td",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    ]
+    _ALLOWED_HTML_ATTRIBUTES: ClassVar[dict[str, list[str]]] = {
+        "a": ["href", "title"],
+        "td": ["align"],
+        "th": ["align"],
+    }
+    _ALLOWED_PROTOCOLS: ClassVar[set[str]] = set(bleach.sanitizer.ALLOWED_PROTOCOLS) | {"mailto"}
 
     recipients: EmailRecipients
     subject: str
@@ -87,6 +117,28 @@ class EmailDeliveryConfig(BaseModel):
         if variable_pool is None:
             return templated_body
         return variable_pool.convert_template(templated_body).text
+
+    @classmethod
+    def render_markdown_body(cls, body: str) -> str:
+        stripped_body = bleach.clean(body, tags=[], attributes={}, strip=True)
+        rendered = markdown.markdown(
+            stripped_body,
+            extensions=[TableExtension(use_align_attribute=True)],
+            output_format="html",
+        )
+        return bleach.clean(
+            rendered,
+            tags=cls._ALLOWED_HTML_TAGS,
+            attributes=cls._ALLOWED_HTML_ATTRIBUTES,
+            protocols=cls._ALLOWED_PROTOCOLS,
+            strip=True,
+        )
+
+    @staticmethod
+    def sanitize_subject(subject: str) -> str:
+        sanitized = subject.replace("\r", " ").replace("\n", " ")
+        sanitized = bleach.clean(sanitized, tags=[], strip=True)
+        return " ".join(sanitized.split())
 
 
 class _DeliveryMethodBase(BaseModel):

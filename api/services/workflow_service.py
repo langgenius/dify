@@ -898,7 +898,6 @@ class WorkflowService:
             node_id=node_id,
             node_title=node.title,
             resolved_default_values=resolved_default_values,
-            form_token=None,
         )
         return human_input_required.model_dump(mode="json")
 

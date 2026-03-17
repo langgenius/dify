@@ -423,12 +423,8 @@ class TestDifyNodeFactoryCreateNode:
 
         if constructor_name == "HumanInputNode":
             form_repository = sentinel.form_repository
-            form_repository_impl = MagicMock(return_value=form_repository)
-            monkeypatch.setattr(
-                node_factory,
-                "HumanInputFormRepositoryImpl",
-                form_repository_impl,
-            )
+            factory._human_input_runtime = MagicMock()
+            factory._human_input_runtime.build_form_repository.return_value = form_repository
 
         node_config = {"id": "node-id", "data": {"type": node_type}}
         result = factory.create_node(node_config)
@@ -454,14 +450,8 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
         elif constructor_name == "HumanInputNode":
             assert kwargs["form_repository"] is form_repository
-            assert kwargs["runtime"] is sentinel.human_input_runtime
-            form_repository_impl.assert_called_once_with(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                workflow_execution_id=None,
-                invoke_source=InvokeFrom.DEBUGGER,
-                submission_actor_id="user-id",
-            )
+            assert kwargs["runtime"] is factory._human_input_runtime
+            factory._human_input_runtime.build_form_repository.assert_called_once_with()
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client

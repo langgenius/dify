@@ -99,6 +99,8 @@ class FileSaverImpl(LLMFileSaver):
                 "mime_type": mime_type,
                 "size": len(data),
                 "tool_file_id": str(tool_file.id),
+                "related_id": str(tool_file.id),
+                "storage_key": tool_file.file_key,
             }
         )
 

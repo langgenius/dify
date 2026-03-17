@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
@@ -8,7 +8,7 @@ from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompleted
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from dify_graph.variables import SegmentType, VariableBase
+from dify_graph.variables import SegmentType, Variable, VariableBase
 from dify_graph.variables.consts import SELECTORS_LENGTH
 
 from . import helpers
@@ -208,7 +208,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
             variable = working_variable_pool.get(selector)
             if not isinstance(variable, VariableBase):
                 raise VariableNotFoundError(variable_selector=selector)
-            yield VariableUpdatedEvent(variable=variable)
+            yield VariableUpdatedEvent(variable=cast(Variable, variable))
 
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(

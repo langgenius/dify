@@ -33,6 +33,7 @@ class Callback(ABC):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -46,6 +47,7 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
+        :param user: optional end-user identifier for the invocation
         :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
@@ -62,6 +64,7 @@ class Callback(ABC):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -76,6 +79,7 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
+        :param user: optional end-user identifier for the invocation
         :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
@@ -92,6 +96,7 @@ class Callback(ABC):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -106,6 +111,7 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
+        :param user: optional end-user identifier for the invocation
         :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()
@@ -122,6 +128,7 @@ class Callback(ABC):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -136,6 +143,7 @@ class Callback(ABC):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
+        :param user: optional end-user identifier for the invocation
         :param invocation_context: opaque request metadata for the current invocation
         """
         raise NotImplementedError()

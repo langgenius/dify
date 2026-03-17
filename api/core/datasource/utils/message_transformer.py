@@ -104,7 +104,8 @@ class DatasourceFileMessageTransformer:
                 file: File | None = meta.get("file")
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                        parsed_reference = parse_file_reference(file.reference)
+                        reference = getattr(file, "reference", None) or getattr(file, "related_id", None)
+                        parsed_reference = parse_file_reference(reference) if isinstance(reference, str) else None
                         if parsed_reference is None:
                             raise ValueError("datasource file is missing reference")
                         url = cls.get_datasource_file_url(

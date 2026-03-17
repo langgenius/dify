@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -8,7 +8,7 @@ from dify_graph.node_events import NodeEventBase, NodeRunResult, StreamCompleted
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.variable_assigner.common import helpers as common_helpers
 from dify_graph.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from dify_graph.variables import SegmentType, VariableBase
+from dify_graph.variables import SegmentType, Variable, VariableBase
 
 from .node_data import VariableAssignerData, WriteMode
 
@@ -90,7 +90,7 @@ class VariableAssignerNode(Node[VariableAssignerData]):
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
 
         updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
-        yield VariableUpdatedEvent(variable=updated_variable)
+        yield VariableUpdatedEvent(variable=cast(Variable, updated_variable))
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from werkzeug.http import parse_options_header
 
 from core.helper import ssrf_proxy
-from core.workflow.file_reference import build_file_reference, resolve_file_record_id
+from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from dify_graph.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
 from dify_graph.file.file_factory import standardize_file_type
 from extensions.ext_database import db

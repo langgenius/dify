@@ -291,7 +291,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             prompt_template=prompt_template,
             sys_query="",
             sys_files=[],
-            context=context,
+            context=context or "",
             memory=None,
             model_instance=model_instance,
             stop=model_instance.stop,

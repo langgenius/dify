@@ -1,6 +1,5 @@
 """Unit tests for non-SQL helper logic in workflow run repository."""
 
-import secrets
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
@@ -9,7 +8,7 @@ import pytest
 from dify_graph.entities.pause_reason import HumanInputRequired, PauseReasonType
 from dify_graph.nodes.human_input.entities import FormDefinition, FormInput, UserAction
 from dify_graph.nodes.human_input.enums import FormInputType, HumanInputFormStatus
-from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from models.workflow import WorkflowPauseReason
 from repositories.sqlalchemy_api_workflow_run_repository import (
@@ -82,8 +81,8 @@ class TestPrivateWorkflowPauseEntity:
 class TestBuildHumanInputRequiredReason:
     """Test helper that builds HumanInputRequired pause reasons."""
 
-    def test_prefers_backstage_token_when_available(self) -> None:
-        """Use backstage token when multiple recipient types may exist."""
+    def test_builds_reason_from_form_definition(self) -> None:
+        """Build the graph pause reason from the stored form definition."""
         # Arrange
         expiration_time = datetime.now(UTC)
         form_definition = FormDefinition(
@@ -114,22 +113,14 @@ class TestBuildHumanInputRequiredReason:
             node_id="node-1",
             message="",
         )
-        access_token = secrets.token_urlsafe(8)
-        backstage_recipient = HumanInputFormRecipient(
-            form_id="form-1",
-            delivery_id="delivery-1",
-            recipient_type=RecipientType.BACKSTAGE,
-            recipient_payload=BackstageRecipientPayload().model_dump_json(),
-            access_token=access_token,
-        )
 
         # Act
-        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
+        reason = _build_human_input_required_reason(reason_model, form_model)
 
         # Assert
         assert isinstance(reason, HumanInputRequired)
-        assert reason.form_token == access_token
         assert reason.node_title == "Ask Name"
         assert reason.form_content == "content"
         assert reason.inputs[0].output_variable_name == "name"
         assert reason.actions[0].id == "approve"
+        assert reason.resolved_default_values == {"name": "Alice"}

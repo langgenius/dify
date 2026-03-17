@@ -804,7 +804,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         prompt_messages, _ = LLMNode.fetch_prompt_messages(
             sys_query="",
             sys_files=files,
-            context=context,
+            context=context or "",
             memory=None,
             model_instance=model_instance,
             prompt_template=prompt_template,

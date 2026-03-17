@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.entities.pause_reason import HumanInputRequired
@@ -61,6 +61,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         runtime: HumanInputNodeRuntimeProtocol | None = None,
+        form_repository: object | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -68,9 +69,14 @@ class HumanInputNode(Node[HumanInputNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        if runtime is None:
+        resolved_runtime = runtime
+        if resolved_runtime is None:
             raise ValueError("runtime is required")
-        self._runtime = runtime
+        if form_repository is not None:
+            with_form_repository = getattr(resolved_runtime, "with_form_repository", None)
+            if callable(with_form_repository):
+                resolved_runtime = cast(HumanInputNodeRuntimeProtocol, with_form_repository(form_repository))
+        self._runtime: HumanInputNodeRuntimeProtocol = resolved_runtime
 
     @classmethod
     def version(cls) -> str:

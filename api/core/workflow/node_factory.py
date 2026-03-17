@@ -312,12 +312,6 @@ class DifyNodeFactory(NodeFactory):
             return raw_ctx
         return DifyRunContext.model_validate(raw_ctx)
 
-    def _dify_invoke_source(self) -> str:
-        invoke_from = self._dify_context.invoke_from
-        if isinstance(invoke_from, str):
-            return invoke_from
-        return str(invoke_from.value)
-
     def _conversation_id(self) -> str | None:
         return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
@@ -355,6 +349,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "runtime": self._human_input_runtime,
+                "form_repository": self._human_input_runtime.build_form_repository(),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,

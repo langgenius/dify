@@ -23,6 +23,7 @@ class LoggingCallback(Callback):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -36,6 +37,7 @@ class LoggingCallback(Callback):
         :param tools: tools for tool calling
         :param stop: stop words
         :param stream: is stream response
+        :param user: optional end-user identifier for the invocation
         :param invocation_context: opaque request metadata for the current invocation
         """
         self.print_text("\n[on_llm_before_invoke]\n", color="blue")
@@ -53,6 +55,8 @@ class LoggingCallback(Callback):
                 self.print_text(f"\t\t{tool.name}\n", color="blue")
 
         self.print_text(f"Stream: {stream}\n", color="blue")
+        if user:
+            self.print_text(f"User: {user}\n", color="blue")
 
         if invocation_context:
             self.print_text(f"Invocation context: {dict(invocation_context)}\n", color="blue")
@@ -79,6 +83,7 @@ class LoggingCallback(Callback):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -95,7 +100,7 @@ class LoggingCallback(Callback):
         :param stream: is stream response
         :param invocation_context: opaque request metadata for the current invocation
         """
-        _ = invocation_context
+        _ = user, invocation_context
         sys.stdout.write(cast(str, chunk.delta.message.content))
         sys.stdout.flush()
 
@@ -110,6 +115,7 @@ class LoggingCallback(Callback):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -126,7 +132,7 @@ class LoggingCallback(Callback):
         :param stream: is stream response
         :param invocation_context: opaque request metadata for the current invocation
         """
-        _ = invocation_context
+        _ = user, invocation_context
         self.print_text("\n[on_llm_after_invoke]\n", color="yellow")
         self.print_text(f"Content: {result.message.content}\n", color="yellow")
 
@@ -152,6 +158,7 @@ class LoggingCallback(Callback):
         tools: list[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
+        user: str | None = None,
         invocation_context: Mapping[str, object] | None = None,
     ):
         """
@@ -168,6 +175,6 @@ class LoggingCallback(Callback):
         :param stream: is stream response
         :param invocation_context: opaque request metadata for the current invocation
         """
-        _ = invocation_context
+        _ = user, invocation_context
         self.print_text("\n[on_llm_invoke_error]\n", color="red")
         logger.exception(ex)

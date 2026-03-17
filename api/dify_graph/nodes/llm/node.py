@@ -194,10 +194,11 @@ class LLMNode(Node[LLMNodeData]):
             generator = self._fetch_context(node_data=self.node_data)
             context = None
             context_files: list[File] = []
-            for event in generator:
-                context = event.context
-                context_files = event.context_files or []
-                yield event
+            if generator is not None:
+                for event in generator:
+                    context = event.context
+                    context_files = event.context_files or []
+                    yield event
             if context:
                 node_inputs["#context#"] = context
 

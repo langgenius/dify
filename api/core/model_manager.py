@@ -12,7 +12,7 @@ from core.provider_manager import ProviderManager
 from dify_graph.model_runtime.callbacks.base_callback import Callback
 from dify_graph.model_runtime.entities.llm_entities import LLMResult
 from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from dify_graph.model_runtime.entities.rerank_entities import RerankResult
 from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
@@ -49,6 +49,13 @@ class ModelInstance:
             model=model,
             credentials=self.credentials,
         )
+
+    def get_model_schema(self) -> AIModelEntity:
+        """Return the resolved schema for the current model instance."""
+        model_schema = self.model_type_instance.get_model_schema(self.model_name, self.credentials)
+        if model_schema is None:
+            raise ValueError(f"model schema not found for {self.model_name}")
+        return model_schema
 
     @staticmethod
     def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str):

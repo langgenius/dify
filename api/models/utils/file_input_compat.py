@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Any, cast
+from typing import Any
 
 from core.workflow.file_reference import parse_file_reference
 from dify_graph.file import File, FileTransferMethod
@@ -61,4 +61,4 @@ def build_file_from_input_mapping(
         mapping["upload_file_id"] = record_id
 
     tenant_id = resolve_file_mapping_tenant_id(file_mapping=mapping, tenant_resolver=tenant_resolver)
-    return cast(File, file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id))
+    return file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id)
