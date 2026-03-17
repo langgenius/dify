@@ -191,7 +191,9 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id, CollectionBindingType.DATASET)
+        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            binding.id, CollectionBindingType.DATASET
+        )
 
         # Assert
         assert result.id == binding.id
@@ -207,7 +209,9 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(non_existent_id, CollectionBindingType.DATASET)
+            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                non_existent_id, CollectionBindingType.DATASET
+            )
 
     def test_get_dataset_collection_binding_by_id_and_type_different_collection_type(
         self, db_session_with_containers: Session

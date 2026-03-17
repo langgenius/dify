@@ -629,7 +629,9 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT)
+                .where(
+                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != SegmentStatus.RE_SEGMENT
+                )
                 .count()
             )
             # Create a dictionary with document attributes and additional fields

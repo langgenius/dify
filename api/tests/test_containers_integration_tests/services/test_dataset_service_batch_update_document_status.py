@@ -86,7 +86,9 @@ class DocumentBatchUpdateIntegrationDataFactory:
         document.archived = archived
         document.indexing_status = indexing_status
         document.completed_at = (
-            completed_at if completed_at is not None else (FIXED_TIME if indexing_status == IndexingStatus.COMPLETED else None)
+            completed_at
+            if completed_at is not None
+            else (FIXED_TIME if indexing_status == IndexingStatus.COMPLETED else None)
         )
 
         for key, value in kwargs.items():

@@ -307,7 +307,12 @@ class TestCreateSegmentToIndexTask:
         db_session_with_containers.commit()
 
         segment = self._create_test_segment(
-            db_session_with_containers, invalid_dataset_id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            db_session_with_containers,
+            invalid_dataset_id,
+            document.id,
+            tenant.id,
+            account.id,
+            status=SegmentStatus.WAITING,
         )
 
         # Act: Execute the task
@@ -338,7 +343,12 @@ class TestCreateSegmentToIndexTask:
         invalid_document_id = str(uuid4())
 
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, invalid_document_id, tenant.id, account.id, status=SegmentStatus.WAITING
+            db_session_with_containers,
+            dataset.id,
+            invalid_document_id,
+            tenant.id,
+            account.id,
+            status=SegmentStatus.WAITING,
         )
 
         # Act: Execute the task

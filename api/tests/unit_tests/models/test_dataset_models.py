@@ -296,7 +296,12 @@ class TestDocumentModelRelationships:
     def test_document_display_status_indexing(self):
         """Test document display_status property for indexing state."""
         # Arrange
-        for indexing_status in [IndexingStatus.PARSING, IndexingStatus.CLEANING, IndexingStatus.SPLITTING, IndexingStatus.INDEXING]:
+        for indexing_status in [
+            IndexingStatus.PARSING,
+            IndexingStatus.CLEANING,
+            IndexingStatus.SPLITTING,
+            IndexingStatus.INDEXING,
+        ]:
             document = Document(
                 tenant_id=str(uuid4()),
                 dataset_id=str(uuid4()),

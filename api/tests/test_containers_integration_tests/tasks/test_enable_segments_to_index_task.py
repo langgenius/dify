@@ -111,7 +111,13 @@ class TestEnableSegmentsToIndexTask:
         return dataset, document
 
     def _create_test_segments(
-        self, db_session_with_containers: Session, document, dataset, count=3, enabled=False, status=SegmentStatus.COMPLETED
+        self,
+        db_session_with_containers: Session,
+        document,
+        dataset,
+        count=3,
+        enabled=False,
+        status=SegmentStatus.COMPLETED,
     ):
         """
         Helper method to create test document segments.

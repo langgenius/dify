@@ -660,7 +660,13 @@ class TestSegmentIndexingRequirements:
 
     @pytest.mark.parametrize(
         "status",
-        [IndexingStatus.WAITING, IndexingStatus.PARSING, IndexingStatus.INDEXING, IndexingStatus.COMPLETED, IndexingStatus.ERROR],
+        [
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.INDEXING,
+            IndexingStatus.COMPLETED,
+            IndexingStatus.ERROR,
+        ],
     )
     def test_valid_indexing_statuses(self, status):
         """Test valid document indexing statuses."""
