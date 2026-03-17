@@ -133,11 +133,13 @@ const Question: FC<QuestionProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const getContentWidth = () => {
+    /* v8 ignore next 2 -- @preserve */
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (!contentRef.current)
       return
     const resizeObserver = new ResizeObserver(() => {

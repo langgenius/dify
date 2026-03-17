@@ -4,6 +4,7 @@ import type { App } from '@/types/app'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -15,11 +16,11 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { ToastContext } from '@/app/components/base/toast/context'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateUserProfile } from '@/service/common'
 import { useAppList } from '@/service/use-apps'
+import { commonQueryKeys, useUserProfile } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -37,7 +38,10 @@ export default function AccountPage() {
   const { systemFeatures } = useGlobalPublicStore()
   const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
   const apps = appList?.data || []
-  const { mutateUserProfile, userProfile } = useAppContext()
+  const queryClient = useQueryClient()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
+  const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
   const { isEducationAccount } = useProviderContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
@@ -52,6 +56,9 @@ export default function AccountPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [showUpdateEmail, setShowUpdateEmail] = useState(false)
+
+  if (!userProfile)
+    return null
 
   const handleEditName = () => {
     setEditNameModalVisible(true)
@@ -149,7 +156,7 @@ export default function AccountPage() {
         <h4 className="title-2xl-semi-bold text-text-primary">{t('account.myAccount', { ns: 'common' })}</h4>
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
-        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size={64} />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}

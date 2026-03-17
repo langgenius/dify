@@ -7,8 +7,9 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
@@ -47,12 +48,12 @@ class ToolNode(Node[ToolNodeData]):
     Tool Node
     """
 
-    node_type = NodeType.TOOL
+    node_type = BuiltinNodeTypes.TOOL
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -69,6 +70,10 @@ class ToolNode(Node[ToolNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
+
+    def populate_start_event(self, event) -> None:
+        event.provider_id = self.node_data.provider_id
+        event.provider_type = self.node_data.provider_type
 
     def _run(self) -> Generator[NodeEventBase, None, None]:
         """
@@ -496,7 +501,7 @@ class ToolNode(Node[ToolNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: ToolNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -505,9 +510,8 @@ class ToolNode(Node[ToolNodeData]):
         :param node_data: node data
         :return:
         """
-        # Create typed NodeData from dict
-        typed_node_data = ToolNodeData.model_validate(node_data)
-
+        _ = graph_config  # Explicitly mark as unused
+        typed_node_data = node_data
         result = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]

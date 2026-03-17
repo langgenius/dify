@@ -11,7 +11,7 @@ from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from libs.login import current_user
 from models import Account
-from models.model import App, Conversation, EndUser, Message, MessageAgentThought
+from models.model import App, Conversation, EndUser, Message
 
 
 class AgentService:
@@ -47,7 +47,7 @@ class AgentService:
         if not message:
             raise ValueError(f"Message not found: {message_id}")
 
-        agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
+        agent_thoughts = message.agent_thoughts
 
         if conversation.from_end_user_id:
             # only select name field

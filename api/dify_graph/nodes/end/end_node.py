@@ -1,4 +1,4 @@
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.base.template import Template
@@ -6,7 +6,7 @@ from dify_graph.nodes.end.entities import EndNodeData
 
 
 class EndNode(Node[EndNodeData]):
-    node_type = NodeType.END
+    node_type = BuiltinNodeTypes.END
     execution_type = NodeExecutionType.RESPONSE
 
     @classmethod
