@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal
+from typing import Literal, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -10,11 +10,17 @@ from dify_graph.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from dify_graph.nodes.base.entities import VariableSelector
 
 
+class StructuredOutputConfig(TypedDict):
+    schema: Mapping[str, object]
+    name: NotRequired[str]
+    description: NotRequired[str]
+
+
 class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = Field(default_factory=dict)
+    completion_params: dict[str, object] = Field(default_factory=dict)
 
 
 class ContextConfig(BaseModel):
@@ -33,7 +39,7 @@ class VisionConfig(BaseModel):
 
     @field_validator("configs", mode="before")
     @classmethod
-    def convert_none_configs(cls, v: Any):
+    def convert_none_configs(cls, v: object):
         if v is None:
             return VisionConfigOptions()
         return v
@@ -44,7 +50,7 @@ class PromptConfig(BaseModel):
 
     @field_validator("jinja2_variables", mode="before")
     @classmethod
-    def convert_none_jinja2_variables(cls, v: Any):
+    def convert_none_jinja2_variables(cls, v: object):
         if v is None:
             return []
         return v
@@ -67,7 +73,7 @@ class LLMNodeData(BaseNodeData):
     memory: MemoryConfig | None = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
-    structured_output: Mapping[str, Any] | None = None
+    structured_output: StructuredOutputConfig | None = None
     # We used 'structured_output_enabled' in the past, but it's not a good name.
     structured_output_switch_on: bool = Field(False, alias="structured_output_enabled")
     reasoning_format: Literal["separated", "tagged"] = Field(
@@ -90,7 +96,7 @@ class LLMNodeData(BaseNodeData):
 
     @field_validator("prompt_config", mode="before")
     @classmethod
-    def convert_none_prompt_config(cls, v: Any):
+    def convert_none_prompt_config(cls, v: object):
         if v is None:
             return PromptConfig()
         return v

@@ -74,6 +74,7 @@ from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
+    StructuredOutputConfig,
 )
 from .exc import (
     InvalidContextStructureError,
@@ -354,7 +355,7 @@ class LLMNode(Node[LLMNodeData]):
         stop: Sequence[str] | None = None,
         user_id: str,
         structured_output_enabled: bool,
-        structured_output: Mapping[str, Any] | None = None,
+        structured_output: StructuredOutputConfig | None = None,
         file_saver: LLMFileSaver,
         file_outputs: list[File],
         node_id: str,
@@ -367,8 +368,10 @@ class LLMNode(Node[LLMNodeData]):
         model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         if structured_output_enabled:
+            if structured_output is None:
+                raise LLMNodeError("Please provide a valid structured output schema")
             output_schema = LLMNode.fetch_structured_output_schema(
-                structured_output=structured_output or {},
+                structured_output=structured_output,
             )
             request_start_time = time.perf_counter()
 
@@ -962,27 +965,18 @@ class LLMNode(Node[LLMNodeData]):
     @staticmethod
     def fetch_structured_output_schema(
         *,
-        structured_output: Mapping[str, Any],
-    ) -> dict[str, Any]:
+        structured_output: StructuredOutputConfig,
+    ) -> dict[str, object]:
         """
         Fetch the structured output schema from the node data.
 
         Returns:
-            dict[str, Any]: The structured output schema
+            dict[str, object]: The structured output schema
         """
-        if not structured_output:
+        schema = structured_output.get("schema")
+        if not schema:
             raise LLMNodeError("Please provide a valid structured output schema")
-        structured_output_schema = json.dumps(structured_output.get("schema", {}), ensure_ascii=False)
-        if not structured_output_schema:
-            raise LLMNodeError("Please provide a valid structured output schema")
-
-        try:
-            schema = json.loads(structured_output_schema)
-            if not isinstance(schema, dict):
-                raise LLMNodeError("structured_output_schema must be a JSON object")
-            return schema
-        except json.JSONDecodeError:
-            raise LLMNodeError("structured_output_schema is not valid JSON format")
+        return dict(schema)
 
     @staticmethod
     def _save_multimodal_output_and_convert_result_to_markdown(

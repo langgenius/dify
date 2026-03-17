@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import (
     BaseModel,
@@ -55,7 +55,7 @@ class ParameterConfig(BaseModel):
 
     @field_validator("name", mode="before")
     @classmethod
-    def validate_name(cls, value) -> str:
+    def validate_name(cls, value: object) -> str:
         if not value:
             raise ValueError("Parameter name is required")
         if value in {"__reason", "__is_success"}:
@@ -79,6 +79,23 @@ class ParameterConfig(BaseModel):
         return element_type
 
 
+class JsonSchemaArrayItems(TypedDict):
+    type: str
+
+
+class ParameterJsonSchemaProperty(TypedDict, total=False):
+    description: str
+    type: str
+    items: JsonSchemaArrayItems
+    enum: list[str]
+
+
+class ParameterJsonSchema(TypedDict):
+    type: Literal["object"]
+    properties: dict[str, ParameterJsonSchemaProperty]
+    required: list[str]
+
+
 class ParameterExtractorNodeData(BaseNodeData):
     """
     Parameter Extractor Node Data.
@@ -95,19 +112,19 @@ class ParameterExtractorNodeData(BaseNodeData):
 
     @field_validator("reasoning_mode", mode="before")
     @classmethod
-    def set_reasoning_mode(cls, v) -> str:
-        return v or "function_call"
+    def set_reasoning_mode(cls, v: object) -> str:
+        return str(v) if v else "function_call"
 
-    def get_parameter_json_schema(self):
+    def get_parameter_json_schema(self) -> ParameterJsonSchema:
         """
         Get parameter json schema.
 
         :return: parameter json schema
         """
-        parameters: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+        parameters: ParameterJsonSchema = {"type": "object", "properties": {}, "required": []}
 
         for parameter in self.parameters:
-            parameter_schema: dict[str, Any] = {"description": parameter.description}
+            parameter_schema: ParameterJsonSchemaProperty = {"description": parameter.description}
 
             if parameter.type == SegmentType.STRING:
                 parameter_schema["type"] = "string"
@@ -118,7 +135,7 @@ class ParameterExtractorNodeData(BaseNodeData):
                     raise AssertionError("element type should not be None.")
                 parameter_schema["items"] = {"type": element_type.value}
             else:
-                parameter_schema["type"] = parameter.type
+                parameter_schema["type"] = parameter.type.value
 
             if parameter.options:
                 parameter_schema["enum"] = parameter.options
