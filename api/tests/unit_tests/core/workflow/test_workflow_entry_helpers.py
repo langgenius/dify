@@ -8,11 +8,12 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow import workflow_entry
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.enums import NodeType
 from dify_graph.errors import WorkflowNodeRunFailedError
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.graph_events import GraphRunFailedEvent
-from dify_graph.nodes import NodeType
+from dify_graph.nodes import BuiltinNodeTypes
 from dify_graph.runtime import ChildGraphNotFoundError
 
 
@@ -240,7 +241,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.START),
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.START),
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
@@ -302,7 +303,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.DATASOURCE),
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.DATASOURCE),
             )
 
             node, generator = workflow_entry.WorkflowEntry.single_step_run(
@@ -352,7 +353,7 @@ class TestWorkflowEntrySingleStepRun:
                 app_id="app-id",
                 id="workflow-id",
                 graph_dict={"nodes": [], "edges": []},
-                get_node_config_by_id=lambda _node_id: _build_typed_node_config(NodeType.START),
+                get_node_config_by_id=lambda _node_id: _build_typed_node_config(BuiltinNodeTypes.START),
             )
 
             with pytest.raises(WorkflowNodeRunFailedError):
@@ -369,7 +370,7 @@ class TestWorkflowEntryHelpers:
     def test_create_single_node_graph_builds_start_edge(self):
         graph = workflow_entry.WorkflowEntry._create_single_node_graph(
             node_id="target-node",
-            node_data={"type": NodeType.PARAMETER_EXTRACTOR},
+            node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR},
             node_width=320,
             node_height=180,
         )
@@ -390,7 +391,7 @@ class TestWorkflowEntryHelpers:
     def test_run_free_node_rejects_unsupported_types(self):
         with pytest.raises(ValueError, match="Node type start not supported"):
             workflow_entry.WorkflowEntry.run_free_node(
-                node_data={"type": NodeType.START.value},
+                node_data={"type": BuiltinNodeTypes.START},
                 node_id="node-id",
                 tenant_id="tenant-id",
                 user_id="user-id",
@@ -400,13 +401,13 @@ class TestWorkflowEntryHelpers:
     def test_run_free_node_rejects_missing_node_class(self, monkeypatch):
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.PARAMETER_EXTRACTOR: {"1": None}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=None),
         )
 
         with pytest.raises(ValueError, match="Node class not found for node type parameter-extractor"):
             workflow_entry.WorkflowEntry.run_free_node(
-                node_data={"type": NodeType.PARAMETER_EXTRACTOR.value},
+                node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR},
                 node_id="node-id",
                 tenant_id="tenant-id",
                 user_id="user-id",
@@ -432,8 +433,8 @@ class TestWorkflowEntryHelpers:
         dify_node_factory.create_node.return_value = FakeNode()
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.PARAMETER_EXTRACTOR: {"1": FakeNodeClass}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=FakeNodeClass),
         )
 
         with (
@@ -459,7 +460,7 @@ class TestWorkflowEntryHelpers:
             ),
         ):
             node, generator = workflow_entry.WorkflowEntry.run_free_node(
-                node_data={"type": NodeType.PARAMETER_EXTRACTOR.value, "title": "Node"},
+                node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"},
                 node_id="node-id",
                 tenant_id="tenant-id",
                 user_id="user-id",
@@ -483,7 +484,7 @@ class TestWorkflowEntryHelpers:
         graph_init_params.assert_called_once_with(
             workflow_id="",
             graph_config=workflow_entry.WorkflowEntry._create_single_node_graph(
-                "node-id", {"type": NodeType.PARAMETER_EXTRACTOR.value, "title": "Node"}
+                "node-id", {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"}
             ),
             run_context={"_dify": "context"},
             call_depth=0,
@@ -518,8 +519,8 @@ class TestWorkflowEntryHelpers:
         dify_node_factory.create_node.return_value = FakeNode()
         monkeypatch.setattr(
             workflow_entry,
-            "NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.PARAMETER_EXTRACTOR: {"1": FakeNodeClass}},
+            "resolve_workflow_node_class",
+            MagicMock(return_value=FakeNodeClass),
         )
 
         with (
@@ -538,7 +539,7 @@ class TestWorkflowEntryHelpers:
         ):
             with pytest.raises(WorkflowNodeRunFailedError, match="Node Title run failed: boom"):
                 workflow_entry.WorkflowEntry.run_free_node(
-                    node_data={"type": NodeType.PARAMETER_EXTRACTOR.value, "title": "Node"},
+                    node_data={"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"},
                     node_id="node-id",
                     tenant_id="tenant-id",
                     user_id="user-id",

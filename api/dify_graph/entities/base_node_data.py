@@ -121,6 +121,8 @@ class DefaultValue(BaseModel):
 class BaseNodeData(ABC, BaseModel):
     # Raw graph payloads are first validated through `NodeConfigDictAdapter`, where
     # `node["data"]` is typed as `BaseNodeData` before the concrete node class is known.
+    # `type` therefore accepts downstream string node kinds; unknown node implementations
+    # are rejected later when the node factory resolves the node registry.
     # At that boundary, node-specific fields are still "extra" relative to this shared DTO,
     # and persisted templates/workflows also carry undeclared compatibility keys such as
     # `selected`, `params`, `paramSchemas`, and `datasource_label`. Keep extras permissive

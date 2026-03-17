@@ -48,7 +48,7 @@ def make_message():
     msg.query = "hello"
     msg.re_sign_file_url_answer = ""
     msg.user_feedback = MagicMock(rating=None)
-    msg.status = "success"
+    msg.status = "normal"
     msg.error = None
     return msg
 

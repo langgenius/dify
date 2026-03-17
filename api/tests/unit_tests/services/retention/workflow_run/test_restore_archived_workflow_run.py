@@ -13,6 +13,7 @@ from datetime import datetime
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, String, Table
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models.trigger import WorkflowTriggerLog
@@ -127,10 +128,41 @@ class WorkflowRunRestoreTestDataFactory:
 
         if tables_data is None:
             tables_data = {
-                "workflow_runs": [{"id": "run-123", "tenant_id": "tenant-123"}],
+                "workflow_runs": [
+                    {
+                        "id": "run-123",
+                        "tenant_id": "tenant-123",
+                        "app_id": "app-123",
+                        "workflow_id": "workflow-123",
+                        "type": "workflow",
+                        "triggered_from": "app",
+                        "version": "1",
+                        "status": "succeeded",
+                        "created_by_role": "account",
+                        "created_by": "user-123",
+                    }
+                ],
                 "workflow_app_logs": [
-                    {"id": "log-1", "workflow_run_id": "run-123"},
-                    {"id": "log-2", "workflow_run_id": "run-123"},
+                    {
+                        "id": "log-1",
+                        "tenant_id": "tenant-123",
+                        "app_id": "app-123",
+                        "workflow_id": "workflow-123",
+                        "workflow_run_id": "run-123",
+                        "created_from": "app",
+                        "created_by_role": "account",
+                        "created_by": "user-123",
+                    },
+                    {
+                        "id": "log-2",
+                        "tenant_id": "tenant-123",
+                        "app_id": "app-123",
+                        "workflow_id": "workflow-123",
+                        "workflow_run_id": "run-123",
+                        "created_from": "app",
+                        "created_by_role": "account",
+                        "created_by": "user-123",
+                    },
                 ],
             }
 
@@ -406,14 +438,48 @@ class TestGetModelColumnInfo:
         assert "created_by" in column_names
         assert "status" in column_names
 
-        # WorkflowRun model has no required columns (all have defaults or are auto-generated)
-        assert required_columns == set()
+        # Columns without defaults should be required for restore inserts.
+        assert {
+            "tenant_id",
+            "app_id",
+            "workflow_id",
+            "type",
+            "triggered_from",
+            "version",
+            "status",
+            "created_by_role",
+            "created_by",
+        }.issubset(required_columns)
+        assert "id" not in required_columns
+        assert "created_at" not in required_columns
 
         # Check columns with defaults or server defaults
         assert "id" in non_nullable_with_default
         assert "created_at" in non_nullable_with_default
         assert "elapsed_time" in non_nullable_with_default
         assert "total_tokens" in non_nullable_with_default
+        assert "tenant_id" not in non_nullable_with_default
+
+    def test_non_pk_auto_autoincrement_column_is_still_required(self):
+        """`autoincrement='auto'` should not mark non-PK columns as defaulted."""
+        restore = WorkflowRunRestore()
+
+        test_table = Table(
+            "test_autoincrement",
+            MetaData(),
+            Column("id", Integer, primary_key=True, autoincrement=True),
+            Column("required_field", String(255), nullable=False),
+            Column("defaulted_field", String(255), nullable=False, default="x"),
+        )
+
+        class MockModel:
+            __table__ = test_table
+
+        _, required_columns, non_nullable_with_default = restore._get_model_column_info(MockModel)
+
+        assert required_columns == {"required_field"}
+        assert "id" in non_nullable_with_default
+        assert "defaulted_field" in non_nullable_with_default
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +531,32 @@ class TestRestoreTableRecords:
         mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
         mock_pg_insert.return_value = mock_stmt
 
-        records = [{"id": "test1", "tenant_id": "tenant-123"}, {"id": "test2", "tenant_id": "tenant-123"}]
+        records = [
+            {
+                "id": "test1",
+                "tenant_id": "tenant-123",
+                "app_id": "app-123",
+                "workflow_id": "workflow-123",
+                "type": "workflow",
+                "triggered_from": "app",
+                "version": "1",
+                "status": "succeeded",
+                "created_by_role": "account",
+                "created_by": "user-123",
+            },
+            {
+                "id": "test2",
+                "tenant_id": "tenant-123",
+                "app_id": "app-123",
+                "workflow_id": "workflow-123",
+                "type": "workflow",
+                "triggered_from": "app",
+                "version": "1",
+                "status": "succeeded",
+                "created_by_role": "account",
+                "created_by": "user-123",
+            },
+        ]
 
         result = restore._restore_table_records(mock_session, "workflow_runs", records, schema_version="1.0")
 
@@ -477,8 +568,7 @@ class TestRestoreTableRecords:
         restore = WorkflowRunRestore()
 
         mock_session = Mock()
-        # Since WorkflowRun has no required columns, we need to test with a different model
-        # Let's test with a mock model that has required columns
+        # Use a dedicated mock model to isolate required-column validation behavior.
         mock_model = Mock()
 
         # Mock a required column
@@ -965,6 +1055,13 @@ class TestIntegration:
                     "id": "run-123",
                     "tenant_id": "tenant-123",
                     "app_id": "app-123",
+                    "workflow_id": "workflow-123",
+                    "type": "workflow",
+                    "triggered_from": "app",
+                    "version": "1",
+                    "status": "succeeded",
+                    "created_by_role": "account",
+                    "created_by": "user-123",
                     "created_at": "2024-01-01T12:00:00",
                 }
             ],
