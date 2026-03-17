@@ -87,10 +87,9 @@ describe('Options (watercrawl)', () => {
   describe('Props Display', () => {
     it('should display crawl_sub_pages checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+      render(<Options payload={payload} onChange={mockOnChange} />)
 
-      const checkboxes = getCheckboxes(container)
-      expect(checkboxes[0].querySelector('svg')).toBeInTheDocument()
+      expect(screen.getByTestId('check-icon-crawl-sub-pages')).toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
@@ -103,10 +102,8 @@ describe('Options (watercrawl)', () => {
 
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
-      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
-
-      const checkboxes = getCheckboxes(container)
-      expect(checkboxes[1].querySelector('svg')).toBeInTheDocument()
+      render(<Options payload={payload} onChange={mockOnChange} />)
+      expect(screen.getByTestId('check-icon-only-main-content')).toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {

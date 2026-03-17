@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from typing_extensions import deprecated
 
-from dify_graph.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.if_else.entities import IfElseNodeData
@@ -13,7 +13,7 @@ from dify_graph.utils.condition.processor import ConditionProcessor
 
 
 class IfElseNode(Node[IfElseNodeData]):
-    node_type = NodeType.IF_ELSE
+    node_type = BuiltinNodeTypes.IF_ELSE
     execution_type = NodeExecutionType.BRANCH
 
     @classmethod

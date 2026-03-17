@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import Field
 
 from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes, NodeType
 from dify_graph.nodes.base import BaseIterationNodeData, BaseIterationState
 
 
@@ -19,7 +19,7 @@ class IterationNodeData(BaseIterationNodeData):
     Iteration Node Data.
     """
 
-    type: NodeType = NodeType.ITERATION
+    type: NodeType = BuiltinNodeTypes.ITERATION
     parent_loop_id: str | None = None  # redundant field, not used currently
     iterator_selector: list[str]  # variable selector
     output_selector: list[str]  # output selector
@@ -34,7 +34,7 @@ class IterationStartNodeData(BaseNodeData):
     Iteration Start Node Data.
     """
 
-    type: NodeType = NodeType.ITERATION_START
+    type: NodeType = BuiltinNodeTypes.ITERATION_START
 
 
 class IterationState(BaseIterationState):

@@ -24,9 +24,8 @@ describe('KeyWordNumber', () => {
 
     it('should render tooltip with question icon', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      // RiQuestionLine renders as an svg
       const container = screen.getByText(/form\.numberOfKeywords/).closest('div')?.parentElement
-      const questionIcon = container?.querySelector('svg')
+      const questionIcon = container?.querySelector('.i-ri-question-line')
       expect(questionIcon).toBeInTheDocument()
     })
 
@@ -38,15 +37,15 @@ describe('KeyWordNumber', () => {
 
     it('should render input number field', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should display correct keywordNumber value in input', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={25} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('25')
     })
 
     it('should display different keywordNumber values', () => {
@@ -54,8 +53,8 @@ describe('KeyWordNumber', () => {
 
       values.forEach((value) => {
         const { unmount } = render(<KeyWordNumber {...defaultProps} keywordNumber={value} />)
-        const input = screen.getByRole('spinbutton')
-        expect(input).toHaveValue(value)
+        const input = screen.getByRole('textbox')
+        expect(input).toHaveValue(String(value))
         unmount()
       })
     })
@@ -82,21 +81,28 @@ describe('KeyWordNumber', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '30' } })
 
       expect(handleChange).toHaveBeenCalled()
     })
 
-    it('should not call onKeywordNumberChange with undefined value', () => {
+    it('should reset to 0 when users clear the input', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '' } })
 
-      // When value is empty/undefined, handleInputChange should not call onKeywordNumberChange
-      expect(handleChange).not.toHaveBeenCalled()
+      expect(handleChange).toHaveBeenCalledWith(0)
+    })
+
+    it('should clamp out-of-range edits before updating state', () => {
+      const handleChange = vi.fn()
+      render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
+
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '60' } })
+      expect(handleChange).toHaveBeenLastCalledWith(50)
     })
   })
 
@@ -117,32 +123,32 @@ describe('KeyWordNumber', () => {
   describe('Edge Cases', () => {
     it('should handle minimum value (0)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={0} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(0)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('0')
     })
 
     it('should handle maximum value (50)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={50} />)
-      const input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(50)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('50')
     })
 
     it('should handle value updates correctly', () => {
       const { rerender } = render(<KeyWordNumber {...defaultProps} keywordNumber={10} />)
 
-      let input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(10)
+      let input = screen.getByRole('textbox')
+      expect(input).toHaveValue('10')
 
       rerender(<KeyWordNumber {...defaultProps} keywordNumber={25} />)
-      input = screen.getByRole('spinbutton')
-      expect(input).toHaveValue(25)
+      input = screen.getByRole('textbox')
+      expect(input).toHaveValue('25')
     })
 
     it('should handle rapid value changes', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
 
       // Simulate rapid changes via input with different values
       fireEvent.change(input, { target: { value: '15' } })
@@ -162,7 +168,7 @@ describe('KeyWordNumber', () => {
 
     it('should have accessible input', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
     })
   })
