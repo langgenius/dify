@@ -51,6 +51,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
+from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.pause_reason import HumanInputRequired
@@ -69,7 +70,7 @@ from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
@@ -320,21 +321,13 @@ class WorkflowResponseConverter:
         human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}
-        form_token_by_form_id: dict[str, tuple[int, str]] = {}
+        form_token_by_form_id: dict[str, str] = {}
         if human_input_form_ids:
             stmt = select(
                 HumanInputForm.id,
                 HumanInputForm.expiration_time,
                 HumanInputForm.form_definition,
             ).where(HumanInputForm.id.in_(human_input_form_ids))
-            recipient_stmt = select(HumanInputFormRecipient).where(
-                HumanInputFormRecipient.form_id.in_(human_input_form_ids)
-            )
-            token_priority = {
-                RecipientType.BACKSTAGE: 0,
-                RecipientType.CONSOLE: 1,
-                RecipientType.STANDALONE_WEB_APP: 2,
-            }
             with Session(bind=db.engine) as session:
                 for form_id, expiration_time, form_definition in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
@@ -343,13 +336,7 @@ class WorkflowResponseConverter:
                     except (TypeError, json.JSONDecodeError):
                         definition_payload = {}
                     display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                for recipient in session.scalars(recipient_stmt):
-                    if recipient.recipient_type not in token_priority or not recipient.access_token:
-                        continue
-                    candidate = (token_priority[recipient.recipient_type], recipient.access_token)
-                    current = form_token_by_form_id.get(recipient.form_id)
-                    if current is None or candidate[0] < current[0]:
-                        form_token_by_form_id[recipient.form_id] = candidate
+                form_token_by_form_id = load_form_tokens_by_form_id(human_input_form_ids, session=session)
 
         responses: list[StreamResponse] = []
 
@@ -370,7 +357,7 @@ class WorkflowResponseConverter:
                             inputs=reason.inputs,
                             actions=reason.actions,
                             display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
-                            form_token=form_token_by_form_id.get(reason.form_id, (99, None))[1],
+                            form_token=form_token_by_form_id.get(reason.form_id),
                             resolved_default_values=reason.resolved_default_values,
                             expiration_time=int(expiration_time.timestamp()),
                         ),

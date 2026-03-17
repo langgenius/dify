@@ -66,7 +66,7 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.workflow.file_reference import parse_file_reference
+from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.system_variables import build_system_variables
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.enums import WorkflowExecutionStatus
@@ -82,21 +82,6 @@ from models.execution_extra_content import HumanInputContent
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
-
-
-def _resolve_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
-    reference = file_mapping.get("reference")
-    if isinstance(reference, str) and reference:
-        parsed_reference = parse_file_reference(reference)
-        if parsed_reference is not None:
-            return parsed_reference.record_id
-
-    related_id = file_mapping.get("related_id")
-    if isinstance(related_id, str) and related_id:
-        parsed_reference = parse_file_reference(related_id)
-        if parsed_reference is not None:
-            return parsed_reference.record_id
-    return None
 
 
 class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
@@ -950,21 +935,23 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         metadata = self._task_state.metadata.model_dump()
         message.message_metadata = json.dumps(jsonable_encoder(metadata))
-        message_files = [
-            MessageFile(
-                message_id=message.id,
-                type=file["type"],
-                transfer_method=file["transfer_method"],
-                url=file["remote_url"],
-                belongs_to=MessageFileBelongsTo.ASSISTANT,
-                upload_file_id=_resolve_file_record_id(file),
-                created_by_role=CreatorUserRole.ACCOUNT
-                if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else CreatorUserRole.END_USER,
-                created_by=message.from_account_id or message.from_end_user_id or "",
+        message_files: list[MessageFile] = []
+        for file in self._recorded_files:
+            reference = file.get("reference") or file.get("related_id")
+            message_files.append(
+                MessageFile(
+                    message_id=message.id,
+                    type=file["type"],
+                    transfer_method=file["transfer_method"],
+                    url=file["remote_url"],
+                    belongs_to=MessageFileBelongsTo.ASSISTANT,
+                    upload_file_id=resolve_file_record_id(reference if isinstance(reference, str) else None),
+                    created_by_role=CreatorUserRole.ACCOUNT
+                    if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatorUserRole.END_USER,
+                    created_by=message.from_account_id or message.from_end_user_id or "",
+                )
             )
-            for file in self._recorded_files
-        ]
         session.add_all(message_files)
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:

@@ -17,6 +17,7 @@ from dify_graph.graph_events.graph import GraphRunPausedEvent
 from dify_graph.nodes.human_input.entities import FormInput, UserAction
 from dify_graph.nodes.human_input.enums import FormInputType
 from models.account import Account
+from models.human_input import RecipientType
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -130,7 +131,18 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
             return [("form-1", expiration_time, '{"display_in_ui": true}')]
 
         def scalars(self, _stmt):
-            return []
+            return [
+                SimpleNamespace(
+                    form_id="form-1",
+                    recipient_type=RecipientType.CONSOLE,
+                    access_token="console-token",
+                ),
+                SimpleNamespace(
+                    form_id="form-1",
+                    recipient_type=RecipientType.BACKSTAGE,
+                    access_token="backstage-token",
+                ),
+            ]
 
         def __enter__(self):
             return self
@@ -179,4 +191,5 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert hi_resp.data.inputs[0].output_variable_name == "field"
     assert hi_resp.data.actions[0].id == "approve"
     assert hi_resp.data.display_in_ui is True
+    assert hi_resp.data.form_token == "backstage-token"
     assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
