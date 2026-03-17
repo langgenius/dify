@@ -83,7 +83,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = httpx.request(**request_kwargs)
+            response = httpx.request(**request_kwargs, trust_env=False)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -170,7 +170,7 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with httpx.stream(**stream_kwargs) as response:
+            with httpx.stream(**stream_kwargs, trust_env=False) as response:
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue

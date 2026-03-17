@@ -1511,7 +1511,6 @@ class LLMNode(Node[LLMNodeData]):
                         bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
                         file_tree=file_tree,
-                        base_path=AppAssets.PATH,
                     )
                     result_text = skill_entry.content
 
@@ -1550,7 +1549,6 @@ class LLMNode(Node[LLMNodeData]):
                         bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
                         file_tree=file_tree,
-                        base_path=AppAssets.PATH,
                     )
                     plain_text = skill_entry.content
 
@@ -1823,7 +1821,6 @@ class LLMNode(Node[LLMNodeData]):
                     bundle=bundle,
                     document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
                     file_tree=file_tree,
-                    base_path=AppAssets.PATH,
                 )
                 tool_deps_list.append(skill_entry.tools)
 
