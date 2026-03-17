@@ -247,6 +247,32 @@ describe('ModelSelectorTrigger', () => {
       expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
     })
 
+    it('should show credits exhausted badge for deprecated selection when ai credits are exhausted without api key', async () => {
+      const user = userEvent.setup()
+      mockUseCredentialPanelState.mockImplementation(provider => ({
+        variant: provider ? 'no-usage' : 'credits-active',
+        priority: provider ? 'apiKey' : 'credits',
+        supportsCredits: !!provider,
+        showPrioritySwitcher: true,
+        hasCredentials: false,
+        isCreditsExhausted: !!provider,
+        credentialName: undefined,
+        credits: provider ? 0 : 100,
+      }))
+
+      render(
+        <ModelSelectorTrigger
+          defaultModel={{ provider: 'openai', model: 'legacy-model' }}
+        />,
+      )
+
+      expect(mockUseCredentialPanelState).toHaveBeenCalledWith(expect.objectContaining({ provider: 'openai' }))
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+      await user.hover(screen.getByText('common.modelProvider.selector.creditsExhausted'))
+
+      expect(await screen.findByText('common.modelProvider.selector.creditsExhaustedTip')).toBeInTheDocument()
+    })
+
     it('should render fallback icon when deprecated provider is not found', () => {
       mockUseProviderContext.mockReturnValue({
         modelProviders: [],

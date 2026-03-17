@@ -47,15 +47,16 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   const selectedProvider = isSelected
     ? modelProviders.find(provider => provider.provider === currentProvider.provider)
     : undefined
-  const selectedProviderState = useCredentialPanelState(isSelected ? selectedProvider : undefined)
   const deprecatedProvider = isDeprecated
     ? modelProviders.find(p => p.provider === defaultModel.provider)
     : undefined
+  const resolvedProvider = isSelected ? selectedProvider : deprecatedProvider
+  const selectedProviderState = useCredentialPanelState(resolvedProvider)
 
   const status = deriveModelStatus(
     isSelected ? currentModel?.model : defaultModel?.model,
     isSelected ? currentProvider?.provider : defaultModel?.provider,
-    isSelected ? selectedProvider : deprecatedProvider,
+    resolvedProvider,
     currentModel,
     selectedProviderState,
   )
@@ -68,6 +69,8 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = status === 'active'
+  const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
+  const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
 
   return (
     <div
@@ -150,13 +153,13 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
                 <div className="flex shrink-0 items-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                   <span className="whitespace-nowrap text-text-warning system-xs-medium">
-                    {t('modelProvider.selector.incompatible', { ns: 'common' })}
+                    {deprecatedStatusLabel}
                   </span>
                 </div>
               )}
             />
             <TooltipContent placement="top">
-              {t('modelProvider.selector.incompatibleTip', { ns: 'common' })}
+              {deprecatedTooltipLabel}
             </TooltipContent>
           </Tooltip>
         )}
