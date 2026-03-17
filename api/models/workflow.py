@@ -532,9 +532,9 @@ class Workflow(Base):  # bug
 
         Version-history restore requests send secret environment variables back as masked
         placeholders. When the selected published workflow is known, reuse that version's
-        decrypted secret value. Otherwise, downgrade the placeholder to `HIDDEN_VALUE`
-        so the draft setter preserves the existing stored secret instead of encrypting
-        the literal mask string.
+        decrypted secret value for the full mask token emitted by restore payloads.
+        `HIDDEN_VALUE` keeps its draft-edit meaning and is left untouched so the draft
+        setter preserves the currently stored secret.
         """
         source_secret_values_by_id = {
             var.id: var.value
@@ -546,10 +546,10 @@ class Workflow(Base):  # bug
 
         for mapping in mappings:
             normalized_mapping = dict(mapping)
-            if normalized_mapping.get("value_type") == SegmentType.SECRET.value and normalized_mapping.get("value") in {
-                HIDDEN_VALUE,
-                masked_secret_value,
-            }:
+            if (
+                normalized_mapping.get("value_type") == SegmentType.SECRET.value
+                and normalized_mapping.get("value") == masked_secret_value
+            ):
                 variable_id = normalized_mapping.get("id")
                 if isinstance(variable_id, str) and variable_id in source_secret_values_by_id:
                     normalized_mapping["value"] = source_secret_values_by_id[variable_id]

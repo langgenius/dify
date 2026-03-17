@@ -1,3 +1,4 @@
+import type { SyncDraftCallback, SyncDraftOptions } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -5,7 +6,6 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowVersion } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
@@ -18,7 +18,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
 
-  const getPostParams = useCallback(() => {
+  const getPostParams = useCallback((options?: SyncDraftOptions) => {
     const {
       getNodes,
       edges,
@@ -32,7 +32,6 @@ export const useNodesSyncDraft = () => {
       environmentVariables,
       syncWorkflowDraftHash,
       isWorkflowDataLoaded,
-      currentVersion,
     } = workflowStore.getState()
 
     if (!appId || !isWorkflowDataLoaded)
@@ -78,7 +77,7 @@ export const useNodesSyncDraft = () => {
         environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        source_workflow_id: currentVersion?.version !== WorkflowVersion.Draft ? currentVersion?.id : undefined,
+        source_workflow_id: options?.sourceWorkflowId,
       },
     }
   }, [store, featuresStore, workflowStore])
@@ -94,17 +93,14 @@ export const useNodesSyncDraft = () => {
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
+    options?: SyncDraftOptions,
   ) => {
     if (getNodesReadOnly())
       return
 
     // Get base params without hash
-    const baseParams = getPostParams()
+    const baseParams = getPostParams(options)
     if (!baseParams)
       return
 

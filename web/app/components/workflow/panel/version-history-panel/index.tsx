@@ -169,7 +169,7 @@ export const VersionHistoryPanel = ({
       onSettled: () => {
         resetWorkflowVersionHistory()
       },
-    })
+    }, { sourceWorkflowId: item.id })
   }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()

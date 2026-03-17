@@ -70,10 +70,10 @@ const HeaderInRestoring = ({
       onSettled: () => {
         onRestoreSettled?.()
       },
-    })
+    }, { sourceWorkflowId: currentVersion?.id })
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [currentVersion?.id, setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

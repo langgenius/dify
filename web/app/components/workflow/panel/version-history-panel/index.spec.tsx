@@ -6,6 +6,7 @@ import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
+const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 
 type MockVersionStoreState = Pick<Shape, 'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'>
@@ -86,7 +87,7 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../../hooks', () => ({
   useDSL: () => ({ handleExportDSL: vi.fn() }),
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
+  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft }),
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
@@ -228,5 +229,11 @@ describe('VersionHistoryPanel', () => {
     expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalledWith(expect.objectContaining({
       id: 'published-version-id',
     }))
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      false,
+      expect.any(Object),
+      { sourceWorkflowId: 'published-version-id' },
+    )
   })
 })

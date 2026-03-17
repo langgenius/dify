@@ -215,6 +215,69 @@ def test_normalize_environment_variable_mappings_raises_when_source_secret_missi
         )
 
 
+def test_normalize_environment_variable_mappings_preserves_hidden_value_with_source_workflow():
+    source_workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="2024-01-01T00:00:00",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    secret_variable = SecretVariable.model_validate({"name": "secret", "value": "source-secret", "id": str(uuid4())})
+
+    with (
+        mock.patch("core.helper.encrypter.encrypt_token", side_effect=lambda tenant_id, token: token),
+        mock.patch("core.helper.encrypter.decrypt_token", side_effect=lambda tenant_id, token: token),
+    ):
+        source_workflow.environment_variables = [secret_variable]
+
+        normalized = Workflow.normalize_environment_variable_mappings(
+            [
+                {
+                    "id": secret_variable.id,
+                    "name": "secret",
+                    "value": HIDDEN_VALUE,
+                    "value_type": "secret",
+                }
+            ],
+            source_workflow=source_workflow,
+        )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
+
+
+def test_normalize_environment_variable_mappings_keeps_hidden_value_when_source_secret_missing():
+    source_workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="2024-01-01T00:00:00",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": HIDDEN_VALUE,
+                "value_type": "secret",
+            }
+        ],
+        source_workflow=source_workflow,
+    )
+
+    assert normalized[0]["value"] == HIDDEN_VALUE
+
+
 class TestWorkflowNodeExecution:
     def test_execution_metadata_dict(self):
         node_exec = WorkflowNodeExecutionModel()

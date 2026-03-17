@@ -1,3 +1,4 @@
+import type { SyncDraftCallback, SyncDraftOptions } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -8,7 +9,6 @@ import {
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import { WorkflowVersion } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
@@ -20,7 +20,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
-  const getPostParams = useCallback(() => {
+  const getPostParams = useCallback((options?: SyncDraftOptions) => {
     const {
       getNodes,
       edges,
@@ -34,7 +34,6 @@ export const useNodesSyncDraft = () => {
       environmentVariables,
       syncWorkflowDraftHash,
       ragPipelineVariables,
-      currentVersion,
     } = workflowStore.getState()
 
     if (pipelineId && !!nodes.length) {
@@ -69,7 +68,7 @@ export const useNodesSyncDraft = () => {
           environment_variables: environmentVariables,
           rag_pipeline_variables: ragPipelineVariables,
           hash: syncWorkflowDraftHash,
-          source_workflow_id: currentVersion?.version !== WorkflowVersion.Draft ? currentVersion?.id : undefined,
+          source_workflow_id: options?.sourceWorkflowId,
         },
       }
     }
@@ -86,16 +85,13 @@ export const useNodesSyncDraft = () => {
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
+    options?: SyncDraftOptions,
   ) => {
     if (getNodesReadOnly())
       return
 
-    const postParams = getPostParams()
+    const postParams = getPostParams(options)
     if (postParams) {
       const {
         setSyncWorkflowDraftHash,

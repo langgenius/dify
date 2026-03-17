@@ -233,6 +233,25 @@ describe('useNodesSyncDraft', () => {
       expect(mockSyncWorkflowDraft).toHaveBeenCalled()
     })
 
+    it('should include source_workflow_id only when explicitly restoring a published version', async () => {
+      mockGetNodesReadOnly.mockReturnValue(false)
+      mockGetNodes.mockReturnValue([
+        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
+      ])
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, undefined, { sourceWorkflowId: 'published-workflow-1' })
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+        params: expect.objectContaining({
+          source_workflow_id: 'published-workflow-1',
+        }),
+      }))
+    })
+
     it('should call onSuccess callback when sync succeeds', async () => {
       mockGetNodesReadOnly.mockReturnValue(false)
       mockGetNodes.mockReturnValue([
@@ -426,7 +445,7 @@ describe('useNodesSyncDraft', () => {
       expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
     })
 
-    it('should include source_workflow_id when restoring a published version', () => {
+    it('should not include source_workflow_id when syncing on page close', () => {
       mockGetNodes.mockReturnValue([
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
@@ -438,7 +457,7 @@ describe('useNodesSyncDraft', () => {
       })
 
       const sentParams = mockPostWithKeepalive.mock.calls[0][1]
-      expect(sentParams.source_workflow_id).toBe('published-workflow-1')
+      expect(sentParams.source_workflow_id).toBeUndefined()
     })
 
     it('should remove underscore-prefixed keys from edges', () => {
