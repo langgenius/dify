@@ -8725,11 +8725,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/version-history-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
