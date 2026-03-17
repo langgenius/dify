@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -6,6 +6,7 @@ from pydantic import (
     Field,
     field_validator,
 )
+from typing_extensions import TypedDict
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from dify_graph.entities.base_node_data import BaseNodeData
