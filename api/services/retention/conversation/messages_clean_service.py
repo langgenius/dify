@@ -1,16 +1,16 @@
 import datetime
 import logging
-import os
 import random
 import time
 from collections.abc import Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.model import (
@@ -33,6 +33,131 @@ from services.retention.conversation.messages_clean_policy import (
 logger = logging.getLogger(__name__)
 
 
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Counter, Histogram
+
+
+class MessagesCleanupMetrics:
+    """
+    Records low-cardinality OpenTelemetry metrics for expired message cleanup jobs.
+
+    We keep labels stable (dry_run/window_mode/task_label/status) so these metrics remain
+    dashboard-friendly for long-running CronJob executions.
+    """
+
+    _job_runs_total: "Counter | None"
+    _batches_total: "Counter | None"
+    _messages_scanned_total: "Counter | None"
+    _messages_filtered_total: "Counter | None"
+    _messages_deleted_total: "Counter | None"
+    _job_duration_seconds: "Histogram | None"
+    _batch_duration_seconds: "Histogram | None"
+    _base_attributes: dict[str, str]
+
+    def __init__(self, *, dry_run: bool, has_window: bool, task_label: str) -> None:
+        self._job_runs_total = None
+        self._batches_total = None
+        self._messages_scanned_total = None
+        self._messages_filtered_total = None
+        self._messages_deleted_total = None
+        self._job_duration_seconds = None
+        self._batch_duration_seconds = None
+        self._base_attributes = {
+            "job_name": "messages_cleanup",
+            "dry_run": str(dry_run).lower(),
+            "window_mode": "between" if has_window else "before_cutoff",
+            "task_label": task_label,
+        }
+        self._init_instruments()
+
+    def _init_instruments(self) -> None:
+        if not dify_config.ENABLE_OTEL:
+            return
+
+        try:
+            from opentelemetry.metrics import get_meter
+
+            meter = get_meter("messages_cleanup", version=dify_config.project.version)
+            self._job_runs_total = meter.create_counter(
+                "messages_cleanup_jobs_total",
+                description="Total number of expired message cleanup jobs by status.",
+                unit="{job}",
+            )
+            self._batches_total = meter.create_counter(
+                "messages_cleanup_batches_total",
+                description="Total number of message cleanup batches processed.",
+                unit="{batch}",
+            )
+            self._messages_scanned_total = meter.create_counter(
+                "messages_cleanup_scanned_messages_total",
+                description="Total messages scanned by cleanup jobs.",
+                unit="{message}",
+            )
+            self._messages_filtered_total = meter.create_counter(
+                "messages_cleanup_filtered_messages_total",
+                description="Total messages selected by cleanup policy.",
+                unit="{message}",
+            )
+            self._messages_deleted_total = meter.create_counter(
+                "messages_cleanup_deleted_messages_total",
+                description="Total messages deleted by cleanup jobs.",
+                unit="{message}",
+            )
+            self._job_duration_seconds = meter.create_histogram(
+                "messages_cleanup_job_duration_seconds",
+                description="Duration of expired message cleanup jobs in seconds.",
+                unit="s",
+            )
+            self._batch_duration_seconds = meter.create_histogram(
+                "messages_cleanup_batch_duration_seconds",
+                description="Duration of expired message cleanup batch processing in seconds.",
+                unit="s",
+            )
+        except Exception:
+            logger.exception("messages_cleanup_metrics: failed to initialize instruments")
+
+    def _attrs(self, **extra: str) -> dict[str, str]:
+        return {**self._base_attributes, **extra}
+
+    @staticmethod
+    def _add(counter: "Counter | None", value: int, attributes: dict[str, str]) -> None:
+        if not counter or value <= 0:
+            return
+        try:
+            counter.add(value, attributes)
+        except Exception:
+            logger.exception("messages_cleanup_metrics: failed to add counter value")
+
+    @staticmethod
+    def _record(histogram: "Histogram | None", value: float, attributes: dict[str, str]) -> None:
+        if not histogram:
+            return
+        try:
+            histogram.record(value, attributes)
+        except Exception:
+            logger.exception("messages_cleanup_metrics: failed to record histogram value")
+
+    def record_batch(
+        self,
+        *,
+        scanned_messages: int,
+        filtered_messages: int,
+        deleted_messages: int,
+        batch_duration_seconds: float,
+    ) -> None:
+        attributes = self._attrs()
+        self._add(self._batches_total, 1, attributes)
+        self._add(self._messages_scanned_total, scanned_messages, attributes)
+        self._add(self._messages_filtered_total, filtered_messages, attributes)
+        self._add(self._messages_deleted_total, deleted_messages, attributes)
+        self._record(self._batch_duration_seconds, batch_duration_seconds, attributes)
+
+    def record_completion(self, *, status: str, job_duration_seconds: float) -> None:
+        attributes = self._attrs(status=status)
+        self._add(self._job_runs_total, 1, attributes)
+        self._record(self._job_duration_seconds, job_duration_seconds, attributes)
+
+
 class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
@@ -48,6 +173,7 @@ class MessagesCleanService:
         start_from: datetime.datetime | None = None,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "custom",
     ) -> None:
         """
         Initialize the service with cleanup parameters.
@@ -58,12 +184,18 @@ class MessagesCleanService:
             start_from: Optional start time (inclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Optional task label for retention metrics
         """
         self._policy = policy
         self._end_before = end_before
         self._start_from = start_from
         self._batch_size = batch_size
         self._dry_run = dry_run
+        self._metrics = MessagesCleanupMetrics(
+            dry_run=dry_run,
+            has_window=bool(start_from),
+            task_label=task_label,
+        )
 
     @classmethod
     def from_time_range(
@@ -73,6 +205,7 @@ class MessagesCleanService:
         end_before: datetime.datetime,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "custom",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages within a specific time range.
@@ -85,6 +218,7 @@ class MessagesCleanService:
             end_before: End time (exclusive) of the range
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Optional task label for retention metrics
 
         Returns:
             MessagesCleanService instance
@@ -112,6 +246,7 @@ class MessagesCleanService:
             start_from=start_from,
             batch_size=batch_size,
             dry_run=dry_run,
+            task_label=task_label,
         )
 
     @classmethod
@@ -121,6 +256,7 @@ class MessagesCleanService:
         days: int = 30,
         batch_size: int = 1000,
         dry_run: bool = False,
+        task_label: str = "custom",
     ) -> "MessagesCleanService":
         """
         Create a service instance for cleaning messages older than specified days.
@@ -130,6 +266,7 @@ class MessagesCleanService:
             days: Number of days to look back from now
             batch_size: Number of messages to process per batch
             dry_run: Whether to perform a dry run (no actual deletion)
+            task_label: Optional task label for retention metrics
 
         Returns:
             MessagesCleanService instance
@@ -153,7 +290,14 @@ class MessagesCleanService:
             policy.__class__.__name__,
         )
 
-        return cls(policy=policy, end_before=end_before, start_from=None, batch_size=batch_size, dry_run=dry_run)
+        return cls(
+            policy=policy,
+            end_before=end_before,
+            start_from=None,
+            batch_size=batch_size,
+            dry_run=dry_run,
+            task_label=task_label,
+        )
 
     def run(self) -> dict[str, int]:
         """
@@ -162,7 +306,18 @@ class MessagesCleanService:
         Returns:
             Dict with statistics: batches, filtered_messages, total_deleted
         """
-        return self._clean_messages_by_time_range()
+        status = "success"
+        run_start = time.monotonic()
+        try:
+            return self._clean_messages_by_time_range()
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            self._metrics.record_completion(
+                status=status,
+                job_duration_seconds=time.monotonic() - run_start,
+            )
 
     def _clean_messages_by_time_range(self) -> dict[str, int]:
         """
@@ -197,11 +352,14 @@ class MessagesCleanService:
             self._end_before,
         )
 
-        max_batch_interval_ms = int(os.environ.get("SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL", 200))
+        max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL
 
         while True:
             stats["batches"] += 1
             batch_start = time.monotonic()
+            batch_scanned_messages = 0
+            batch_filtered_messages = 0
+            batch_deleted_messages = 0
 
             # Step 1: Fetch a batch of messages using cursor
             with Session(db.engine, expire_on_commit=False) as session:
@@ -240,9 +398,16 @@ class MessagesCleanService:
 
                 # Track total messages fetched across all batches
                 stats["total_messages"] += len(messages)
+                batch_scanned_messages = len(messages)
 
                 if not messages:
                     logger.info("clean_messages (batch %s): no more messages to process", stats["batches"])
+                    self._metrics.record_batch(
+                        scanned_messages=batch_scanned_messages,
+                        filtered_messages=batch_filtered_messages,
+                        deleted_messages=batch_deleted_messages,
+                        batch_duration_seconds=time.monotonic() - batch_start,
+                    )
                     break
 
                 # Update cursor to the last message's (created_at, id)
@@ -268,6 +433,12 @@ class MessagesCleanService:
 
             if not apps:
                 logger.info("clean_messages (batch %s): no apps found, skip", stats["batches"])
+                self._metrics.record_batch(
+                    scanned_messages=batch_scanned_messages,
+                    filtered_messages=batch_filtered_messages,
+                    deleted_messages=batch_deleted_messages,
+                    batch_duration_seconds=time.monotonic() - batch_start,
+                )
                 continue
 
             # Build app_id -> tenant_id mapping
@@ -286,9 +457,16 @@ class MessagesCleanService:
 
             if not message_ids_to_delete:
                 logger.info("clean_messages (batch %s): no messages to delete, skip", stats["batches"])
+                self._metrics.record_batch(
+                    scanned_messages=batch_scanned_messages,
+                    filtered_messages=batch_filtered_messages,
+                    deleted_messages=batch_deleted_messages,
+                    batch_duration_seconds=time.monotonic() - batch_start,
+                )
                 continue
 
             stats["filtered_messages"] += len(message_ids_to_delete)
+            batch_filtered_messages = len(message_ids_to_delete)
 
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
@@ -309,6 +487,7 @@ class MessagesCleanService:
                     commit_ms = int((time.monotonic() - commit_start) * 1000)
 
                     stats["total_deleted"] += messages_deleted
+                    batch_deleted_messages = messages_deleted
 
                     logger.info(
                         "clean_messages (batch %s): processed %s messages, deleted %s messages",
@@ -342,6 +521,13 @@ class MessagesCleanService:
                 )
                 for msg_id in sampled_ids:
                     logger.info("clean_messages (batch %s, dry_run) sample: message_id=%s", stats["batches"], msg_id)
+
+            self._metrics.record_batch(
+                scanned_messages=batch_scanned_messages,
+                filtered_messages=batch_filtered_messages,
+                deleted_messages=batch_deleted_messages,
+                batch_duration_seconds=time.monotonic() - batch_start,
+            )
 
         logger.info(
             "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, total deleted: %s",
