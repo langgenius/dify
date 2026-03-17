@@ -12,6 +12,7 @@ from configs import dify_config
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     EvaluationCategory,
+    EvaluationDatasetInput,
     EvaluationItemResult,
     EvaluationRunData,
 )
@@ -88,23 +89,23 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     )
 
     results: list[EvaluationItemResult] = _execute_evaluation_runner(
-        session,
-        run_data,
-        evaluation_instance,
-        node_run_result_mapping_list,
+        session=session,
+        run_data=run_data,
+        evaluation_instance=evaluation_instance,
+        node_run_result_mapping_list=node_run_result_mapping_list,
     )
 
     # Compute summary metrics
     metrics_summary = _compute_metrics_summary(results, run_data.judgment_config)
 
     # Generate result XLSX
-    result_xlsx = _generate_result_xlsx(run_data.items, results)
+    result_xlsx = _generate_result_xlsx(run_data.input_list, results)
 
     # Store result file
     result_file_id = _store_result_file(run_data.tenant_id, run_data.evaluation_run_id, result_xlsx, session)
 
     # Update run to completed
-    evaluation_run = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
+    evaluation_run: EvaluationRun = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
     if evaluation_run:
         evaluation_run.status = EvaluationRunStatus.COMPLETED
         evaluation_run.completed_at = naive_utc_now()
@@ -232,10 +233,10 @@ def _compute_metrics_summary(
 
 
 def _generate_result_xlsx(
-    items: list[Any],
+    input_list: list[EvaluationDatasetInput],
     results: list[EvaluationItemResult],
 ) -> bytes:
-    """Generate result XLSX with input data, actual output, and metric scores."""
+    """Generate result XLSX with input data, actual output, metric scores, and judgment."""
     wb = Workbook()
     ws = wb.active
     if ws is None:
@@ -261,14 +262,18 @@ def _generate_result_xlsx(
 
     # Collect all input keys
     input_keys: list[str] = []
-    for item in items:
+    for item in input_list:
         for key in item.inputs:
             if key not in input_keys:
                 input_keys.append(key)
 
+    # Include judgment column only when at least one result has judgment conditions evaluated
+    has_judgment = any(bool(r.judgment.condition_results) for r in results)
+
     # Build headers
+    judgment_headers = ["judgment"] if has_judgment else []
     headers = (
-        ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + ["overall_score", "error"]
+        ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + judgment_headers + ["error"]
     )
 
     # Write header row
@@ -288,7 +293,7 @@ def _generate_result_xlsx(
     result_by_index = {r.index: r for r in results}
 
     # Write data rows
-    for row_idx, item in enumerate(items, start=2):
+    for row_idx, item in enumerate(input_list, start=2):
         result = result_by_index.get(item.index)
 
         col = 1
@@ -317,9 +322,14 @@ def _generate_result_xlsx(
             ws.cell(row=row_idx, column=col, value=score if score is not None else "").border = thin_border
             col += 1
 
-        # Overall score
-        ws.cell(row=row_idx, column=col, value=result.overall_score if result else "").border = thin_border
-        col += 1
+        # Judgment result
+        if has_judgment:
+            if result and result.judgment.condition_results:
+                judgment_value = "Pass" if result.judgment.passed else "Fail"
+            else:
+                judgment_value = ""
+            ws.cell(row=row_idx, column=col, value=judgment_value).border = thin_border
+            col += 1
 
         # Error
         ws.cell(row=row_idx, column=col, value=result.error if result else "").border = thin_border

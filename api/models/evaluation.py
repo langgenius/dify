@@ -105,6 +105,7 @@ class EvaluationRun(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

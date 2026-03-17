@@ -15,6 +15,56 @@ class EvaluationCategory(StrEnum):
     RETRIEVAL_TEST = "retrieval_test"
 
 
+class EvaluationMetricName(StrEnum):
+    """Canonical metric names shared across all evaluation frameworks.
+
+    Each framework maps these names to its own internal implementation.
+    A framework that does not support a given metric should log a warning
+    and skip it rather than raising an error.
+    """
+
+    # LLM / general text-quality metrics
+    FAITHFULNESS = "faithfulness"
+    ANSWER_RELEVANCY = "answer_relevancy"
+    ANSWER_CORRECTNESS = "answer_correctness"
+    SEMANTIC_SIMILARITY = "semantic_similarity"
+
+    # Retrieval-quality metrics
+    CONTEXT_PRECISION = "context_precision"
+    CONTEXT_RECALL = "context_recall"
+    CONTEXT_RELEVANCE = "context_relevance"
+
+    # Agent-quality metrics
+    TOOL_CORRECTNESS = "tool_correctness"
+    TASK_COMPLETION = "task_completion"
+
+
+# Per-category canonical metric lists used by get_supported_metrics().
+LLM_METRIC_NAMES: list[EvaluationMetricName] = [
+    EvaluationMetricName.FAITHFULNESS,
+    EvaluationMetricName.ANSWER_RELEVANCY,
+    EvaluationMetricName.ANSWER_CORRECTNESS,
+    EvaluationMetricName.SEMANTIC_SIMILARITY,
+]
+
+RETRIEVAL_METRIC_NAMES: list[EvaluationMetricName] = [
+    EvaluationMetricName.CONTEXT_PRECISION,
+    EvaluationMetricName.CONTEXT_RECALL,
+    EvaluationMetricName.CONTEXT_RELEVANCE,
+]
+
+AGENT_METRIC_NAMES: list[EvaluationMetricName] = [
+    EvaluationMetricName.TOOL_CORRECTNESS,
+    EvaluationMetricName.TASK_COMPLETION,
+]
+
+WORKFLOW_METRIC_NAMES: list[EvaluationMetricName] = [
+    EvaluationMetricName.FAITHFULNESS,
+    EvaluationMetricName.ANSWER_RELEVANCY,
+    EvaluationMetricName.ANSWER_CORRECTNESS,
+]
+
+
 class EvaluationMetric(BaseModel):
     name: str
     value: Any

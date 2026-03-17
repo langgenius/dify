@@ -4,20 +4,32 @@ from typing import Any
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import RagasConfig
 from core.evaluation.entities.evaluation_entity import (
+    AGENT_METRIC_NAMES,
+    LLM_METRIC_NAMES,
+    RETRIEVAL_METRIC_NAMES,
+    WORKFLOW_METRIC_NAMES,
     EvaluationCategory,
     EvaluationItemInput,
     EvaluationItemResult,
     EvaluationMetric,
+    EvaluationMetricName,
 )
 from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 
 logger = logging.getLogger(__name__)
 
-# Metric name mappings per category
-LLM_METRICS = ["faithfulness", "answer_relevancy", "answer_correctness", "semantic_similarity"]
-RETRIEVAL_METRICS = ["context_precision", "context_recall", "context_relevance"]
-AGENT_METRICS = ["tool_call_accuracy", "answer_correctness"]
-WORKFLOW_METRICS = ["faithfulness", "answer_correctness"]
+# Maps canonical EvaluationMetricName to the corresponding ragas metric class.
+# Metrics not listed here are unsupported by ragas and will be skipped.
+_RAGAS_METRIC_MAP: dict[EvaluationMetricName, str] = {
+    EvaluationMetricName.FAITHFULNESS: "Faithfulness",
+    EvaluationMetricName.ANSWER_RELEVANCY: "AnswerRelevancy",
+    EvaluationMetricName.ANSWER_CORRECTNESS: "AnswerCorrectness",
+    EvaluationMetricName.SEMANTIC_SIMILARITY: "SemanticSimilarity",
+    EvaluationMetricName.CONTEXT_PRECISION: "ContextPrecision",
+    EvaluationMetricName.CONTEXT_RECALL: "ContextRecall",
+    EvaluationMetricName.CONTEXT_RELEVANCE: "ContextRelevance",
+    EvaluationMetricName.TOOL_CORRECTNESS: "ToolCallAccuracy",
+}
 
 
 class RagasEvaluator(BaseEvaluationInstance):
@@ -29,15 +41,16 @@ class RagasEvaluator(BaseEvaluationInstance):
     def get_supported_metrics(self, category: EvaluationCategory) -> list[str]:
         match category:
             case EvaluationCategory.LLM:
-                return LLM_METRICS
+                candidates = LLM_METRIC_NAMES
             case EvaluationCategory.RETRIEVAL:
-                return RETRIEVAL_METRICS
+                candidates = RETRIEVAL_METRIC_NAMES
             case EvaluationCategory.AGENT:
-                return AGENT_METRICS
-            case EvaluationCategory.WORKFLOW:
-                return WORKFLOW_METRICS
+                candidates = AGENT_METRIC_NAMES
+            case EvaluationCategory.WORKFLOW | EvaluationCategory.SNIPPET:
+                candidates = WORKFLOW_METRIC_NAMES
             case _:
                 return []
+        return [m for m in candidates if m in _RAGAS_METRIC_MAP]
 
     def evaluate_llm(
         self,
@@ -250,7 +263,7 @@ class RagasEvaluator(BaseEvaluationInstance):
 
     @staticmethod
     def _build_ragas_metrics(requested_metrics: list[str]) -> list[Any]:
-        """Build RAGAS metric instances from metric names."""
+        """Build RAGAS metric instances from canonical metric names."""
         try:
             from ragas.metrics.collections import (
                 AnswerCorrectness,
@@ -263,24 +276,25 @@ class RagasEvaluator(BaseEvaluationInstance):
                 ToolCallAccuracy,
             )
 
-            metric_map: dict[str, Any] = {
-                "faithfulness": Faithfulness,
-                "answer_relevancy": AnswerRelevancy,
-                "answer_correctness": AnswerCorrectness,
-                "semantic_similarity": SemanticSimilarity,
-                "context_precision": ContextPrecision,
-                "context_recall": ContextRecall,
-                "context_relevance": ContextRelevance,
-                "tool_call_accuracy": ToolCallAccuracy,
+            # Maps canonical name → ragas metric class
+            ragas_class_map: dict[str, Any] = {
+                EvaluationMetricName.FAITHFULNESS: Faithfulness,
+                EvaluationMetricName.ANSWER_RELEVANCY: AnswerRelevancy,
+                EvaluationMetricName.ANSWER_CORRECTNESS: AnswerCorrectness,
+                EvaluationMetricName.SEMANTIC_SIMILARITY: SemanticSimilarity,
+                EvaluationMetricName.CONTEXT_PRECISION: ContextPrecision,
+                EvaluationMetricName.CONTEXT_RECALL: ContextRecall,
+                EvaluationMetricName.CONTEXT_RELEVANCE: ContextRelevance,
+                EvaluationMetricName.TOOL_CORRECTNESS: ToolCallAccuracy,
             }
 
             metrics = []
             for name in requested_metrics:
-                metric_class = metric_map.get(name)
+                metric_class = ragas_class_map.get(name)
                 if metric_class:
                     metrics.append(metric_class())
                 else:
-                    logger.warning("Unknown RAGAS metric: %s", name)
+                    logger.warning("Metric '%s' is not supported by RAGAS, skipping", name)
             return metrics
         except ImportError:
             logger.warning("RAGAS metrics not available")

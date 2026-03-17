@@ -63,7 +63,8 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
 
     @staticmethod
     def _extract_query(inputs: dict[str, Any]) -> str:
-        for key in "query":
+        for key in ("query", "question", "input", "text"):
             if key in inputs:
                 return str(inputs[key])
-        return ""
+        values = list(inputs.values())
+        return str(values[0]) if values else ""

@@ -4,30 +4,39 @@ from typing import Any
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import DeepEvalConfig
 from core.evaluation.entities.evaluation_entity import (
+    AGENT_METRIC_NAMES,
+    LLM_METRIC_NAMES,
+    RETRIEVAL_METRIC_NAMES,
+    WORKFLOW_METRIC_NAMES,
     EvaluationCategory,
     EvaluationItemInput,
     EvaluationItemResult,
     EvaluationMetric,
+    EvaluationMetricName,
 )
 from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 
 logger = logging.getLogger(__name__)
 
-# Metric name mappings per category
-#
+# Maps canonical EvaluationMetricName to the corresponding deepeval metric class name.
 # deepeval metric field requirements (LLMTestCase fields):
-#   - faithfulness:          input, actual_output, retrieval_context
-#   - answer_relevancy:      input, actual_output
-#   - contextual_precision:  input, actual_output, expected_output, retrieval_context
-#   - contextual_recall:     input, actual_output, expected_output, retrieval_context
-#   - contextual_relevancy:  input, actual_output, retrieval_context
-#   - hallucination:         input, actual_output, context
-#   - tool_correctness:      input, actual_output, expected_tools
-#   - task_completion:       input, actual_output
-LLM_METRICS = ["faithfulness", "answer_relevancy"]
-RETRIEVAL_METRICS = ["contextual_precision", "contextual_recall", "contextual_relevancy"]
-AGENT_METRICS = ["tool_correctness", "task_completion"]
-WORKFLOW_METRICS = ["faithfulness", "answer_relevancy"]
+#   - faithfulness:       input, actual_output, retrieval_context
+#   - answer_relevancy:   input, actual_output
+#   - context_precision:  input, actual_output, expected_output, retrieval_context
+#   - context_recall:     input, actual_output, expected_output, retrieval_context
+#   - context_relevance:  input, actual_output, retrieval_context
+#   - tool_correctness:   input, actual_output, expected_tools
+#   - task_completion:    input, actual_output
+# Metrics not listed here are unsupported by deepeval and will be skipped.
+_DEEPEVAL_METRIC_MAP: dict[EvaluationMetricName, str] = {
+    EvaluationMetricName.FAITHFULNESS: "FaithfulnessMetric",
+    EvaluationMetricName.ANSWER_RELEVANCY: "AnswerRelevancyMetric",
+    EvaluationMetricName.CONTEXT_PRECISION: "ContextualPrecisionMetric",
+    EvaluationMetricName.CONTEXT_RECALL: "ContextualRecallMetric",
+    EvaluationMetricName.CONTEXT_RELEVANCE: "ContextualRelevancyMetric",
+    EvaluationMetricName.TOOL_CORRECTNESS: "ToolCorrectnessMetric",
+    EvaluationMetricName.TASK_COMPLETION: "TaskCompletionMetric",
+}
 
 
 class DeepEvalEvaluator(BaseEvaluationInstance):
@@ -39,15 +48,16 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
     def get_supported_metrics(self, category: EvaluationCategory) -> list[str]:
         match category:
             case EvaluationCategory.LLM:
-                return LLM_METRICS
+                candidates = LLM_METRIC_NAMES
             case EvaluationCategory.RETRIEVAL:
-                return RETRIEVAL_METRICS
+                candidates = RETRIEVAL_METRIC_NAMES
             case EvaluationCategory.AGENT:
-                return AGENT_METRICS
-            case EvaluationCategory.WORKFLOW:
-                return WORKFLOW_METRICS
+                candidates = AGENT_METRIC_NAMES
+            case EvaluationCategory.WORKFLOW | EvaluationCategory.SNIPPET:
+                candidates = WORKFLOW_METRIC_NAMES
             case _:
                 return []
+        return [m for m in candidates if m in _DEEPEVAL_METRIC_MAP]
 
     def evaluate_llm(
         self,
@@ -121,8 +131,8 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         - Retrieval: input=query, actual_output=output, expected_output, retrieval_context=context
         - Agent: input=query, actual_output=output
         """
-        deepeval_metrics = _build_deepeval_metrics(requested_metrics)
-        if not deepeval_metrics:
+        metric_pairs = _build_deepeval_metrics(requested_metrics)
+        if not metric_pairs:
             logger.warning("No valid DeepEval metrics found for: %s", requested_metrics)
             return [EvaluationItemResult(index=item.index) for item in items]
 
@@ -130,15 +140,15 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
         for item in items:
             test_case = self._build_test_case(item, category)
             metrics: list[EvaluationMetric] = []
-            for metric in deepeval_metrics:
+            for canonical_name, metric in metric_pairs:
                 try:
                     metric.measure(test_case)
                     if metric.score is not None:
-                        metrics.append(EvaluationMetric(name=metric.__class__.__name__, value=float(metric.score)))
+                        metrics.append(EvaluationMetric(name=canonical_name, value=float(metric.score)))
                 except Exception:
                     logger.exception(
                         "Failed to compute metric %s for item %d",
-                        metric.__class__.__name__,
+                        canonical_name,
                         item.index,
                     )
             results.append(EvaluationItemResult(index=item.index, metrics=metrics))
@@ -248,8 +258,12 @@ def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:
             return str(next(iter(inputs.values()), "")) if inputs else ""
 
 
-def _build_deepeval_metrics(requested_metrics: list[str]) -> list[Any]:
-    """Build DeepEval metric instances from metric names."""
+def _build_deepeval_metrics(requested_metrics: list[str]) -> list[tuple[str, Any]]:
+    """Build DeepEval metric instances from canonical metric names.
+
+    Returns a list of (canonical_name, metric_instance) pairs so that callers
+    can record the canonical name rather than the framework-internal class name.
+    """
     try:
         from deepeval.metrics import (
             AnswerRelevancyMetric,
@@ -261,24 +275,25 @@ def _build_deepeval_metrics(requested_metrics: list[str]) -> list[Any]:
             ToolCorrectnessMetric,
         )
 
-        metric_map: dict[str, Any] = {
-            "faithfulness": FaithfulnessMetric,
-            "answer_relevancy": AnswerRelevancyMetric,
-            "contextual_precision": ContextualPrecisionMetric,
-            "contextual_recall": ContextualRecallMetric,
-            "contextual_relevancy": ContextualRelevancyMetric,
-            "tool_correctness": ToolCorrectnessMetric,
-            "task_completion": TaskCompletionMetric,
+        # Maps canonical name → deepeval metric class
+        deepeval_class_map: dict[str, Any] = {
+            EvaluationMetricName.FAITHFULNESS: FaithfulnessMetric,
+            EvaluationMetricName.ANSWER_RELEVANCY: AnswerRelevancyMetric,
+            EvaluationMetricName.CONTEXT_PRECISION: ContextualPrecisionMetric,
+            EvaluationMetricName.CONTEXT_RECALL: ContextualRecallMetric,
+            EvaluationMetricName.CONTEXT_RELEVANCE: ContextualRelevancyMetric,
+            EvaluationMetricName.TOOL_CORRECTNESS: ToolCorrectnessMetric,
+            EvaluationMetricName.TASK_COMPLETION: TaskCompletionMetric,
         }
 
-        metrics = []
+        pairs: list[tuple[str, Any]] = []
         for name in requested_metrics:
-            metric_class = metric_map.get(name)
+            metric_class = deepeval_class_map.get(name)
             if metric_class:
-                metrics.append(metric_class(threshold=0.5))
+                pairs.append((name, metric_class(threshold=0.5)))
             else:
-                logger.warning("Unknown DeepEval metric: %s", name)
-        return metrics
+                logger.warning("Metric '%s' is not supported by DeepEval, skipping", name)
+        return pairs
     except ImportError:
         logger.warning("DeepEval metrics not available")
         return []

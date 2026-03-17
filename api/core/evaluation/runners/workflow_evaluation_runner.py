@@ -34,44 +34,29 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
         """Compute workflow evaluation metrics (end-to-end)."""
-        result_by_index = {r.index: r for r in results}
-        merged_items = []
-        for item in items:
-            result = result_by_index.get(item.index)
-            context = []
-            if result and result.actual_output:
-                context.append(result.actual_output)
-            merged_items.append(
-                EvaluationItemInput(
-                    index=item.index,
-                    inputs=item.inputs,
-                    expected_output=item.expected_output,
-                    context=context + (item.context or []),
-                )
-            )
-
-        evaluated = self.evaluation_instance.evaluate_workflow(
-            merged_items, default_metrics, model_provider, model_name, tenant_id
+        if not node_run_result_list:
+            return []
+        if not default_metric:
+            raise ValueError("Default metric is required for workflow evaluation")
+        merged_items = self._merge_results_into_items(node_run_result_list)
+        return self.evaluation_instance.evaluate_workflow(
+            merged_items, default_metric.metric, model_provider, model_name, tenant_id
         )
 
-        # Merge metrics back preserving metadata
-        eval_by_index = {r.index: r for r in evaluated}
-        final_results = []
-        for result in results:
-            if result.index in eval_by_index:
-                eval_result = eval_by_index[result.index]
-                final_results.append(
-                    EvaluationItemResult(
-                        index=result.index,
-                        actual_output=result.actual_output,
-                        metrics=eval_result.metrics,
-                        metadata=result.metadata,
-                        error=result.error,
-                    )
+    @staticmethod
+    def _merge_results_into_items(items: list[NodeRunResult]) -> list[EvaluationItemInput]:
+        """Create EvaluationItemInput list from NodeRunResult for workflow evaluation."""
+        merged = []
+        for i, item in enumerate(items):
+            output = _extract_workflow_output(item.outputs)
+            merged.append(
+                EvaluationItemInput(
+                    index=i,
+                    inputs=dict(item.inputs),
+                    output=output,
                 )
-            else:
-                final_results.append(result)
-        return final_results
+            )
+        return merged
 
     @staticmethod
     def _extract_output(response: Mapping[str, Any]) -> str:
@@ -91,3 +76,13 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
         if isinstance(data, Mapping):
             return data.get("node_executions", [])
         return []
+
+
+def _extract_workflow_output(outputs: Mapping[str, Any]) -> str:
+    """Extract the primary output text from workflow NodeRunResult.outputs."""
+    if "answer" in outputs:
+        return str(outputs["answer"])
+    if "text" in outputs:
+        return str(outputs["text"])
+    values = list(outputs.values())
+    return str(values[0]) if values else ""
