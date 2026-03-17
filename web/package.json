@@ -45,7 +45,7 @@
     "lint:quiet": "pnpm lint --quiet",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
-    "prepare": "pnpm hoist:modern-monaco && (cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky)",
+    "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "refactor-component": "node ./scripts/refactor-component.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",

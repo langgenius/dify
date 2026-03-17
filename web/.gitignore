@@ -61,7 +61,6 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
-public/hoisted-modern-monaco/
 
 .vscode/settings.json
 .vscode/mcp.json
