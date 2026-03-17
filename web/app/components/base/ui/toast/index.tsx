@@ -1,21 +1,53 @@
 'use client'
 
 import type {
+  ToastManagerAddOptions,
+  ToastManagerPromiseOptions,
+  ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
-type ToastData = Record<string, unknown>
+type ToastData = Record<string, never>
+type ToastType = 'success' | 'error' | 'warning' | 'info'
+
+type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+  type?: ToastType
+}
+
+type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+  type?: ToastType
+}
+
+type ToastPromiseOptions<Value> = {
+  loading: string | ToastUpdateOptions
+  success: string | ToastUpdateOptions | ((result: Value) => string | ToastUpdateOptions)
+  error: string | ToastUpdateOptions | ((error: unknown) => string | ToastUpdateOptions)
+}
 
 export type ToastHostProps = {
   timeout?: number
   limit?: number
 }
 
-export const toastManager = BaseToast.createToastManager<ToastData>()
-export const toast = toastManager
+const toastManager = BaseToast.createToastManager<ToastData>()
+
+export const toast = {
+  add(options: ToastAddOptions) {
+    return toastManager.add(options)
+  },
+  close(toastId?: string) {
+    toastManager.close(toastId)
+  },
+  update(toastId: string, options: ToastUpdateOptions) {
+    toastManager.update(toastId, options)
+  },
+  promise<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
+    return toastManager.promise(promiseValue, options as ToastManagerPromiseOptions<Value, ToastData>)
+  },
+}
 
 function ToastIcon({ type }: { type?: string }) {
   if (type === 'success') {
