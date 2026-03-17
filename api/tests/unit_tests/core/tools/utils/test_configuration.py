@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import core.tools.utils.configuration as configuration_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.tool_parameter_cache import ToolParameterCache
 from core.tools.__base.tool import Tool
