@@ -8,7 +8,7 @@ from typing import Any, cast
 # Ensure .netrc is writable for wandb authentication.
 # wandb.login() persists credentials to ~/.netrc, which fails in read-only
 # environments (e.g. Dify Cloud). Redirect to a temp directory instead.
-os.environ.setdefault("NETRC", os.path.join(tempfile.gettempdir(), ".wandb_netrc"))
+os.environ.setdefault("NETRC", os.path.join(tempfile.gettempdir(), f".wandb_netrc.{os.getpid()}"))
 
 import wandb
 import weave
