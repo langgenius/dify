@@ -6,10 +6,10 @@ class NoopSandboxStorage(SandboxStorage):
     """A no-op storage implementation that does nothing on mount/unmount."""
 
     def mount(self, sandbox: VirtualEnvironment) -> bool:
-        return False
+        return True
 
     def unmount(self, sandbox: VirtualEnvironment) -> bool:
-        return False
+        return True
 
     def exists(self) -> bool:
         return False
