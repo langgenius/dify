@@ -225,7 +225,7 @@ class LLMNode(Node[LLMNodeData]):
             prompt_messages, stop = LLMNode.fetch_prompt_messages(
                 sys_query=query,
                 sys_files=files,
-                context=context,
+                context=context or "",
                 memory=memory,
                 model_instance=model_instance,
                 stop=model_stop,
@@ -743,7 +743,7 @@ class LLMNode(Node[LLMNodeData]):
         *,
         sys_query: str | None = None,
         sys_files: Sequence[File],
-        context: str | None = None,
+        context: str = "",
         memory: PromptMessageMemory | None = None,
         model_instance: PreparedLLMProtocol,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
@@ -1026,7 +1026,7 @@ class LLMNode(Node[LLMNodeData]):
     def handle_list_messages(
         *,
         messages: Sequence[LLMNodeChatModelMessage],
-        context: str | None,
+        context: str,
         jinja2_variables: Sequence[VariableSelector],
         variable_pool: VariablePool,
         vision_detail_config: ImagePromptMessageContent.DETAIL,
@@ -1047,10 +1047,7 @@ class LLMNode(Node[LLMNodeData]):
                 prompt_messages.append(prompt_message)
             else:
                 # Get segment group from basic message
-                if context:
-                    template = message.text.replace("{#context#}", context)
-                else:
-                    template = message.text
+                template = message.text.replace(llm_utils.CONTEXT_PLACEHOLDER, context)
                 segment_group = variable_pool.convert_template(template)
 
                 # Process segments for images
@@ -1336,7 +1333,7 @@ def _handle_memory_completion_mode(
 def _handle_completion_template(
     *,
     template: LLMNodeCompletionModelPromptTemplate,
-    context: str | None,
+    context: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
     jinja2_template_renderer: Jinja2TemplateRenderer | None = None,
@@ -1345,7 +1342,7 @@ def _handle_completion_template(
 
     Args:
         template: The completion model prompt template
-        context: Optional context string
+        context: Context string
         jinja2_variables: Variables for jinja2 template rendering
         variable_pool: Variable pool for template conversion
 
@@ -1361,10 +1358,7 @@ def _handle_completion_template(
             jinja2_template_renderer=jinja2_template_renderer,
         )
     else:
-        if context:
-            template_text = template.text.replace("{#context#}", context)
-        else:
-            template_text = template.text
+        template_text = template.text.replace(llm_utils.CONTEXT_PLACEHOLDER, context)
         result_text = variable_pool.convert_template(template_text).text
     prompt_message = _combine_message_content_with_role(
         contents=[TextPromptMessageContent(data=result_text)], role=PromptMessageRole.USER

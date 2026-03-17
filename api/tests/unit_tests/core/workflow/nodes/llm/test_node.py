@@ -34,13 +34,14 @@ from dify_graph.nodes.llm import llm_utils
 from dify_graph.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
     VisionConfigOptions,
 )
 from dify_graph.nodes.llm.file_saver import LLMFileSaver
-from dify_graph.nodes.llm.node import LLMNode, _handle_memory_completion_mode
+from dify_graph.nodes.llm.node import LLMNode, _handle_completion_template, _handle_memory_completion_mode
 from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from dify_graph.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from dify_graph.runtime import GraphRuntimeState, VariablePool
@@ -628,7 +629,7 @@ def test_fetch_files_with_non_existent_variable():
 def test_handle_list_messages_basic(llm_node):
     messages = [
         LLMNodeChatModelMessage(
-            text="Hello, {#context#}",
+            text="Hello, {{#context#}}",
             role=PromptMessageRole.USER,
             edition_type="basic",
         )
@@ -649,6 +650,54 @@ def test_handle_list_messages_basic(llm_node):
     assert len(result) == 1
     assert isinstance(result[0], UserPromptMessage)
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
+
+
+def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node):
+    messages = [
+        LLMNodeChatModelMessage(
+            text="Answer user's question with the following context:\n\n{{#context#}}",
+            role=PromptMessageRole.SYSTEM,
+            edition_type="basic",
+        )
+    ]
+    context = "## Overview\nSends a JSON request."
+
+    result = llm_node.handle_list_messages(
+        messages=messages,
+        context=context,
+        jinja2_variables=[],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+    )
+
+    assert len(result) == 1
+    assert isinstance(result[0].content, list)
+    assert result[0].content == [
+        TextPromptMessageContent(
+            data="Answer user's question with the following context:\n\n## Overview\nSends a JSON request."
+        )
+    ]
+
+
+def test_handle_completion_template_replaces_double_brace_context_placeholder(llm_node):
+    prompt_messages = _handle_completion_template(
+        template=LLMNodeCompletionModelPromptTemplate(
+            text="Summarize the following context:\n{{#context#}}",
+            edition_type="basic",
+        ),
+        context="## Overview\nSends a JSON request.",
+        jinja2_variables=[],
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        jinja2_template_renderer=None,
+    )
+
+    assert prompt_messages == [
+        UserPromptMessage(
+            content=[
+                TextPromptMessageContent(data="Summarize the following context:\n## Overview\nSends a JSON request.")
+            ]
+        )
+    ]
 
 
 def test_handle_memory_completion_mode_uses_prompt_message_interface():

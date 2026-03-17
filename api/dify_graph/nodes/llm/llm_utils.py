@@ -35,6 +35,8 @@ from .exc import (
 )
 from .runtime_protocols import PreparedLLMProtocol
 
+CONTEXT_PLACEHOLDER = "{{#context#}}"
+
 
 def fetch_model_schema(*, model_instance: PreparedLLMProtocol) -> AIModelEntity:
     model_schema = model_instance.get_model_schema()
@@ -110,7 +112,7 @@ def fetch_prompt_messages(
     *,
     sys_query: str | None = None,
     sys_files: Sequence[File],
-    context: str | None = None,
+    context: str = "",
     memory: PromptMessageMemory | None = None,
     model_instance: PreparedLLMProtocol,
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
@@ -273,7 +275,7 @@ def fetch_prompt_messages(
 def handle_list_messages(
     *,
     messages: Sequence[LLMNodeChatModelMessage],
-    context: str | None,
+    context: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
     vision_detail_config: ImagePromptMessageContent.DETAIL,
@@ -296,7 +298,7 @@ def handle_list_messages(
             )
             continue
 
-        template = message.text.replace("{#context#}", context) if context else message.text
+        template = message.text.replace(CONTEXT_PLACEHOLDER, context)
         segment_group = variable_pool.convert_template(template)
         file_contents: list[PromptMessageContentUnionTypes] = []
         for segment in segment_group.value:
@@ -348,7 +350,7 @@ def render_jinja2_message(
 def handle_completion_template(
     *,
     template: LLMNodeCompletionModelPromptTemplate,
-    context: str | None,
+    context: str,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
     template_renderer: Jinja2TemplateRenderer | None = None,
@@ -361,7 +363,7 @@ def handle_completion_template(
             template_renderer=template_renderer,
         )
     else:
-        template_text = template.text.replace("{#context#}", context) if context else template.text
+        template_text = template.text.replace(CONTEXT_PLACEHOLDER, context)
         result_text = variable_pool.convert_template(template_text).text
     return [
         combine_message_content_with_role(
