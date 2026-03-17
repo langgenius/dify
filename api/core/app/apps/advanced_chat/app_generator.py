@@ -691,21 +691,19 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
 
 @overload
-def _refresh_model(session: object, model: Workflow) -> Workflow: ...
+def _refresh_model(session: Session, model: Workflow) -> Workflow: ...
 
 
 @overload
-def _refresh_model(session: object, model: Message) -> Message: ...
+def _refresh_model(session: Session, model: Message) -> Message: ...
 
 
-def _refresh_model(session: object, model: Workflow | Message) -> Workflow | Message:
-    _ = session
-    with Session(bind=db.engine, expire_on_commit=False) as db_session:
-        if isinstance(model, Workflow):
-            detached_workflow = db_session.get(Workflow, model.id)
-            assert detached_workflow is not None
-            return detached_workflow
+def _refresh_model(session: Session, model: Workflow | Message) -> Workflow | Message:
+    if isinstance(model, Workflow):
+        detached_workflow = session.get(Workflow, model.id)
+        assert detached_workflow is not None
+        return detached_workflow
 
-        detached_message = db_session.get(Message, model.id)
-        assert detached_message is not None
-        return detached_message
+    detached_message = session.get(Message, model.id)
+    assert detached_message is not None
+    return detached_message
