@@ -146,8 +146,6 @@ class BaseIndexProcessor(ABC):
         Get the content files from the document.
         """
         multi_model_documents: list[AttachmentDocument] = []
-        if document.metadata is None:
-            return multi_model_documents
         text = document.page_content
         images = self._extract_markdown_images(text)
         if not images:
