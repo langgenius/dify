@@ -12,7 +12,7 @@ def build_test_run_context(
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: RunContextDict | None = None,
+    extra_context: Mapping[str, Any] | None = None,
 ) -> RunContextDict:
     normalized_user_from = user_from if isinstance(user_from, UserFrom) else UserFrom(user_from)
     normalized_invoke_from = invoke_from if isinstance(invoke_from, InvokeFrom) else InvokeFrom(invoke_from)
@@ -36,7 +36,7 @@ def build_test_graph_init_params(
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: RunContextDict | None = None,
+    extra_context: Mapping[str, Any] | None = None,
 ) -> GraphInitParams:
     return GraphInitParams(
         workflow_id=workflow_id,
