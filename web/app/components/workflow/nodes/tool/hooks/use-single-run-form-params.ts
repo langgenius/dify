@@ -1,15 +1,15 @@
 import type { RefObject } from 'react'
-import type { ToolNodeType } from './types'
+import type { ToolNodeType } from '../types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToolIcon } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
-import { useToolIcon } from '../../hooks'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { VarType } from './types'
+import { VarType } from '../types'
 
 type Params = {
   id: string
@@ -50,9 +50,9 @@ const useSingleRunFormParams = ({
 
     return p.value as string
   }))
-  const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
-  const setInputVarValues = useCallback((value: Record<string, any>) => {
-    doSetInputVarValues(value)
+  const [inputVarValues, setInputVarValues] = useState<Record<string, any>>({})
+  const handleInputVarValuesChange = useCallback((value: Record<string, any>) => {
+    setInputVarValues(value)
     setRunInputData(value)
   }, [setRunInputData])
 
@@ -74,10 +74,10 @@ const useSingleRunFormParams = ({
     const forms: FormProps[] = [{
       inputs: varInputs,
       values: inputVarValuesWithConstantValue(),
-      onChange: setInputVarValues,
+      onChange: handleInputVarValuesChange,
     }]
     return forms
-  }, [inputVarValuesWithConstantValue, setInputVarValues, varInputs])
+  }, [handleInputVarValuesChange, inputVarValuesWithConstantValue, varInputs])
 
   const nodeInfo = useMemo(() => {
     if (!runResult)

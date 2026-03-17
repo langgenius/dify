@@ -1,9 +1,12 @@
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
+import { screen, waitFor } from '@testing-library/react'
+import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
 import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
 
@@ -362,6 +365,45 @@ describe('useChecklist', () => {
       'Model not configured',
       'workflow.errorMsg.invalidVariable',
     ])
+  })
+
+  it('should sync checklist items to the workflow store without render phase update warnings', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+      const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
+
+      function Operator() {
+        const checklistItems = useStore(state => state.checklistItems)
+        return createElement('div', { 'data-testid': 'checklist-count' }, checklistItems.length)
+      }
+
+      function WorkflowChecklist() {
+        useChecklist([startNode, codeNode], [])
+        return null
+      }
+
+      const { store } = renderWorkflowComponent(
+        createElement(
+          Fragment,
+          null,
+          createElement(Operator),
+          createElement(WorkflowChecklist),
+        ),
+      )
+
+      await waitFor(() => {
+        expect(store.getState().checklistItems).toHaveLength(1)
+      })
+
+      expect(screen.getByTestId('checklist-count')).toHaveTextContent('1')
+      expect(errorSpy.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes('Cannot update a component')),
+      )).toBe(false)
+    }
+    finally {
+      errorSpy.mockRestore()
+    }
   })
 })
 

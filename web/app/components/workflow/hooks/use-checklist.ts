@@ -17,8 +17,10 @@ import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
+import isDeepEqual from 'fast-deep-equal'
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
 } from 'react'
@@ -306,9 +308,16 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     })
 
-    workflowStore.setState({ checklistItems: list })
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, workflowStore])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders])
+
+  useEffect(() => {
+    const currentChecklistItems = workflowStore.getState().checklistItems
+    if (isDeepEqual(currentChecklistItems, needWarningNodes))
+      return
+
+    workflowStore.setState({ checklistItems: needWarningNodes })
+  }, [needWarningNodes, workflowStore])
 
   return needWarningNodes
 }

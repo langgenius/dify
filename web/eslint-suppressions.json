@@ -7960,12 +7960,12 @@
       "count": 3
     }
   },
-  "app/components/workflow/nodes/tool/use-config.ts": {
+  "app/components/workflow/nodes/tool/hooks/use-config.ts": {
     "ts/no-explicit-any": {
       "count": 6
     }
   },
-  "app/components/workflow/nodes/tool/use-single-run-form-params.ts": {
+  "app/components/workflow/nodes/tool/hooks/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 6
     }

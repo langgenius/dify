@@ -1,4 +1,4 @@
-import type { ToolNodeType, ToolVarInputs } from './types'
+import type { ToolNodeType, ToolVarInputs } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -16,17 +16,14 @@ import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
   useInvalidToolsByType,
 } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
-import { useWorkflowStore } from '../../store'
-import { normalizeJsonSchemaType } from './output-schema-utils'
+import { isToolAuthorizationRequired } from '../auth'
+import { normalizeJsonSchemaType } from '../output-schema-utils'
+import useCurrentToolCollection from './use-current-tool-collection'
 
 const formatDisplayType = (output: Record<string, unknown>): string => {
   const normalizedType = normalizeJsonSchemaType(output) || 'Unknown'
@@ -55,33 +52,10 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     tool_parameters,
   } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-
-  const currentTools = useMemo(() => {
-    switch (provider_type) {
-      case CollectionType.builtIn:
-        return buildInTools || []
-      case CollectionType.custom:
-        return customTools || []
-      case CollectionType.workflow:
-        return workflowTools || []
-      case CollectionType.mcp:
-        return mcpTools || []
-      default:
-        return []
-    }
-  }, [buildInTools, customTools, mcpTools, provider_type, workflowTools])
-  const currCollection = useMemo(() => {
-    return currentTools.find(item => canFindTool(item.id, provider_id))
-  }, [currentTools, provider_id])
+  const { currCollection } = useCurrentToolCollection(provider_type, provider_id)
 
   // Auth
-  const needAuth = !!currCollection?.allow_delete
-  const isAuthed = !!currCollection?.is_team_authorization
-  const isShowAuthBtn = isBuiltIn && needAuth && !isAuthed
+  const isShowAuthBtn = isToolAuthorizationRequired(provider_type, currCollection)
   const [
     showSetAuth,
     { setTrue: showSetAuthModal, setFalse: hideSetAuthModal },
@@ -104,7 +78,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       hideSetAuthModal,
       t,
       invalidToolsByType,
-      provider_type,
     ],
   )
 
@@ -172,38 +145,49 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     [inputs, setInputs],
   )
 
-  const formattingParameters = () => {
+  const formattingParameters = useCallback(() => {
     const inputsWithDefaultValue = produce(inputs, (draft) => {
       if (
         !draft.tool_configurations
         || Object.keys(draft.tool_configurations).length === 0
       ) {
-        draft.tool_configurations = getConfiguredValue(
+        const configuredToolSettings = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
         ) as ToolVarInputs
+        if (Object.keys(configuredToolSettings).length > 0)
+          draft.tool_configurations = configuredToolSettings
       }
       if (
         !draft.tool_parameters
         || Object.keys(draft.tool_parameters).length === 0
       ) {
-        draft.tool_parameters = getConfiguredValue(
+        const configuredToolParameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
         ) as ToolVarInputs
+        if (Object.keys(configuredToolParameters).length > 0)
+          draft.tool_parameters = configuredToolParameters
       }
     })
     return inputsWithDefaultValue
-  }
+  }, [inputs, toolInputVarSchema, toolSettingSchema, tool_configurations, tool_parameters])
 
   useEffect(() => {
     if (!currTool)
       return
     const inputsWithDefaultValue = formattingParameters()
+    if (inputsWithDefaultValue === inputs)
+      return
+
     const { setControlPromptEditorRerenderKey } = workflowStore.getState()
     setInputs(inputsWithDefaultValue)
-    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
-  }, [currTool])
+    const rerenderTimeout = setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+
+    return () => {
+      clearTimeout(rerenderTimeout)
+    }
+  }, [currTool, formattingParameters, inputs, setInputs, workflowStore])
 
   // setting when call
   const setInputVar = useCallback(

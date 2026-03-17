@@ -1,4 +1,4 @@
-import type { ToolNodeType } from './types'
+import type { ToolNodeType } from '../types'
 import useConfig from './use-config'
 
 type Params = {
