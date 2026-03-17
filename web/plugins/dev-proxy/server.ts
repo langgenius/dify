@@ -2,10 +2,16 @@ import type { Context, Hono } from 'hono'
 import { Hono as HonoApp } from 'hono'
 import { DEFAULT_PROXY_TARGET, rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal } from './cookies'
 
+export { shouldUseHttpsForDevProxy } from './protocol'
+
 type DevProxyEnv = Partial<Record<
   | 'HONO_CONSOLE_API_PROXY_TARGET'
   | 'HONO_PUBLIC_API_PROXY_TARGET',
   string
+> & Record<
+  | 'NEXT_PUBLIC_API_PREFIX'
+  | 'NEXT_PUBLIC_PUBLIC_API_PREFIX',
+  string | undefined
 >>
 
 export type DevProxyTargets = {
@@ -93,11 +99,15 @@ const createProxyRequestHeaders = (request: Request, targetUrl: URL) => {
   return headers
 }
 
-const createUpstreamResponseHeaders = (response: Response, requestOrigin?: string | null) => {
+const createUpstreamResponseHeaders = (
+  response: Response,
+  requestOrigin: string | null | undefined,
+  localSecure: boolean,
+) => {
   const headers = new Headers(response.headers)
   RESPONSE_HEADERS_TO_DROP.forEach(header => headers.delete(header))
 
-  const rewrittenSetCookies = rewriteSetCookieHeadersForLocal(response.headers.getSetCookie())
+  const rewrittenSetCookies = rewriteSetCookieHeadersForLocal(response.headers.getSetCookie(), { localSecure })
   rewrittenSetCookies?.forEach((cookie) => {
     headers.append('set-cookie', cookie)
   })
@@ -126,7 +136,11 @@ const proxyRequest = async (
   }
 
   const upstreamResponse = await fetchImpl(targetUrl, requestInit)
-  const responseHeaders = createUpstreamResponseHeaders(upstreamResponse, context.req.header('origin'))
+  const responseHeaders = createUpstreamResponseHeaders(
+    upstreamResponse,
+    context.req.header('origin'),
+    requestUrl.protocol === 'https:',
+  )
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,

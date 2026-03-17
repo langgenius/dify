@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, resolveDevProxyTargets } from './server'
+import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, resolveDevProxyTargets, shouldUseHttpsForDevProxy } from './server'
 
 describe('dev proxy server', () => {
   beforeEach(() => {
@@ -19,6 +19,21 @@ describe('dev proxy server', () => {
     expect(targets.publicApiTarget).toBe('https://public.example.com')
   })
 
+  // Scenario: the local dev proxy should switch to https when api prefixes are configured with https.
+  it('should enable https for the local dev proxy when api prefixes use https', () => {
+    // Assert
+    expect(shouldUseHttpsForDevProxy({
+      NEXT_PUBLIC_API_PREFIX: 'https://localhost:5001/console/api',
+    })).toBe(true)
+    expect(shouldUseHttpsForDevProxy({
+      NEXT_PUBLIC_PUBLIC_API_PREFIX: 'https://localhost:5001/api',
+    })).toBe(true)
+    expect(shouldUseHttpsForDevProxy({
+      NEXT_PUBLIC_API_PREFIX: 'http://localhost:5001/console/api',
+      NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://localhost:5001/api',
+    })).toBe(false)
+  })
+
   // Scenario: target paths should not be duplicated when the incoming route already includes them.
   it('should preserve prefixed targets when building upstream URLs', () => {
     // Act
@@ -32,6 +47,7 @@ describe('dev proxy server', () => {
   it('should only allow local development origins', () => {
     // Assert
     expect(isAllowedDevOrigin('http://localhost:3000')).toBe(true)
+    expect(isAllowedDevOrigin('https://localhost:3000')).toBe(true)
     expect(isAllowedDevOrigin('http://127.0.0.1:3000')).toBe(true)
     expect(isAllowedDevOrigin('https://example.com')).toBe(false)
   })
@@ -84,6 +100,39 @@ describe('dev proxy server', () => {
     expect(response.headers.getSetCookie()).toEqual([
       'access_token=abc; Path=/; SameSite=Lax',
     ])
+  })
+
+  // Scenario: secure local proxy responses should keep secure cross-site cookie attributes intact.
+  it('should preserve secure cookie attributes when the local proxy is https', async () => {
+    // Arrange
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok', {
+      status: 200,
+      headers: [
+        ['set-cookie', '__Host-access_token=abc; Path=/console/api; Domain=cloud.dify.ai; Secure; SameSite=None; Partitioned'],
+        ['set-cookie', '__Host-csrf_token=csrf; Path=/console/api; Domain=cloud.dify.ai; Secure; SameSite=None'],
+      ],
+    }))
+    const app = createDevProxyApp({
+      consoleApiTarget: 'https://cloud.dify.ai',
+      publicApiTarget: 'https://public.dify.ai',
+      fetchImpl,
+    })
+
+    // Act
+    const response = await app.request('https://127.0.0.1:5001/console/api/apps?page=1', {
+      headers: {
+        Origin: 'https://localhost:3000',
+        Cookie: 'access_token=abc',
+      },
+    })
+
+    // Assert
+    expect(response.headers.getSetCookie()).toEqual([
+      '__Host-access_token=abc; Path=/; Secure; SameSite=None; Partitioned',
+      '__Host-csrf_token=csrf; Path=/; Secure; SameSite=None',
+    ])
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://localhost:3000')
+    expect(response.headers.get('access-control-allow-credentials')).toBe('true')
   })
 
   // Scenario: preflight requests should advertise allowed headers for credentialed cross-origin calls.

@@ -1,9 +1,12 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
+import { loadEnv } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import { defineConfig } from 'vite-plus'
+import { shouldUseHttpsForDevProxy } from './plugins/dev-proxy/protocol'
 import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
@@ -21,6 +24,8 @@ export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
   const isStorybook = process.env.STORYBOOK === 'true'
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
+  const env = loadEnv(mode, projectRoot, '')
+  const useHttpsForDevServer = shouldUseHttpsForDevProxy(env)
   const isAppComponentsCoverage = coverageScope === 'app-components'
   const excludedComponentCoverageFiles = isAppComponentsCoverage
     ? collectComponentCoverageExcludedFiles(path.join(projectRoot, 'app/components'), { pathPrefix: 'app/components' })
@@ -57,6 +62,7 @@ export default defineConfig(({ mode }) => {
             react(),
             vinext({ react: false }),
             customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            ...(useHttpsForDevServer ? [basicSsl()] : []),
             // reactGrabOpenFilePlugin({
             //   injectTarget: browserInitializerInjectTarget,
             //   projectRoot,
