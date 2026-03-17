@@ -62,6 +62,9 @@ class WorkflowRunCleanupMetrics:
         self._init_instruments()
 
     def _init_instruments(self) -> None:
+        if not dify_config.ENABLE_OTEL:
+            return
+
         try:
             from opentelemetry.metrics import get_meter
 
