@@ -13,6 +13,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string
 type CreateWorkflowStreamHandlersParams = {
   getCompletionRes: () => string
   getWorkflowProcessData: () => WorkflowProcess | undefined
+  isPublicAPI: boolean
   isTimedOut: () => boolean
   markEnded: () => void
   notify: Notify
@@ -255,6 +256,7 @@ const serializeWorkflowOutputs = (outputs: WorkflowFinishedResponse['data']['out
 export const createWorkflowStreamHandlers = ({
   getCompletionRes,
   getWorkflowProcessData,
+  isPublicAPI,
   isTimedOut,
   markEnded,
   notify,
@@ -287,6 +289,7 @@ export const createWorkflowStreamHandlers = ({
   }
 
   const otherOptions: IOtherOptions = {
+    isPublicAPI,
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {
@@ -378,6 +381,7 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
+      // WebApp workflows must keep using the public API namespace after pause/resume.
       void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
