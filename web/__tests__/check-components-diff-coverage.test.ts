@@ -163,9 +163,38 @@ describe('check-components-diff-coverage helpers', () => {
 
     expect(coverage).toEqual({
       covered: 0,
-      total: 2,
+      total: 1,
       uncoveredBranches: [
         { armIndex: 0, line: 33 },
+      ],
+    })
+  })
+
+  it('should require all branch arms when the branch condition changes', () => {
+    const entry = {
+      b: {
+        0: [0, 0],
+      },
+      branchMap: {
+        0: {
+          line: 30,
+          loc: { start: { line: 30 }, end: { line: 35 } },
+          locations: [
+            { start: { line: 31 }, end: { line: 34 } },
+            { start: { line: 35 }, end: { line: 38 } },
+          ],
+          type: 'if',
+        },
+      },
+    }
+
+    const coverage = getChangedBranchCoverage(entry, new Set([30]))
+
+    expect(coverage).toEqual({
+      covered: 0,
+      total: 2,
+      uncoveredBranches: [
+        { armIndex: 0, line: 31 },
         { armIndex: 1, line: 35 },
       ],
     })

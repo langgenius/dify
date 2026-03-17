@@ -137,5 +137,11 @@ describe('ScoreThresholdItem', () => {
       const input = screen.getByRole('textbox')
       expect(input).toHaveValue('1')
     })
+
+    it('should fall back to default value when value is undefined', () => {
+      render(<ScoreThresholdItem {...defaultProps} value={undefined} />)
+      const input = screen.getByRole('textbox')
+      expect(input).toHaveValue('0.7')
+    })
   })
 })
