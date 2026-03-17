@@ -107,12 +107,21 @@ const upsertWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
   })
 }
 
+const findWorkflowNodeTraceIndex = (tracing: WorkflowProcess['tracing'], data: NodeTracing) => {
+  return tracing.findIndex((trace) => {
+    if (trace.id && data.id)
+      return trace.id === data.id
+
+    return matchParallelTrace(trace, data)
+  })
+}
+
 const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   if (data.iteration_id || data.loop_id)
     return current
 
   return updateWorkflowProcess(current, (draft) => {
-    const currentIndex = draft.tracing.findIndex(trace => matchParallelTrace(trace, data))
+    const currentIndex = findWorkflowNodeTraceIndex(draft.tracing, data)
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
         ...(draft.tracing[currentIndex].extras

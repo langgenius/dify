@@ -186,6 +186,38 @@ describe('workflow-stream-handlers helpers', () => {
     }))
   })
 
+  it('should finish the matching top-level trace when the same node runs again with a new execution id', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'trace-1',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Succeeded,
+      }),
+      createTrace({
+        id: 'trace-2',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Running,
+      }),
+    ]
+
+    const updatedProcess = finishWorkflowNode(process, createTrace({
+      id: 'trace-2',
+      node_id: 'node-1',
+      status: NodeRunningStatus.Succeeded,
+    }))!
+
+    expect(updatedProcess.tracing).toHaveLength(2)
+    expect(updatedProcess.tracing[0]).toEqual(expect.objectContaining({
+      id: 'trace-1',
+      status: NodeRunningStatus.Succeeded,
+    }))
+    expect(updatedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'trace-2',
+      status: NodeRunningStatus.Succeeded,
+    }))
+  })
+
   it('should leave tracing unchanged when a parallel next event has no matching trace', () => {
     const process = createWorkflowProcess()
     process.tracing = [
@@ -269,6 +301,7 @@ describe('workflow-stream-handlers helpers', () => {
       loop_id: 'loop-1',
     }))
     const unmatchedFinish = finishWorkflowNode(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing',
       execution_metadata: {
         parallel_id: 'missing',
