@@ -534,6 +534,13 @@ class PluginService:
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials for plugin: %s", plugin_id)
 
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                )
+            )
+
             # Delete provider credentials that match this plugin
             credential_ids = session.scalars(
                 select(ProviderCredential.id).where(
@@ -566,13 +573,6 @@ class PluginService:
             session.execute(
                 delete(ProviderCredential).where(
                     ProviderCredential.id.in_(credential_ids),
-                )
-            )
-
-            session.execute(
-                delete(TenantPreferredModelProvider).where(
-                    TenantPreferredModelProvider.tenant_id == tenant_id,
-                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
                 )
             )
 
