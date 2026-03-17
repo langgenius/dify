@@ -56,11 +56,11 @@ function createToastPromiseResultOption<Value>(
   if (typeof option !== 'function')
     return option
 
-  return value => option(value)
+  return option
 }
 
 function getToastType(type?: string): ToastType | undefined {
-  if (type && type in TOAST_ICON_CLASSNAMES)
+  if (type && Object.prototype.hasOwnProperty.call(TOAST_ICON_CLASSNAMES, type))
     return type as ToastType
 
   return undefined
