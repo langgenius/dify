@@ -2,11 +2,56 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const DIFF_COVERAGE_IGNORE_LINE_TOKEN = 'diff-coverage-ignore-line:'
+const DEFAULT_BRANCH_REF_CANDIDATES = ['origin/main', 'main']
+
+export function normalizeDiffRangeMode(mode) {
+  return mode === 'exact' ? 'exact' : 'merge-base'
+}
 
 export function buildGitDiffRevisionArgs(base, head, mode = 'merge-base') {
   return mode === 'exact'
     ? [base, head]
     : [`${base}...${head}`]
+}
+
+export function resolveGitDiffContext({
+  base,
+  head,
+  mode = 'merge-base',
+  execGit,
+}) {
+  const requestedMode = normalizeDiffRangeMode(mode)
+  const context = {
+    base,
+    head,
+    mode: requestedMode,
+    requestedMode,
+    reason: null,
+    useCombinedMergeDiff: false,
+  }
+
+  if (requestedMode !== 'exact' || !base || !head || !execGit)
+    return context
+
+  const baseCommit = resolveCommitSha(base, execGit) ?? base
+  const headCommit = resolveCommitSha(head, execGit) ?? head
+  const parents = getCommitParents(headCommit, execGit)
+  if (parents.length < 2)
+    return context
+
+  const [firstParent, secondParent] = parents
+  if (firstParent !== baseCommit)
+    return context
+
+  const defaultBranchRef = resolveDefaultBranchRef(execGit)
+  if (!defaultBranchRef || !isAncestor(secondParent, defaultBranchRef, execGit))
+    return context
+
+  return {
+    ...context,
+    reason: `ignored merge from ${defaultBranchRef}`,
+    useCombinedMergeDiff: true,
+  }
 }
 
 export function parseChangedLineMap(diff, isTrackedComponentSourceFile) {
@@ -22,7 +67,7 @@ export function parseChangedLineMap(diff, isTrackedComponentSourceFile) {
     if (!currentFile || !isTrackedComponentSourceFile(currentFile))
       continue
 
-    const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/)
+    const match = line.match(/^@{2,}(?: -\d+(?:,\d+)?)+ \+(\d+)(?:,(\d+))? @{2,}/)
     if (!match)
       continue
 
@@ -131,14 +176,15 @@ export function getChangedBranchCoverage(entry, changedLines) {
   let total = 0
 
   for (const [branchId, branch] of Object.entries(entry.branchMap ?? {})) {
-    if (!branchIntersectsChangedLines(branch, changedLines))
-      continue
-
     const hits = Array.isArray(entry.b?.[branchId]) ? entry.b[branchId] : []
     const locations = getBranchLocations(branch)
     const armCount = Math.max(locations.length, hits.length)
+    const impactedArmIndexes = getImpactedBranchArmIndexes(branch, changedLines, armCount)
 
-    for (let armIndex = 0; armIndex < armCount; armIndex += 1) {
+    if (impactedArmIndexes.length === 0)
+      continue
+
+    for (const armIndex of impactedArmIndexes) {
       total += 1
       if ((hits[armIndex] ?? 0) > 0) {
         covered += 1
@@ -219,22 +265,97 @@ function emptyIgnoreResult(changedLines = []) {
   }
 }
 
-function branchIntersectsChangedLines(branch, changedLines) {
-  if (!changedLines || changedLines.size === 0)
+function getCommitParents(ref, execGit) {
+  const output = tryExecGit(execGit, ['rev-list', '--parents', '-n', '1', ref])
+  if (!output)
+    return []
+
+  return output
+    .trim()
+    .split(/\s+/)
+    .slice(1)
+}
+
+function resolveCommitSha(ref, execGit) {
+  return tryExecGit(execGit, ['rev-parse', '--verify', ref])?.trim() ?? null
+}
+
+function resolveDefaultBranchRef(execGit) {
+  const originHeadRef = tryExecGit(execGit, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'])?.trim()
+  if (originHeadRef)
+    return originHeadRef
+
+  for (const ref of DEFAULT_BRANCH_REF_CANDIDATES) {
+    if (tryExecGit(execGit, ['rev-parse', '--verify', '-q', ref]))
+      return ref
+  }
+
+  return null
+}
+
+function isAncestor(ancestorRef, descendantRef, execGit) {
+  try {
+    execGit(['merge-base', '--is-ancestor', ancestorRef, descendantRef])
+    return true
+  }
+  catch {
     return false
+  }
+}
 
-  if (rangeIntersectsChangedLines(branch.loc, changedLines))
-    return true
-
-  const locations = getBranchLocations(branch)
-  if (locations.some(location => rangeIntersectsChangedLines(location, changedLines)))
-    return true
-
-  return branch.line ? changedLines.has(branch.line) : false
+function tryExecGit(execGit, args) {
+  try {
+    return execGit(args)
+  }
+  catch {
+    return null
+  }
 }
 
 function getBranchLocations(branch) {
   return Array.isArray(branch?.locations) ? branch.locations.filter(Boolean) : []
+}
+
+function getImpactedBranchArmIndexes(branch, changedLines, armCount) {
+  if (!changedLines || changedLines.size === 0 || armCount === 0)
+    return []
+
+  const locations = getBranchLocations(branch)
+  if (isWholeBranchTouched(branch, changedLines, locations, armCount))
+    return Array.from({ length: armCount }, (_, armIndex) => armIndex)
+
+  const impactedArmIndexes = []
+  for (let armIndex = 0; armIndex < armCount; armIndex += 1) {
+    const location = locations[armIndex]
+    if (rangeIntersectsChangedLines(location, changedLines))
+      impactedArmIndexes.push(armIndex)
+  }
+
+  return impactedArmIndexes
+}
+
+function isWholeBranchTouched(branch, changedLines, locations, armCount) {
+  if (!changedLines || changedLines.size === 0)
+    return false
+
+  if (branch.line && changedLines.has(branch.line))
+    return true
+
+  const branchRange = branch.loc ?? branch
+  if (!rangeIntersectsChangedLines(branchRange, changedLines))
+    return false
+
+  if (locations.length === 0 || locations.length < armCount)
+    return true
+
+  for (const lineNumber of changedLines) {
+    if (!lineTouchesLocation(lineNumber, branchRange))
+      continue
+    if (!locations.some(location => lineTouchesLocation(lineNumber, location)))
+      return true
+  }
+
+  return false
 }
 
 function rangeIntersectsChangedLines(location, changedLines) {
@@ -266,6 +387,15 @@ function getFirstChangedLineInRange(location, changedLines, fallbackLine = 1) {
   }
 
   return startLine ?? fallbackLine
+}
+
+function lineTouchesLocation(lineNumber, location) {
+  const startLine = getLocationStartLine(location)
+  const endLine = getLocationEndLine(location) ?? startLine
+  if (!startLine || !endLine)
+    return false
+
+  return lineNumber >= startLine && lineNumber <= endLine
 }
 
 function getLocationStartLine(location) {

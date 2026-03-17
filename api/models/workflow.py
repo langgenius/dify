@@ -3,7 +3,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -58,6 +58,22 @@ from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, Wor
 from .types import EnumText, LongText, StringUUID
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowContentDict(TypedDict):
+    graph: Mapping[str, Any]
+    features: dict[str, Any]
+    environment_variables: list[dict[str, Any]]
+    conversation_variables: list[dict[str, Any]]
+    rag_pipeline_variables: list[dict[str, Any]]
+
+
+class WorkflowRunSummaryDict(TypedDict):
+    id: str
+    status: str
+    triggered_from: str
+    elapsed_time: float
+    total_tokens: int
 
 
 class WorkflowType(StrEnum):
@@ -502,14 +518,14 @@ class Workflow(Base):  # bug
         )
         self._environment_variables = environment_variables_json
 
-    def to_dict(self, *, include_secret: bool = False) -> Mapping[str, Any]:
+    def to_dict(self, *, include_secret: bool = False) -> WorkflowContentDict:
         environment_variables = list(self.environment_variables)
         environment_variables = [
             v if not isinstance(v, SecretVariable) or include_secret else v.model_copy(update={"value": ""})
             for v in environment_variables
         ]
 
-        result = {
+        result: WorkflowContentDict = {
             "graph": self.graph_dict,
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
@@ -1231,7 +1247,7 @@ class WorkflowArchiveLog(TypeBase):
     )
 
     @property
-    def workflow_run_summary(self) -> dict[str, Any]:
+    def workflow_run_summary(self) -> WorkflowRunSummaryDict:
         return {
             "id": self.workflow_run_id,
             "status": self.run_status,
