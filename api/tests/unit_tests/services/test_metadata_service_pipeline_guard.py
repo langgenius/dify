@@ -81,9 +81,7 @@ class TestMetadataServicePipelineGuard:
                 return_value={"meta-1"},
             ) as mock_scan,
         ):
-            result = MetadataService._get_referenced_metadata_ids(
-                "tenant-1", {"meta-1"}, bypass_cache=True
-            )
+            result = MetadataService._get_referenced_metadata_ids("tenant-1", {"meta-1"}, bypass_cache=True)
 
         mock_redis.get.assert_not_called()
         mock_scan.assert_called_once_with("tenant-1")

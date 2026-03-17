@@ -90,9 +90,7 @@ class MetadataService:
         return all_referenced
 
     @staticmethod
-    def _get_referenced_metadata_ids(
-        tenant_id: str, metadata_ids: set[str], *, bypass_cache: bool = False
-    ) -> set[str]:
+    def _get_referenced_metadata_ids(tenant_id: str, metadata_ids: set[str], *, bypass_cache: bool = False) -> set[str]:
         """Return metadata IDs (from the given set) that are referenced by pipeline configurations.
 
         Results are cached per-tenant for _PIPELINE_REF_CACHE_TTL seconds.
