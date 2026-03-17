@@ -63,7 +63,7 @@ class GraphInitParams(BaseModel):
     def _validate_graph_config(cls, value: Any) -> Any:
         # Coerce generic mappings (e.g., MappingProxyType) to a plain dict and
         # let the field's TypedDict schema perform validation once.
-        if isinstance(value, Mapping):
+        if isinstance(value, Mapping) and not isinstance(value, dict):
             return dict(value)
         return value
 
@@ -72,6 +72,6 @@ class GraphInitParams(BaseModel):
     def _validate_run_context(cls, value: Any) -> Any:
         # Coerce generic mappings (e.g., MappingProxyType) to a plain dict and
         # let the field's TypedDict schema perform validation once.
-        if isinstance(value, Mapping):
+        if isinstance(value, Mapping) and not isinstance(value, dict):
             return dict(value)
         return value
