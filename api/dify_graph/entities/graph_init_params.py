@@ -5,9 +5,9 @@ from typing import Any, Final, Literal
 from pydantic import BaseModel, Field, field_validator, with_config
 
 if sys.version_info >= (3, 12):
-    from typing import TypedDict
+    from typing import TypedDict, Required
 else:
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict, Required
 
 DIFY_RUN_CONTEXT_KEY: Final[Literal["_dify"]] = "_dify"
 
@@ -38,7 +38,7 @@ class GraphConfigDict(TypedDict, total=False):
 @with_config(extra="allow")
 class RunContextDict(TypedDict, total=False):
     # Accept either dict or model instance
-    _dify: Any
+    _dify: Required[Any]
 
 
 class GraphInitParams(BaseModel):
