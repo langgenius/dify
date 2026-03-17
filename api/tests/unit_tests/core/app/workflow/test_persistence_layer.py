@@ -10,7 +10,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from dify_graph.entities.pause_reason import SchedulingPause
 from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
@@ -143,7 +143,7 @@ class TestWorkflowPersistenceLayer:
             workflow_execution_id="run-id",
             index=1,
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             title="Start",
             created_at=_naive_utc_now(),
         )
@@ -203,7 +203,7 @@ class TestWorkflowPersistenceLayer:
             workflow_execution_id="run-id",
             index=1,
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             title="Start",
             created_at=_naive_utc_now(),
         )
@@ -245,7 +245,7 @@ class TestWorkflowPersistenceLayer:
         start_event = NodeRunStartedEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_title="Start",
             start_at=_naive_utc_now(),
             predecessor_node_id="prev",
@@ -261,7 +261,7 @@ class TestWorkflowPersistenceLayer:
         retry_event = NodeRunRetryEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.START,
+            node_type=BuiltinNodeTypes.START,
             node_title="Start",
             start_at=_naive_utc_now(),
             error="retry",
@@ -277,7 +277,7 @@ class TestWorkflowPersistenceLayer:
         start_event = NodeRunStartedEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=_naive_utc_now(),
         )
@@ -287,7 +287,7 @@ class TestWorkflowPersistenceLayer:
         success_event = NodeRunSucceededEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=_naive_utc_now(),
             node_run_result=result,
         )
@@ -296,7 +296,7 @@ class TestWorkflowPersistenceLayer:
         failed_event = NodeRunFailedEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=_naive_utc_now(),
             error="boom",
             node_run_result=result,
@@ -306,7 +306,7 @@ class TestWorkflowPersistenceLayer:
         exception_event = NodeRunExceptionEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=_naive_utc_now(),
             error="err",
             node_run_result=result,
@@ -321,7 +321,7 @@ class TestWorkflowPersistenceLayer:
         start_event = NodeRunStartedEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=_naive_utc_now(),
         )
@@ -334,7 +334,7 @@ class TestWorkflowPersistenceLayer:
         pause_event = NodeRunPauseRequestedEvent(
             id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             reason=SchedulingPause(message="pause"),
             node_run_result=result,
         )
@@ -399,14 +399,14 @@ class TestWorkflowPersistenceLayer:
             NodeRunStartedEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_title="Start",
                 start_at=now,
             ),
             NodeRunRetryEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_title="Start",
                 start_at=now,
                 error="retry",
@@ -415,14 +415,14 @@ class TestWorkflowPersistenceLayer:
             NodeRunSucceededEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 start_at=now,
                 node_run_result=node_result,
             ),
             NodeRunFailedEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 start_at=now,
                 error="failed",
                 node_run_result=node_result,
@@ -430,7 +430,7 @@ class TestWorkflowPersistenceLayer:
             NodeRunExceptionEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 start_at=now,
                 error="error",
                 node_run_result=node_result,
@@ -438,7 +438,7 @@ class TestWorkflowPersistenceLayer:
             NodeRunPauseRequestedEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 reason=SchedulingPause(message="pause"),
                 node_run_result=node_result,
             ),
@@ -484,7 +484,7 @@ class TestWorkflowPersistenceLayer:
             NodeRunRetryEvent(
                 id="exec",
                 node_id="node",
-                node_type=NodeType.START,
+                node_type=BuiltinNodeTypes.START,
                 node_title="Start",
                 start_at=_naive_utc_now(),
                 error="retry",

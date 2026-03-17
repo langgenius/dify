@@ -4,7 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 
 class DummyNode:
@@ -39,6 +39,13 @@ class DummyDocumentExtractorNode(DummyNode):
 
 
 class TestDifyNodeFactory:
+    @staticmethod
+    def _stub_node_resolution(monkeypatch, node_class):
+        monkeypatch.setattr(
+            "core.workflow.node_factory.resolve_workflow_node_class",
+            lambda **_kwargs: node_class,
+        )
+
     def _factory(self, monkeypatch):
         monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_STRING_LENGTH", 10)
         monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_NUMBER", 10)
@@ -73,98 +80,82 @@ class TestDifyNodeFactory:
 
     def test_create_node_missing_mapping(self, monkeypatch):
         factory = self._factory(monkeypatch)
-        monkeypatch.setattr("core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING", {})
+        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
 
         with pytest.raises(ValueError):
-            factory.create_node({"id": "node-1", "data": {"type": NodeType.START.value}})
+            factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_missing_latest_class(self, monkeypatch):
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {"1": None}},
+            "core.workflow.node_factory.get_node_type_classes_mapping",
+            lambda: {BuiltinNodeTypes.START: {"1": None}},
         )
         monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
 
         with pytest.raises(ValueError):
-            factory.create_node({"id": "node-1", "data": {"type": NodeType.START.value}})
+            factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
     def test_create_node_selects_versioned_class(self, monkeypatch):
         factory = self._factory(monkeypatch)
+        selected_versions: list[tuple[str, str]] = []
 
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.START: {"1": DummyNode, "2": DummyNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
+        class DummyNodeV2(DummyNode):
+            pass
 
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.START.value, "version": "2"}})
+        def _get_mapping():
+            selected_versions.append(("snapshot", "called"))
+            return {BuiltinNodeTypes.START: {"1": DummyNode, "2": DummyNodeV2}}
 
-        assert isinstance(node, DummyNode)
+        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", _get_mapping)
+
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START, "version": "2"}})
+
+        assert isinstance(node, DummyNodeV2)
         assert node.id == "node-1"
+        assert selected_versions == [("snapshot", "called")]
 
     def test_create_node_code_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)
+        self._stub_node_resolution(monkeypatch, DummyCodeNode)
 
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.CODE: {"1": DummyCodeNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
-
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.CODE.value}})
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.CODE}})
 
         assert isinstance(node, DummyCodeNode)
         assert node.id == "node-1"
 
     def test_create_node_template_transform_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.TEMPLATE_TRANSFORM: {"1": DummyTemplateTransformNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
+        self._stub_node_resolution(monkeypatch, DummyTemplateTransformNode)
 
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.TEMPLATE_TRANSFORM.value}})
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.TEMPLATE_TRANSFORM}})
 
         assert isinstance(node, DummyTemplateTransformNode)
         assert "template_renderer" in node.kwargs
 
     def test_create_node_http_request_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.HTTP_REQUEST: {"1": DummyHttpRequestNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
+        self._stub_node_resolution(monkeypatch, DummyHttpRequestNode)
 
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.HTTP_REQUEST.value}})
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.HTTP_REQUEST}})
 
         assert isinstance(node, DummyHttpRequestNode)
         assert "http_request_config" in node.kwargs
 
     def test_create_node_knowledge_retrieval_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.KNOWLEDGE_RETRIEVAL: {"1": DummyKnowledgeRetrievalNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
+        self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
 
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.KNOWLEDGE_RETRIEVAL.value}})
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
         assert isinstance(node, DummyKnowledgeRetrievalNode)
-        assert "rag_retrieval" in node.kwargs
+        assert node.kwargs == {}
 
     def test_create_node_document_extractor_branch(self, monkeypatch):
         factory = self._factory(monkeypatch)
-        monkeypatch.setattr(
-            "core.workflow.node_factory.NODE_TYPE_CLASSES_MAPPING",
-            {NodeType.DOCUMENT_EXTRACTOR: {"1": DummyDocumentExtractorNode}},
-        )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "1")
+        self._stub_node_resolution(monkeypatch, DummyDocumentExtractorNode)
 
-        node = factory.create_node({"id": "node-1", "data": {"type": NodeType.DOCUMENT_EXTRACTOR.value}})
+        node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.DOCUMENT_EXTRACTOR}})
 
         assert isinstance(node, DummyDocumentExtractorNode)
         assert "unstructured_api_config" in node.kwargs

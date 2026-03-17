@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerExtras:
@@ -44,9 +44,9 @@ class TestObservabilityLayerExtras:
     def test_get_parser_uses_registry_when_node_type_matches(self):
         layer = ObservabilityLayer()
 
-        parser = layer._get_parser(SimpleNamespace(node_type=NodeType.TOOL))
+        parser = layer._get_parser(SimpleNamespace(node_type=BuiltinNodeTypes.TOOL))
 
-        assert parser is layer._parsers[NodeType.TOOL]
+        assert parser is layer._parsers[BuiltinNodeTypes.TOOL]
 
     def test_get_parser_defaults_when_node_type_missing(self):
         layer = ObservabilityLayer()
