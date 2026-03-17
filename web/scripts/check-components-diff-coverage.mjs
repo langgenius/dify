@@ -6,7 +6,9 @@ import {
   getChangedBranchCoverage,
   getChangedStatementCoverage,
   getIgnoredChangedLinesFromFile,
+  normalizeDiffRangeMode,
   parseChangedLineMap,
+  resolveGitDiffContext,
 } from './check-components-diff-coverage-lib.mjs'
 import { COMPONENT_COVERAGE_EXCLUDE_LABEL } from './component-coverage-filters.mjs'
 import {
@@ -20,7 +22,7 @@ import {
 } from './components-coverage-common.mjs'
 import { EXCLUDED_COMPONENT_MODULES } from './components-coverage-thresholds.mjs'
 
-const DIFF_RANGE_MODE = process.env.DIFF_RANGE_MODE === 'exact' ? 'exact' : 'merge-base'
+const REQUESTED_DIFF_RANGE_MODE = normalizeDiffRangeMode(process.env.DIFF_RANGE_MODE)
 const EXCLUDED_MODULES_LABEL = [...EXCLUDED_COMPONENT_MODULES].sort().join(', ')
 
 const repoRoot = repoRootFromCwd()
@@ -43,8 +45,14 @@ if (!fs.existsSync(coverageFinalPath)) {
   process.exit(1)
 }
 
+const diffContext = resolveGitDiffContext({
+  base: baseSha,
+  head: headSha,
+  mode: REQUESTED_DIFF_RANGE_MODE,
+  execGit,
+})
 const coverage = JSON.parse(fs.readFileSync(coverageFinalPath, 'utf8'))
-const changedFiles = getChangedFiles(baseSha, headSha)
+const changedFiles = getChangedFiles(diffContext)
 const changedComponentSourceFiles = changedFiles.filter(isAnyComponentSourceFile)
 const changedSourceFiles = changedComponentSourceFiles.filter(filePath => isTrackedComponentSourceFile(filePath, context.excludedComponentCoverageFiles))
 const changedExcludedSourceFiles = changedComponentSourceFiles.filter(filePath => isExcludedComponentSourceFile(filePath, context.excludedComponentCoverageFiles))
@@ -55,7 +63,7 @@ if (changedSourceFiles.length === 0) {
 }
 
 const coverageEntries = loadTrackedCoverageEntries(coverage, context)
-const diffChanges = getChangedLineMap(baseSha, headSha)
+const diffChanges = getChangedLineMap(diffContext)
 const diffRows = []
 const ignoredDiffLines = []
 const invalidIgnorePragmas = []
@@ -109,6 +117,7 @@ const diffBranchFailures = diffRows.filter(row => row.branches.uncoveredBranches
 
 appendSummary(buildSummary({
   changedSourceFiles,
+  diffContext,
   diffBranchFailures,
   diffRows,
   diffStatementFailures,
@@ -144,6 +153,7 @@ if (
 
 function buildSummary({
   changedSourceFiles,
+  diffContext,
   diffBranchFailures,
   diffRows,
   diffStatementFailures,
@@ -154,8 +164,7 @@ function buildSummary({
   const lines = [
     '### app/components Pure Diff Coverage',
     '',
-    `Compared \`${baseSha.slice(0, 12)}\` -> \`${headSha.slice(0, 12)}\``,
-    `Diff range mode: \`${DIFF_RANGE_MODE}\``,
+    ...buildDiffContextSummary(diffContext),
     '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
     `Excluded file kinds: \`${COMPONENT_COVERAGE_EXCLUDE_LABEL}\``,
@@ -223,6 +232,8 @@ function buildSkipSummary(changedExcludedSourceFiles) {
   const lines = [
     '### app/components Pure Diff Coverage',
     '',
+    ...buildDiffContextSummary(diffContext),
+    '',
     `Excluded modules: \`${EXCLUDED_MODULES_LABEL}\``,
     `Excluded file kinds: \`${COMPONENT_COVERAGE_EXCLUDE_LABEL}\``,
     '',
@@ -239,16 +250,49 @@ function buildSkipSummary(changedExcludedSourceFiles) {
   return lines
 }
 
-function getChangedFiles(base, head) {
-  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(base, head, DIFF_RANGE_MODE), '--', APP_COMPONENTS_PREFIX])
+function buildDiffContextSummary(diffContext) {
+  const lines = [
+    `Compared \`${diffContext.base.slice(0, 12)}\` -> \`${diffContext.head.slice(0, 12)}\``,
+  ]
+
+  if (diffContext.useCombinedMergeDiff) {
+    lines.push(`Requested diff range mode: \`${diffContext.requestedMode}\``)
+    lines.push(`Effective diff strategy: \`combined-merge\` (${diffContext.reason})`)
+  }
+  else if (diffContext.reason) {
+    lines.push(`Requested diff range mode: \`${diffContext.requestedMode}\``)
+    lines.push(`Effective diff range mode: \`${diffContext.mode}\` (${diffContext.reason})`)
+  }
+  else {
+    lines.push(`Diff range mode: \`${diffContext.mode}\``)
+  }
+
+  return lines
+}
+
+function getChangedFiles(diffContext) {
+  if (diffContext.useCombinedMergeDiff) {
+    const output = execGit(['diff-tree', '--cc', '--no-commit-id', '--name-only', '-r', diffContext.head, '--', APP_COMPONENTS_PREFIX])
+    return output
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+  }
+
+  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(diffContext.base, diffContext.head, diffContext.mode), '--', APP_COMPONENTS_PREFIX])
   return output
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
 }
 
-function getChangedLineMap(base, head) {
-  const diff = execGit(['diff', '--unified=0', '--no-color', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(base, head, DIFF_RANGE_MODE), '--', APP_COMPONENTS_PREFIX])
+function getChangedLineMap(diffContext) {
+  if (diffContext.useCombinedMergeDiff) {
+    const diff = execGit(['diff-tree', '--cc', '--no-commit-id', '-r', '--unified=0', diffContext.head, '--', APP_COMPONENTS_PREFIX])
+    return parseChangedLineMap(diff, filePath => isTrackedComponentSourceFile(filePath, context.excludedComponentCoverageFiles))
+  }
+
+  const diff = execGit(['diff', '--unified=0', '--no-color', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(diffContext.base, diffContext.head, diffContext.mode), '--', APP_COMPONENTS_PREFIX])
   return parseChangedLineMap(diff, filePath => isTrackedComponentSourceFile(filePath, context.excludedComponentCoverageFiles))
 }
 
