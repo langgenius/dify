@@ -43,6 +43,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
+from models.account import AccountStatus, InvitationCodeStatus
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -215,7 +216,7 @@ class AccountInitApi(Resource):
                 db.session.query(InvitationCode)
                 .where(
                     InvitationCode.code == args.invitation_code,
-                    InvitationCode.status == "unused",
+                    InvitationCode.status == InvitationCodeStatus.UNUSED,
                 )
                 .first()
             )
@@ -223,7 +224,7 @@ class AccountInitApi(Resource):
             if not invitation_code:
                 raise InvalidInvitationCodeError()
 
-            invitation_code.status = "used"
+            invitation_code.status = InvitationCodeStatus.USED
             invitation_code.used_at = naive_utc_now()
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
@@ -231,7 +232,7 @@ class AccountInitApi(Resource):
         account.interface_language = args.interface_language
         account.timezone = args.timezone
         account.interface_theme = "light"
-        account.status = "active"
+        account.status = AccountStatus.ACTIVE
         account.initialized_at = naive_utc_now()
         db.session.commit()
 

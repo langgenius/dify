@@ -22,7 +22,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod, file_manager
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
@@ -46,7 +46,7 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
     Supports plain text, PDF, and DOC/DOCX files.
     """
 
-    node_type = NodeType.DOCUMENT_EXTRACTOR
+    node_type = BuiltinNodeTypes.DOCUMENT_EXTRACTOR
 
     @classmethod
     def version(cls) -> str:

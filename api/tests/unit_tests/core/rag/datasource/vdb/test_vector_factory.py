@@ -121,7 +121,7 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         default_vector = vector_factory_module.Vector(dataset)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
 
-    assert default_vector._attributes == ["doc_id", "dataset_id", "document_id", "doc_hash"]
+    assert default_vector._attributes == ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
     assert custom_vector._attributes == ["doc_id"]
     assert default_vector._embeddings == "embeddings"
     assert default_vector._vector_processor == "processor"
