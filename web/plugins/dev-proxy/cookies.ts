@@ -34,7 +34,16 @@ const toUpstreamCookieName = (cookieName: string) => {
   return `__Host-${cookieName}`
 }
 
-const toLocalCookieName = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
+const toLocalCookieName = (cookieName: string, options: LocalCookieRewriteOptions) => {
+  if (options.localSecure)
+    return cookieName
+
+  return cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
+}
+
+type LocalCookieRewriteOptions = {
+  localSecure: boolean
+}
 
 export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
   if (!cookieHeader)
@@ -55,7 +64,10 @@ export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
     .join('; ')
 }
 
-const rewriteSetCookieValueForLocal = (setCookieValue: string) => {
+const rewriteSetCookieValueForLocal = (
+  setCookieValue: string,
+  options: LocalCookieRewriteOptions,
+) => {
   const [rawCookiePair, ...rawAttributes] = setCookieValue.split(';')
   const separatorIndex = rawCookiePair.indexOf('=')
 
@@ -68,11 +80,11 @@ const rewriteSetCookieValueForLocal = (setCookieValue: string) => {
     .map(attribute => attribute.trim())
     .filter(attribute =>
       !COOKIE_DOMAIN_PATTERN.test(attribute)
-      && !COOKIE_SECURE_PATTERN.test(attribute)
-      && !COOKIE_PARTITIONED_PATTERN.test(attribute),
+      && (options.localSecure || !COOKIE_SECURE_PATTERN.test(attribute))
+      && (options.localSecure || !COOKIE_PARTITIONED_PATTERN.test(attribute)),
     )
     .map((attribute) => {
-      if (SAME_SITE_NONE_PATTERN.test(attribute))
+      if (!options.localSecure && SAME_SITE_NONE_PATTERN.test(attribute))
         return 'SameSite=Lax'
 
       if (COOKIE_PATH_PATTERN.test(attribute))
@@ -81,10 +93,13 @@ const rewriteSetCookieValueForLocal = (setCookieValue: string) => {
       return attribute
     })
 
-  return [`${toLocalCookieName(cookieName)}=${cookieValue}`, ...rewrittenAttributes].join('; ')
+  return [`${toLocalCookieName(cookieName, options)}=${cookieValue}`, ...rewrittenAttributes].join('; ')
 }
 
-export const rewriteSetCookieHeadersForLocal = (setCookieHeaders?: string | string[]): string[] | undefined => {
+export const rewriteSetCookieHeadersForLocal = (
+  setCookieHeaders: string | string[] | undefined,
+  options: LocalCookieRewriteOptions,
+): string[] | undefined => {
   if (!setCookieHeaders)
     return undefined
 
@@ -92,7 +107,7 @@ export const rewriteSetCookieHeadersForLocal = (setCookieHeaders?: string | stri
     ? setCookieHeaders
     : [setCookieHeaders]
 
-  return normalizedHeaders.map(rewriteSetCookieValueForLocal)
+  return normalizedHeaders.map(setCookieValue => rewriteSetCookieValueForLocal(setCookieValue, options))
 }
 
 export { DEFAULT_PROXY_TARGET }

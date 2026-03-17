@@ -210,6 +210,7 @@
     "@types/sortablejs": "1.15.9",
     "@typescript-eslint/parser": "8.57.0",
     "@typescript/native-preview": "7.0.0-dev.20260312.1",
+    "@vitejs/plugin-basic-ssl": "2.2.0",
     "@vitejs/plugin-react": "6.0.0",
     "@vitejs/plugin-rsc": "0.5.21",
     "@vitest/coverage-v8": "4.1.0",
