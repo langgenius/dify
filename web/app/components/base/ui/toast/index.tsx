@@ -165,7 +165,8 @@ function ToastViewport() {
     <BaseToast.Viewport
       aria-label={t('toast.notifications')}
       className={cn(
-        'pointer-events-none fixed inset-0 z-[9999] overflow-visible',
+        // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
+        'pointer-events-none fixed inset-0 z-[1101] overflow-visible',
       )}
     >
       <div

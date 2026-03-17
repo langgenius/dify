@@ -34,6 +34,7 @@ describe('base/ui/toast', () => {
     expect(await screen.findByText('Saved')).toBeInTheDocument()
     expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'common.toast.notifications' })).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByRole('region', { name: 'common.toast.notifications' })).toHaveClass('z-[1101]')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
     expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).toBeInTheDocument()
   })
