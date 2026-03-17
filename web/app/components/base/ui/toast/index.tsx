@@ -116,13 +116,13 @@ function ToastCard({
           </div>
           <div className="min-w-0 flex-1 p-1">
             <div className="flex w-full items-center gap-1">
-              {toastItem.title && (
+              {toastItem.title != null && (
                 <BaseToast.Title className="break-words text-text-primary system-sm-semibold">
                   {toastItem.title}
                 </BaseToast.Title>
               )}
             </div>
-            {toastItem.description && (
+            {toastItem.description != null && (
               <BaseToast.Description className="mt-1 break-words text-text-secondary system-xs-regular">
                 {toastItem.description}
               </BaseToast.Description>
