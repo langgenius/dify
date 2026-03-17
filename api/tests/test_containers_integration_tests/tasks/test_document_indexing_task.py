@@ -8,7 +8,7 @@ from core.entities.document_task import DocumentTask
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
-from models.enums import DataSourceType, IndexingStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
     _document_indexing,  # Core function
     _document_indexing_with_tenant_queue,  # Tenant queue wrapper function
@@ -116,7 +116,7 @@ class TestDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
@@ -198,7 +198,7 @@ class TestDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
@@ -401,7 +401,7 @@ class TestDocumentIndexingTasks:
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=dataset.created_by,
             indexing_status=IndexingStatus.COMPLETED,  # Already completed
             enabled=True,
@@ -418,7 +418,7 @@ class TestDocumentIndexingTasks:
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=dataset.created_by,
             indexing_status=IndexingStatus.WAITING,
             enabled=False,  # Disabled
@@ -486,7 +486,7 @@ class TestDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=dataset.created_by,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,

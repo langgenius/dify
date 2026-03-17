@@ -29,7 +29,14 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.enums import CreatorUserRole, DatasetMetadataType, DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import (
+    CreatorUserRole,
+    DatasetMetadataType,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+)
 from models.model import UploadFile
 from tasks.clean_dataset_task import clean_dataset_task
 
@@ -179,7 +186,7 @@ class TestCleanDatasetTask:
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name="test_document",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -884,7 +891,7 @@ class TestCleanDatasetTask:
             data_source_info="{}",
             batch="test_batch",
             name=f"test_doc_{special_content}",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             created_at=datetime.now(),
             updated_at=datetime.now(),

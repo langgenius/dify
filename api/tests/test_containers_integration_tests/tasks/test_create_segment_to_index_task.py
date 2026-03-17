@@ -15,7 +15,7 @@ from faker import Faker
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 
 
@@ -136,7 +136,7 @@ class TestCreateSegmentToIndexTask:
             position=1,
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account_id,
             enabled=True,
             archived=False,
@@ -296,7 +296,7 @@ class TestCreateSegmentToIndexTask:
             position=1,
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             enabled=True,
             archived=False,

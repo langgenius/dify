@@ -8,7 +8,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 
 
@@ -96,7 +96,7 @@ class TestEnableSegmentsToIndexTask:
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -279,7 +279,7 @@ class TestEnableSegmentsToIndexTask:
         invalid_statuses = [
             ("disabled", {"enabled": False}),
             ("archived", {"archived": True}),
-            ("not_completed", {"indexing_status": "processing"}),
+            ("not_completed", {"indexing_status": IndexingStatus.INDEXING}),
         ]
 
         for _, status_attrs in invalid_statuses:

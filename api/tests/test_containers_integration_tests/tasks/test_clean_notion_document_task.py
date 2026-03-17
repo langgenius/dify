@@ -13,7 +13,7 @@ import pytest
 from faker import Faker
 
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.account_service import AccountService, TenantService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -112,7 +112,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name=f"Notion Page {i}",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_form="text_model",  # Set doc_form to ensure dataset.doc_form works
                 doc_language="en",
@@ -288,7 +288,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name="Test Notion Page",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_form=index_type,
                 doc_language="en",
@@ -376,7 +376,7 @@ class TestCleanNotionDocumentTask:
             ),
             batch="test_batch",
             name="Test Notion Page",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
@@ -467,7 +467,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name=f"Notion Page {i}",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
@@ -577,7 +577,7 @@ class TestCleanNotionDocumentTask:
             ),
             batch="test_batch",
             name="Test Notion Page",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
@@ -586,7 +586,7 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.flush()
 
         # Create segments with different statuses
-        segment_statuses = ["waiting", "processing", "completed", "error"]
+        segment_statuses = [SegmentStatus.WAITING, SegmentStatus.INDEXING, SegmentStatus.COMPLETED, SegmentStatus.ERROR]
         segments = []
         index_node_ids = []
 
@@ -673,7 +673,7 @@ class TestCleanNotionDocumentTask:
             ),
             batch="test_batch",
             name="Test Notion Page",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,
@@ -761,7 +761,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name=f"Notion Page {i}",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
@@ -873,7 +873,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name=f"Notion Page {i}",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_language="en",
                 indexing_status=IndexingStatus.COMPLETED,
@@ -971,7 +971,15 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.flush()
 
         # Create documents with different indexing statuses
-        document_statuses = ["waiting", "parsing", "cleaning", "splitting", "indexing", "completed", "error"]
+        document_statuses = [
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.CLEANING,
+            IndexingStatus.SPLITTING,
+            IndexingStatus.INDEXING,
+            IndexingStatus.COMPLETED,
+            IndexingStatus.ERROR,
+        ]
         documents = []
         all_segments = []
         all_index_node_ids = []
@@ -988,7 +996,7 @@ class TestCleanNotionDocumentTask:
                 ),
                 batch="test_batch",
                 name=f"Notion Page {i}",
-                created_from="notion_import",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 doc_language="en",
                 indexing_status=status,
@@ -1092,7 +1100,7 @@ class TestCleanNotionDocumentTask:
             ),
             batch="test_batch",
             name="Test Notion Page with Metadata",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             doc_language="en",
             indexing_status=IndexingStatus.COMPLETED,

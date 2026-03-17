@@ -207,7 +207,7 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.add(dataset)
 
         # Create documents with non-completed status
-        for i, status in enumerate(["indexing", "parsing", "splitting"]):
+        for i, status in enumerate([IndexingStatus.INDEXING, IndexingStatus.PARSING, IndexingStatus.SPLITTING]):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=tenant.id,
@@ -264,7 +264,7 @@ class TestGetAvailableDatasetsIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             provider="external",  # External provider
-            data_source_type="external",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)

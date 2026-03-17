@@ -16,7 +16,7 @@ import pytest
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
@@ -81,7 +81,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
             data_source_info=json.dumps(data_source_info) if data_source_info is not None else None,
             batch="test-batch",
             name=f"doc-{uuid4()}",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             indexing_status=indexing_status,
             enabled=True,

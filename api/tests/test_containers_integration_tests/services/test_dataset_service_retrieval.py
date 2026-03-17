@@ -24,7 +24,7 @@ from models.dataset import (
     DatasetProcessRule,
     DatasetQuery,
 )
-from models.enums import DataSourceType, ProcessRuleMode
+from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode
 from models.model import Tag, TagBinding
 from services.dataset_service import DatasetService, DocumentService
 
@@ -150,7 +150,7 @@ class DatasetRetrievalTestDataFactory:
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
             content=content,
-            source="web",
+            source=DatasetQuerySource.APP,
             source_app_id=None,
             created_by_role="account",
             created_by=created_by,

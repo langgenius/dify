@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -147,7 +148,7 @@ class TestBatchCleanDocumentTask:
             data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
             batch="test_batch",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
             doc_form="text_model",

@@ -11,7 +11,7 @@ from core.indexing_runner import DocumentIsPausedError
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
-from models.enums import DataSourceType, IndexingStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -159,7 +159,7 @@ class TestDatasetIndexingTaskIntegration:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=f"doc-{position}.txt",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,

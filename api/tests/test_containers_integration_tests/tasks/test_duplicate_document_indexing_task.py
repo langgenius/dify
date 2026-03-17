@@ -7,7 +7,7 @@ from core.indexing_runner import DocumentIsPausedError
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.duplicate_document_indexing_task import (
     _duplicate_document_indexing_task,  # Core function
     _duplicate_document_indexing_task_with_tenant_queue,  # Tenant queue wrapper function
@@ -126,7 +126,7 @@ class TestDuplicateDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
@@ -261,7 +261,7 @@ class TestDuplicateDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
@@ -520,7 +520,7 @@ class TestDuplicateDocumentIndexingTasks:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=fake.file_name(),
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=dataset.created_by,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,

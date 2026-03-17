@@ -1237,7 +1237,12 @@ class DocumentService:
         "enabled": "available",
     }
 
-    _INDEXING_STATUSES: tuple[str, ...] = (IndexingStatus.PARSING, "cleaning", "splitting", "indexing")
+    _INDEXING_STATUSES: tuple[IndexingStatus, ...] = (
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    )
 
     DISPLAY_STATUS_FILTERS: dict[str, tuple[Any, ...]] = {
         "queuing": (Document.indexing_status == IndexingStatus.WAITING,),
@@ -1658,7 +1663,10 @@ class DocumentService:
     @staticmethod
     def get_error_documents_by_dataset_id(dataset_id: str) -> Sequence[Document]:
         documents = db.session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id, Document.indexing_status.in_([IndexingStatus.ERROR, "paused"]))
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.indexing_status.in_([IndexingStatus.ERROR, IndexingStatus.PAUSED]),
+            )
         ).all()
         return documents
 
@@ -1761,7 +1769,13 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in {IndexingStatus.WAITING, IndexingStatus.PARSING, "cleaning", "splitting", "indexing"}:
+        if document.indexing_status not in {
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.CLEANING,
+            IndexingStatus.SPLITTING,
+            IndexingStatus.INDEXING,
+        }:
             raise DocumentIndexingError()
         # update document to be paused
         assert current_user is not None

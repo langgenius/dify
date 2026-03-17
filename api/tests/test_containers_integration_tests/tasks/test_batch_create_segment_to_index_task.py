@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import CreatorUserRole, DataSourceType, IndexingStatus, SegmentStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
@@ -173,7 +173,7 @@ class TestBatchCreateSegmentToIndexTask:
             data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
@@ -445,7 +445,7 @@ class TestBatchCreateSegmentToIndexTask:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="disabled_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Document is disabled
@@ -461,7 +461,7 @@ class TestBatchCreateSegmentToIndexTask:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="archived_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
@@ -477,7 +477,7 @@ class TestBatchCreateSegmentToIndexTask:
                 data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="incomplete_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
                 indexing_status=IndexingStatus.INDEXING,  # Not completed
                 enabled=True,
