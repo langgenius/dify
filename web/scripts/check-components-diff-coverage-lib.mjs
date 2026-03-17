@@ -2,11 +2,56 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const DIFF_COVERAGE_IGNORE_LINE_TOKEN = 'diff-coverage-ignore-line:'
+const DEFAULT_BRANCH_REF_CANDIDATES = ['origin/main', 'main']
+
+export function normalizeDiffRangeMode(mode) {
+  return mode === 'exact' ? 'exact' : 'merge-base'
+}
 
 export function buildGitDiffRevisionArgs(base, head, mode = 'merge-base') {
   return mode === 'exact'
     ? [base, head]
     : [`${base}...${head}`]
+}
+
+export function resolveGitDiffContext({
+  base,
+  head,
+  mode = 'merge-base',
+  execGit,
+}) {
+  const requestedMode = normalizeDiffRangeMode(mode)
+  const context = {
+    base,
+    head,
+    mode: requestedMode,
+    requestedMode,
+    reason: null,
+    useCombinedMergeDiff: false,
+  }
+
+  if (requestedMode !== 'exact' || !base || !head || !execGit)
+    return context
+
+  const baseCommit = resolveCommitSha(base, execGit) ?? base
+  const headCommit = resolveCommitSha(head, execGit) ?? head
+  const parents = getCommitParents(headCommit, execGit)
+  if (parents.length < 2)
+    return context
+
+  const [firstParent, secondParent] = parents
+  if (firstParent !== baseCommit)
+    return context
+
+  const defaultBranchRef = resolveDefaultBranchRef(execGit)
+  if (!defaultBranchRef || !isAncestor(secondParent, defaultBranchRef, execGit))
+    return context
+
+  return {
+    ...context,
+    reason: `ignored merge from ${defaultBranchRef}`,
+    useCombinedMergeDiff: true,
+  }
 }
 
 export function parseChangedLineMap(diff, isTrackedComponentSourceFile) {
@@ -22,7 +67,7 @@ export function parseChangedLineMap(diff, isTrackedComponentSourceFile) {
     if (!currentFile || !isTrackedComponentSourceFile(currentFile))
       continue
 
-    const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/)
+    const match = line.match(/^@{2,}(?: -\d+(?:,\d+)?)+ \+(\d+)(?:,(\d+))? @{2,}/)
     if (!match)
       continue
 
@@ -217,6 +262,53 @@ function emptyIgnoreResult(changedLines = []) {
     effectiveChangedLines: new Set(changedLines),
     ignoredLines: new Map(),
     invalidPragmas: [],
+  }
+}
+
+function getCommitParents(ref, execGit) {
+  const output = tryExecGit(execGit, ['rev-list', '--parents', '-n', '1', ref])
+  if (!output)
+    return []
+
+  return output
+    .trim()
+    .split(/\s+/)
+    .slice(1)
+}
+
+function resolveCommitSha(ref, execGit) {
+  return tryExecGit(execGit, ['rev-parse', '--verify', ref])?.trim() ?? null
+}
+
+function resolveDefaultBranchRef(execGit) {
+  const originHeadRef = tryExecGit(execGit, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'])?.trim()
+  if (originHeadRef)
+    return originHeadRef
+
+  for (const ref of DEFAULT_BRANCH_REF_CANDIDATES) {
+    if (tryExecGit(execGit, ['rev-parse', '--verify', '-q', ref]))
+      return ref
+  }
+
+  return null
+}
+
+function isAncestor(ancestorRef, descendantRef, execGit) {
+  try {
+    execGit(['merge-base', '--is-ancestor', ancestorRef, descendantRef])
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+function tryExecGit(execGit, args) {
+  try {
+    return execGit(args)
+  }
+  catch {
+    return null
   }
 }
 

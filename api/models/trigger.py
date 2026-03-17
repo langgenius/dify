@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime
 from functools import cached_property
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -22,6 +22,47 @@ from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
+
+TriggerJsonObject = dict[str, object]
+TriggerCredentials = dict[str, str]
+
+
+class WorkflowTriggerLogDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    workflow_run_id: str | None
+    root_node_id: str | None
+    trigger_metadata: Any
+    trigger_type: str
+    trigger_data: Any
+    inputs: Any
+    outputs: Any
+    status: str
+    error: str | None
+    queue_name: str
+    celery_task_id: str | None
+    retry_count: int
+    elapsed_time: float | None
+    total_tokens: int | None
+    created_by_role: str
+    created_by: str
+    created_at: str | None
+    triggered_at: str | None
+    finished_at: str | None
+
+
+class WorkflowSchedulePlanDict(TypedDict):
+    id: str
+    app_id: str
+    node_id: str
+    tenant_id: str
+    cron_expression: str
+    timezone: str
+    next_run_at: str | None
+    created_at: str
+    updated_at: str
 
 
 class TriggerSubscription(TypeBase):
@@ -51,10 +92,14 @@ class TriggerSubscription(TypeBase):
         String(255), nullable=False, comment="Provider identifier (e.g., plugin_id/provider_name)"
     )
     endpoint_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
-    parameters: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription parameters JSON")
-    properties: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription properties JSON")
+    parameters: Mapped[TriggerJsonObject] = mapped_column(
+        sa.JSON, nullable=False, comment="Subscription parameters JSON"
+    )
+    properties: Mapped[TriggerJsonObject] = mapped_column(
+        sa.JSON, nullable=False, comment="Subscription properties JSON"
+    )
 
-    credentials: Mapped[dict[str, Any]] = mapped_column(
+    credentials: Mapped[TriggerCredentials] = mapped_column(
         sa.JSON, nullable=False, comment="Subscription credentials JSON"
     )
     credential_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="oauth or api_key")
@@ -162,8 +207,8 @@ class TriggerOAuthTenantClient(TypeBase):
     )
 
     @property
-    def oauth_params(self) -> Mapping[str, Any]:
-        return cast(Mapping[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> Mapping[str, object]:
+        return cast(TriggerJsonObject, json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class WorkflowTriggerLog(TypeBase):
@@ -250,7 +295,7 @@ class WorkflowTriggerLog(TypeBase):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> WorkflowTriggerLogDict:
         """Convert to dictionary for API responses"""
         return {
             "id": self.id,
@@ -481,7 +526,7 @@ class WorkflowSchedulePlan(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> WorkflowSchedulePlanDict:
         """Convert to dictionary representation"""
         return {
             "id": self.id,
