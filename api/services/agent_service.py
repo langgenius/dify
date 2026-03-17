@@ -11,7 +11,7 @@ from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from libs.login import current_user
 from models import Account
-from models.model import App, Conversation, EndUser, Message, MessageAgentThought
+from models.model import App, Conversation, EndUser, Message
 
 
 class AgentService:

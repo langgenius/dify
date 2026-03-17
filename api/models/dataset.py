@@ -8,9 +8,9 @@ import os
 import pickle
 import re
 import time
+from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
-from collections.abc import Sequence
 from typing import Any, TypedDict, cast
 from uuid import uuid4
 
@@ -829,9 +829,7 @@ class DocumentSegment(Base):
                 rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
                     child_chunks = db.session.scalars(
-                        select(ChildChunk)
-                        .where(ChildChunk.segment_id == self.id)
-                        .order_by(ChildChunk.position.asc())
+                        select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
                     ).all()
                     return child_chunks or []
         return []
@@ -846,9 +844,7 @@ class DocumentSegment(Base):
                 rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode:
                     child_chunks = db.session.scalars(
-                        select(ChildChunk)
-                        .where(ChildChunk.segment_id == self.id)
-                        .order_by(ChildChunk.position.asc())
+                        select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
                     ).all()
                     return child_chunks or []
         return []

@@ -1140,9 +1140,7 @@ class Conversation(Base):
 
     @property
     def annotation(self):
-        return db.session.scalar(
-            select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1)
-        )
+        return db.session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1))
 
     @property
     def message_count(self):
