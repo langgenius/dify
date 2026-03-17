@@ -5,6 +5,7 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from flask import Flask, current_app
@@ -37,7 +38,7 @@ from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
@@ -265,7 +266,7 @@ class IndexingRunner:
         self,
         tenant_id: str,
         extract_settings: list[ExtractSetting],
-        tmp_processing_rule: dict,
+        tmp_processing_rule: Mapping[str, Any],
         doc_form: str | None = None,
         doc_language: str = "English",
         dataset_id: str | None = None,
@@ -376,7 +377,7 @@ class IndexingRunner:
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
-        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
+        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: Mapping[str, Any]
     ) -> list[Document]:
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
@@ -543,6 +544,7 @@ class IndexingRunner:
         """
         Clean the document text according to the processing rules.
         """
+        rules: AutomaticRulesConfig | dict[str, Any]
         if processing_rule.mode == "automatic":
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
@@ -756,7 +758,7 @@ class IndexingRunner:
         dataset: Dataset,
         text_docs: list[Document],
         doc_language: str,
-        process_rule: dict,
+        process_rule: Mapping[str, Any],
         current_user: Account | None = None,
     ) -> list[Document]:
         # get embedding model instance

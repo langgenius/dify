@@ -41,10 +41,10 @@ class RedisPubSubConfig(BaseSettings, RedisConfigDefaultsMixin):
     )
 
     PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
         description=(
             "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
-            "Also accepts ENV: EVENT_BUS_REDIS_CLUSTERS."
+            "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
         ),
         default=False,
     )

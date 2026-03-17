@@ -21,7 +21,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,7 +161,7 @@ def _make_node(**overrides):
         "tenant_id": "t1",
         "app_id": "app-1",
         "title": "Node Title",
-        "node_type": NodeType.CODE,
+        "node_type": BuiltinNodeTypes.CODE,
         "status": "succeeded",
         "inputs": '{"key": "value"}',
         "outputs": '{"result": "ok"}',
@@ -362,7 +362,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_llm_node(self, trace_instance, mock_tracing, mock_db):
         llm_node = _make_node(
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             process_data=json.dumps(
                 {
                     "prompts": [{"role": "user", "text": "hi"}],
@@ -388,7 +388,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_question_classifier_node(self, trace_instance, mock_tracing, mock_db):
         qc_node = _make_node(
-            node_type=NodeType.QUESTION_CLASSIFIER,
+            node_type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
             process_data=json.dumps(
                 {
                     "prompts": "classify this",
@@ -408,7 +408,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_http_request_node(self, trace_instance, mock_tracing, mock_db):
         http_node = _make_node(
-            node_type=NodeType.HTTP_REQUEST,
+            node_type=BuiltinNodeTypes.HTTP_REQUEST,
             process_data='{"url": "https://api.com"}',
         )
         mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [http_node]
@@ -424,7 +424,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_knowledge_retrieval_node(self, trace_instance, mock_tracing, mock_db):
         kr_node = _make_node(
-            node_type=NodeType.KNOWLEDGE_RETRIEVAL,
+            node_type=BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
             outputs=json.dumps(
                 {
                     "result": [
@@ -846,13 +846,13 @@ class TestGetNodeSpanType:
     @pytest.mark.parametrize(
         ("node_type", "expected_contains"),
         [
-            (NodeType.LLM, "LLM"),
-            (NodeType.QUESTION_CLASSIFIER, "LLM"),
-            (NodeType.KNOWLEDGE_RETRIEVAL, "RETRIEVER"),
-            (NodeType.TOOL, "TOOL"),
-            (NodeType.CODE, "TOOL"),
-            (NodeType.HTTP_REQUEST, "TOOL"),
-            (NodeType.AGENT, "AGENT"),
+            (BuiltinNodeTypes.LLM, "LLM"),
+            (BuiltinNodeTypes.QUESTION_CLASSIFIER, "LLM"),
+            (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "RETRIEVER"),
+            (BuiltinNodeTypes.TOOL, "TOOL"),
+            (BuiltinNodeTypes.CODE, "TOOL"),
+            (BuiltinNodeTypes.HTTP_REQUEST, "TOOL"),
+            (BuiltinNodeTypes.AGENT, "AGENT"),
         ],
     )
     def test_mapped_types(self, trace_instance, node_type, expected_contains):

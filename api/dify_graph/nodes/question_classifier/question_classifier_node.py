@@ -9,8 +9,8 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeExecutionType,
-    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -28,7 +28,7 @@ from dify_graph.nodes.llm import (
     llm_utils,
 )
 from dify_graph.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory, TemplateRenderer
 from dify_graph.nodes.protocols import HttpClientProtocol
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 
 
 class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
-    node_type = NodeType.QUESTION_CLASSIFIER
+    node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
     execution_type = NodeExecutionType.BRANCH
 
     _file_outputs: list["File"]
@@ -59,6 +59,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     _model_factory: "ModelFactory"
     _model_instance: ModelInstance
     _memory: PromptMessageMemory | None
+    _template_renderer: TemplateRenderer
 
     def __init__(
         self,
@@ -71,6 +72,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         model_factory: "ModelFactory",
         model_instance: ModelInstance,
         http_client: HttpClientProtocol,
+        template_renderer: TemplateRenderer,
         memory: PromptMessageMemory | None = None,
         llm_file_saver: LLMFileSaver | None = None,
     ):
@@ -87,6 +89,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         self._model_factory = model_factory
         self._model_instance = model_instance
         self._memory = memory
+        self._template_renderer = template_renderer
 
         if llm_file_saver is None:
             dify_ctx = self.require_dify_context()
@@ -142,7 +145,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         # If both self._get_prompt_template and self._fetch_prompt_messages append a user prompt,
         # two consecutive user prompts will be generated, causing model's error.
         # To avoid this, set sys_query to an empty string so that only one user prompt is appended at the end.
-        prompt_messages, stop = LLMNode.fetch_prompt_messages(
+        prompt_messages, stop = llm_utils.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query="",
             memory=memory,
@@ -153,6 +156,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=[],
+            template_renderer=self._template_renderer,
         )
 
         result_text = ""
@@ -287,7 +291,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         model_schema = llm_utils.fetch_model_schema(model_instance=model_instance)
 
         prompt_template = self._get_prompt_template(node_data, query, None, 2000)
-        prompt_messages, _ = LLMNode.fetch_prompt_messages(
+        prompt_messages, _ = llm_utils.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query="",
             sys_files=[],
@@ -300,6 +304,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=self.graph_runtime_state.variable_pool,
             jinja2_variables=[],
+            template_renderer=self._template_renderer,
         )
         rest_tokens = 2000
 

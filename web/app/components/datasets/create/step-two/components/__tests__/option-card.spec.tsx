@@ -2,13 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { OptionCard, OptionCardHeader } from '../option-card'
 
-// Override global next/image auto-mock: tests assert on rendered <img> elements
-vi.mock('next/image', () => ({
-  default: ({ src, alt, ...props }: { src?: string, alt?: string, width?: number, height?: number }) => (
-    <img src={src} alt={alt} {...props} />
-  ),
-}))
-
 describe('OptionCardHeader', () => {
   const defaultProps = {
     icon: <span data-testid="icon">icon</span>,
