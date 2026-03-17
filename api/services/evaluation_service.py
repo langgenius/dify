@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
-    EVALUATION_METRICS,
     METRIC_NODE_TYPE_MAPPING,
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
     EvaluationDatasetInput,
+    EvaluationMetricName,
     EvaluationRunData,
     EvaluationRunRequest,
     NodeInfo,
@@ -429,7 +429,7 @@ class EvaluationService:
     @staticmethod
     def get_available_metrics() -> list[str]:
         """Return the centrally-defined list of evaluation metrics."""
-        return list(EVALUATION_METRICS)
+        return [m.value for m in EvaluationMetricName]
 
     @classmethod
     def get_nodes_for_metrics(

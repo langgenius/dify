@@ -64,6 +64,12 @@ WORKFLOW_METRIC_NAMES: list[EvaluationMetricName] = [
     EvaluationMetricName.ANSWER_CORRECTNESS,
 ]
 
+METRIC_NODE_TYPE_MAPPING: dict[str, str] = {
+    **{m.value: "llm" for m in LLM_METRIC_NAMES},
+    **{m.value: "knowledge-retrieval" for m in RETRIEVAL_METRIC_NAMES},
+    **{m.value: "agent" for m in AGENT_METRIC_NAMES},
+}
+
 
 class EvaluationMetric(BaseModel):
     name: str
