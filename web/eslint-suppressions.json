@@ -928,12 +928,6 @@
   "app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
@@ -1118,9 +1112,6 @@
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 11
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -2923,11 +2914,6 @@
       "count": 1
     }
   },
-  "app/components/custom/custom-web-app-brand/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/datasets/chunk.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -2993,9 +2979,6 @@
   "app/components/datasets/common/retrieval-param-config/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
@@ -3139,33 +3122,17 @@
   "app/components/datasets/create/step-two/components/general-chunking-options.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/datasets/create/step-two/components/indexing-mode-section.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
     }
   },
   "app/components/datasets/create/step-two/components/inputs.tsx": {
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/step-two/components/option-card.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/create/step-two/components/parent-child-options.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -3882,11 +3849,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/datasets/hit-testing/components/query-input/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/datasets/hit-testing/components/query-input/textarea.tsx": {

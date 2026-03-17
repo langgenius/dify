@@ -1,10 +1,23 @@
-import type { FC } from 'react'
-import type { InputProps } from '../input'
+import type { NumberFieldRoot as BaseNumberFieldRoot } from '@base-ui/react/number-field'
+import type { CSSProperties, FC, InputHTMLAttributes } from 'react'
 import { useCallback } from 'react'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+  NumberFieldUnit,
+} from '@/app/components/base/ui/number-field'
 import { cn } from '@/utils/classnames'
-import Input from '../input'
 
-export type InputNumberProps = {
+type InputNumberInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'defaultValue' | 'max' | 'min' | 'onChange' | 'size' | 'type' | 'value'
+>
+
+export type InputNumberProps = InputNumberInputProps & {
   unit?: string
   value?: number
   onChange: (value: number) => void
@@ -12,19 +25,69 @@ export type InputNumberProps = {
   size?: 'regular' | 'large'
   max?: number
   min?: number
+  step?: number | 'any'
   defaultValue?: number
   disabled?: boolean
   wrapClassName?: string
+  wrapperClassName?: string
+  styleCss?: CSSProperties
   controlWrapClassName?: string
   controlClassName?: string
-} & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
+  type?: 'number'
+}
+
+const STEPPER_REASONS = new Set<BaseNumberFieldRoot.ChangeEventDetails['reason']>([
+  'increment-press',
+  'decrement-press',
+])
+
+const isValueWithinBounds = (value: number, min?: number, max?: number) => {
+  if (typeof min === 'number' && value < min)
+    return false
+
+  if (typeof max === 'number' && value > max)
+    return false
+
+  return true
+}
+
+const resolveStep = (amount?: number, step?: InputNumberProps['step']) => (
+  amount ?? (step === 'any' || typeof step === 'number' ? step : undefined) ?? 1
+)
+
+const exceedsStepBounds = ({
+  value,
+  reason,
+  stepAmount,
+  min,
+  max,
+}: {
+  value?: number
+  reason: BaseNumberFieldRoot.ChangeEventDetails['reason']
+  stepAmount: number
+  min?: number
+  max?: number
+}) => {
+  if (typeof value !== 'number')
+    return false
+
+  if (reason === 'increment-press' && typeof max === 'number')
+    return value + stepAmount > max
+
+  if (reason === 'decrement-press' && typeof min === 'number')
+    return value - stepAmount < min
+
+  return false
+}
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
   const {
     unit,
     className,
+    wrapperClassName,
+    styleCss,
     onChange,
-    amount = 1,
+    amount,
     value,
     size = 'regular',
     max,
@@ -34,96 +97,97 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     controlWrapClassName,
     controlClassName,
     disabled,
+    step,
+    id,
+    name,
+    readOnly,
+    required,
+    type: _type,
     ...rest
   } = props
 
-  const isValidValue = useCallback((v: number) => {
-    if (typeof max === 'number' && v > max)
-      return false
-    return !(typeof min === 'number' && v < min)
-  }, [max, min])
+  const resolvedStep = resolveStep(amount, step)
+  const stepAmount = typeof resolvedStep === 'number' ? resolvedStep : 1
 
-  const inc = () => {
-    /* v8 ignore next 2 - @preserve */
-    if (disabled)
-      return
-
-    if (value === undefined) {
+  const handleValueChange = useCallback((
+    nextValue: number | null,
+    eventDetails: BaseNumberFieldRoot.ChangeEventDetails,
+  ) => {
+    if (value === undefined && STEPPER_REASONS.has(eventDetails.reason)) {
       onChange(defaultValue ?? 0)
       return
     }
-    const newValue = value + amount
-    if (!isValidValue(newValue))
-      return
-    onChange(newValue)
-  }
-  const dec = () => {
-    /* v8 ignore next 2 - @preserve */
-    if (disabled)
-      return
 
-    if (value === undefined) {
-      onChange(defaultValue ?? 0)
-      return
-    }
-    const newValue = value - amount
-    if (!isValidValue(newValue))
-      return
-    onChange(newValue)
-  }
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value === '') {
+    if (nextValue === null) {
       onChange(0)
       return
     }
-    const parsed = Number(e.target.value)
-    if (Number.isNaN(parsed))
+
+    if (exceedsStepBounds({
+      value,
+      reason: eventDetails.reason,
+      stepAmount,
+      min,
+      max,
+    })) {
+      return
+    }
+
+    if (!isValueWithinBounds(nextValue, min, max))
       return
 
-    if (!isValidValue(parsed))
-      return
-    onChange(parsed)
-  }, [isValidValue, onChange])
+    onChange(nextValue)
+  }, [defaultValue, max, min, onChange, stepAmount, value])
 
   return (
-    <div data-testid="input-number-wrapper" className={cn('flex', wrapClassName)}>
-      <Input
-        {...rest}
-        // disable default controller
-        type="number"
-        className={cn('rounded-r-none no-spinner', className)}
-        value={value ?? 0}
-        max={max}
+    <div data-testid="input-number-wrapper" className={cn('flex w-full min-w-0', wrapClassName, wrapperClassName)}>
+      <NumberField
+        className="min-w-0 grow"
+        value={value ?? null}
         min={min}
+        max={max}
+        step={resolvedStep}
         disabled={disabled}
-        onChange={handleInputChange}
-        unit={unit}
-        size={size}
-      />
-      <div
-        data-testid="input-number-controls"
-        className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs', disabled && 'cursor-not-allowed opacity-50', controlWrapClassName)}
+        readOnly={readOnly}
+        required={required}
+        id={id}
+        name={name}
+        allowOutOfRange
+        onValueChange={handleValueChange}
       >
-        <button
-          type="button"
-          onClick={inc}
-          disabled={disabled}
-          aria-label="increment"
-          className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
-        >
-          <span className="i-ri-arrow-up-s-line size-3" />
-        </button>
-        <button
-          type="button"
-          onClick={dec}
-          disabled={disabled}
-          aria-label="decrement"
-          className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
-        >
-          <span className="i-ri-arrow-down-s-line size-3" />
-        </button>
-      </div>
+        <NumberFieldGroup size={size}>
+          <NumberFieldInput
+            {...rest}
+            size={size}
+            style={styleCss}
+            className={className}
+          />
+          {unit && (
+            <NumberFieldUnit size={size}>
+              {unit}
+            </NumberFieldUnit>
+          )}
+          <NumberFieldControls
+            data-testid="input-number-controls"
+            className={controlWrapClassName}
+          >
+            <NumberFieldIncrement
+              aria-label="increment"
+              size={size}
+              className={controlClassName}
+            >
+              <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />
+            </NumberFieldIncrement>
+            <NumberFieldDecrement
+              aria-label="decrement"
+              size={size}
+              className={controlClassName}
+            >
+              <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />
+            </NumberFieldDecrement>
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
     </div>
   )
 }
