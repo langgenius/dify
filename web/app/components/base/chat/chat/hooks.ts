@@ -12,6 +12,7 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import type { NodeTracing } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -51,6 +52,39 @@ type SendCallback = {
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
+}
+
+type ParallelTraceLike = Pick<NodeTracing, 'id' | 'node_id' | 'parallel_id' | 'execution_metadata'>
+
+const findParallelTraceIndex = (
+  tracing: ParallelTraceLike[],
+  data: Partial<ParallelTraceLike>,
+) => {
+  const incomingParallelId = data.execution_metadata?.parallel_id ?? data.parallel_id
+
+  if (data.id) {
+    const matchedByIdIndex = tracing.findIndex((item) => {
+      if (item.id !== data.id)
+        return false
+
+      const existingParallelId = item.execution_metadata?.parallel_id ?? item.parallel_id
+      if (!existingParallelId || !incomingParallelId)
+        return true
+
+      return existingParallelId === incomingParallelId
+    })
+
+    if (matchedByIdIndex > -1)
+      return matchedByIdIndex
+  }
+
+  return tracing.findIndex((item) => {
+    if (item.node_id !== data.node_id)
+      return false
+
+    const existingParallelId = item.execution_metadata?.parallel_id ?? item.parallel_id
+    return existingParallelId === incomingParallelId
+  })
 }
 
 export const useChat = (
@@ -396,7 +430,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const iterationIndex = tracing.findIndex(item => item.id === iterationFinishedData.id)!
+          const iterationIndex = findParallelTraceIndex(tracing, iterationFinishedData)
           if (iterationIndex > -1) {
             tracing[iterationIndex] = {
               ...tracing[iterationIndex],
@@ -477,7 +511,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const loopIndex = tracing.findIndex(item => item.id === loopFinishedData.id)!
+          const loopIndex = findParallelTraceIndex(tracing, loopFinishedData)
           if (loopIndex > -1) {
             tracing[loopIndex] = {
               ...tracing[loopIndex],
@@ -943,7 +977,7 @@ export const useChat = (
       },
       onIterationFinish: ({ data: iterationFinishedData }) => {
         const tracing = responseItem.workflowProcess!.tracing!
-        const iterationIndex = tracing.findIndex(item => item.id === iterationFinishedData.id)!
+        const iterationIndex = findParallelTraceIndex(tracing, iterationFinishedData)
         if (iterationIndex > -1) {
           tracing[iterationIndex] = {
             ...tracing[iterationIndex],
@@ -1034,7 +1068,7 @@ export const useChat = (
       },
       onLoopFinish: ({ data: loopFinishedData }) => {
         const tracing = responseItem.workflowProcess!.tracing!
-        const loopIndex = tracing.findIndex(item => item.id === loopFinishedData.id)!
+        const loopIndex = findParallelTraceIndex(tracing, loopFinishedData)
         if (loopIndex > -1) {
           tracing[loopIndex] = {
             ...tracing[loopIndex],

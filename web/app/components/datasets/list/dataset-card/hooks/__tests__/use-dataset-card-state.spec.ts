@@ -151,7 +151,7 @@ describe('useDatasetCardState', () => {
       expect(result.current.modalState.showRenameModal).toBe(false)
     })
 
-    it('should close confirm delete modal when closeConfirmDelete is called', () => {
+    it('should close confirm delete modal when closeConfirmDelete is called', async () => {
       const dataset = createMockDataset()
       const { result } = renderHook(() =>
         useDatasetCardState({ dataset, onSuccess: vi.fn() }),
@@ -162,7 +162,7 @@ describe('useDatasetCardState', () => {
         result.current.detectIsUsedByApp()
       })
 
-      waitFor(() => {
+      await waitFor(() => {
         expect(result.current.modalState.showConfirmDelete).toBe(true)
       })
 
