@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import NotRequired, TypedDict, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -16,7 +16,19 @@ from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
-default_retrieval_model: dict[str, Any] = {
+
+class DefaultRetrievalModelDict(TypedDict):
+    search_method: RetrievalMethod
+    reranking_enable: bool
+    reranking_model: dict[str, str]
+    reranking_mode: NotRequired[str]
+    weights: NotRequired[dict[str, object] | None]
+    score_threshold: NotRequired[float]
+    top_k: int
+    score_threshold_enabled: bool
+
+
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -125,7 +137,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if metadata_condition and not document_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default
-            retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
             retrieval_resource_list: list[RetrievalSourceMetadata] = []
             if dataset.indexing_technique == "economy":
                 # use keyword table query
