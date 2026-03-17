@@ -255,9 +255,18 @@ class Node(Generic[NodeDataT]):
         self.post_init()
 
     @classmethod
-    def validate_node_data(cls, node_data: BaseNodeData) -> NodeDataT:
-        """Validate shared graph node payloads against the subclass-declared NodeData model."""
-        return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
+    def validate_node_data(cls, node_data: BaseNodeData | Mapping[str, Any]) -> NodeDataT:
+        """Validate shared graph node payloads against the subclass-declared NodeData model.
+
+        Re-validate from a dumped payload instead of `from_attributes=True` so compatibility
+        extras stored on `BaseNodeData` survive the handoff to the concrete node data model.
+        Human Input delivery methods are one such extra field until dify_graph owns that schema.
+        """
+        if isinstance(node_data, BaseNodeData):
+            payload = node_data.model_dump(mode="python")
+        else:
+            payload = dict(node_data)
+        return cast(NodeDataT, cls._node_data_type.model_validate(payload))
 
     def init_node_data(self, data: BaseNodeData | Mapping[str, Any]) -> None:
         """Hydrate `_node_data` for legacy callers that bypass `__init__`."""

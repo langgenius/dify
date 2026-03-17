@@ -128,7 +128,10 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
 
     class _FakeSession:
         def execute(self, _stmt):
-            return [("form-1", expiration_time)]
+            return [("form-1", expiration_time, '{"display_in_ui": true}')]
+
+        def scalars(self, _stmt):
+            return []
 
         def __enter__(self):
             return self
@@ -146,10 +149,8 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
             FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", default=None),
         ],
         actions=[UserAction(id="approve", title="Approve")],
-        display_in_ui=True,
         node_id="node-id",
         node_title="Human Step",
-        form_token="token",
     )
     queue_event = QueueWorkflowPausedEvent(
         reasons=[reason],
@@ -170,7 +171,6 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {}
     assert pause_resp.data.reasons[0]["form_id"] == "form-1"
-    assert pause_resp.data.reasons[0]["display_in_ui"] is True
 
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]

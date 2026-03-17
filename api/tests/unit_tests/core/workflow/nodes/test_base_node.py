@@ -128,3 +128,29 @@ def test_base_node_data_keeps_dict_style_access_compatibility():
     assert node_data["foo"] == "bar"
     assert node_data.get("foo") == "bar"
     assert node_data.get("missing", "fallback") == "fallback"
+
+
+def test_node_hydration_preserves_compatibility_extra_fields():
+    graph_config: dict[str, object] = {}
+    init_params, runtime_state = _build_context(graph_config)
+    node_config = NodeConfigDictAdapter.validate_python(
+        {
+            "id": "node-1",
+            "data": {
+                "type": BuiltinNodeTypes.ANSWER,
+                "title": "Sample",
+                "foo": "bar",
+                "compat_flag": True,
+            },
+        }
+    )
+
+    node = _SampleNode(
+        id="node-1",
+        config=node_config,
+        graph_init_params=init_params,
+        graph_runtime_state=runtime_state,
+    )
+
+    assert node.node_data.foo == "bar"
+    assert node.node_data.get("compat_flag") is True

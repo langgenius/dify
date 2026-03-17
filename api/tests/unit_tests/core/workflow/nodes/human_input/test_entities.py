@@ -450,6 +450,72 @@ class TestHumanInputNodeVariableResolution:
         assert isinstance(pause_event, PauseRequestedEvent)
         assert not hasattr(pause_event.reason, "form_token")
 
+    def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(self):
+        variable_pool = VariablePool(
+            system_variables=build_system_variables(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-4",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "end-user-1",
+                    "user_from": "end-user",
+                    "invoke_from": "web-app",
+                }
+            },
+            call_depth=0,
+        )
+
+        config = {
+            "id": "human",
+            "data": {
+                "type": "human-input",
+                "title": "Human Input",
+                "form_content": "Provide your name",
+                "inputs": [],
+                "user_actions": [{"id": "submit", "title": "Submit"}],
+                "delivery_methods": [{"enabled": True, "type": "webapp", "config": {}}],
+            },
+        }
+
+        mock_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_repo.get_form.return_value = None
+        mock_repo.create_form.return_value = SimpleNamespace(
+            id="form-4",
+            rendered_content="Provide your name",
+            submission_token="token",
+            recipients=[],
+            submitted=False,
+        )
+
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        node = HumanInputNode(
+            id=config["id"],
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            runtime=runtime,
+        )
+
+        run_result = node._run()
+        pause_event = next(run_result)
+
+        assert isinstance(pause_event, PauseRequestedEvent)
+        params = mock_repo.create_form.call_args.args[0]
+        assert params.display_in_ui is True
+
     def test_debugger_debug_mode_overrides_email_recipients(self):
         variable_pool = VariablePool(
             system_variables=build_system_variables(
