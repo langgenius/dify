@@ -139,7 +139,7 @@ class HologresVector(BaseVector):
         )
         return bool(result)
 
-    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str] | None:
         """Get document IDs by metadata field key and value."""
         result = self._client.execute(
             psql.SQL("SELECT id FROM {} WHERE meta->>{} = {}").format(
@@ -149,7 +149,7 @@ class HologresVector(BaseVector):
         )
         if result:
             return [row[0] for row in result]
-        return []
+        return None
 
     def delete_by_ids(self, ids: list[str]):
         """Delete documents by their doc_id list."""
