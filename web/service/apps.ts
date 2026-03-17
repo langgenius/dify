@@ -111,6 +111,10 @@ export const copyApp = ({
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
 }
 
+export const upgradeAppRuntime = (appID: string): Promise<{ result: string, new_app_id?: string, converted_agents?: number, skipped_agents?: number }> => {
+  return post(`apps/${appID}/upgrade-runtime`)
+}
+
 export const exportAppConfig = ({ appID, include = false, workflowID }: { appID: string, include?: boolean, workflowID?: string }): Promise<{ data: string }> => {
   const params = new URLSearchParams({
     include_secret: include.toString(),

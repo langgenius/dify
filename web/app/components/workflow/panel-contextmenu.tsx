@@ -5,6 +5,7 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import {
@@ -25,9 +26,11 @@ const PanelContextmenu = () => {
   const panelMenu = useStore(s => s.panelMenu)
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
+  const setShowUpgradeRuntimeModal = useStore(s => s.setShowUpgradeRuntimeModal)
   const pendingComment = useStore(s => s.pendingComment)
   const setCommentPlacing = useStore(s => s.setCommentPlacing)
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
+  const sandboxEnabled = !!useFeatures(s => s.features.sandbox?.enabled)
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
@@ -147,6 +150,22 @@ const PanelContextmenu = () => {
           {!pipelineId ? t('importApp', { ns: 'app' }) : t('common.importDSL', { ns: 'workflow' })}
         </div>
       </div>
+      {!sandboxEnabled && (
+        <>
+          <Divider className="m-0" />
+          <div className="p-1">
+            <div
+              className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-accent hover:bg-state-base-hover"
+              onClick={() => {
+                setShowUpgradeRuntimeModal(true)
+                handlePaneContextmenuCancel()
+              }}
+            >
+              {t('sandboxMigrationModal.upgrade', { ns: 'workflow' })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

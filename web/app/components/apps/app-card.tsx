@@ -7,7 +7,6 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
-import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -29,7 +28,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { copyApp, deleteApp, exportAppBundle, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppBundle, exportAppConfig, updateAppInfo, upgradeAppRuntime } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -89,10 +88,10 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
         onRefresh()
       onPlanInfoChanged()
     }
-    catch (e: any) {
+    catch (e: unknown) {
       notify({
         type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
+        message: `${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error ? `: ${e.message}` : ''}`,
       })
     }
     setShowConfirmDelete(false)
@@ -126,10 +125,10 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
     }
-    catch (e: any) {
+    catch (e: unknown) {
       notify({
         type: 'error',
-        message: e.message || t('editFailed', { ns: 'app' }),
+        message: (e instanceof Error ? e.message : '') || t('editFailed', { ns: 'app' }),
       })
     }
   }, [app.id, notify, onRefresh, t])
@@ -213,6 +212,10 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
     setShowSwitchModal(false)
   }
 
+  const [isUpgradingRuntime, startUpgradeRuntime] = useTransition()
+  const isClassicWorkflowApp = app.runtime_type !== 'sandboxed'
+    && (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+
   const onUpdateAccessControl = useCallback(() => {
     if (onRefresh)
       onRefresh()
@@ -268,8 +271,8 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
       e.preventDefault()
       try {
         await openAsyncWindow(async () => {
-          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-          if (installed_apps?.length > 0)
+          const { installed_apps } = (await fetchInstalledAppList(app.id) || {}) as { installed_apps?: { id: string }[] }
+          if (installed_apps && installed_apps.length > 0)
             return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
         }, {
@@ -278,9 +281,30 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
           },
         })
       }
-      catch (e: any) {
-        Toast.notify({ type: 'error', message: `${e.message || e}` })
+      catch (e: unknown) {
+        Toast.notify({ type: 'error', message: e instanceof Error ? e.message : String(e) })
       }
+    }
+    const onClickUpgradeRuntime = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      startUpgradeRuntime(async () => {
+        try {
+          const res = await upgradeAppRuntime(app.id)
+          if (res.result === 'success' && res.new_app_id) {
+            notify({ type: 'success', message: t('sandboxMigrationModal.upgrade', { ns: 'workflow' }) })
+            const params = new URLSearchParams({
+              upgraded_from: app.id,
+              upgraded_from_name: app.name,
+            })
+            push(`/app/${res.new_app_id}/workflow?${params.toString()}`)
+          }
+        }
+        catch (e: unknown) {
+          notify({ type: 'error', message: (e instanceof Error ? e.message : '') || 'Upgrade failed' })
+        }
+      })
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
@@ -338,6 +362,16 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
             </>
           )
         }
+        {isClassicWorkflowApp && (
+          <button
+            type="button"
+            disabled={isUpgradingRuntime}
+            className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onClickUpgradeRuntime}
+          >
+            <span className="text-text-accent system-sm-regular">{t('upgradeRuntime', { ns: 'app' })}</span>
+          </button>
+        )}
         <button
           type="button"
           className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
@@ -410,22 +444,22 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             {app.access_mode === AccessMode.PUBLIC && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
-                <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-global-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
-                <RiLockLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-lock-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.ORGANIZATION && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
-                <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-building-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
-                <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
+                <span className="i-ri-verified-badge-line h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
           </div>
@@ -435,7 +469,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
             )}
           </div>
         </div>
-        <div className="title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
+        <div className="h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
           <div
             className="line-clamp-2"
             title={app.description}
@@ -475,7 +509,7 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
                     <div
                       className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md"
                     >
-                      <RiMoreFill className="h-4 w-4 text-text-tertiary" />
+                      <span className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
                     </div>
                   )}
                   btnClassName={open =>

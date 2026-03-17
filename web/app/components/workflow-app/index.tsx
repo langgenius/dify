@@ -37,12 +37,15 @@ import {
   initialNodes,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
+import { upgradeAppRuntime } from '@/service/apps'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
 import { useFeatures } from '../base/features/hooks'
 import ViewPicker from '../workflow/view-picker'
 import SandboxMigrationModal from './components/sandbox-migration-modal'
+import UpgradeRuntimeBanner from './components/upgrade-runtime-banner'
+import UpgradedFromBanner from './components/upgraded-from-banner'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
@@ -177,8 +180,8 @@ const WorkflowAppWithAdditionalContext = () => {
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const notSupportMigration = true // wait for backend support
   const [showMigrationModal, setShowMigrationModal] = useState(false)
+  const [isUpgrading, setIsUpgrading] = useState(false)
   const lastCheckedAppIdRef = useRef<string | null>(null)
 
   // Initialize trigger status at application level
@@ -189,6 +192,40 @@ const WorkflowAppWithAdditionalContext = () => {
     setSandboxMigrationDismissed(appId)
     setShowMigrationModal(false)
   }, [appId])
+
+  const handleOpenMigrationModal = useCallback(() => {
+    setShowMigrationModal(true)
+  }, [])
+
+  const showUpgradeRuntimeModal = useStore(s => s.showUpgradeRuntimeModal)
+  const setShowUpgradeRuntimeModal = useStore(s => s.setShowUpgradeRuntimeModal)
+  useEffect(() => {
+    if (showUpgradeRuntimeModal) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+      setShowMigrationModal(true)
+      setShowUpgradeRuntimeModal(false)
+    }
+  }, [showUpgradeRuntimeModal, setShowUpgradeRuntimeModal])
+
+  const handleUpgradeRuntime = useCallback(async () => {
+    if (!appId || isUpgrading)
+      return
+    setIsUpgrading(true)
+    try {
+      const res = await upgradeAppRuntime(appId)
+      if (res.result === 'success' && res.new_app_id) {
+        const appName = appDetail?.name || ''
+        const params = new URLSearchParams({
+          upgraded_from: appId,
+          upgraded_from_name: appName,
+        })
+        window.location.href = `/app/${res.new_app_id}/workflow?${params.toString()}`
+      }
+    }
+    finally {
+      setIsUpgrading(false)
+    }
+  }, [appId, appDetail?.name, isUpgrading])
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
@@ -261,6 +298,8 @@ const WorkflowAppWithAdditionalContext = () => {
   const searchParams = useSearchParams()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const replayRunId = searchParams.get('replayRunId')
+  const upgradedFromId = searchParams.get('upgraded_from')
+  const upgradedFromName = searchParams.get('upgraded_from_name')
 
   useEffect(() => {
     if (!replayRunId)
@@ -389,9 +428,19 @@ const WorkflowAppWithAdditionalContext = () => {
     <>
       <CollaborationSession />
       <SandboxMigrationModal
-        show={showMigrationModal && !notSupportMigration}
+        show={showMigrationModal}
         onClose={handleCloseMigrationModal}
+        onUpgrade={handleUpgradeRuntime}
       />
+      {!sandboxEnabled && !upgradedFromId && (
+        <UpgradeRuntimeBanner onUpgrade={handleOpenMigrationModal} />
+      )}
+      {upgradedFromId && (
+        <UpgradedFromBanner
+          fromAppId={upgradedFromId}
+          fromAppName={upgradedFromName || upgradedFromId}
+        />
+      )}
       <WorkflowWithDefaultContext
         edges={edgesData}
         nodes={nodesData}

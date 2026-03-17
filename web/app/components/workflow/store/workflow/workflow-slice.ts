@@ -59,6 +59,8 @@ export type WorkflowSliceShape = {
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
+  showUpgradeRuntimeModal: boolean
+  setShowUpgradeRuntimeModal: (showUpgradeRuntimeModal: boolean) => void
   fileUploadConfig?: FileUploadConfigResponse
   setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
 }
@@ -109,6 +111,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
   showImportDSLModal: false,
   setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+  showUpgradeRuntimeModal: false,
+  setShowUpgradeRuntimeModal: showUpgradeRuntimeModal => set(() => ({ showUpgradeRuntimeModal })),
   fileUploadConfig: undefined,
   setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
 })

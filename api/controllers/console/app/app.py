@@ -31,7 +31,7 @@ from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
-from models.model import IconType
+from models.model import AppMode, IconType
 from models.workflow_features import WorkflowFeatures
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
@@ -919,3 +919,26 @@ class AppTraceApi(Resource):
         )
 
         return {"result": "success"}
+
+
+@console_ns.route("/apps/<uuid:app_id>/upgrade-runtime")
+class AppRuntimeUpgradeApi(Resource):
+    @console_ns.doc("upgrade_app_runtime")
+    @console_ns.doc(description="Clone the app and upgrade the clone to sandboxed runtime")
+    @console_ns.doc(params={"app_id": "Application ID to upgrade"})
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model):
+        """Upgrade app runtime by cloning to sandboxed mode"""
+        current_user, _ = current_account_with_tenant()
+
+        with Session(db.engine) as session:
+            from services.app_runtime_upgrade_service import AppRuntimeUpgradeService
+
+            result = AppRuntimeUpgradeService(session).upgrade(app_model, current_user)
+            session.commit()
+
+        return result, 200

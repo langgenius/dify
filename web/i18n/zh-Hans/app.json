@@ -305,5 +305,6 @@
   "types.basic": "基础编排",
   "types.chatbot": "聊天助手",
   "types.completion": "文本生成",
-  "types.workflow": "工作流"
+  "types.workflow": "工作流",
+  "upgradeRuntime": "复制并升级运行时"
 }

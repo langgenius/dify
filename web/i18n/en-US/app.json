@@ -305,5 +305,6 @@
   "types.basic": "Basic",
   "types.chatbot": "Chatbot",
   "types.completion": "Completion",
-  "types.workflow": "Workflow"
+  "types.workflow": "Workflow",
+  "upgradeRuntime": "Clone & Upgrade Runtime"
 }
