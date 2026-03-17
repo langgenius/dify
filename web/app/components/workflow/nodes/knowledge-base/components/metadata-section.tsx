@@ -5,7 +5,7 @@ import type { MetadataItemWithValueLength } from '@/app/components/datasets/meta
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputNumber } from '@/app/components/base/input-number'
+import InputNumber from '@/app/components/base/input-number'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import Datepicker from '@/app/components/datasets/metadata/base/date-picker'
 import { DataType } from '@/app/components/datasets/metadata/types'
@@ -44,7 +44,7 @@ const ConstantValueInput: FC<ConstantValueInputProps> = ({
       <InputNumber
         className="h-full w-full border-none bg-transparent p-0"
         value={typeof value === 'number' ? value : undefined}
-        onChange={v => onChange(v)}
+        onChange={(v: number | null) => onChange(v)}
         readOnly={readonly}
         size="regular"
       />
