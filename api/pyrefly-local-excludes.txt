@@ -182,4 +182,9 @@ tasks/app_generate/workflow_execute_task.py
 tasks/regenerate_summary_index_task.py
 tasks/trigger_processing_tasks.py
 tasks/workflow_cfs_scheduler/cfs_scheduler.py
+tasks/add_document_to_index_task.py
+tasks/create_segment_to_index_task.py
+tasks/disable_segment_from_index_task.py
+tasks/enable_segment_to_index_task.py
+tasks/remove_document_from_index_task.py
 tasks/workflow_execution_tasks.py
