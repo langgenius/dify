@@ -120,6 +120,10 @@ class TestHandleWebhookDebug:
 
         assert status == 409
         assert response["error"] == "No active debug listener"
+        assert response["message"] == (
+            "The webhook debug URL only works while the Variable Inspector is listening. "
+            "Use the published webhook URL to execute the workflow in Celery."
+        )
         assert response["execution_url"] == DummyWebhookTrigger.webhook_url
         mock_dispatch.assert_called_once()
 
