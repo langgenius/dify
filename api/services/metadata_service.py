@@ -1,5 +1,7 @@
 import copy
+import json
 import logging
+from collections.abc import Mapping
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
@@ -7,16 +9,110 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.model import App, AppModelConfig
+from models.workflow import Workflow
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
+from services.errors.metadata_service import MetadataInUseError
 
 logger = logging.getLogger(__name__)
 
 
+_PIPELINE_REF_CACHE_TTL = 60  # seconds
+
+
 class MetadataService:
+    @staticmethod
+    def _collect_referenced_metadata_ids(payload: object, referenced_ids: set[str]) -> None:
+        """Collect all metadata IDs referenced by persisted pipeline JSON payloads."""
+        if isinstance(payload, Mapping):
+            metadata_id = payload.get("metadata_id")
+            if isinstance(metadata_id, str):
+                referenced_ids.add(metadata_id)
+
+            for value in payload.values():
+                MetadataService._collect_referenced_metadata_ids(value, referenced_ids)
+            return
+
+        if isinstance(payload, list):
+            for item in payload:
+                MetadataService._collect_referenced_metadata_ids(item, referenced_ids)
+
+    @staticmethod
+    def _load_reference_payload(raw_payload: str | None, source_name: str) -> object | None:
+        if not raw_payload:
+            return None
+
+        try:
+            return json.loads(raw_payload)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode metadata reference payload from %s", source_name)
+            return None
+
+    @staticmethod
+    def _scan_all_referenced_metadata_ids(tenant_id: str) -> set[str]:
+        """Scan app configs and workflow graphs to collect all referenced metadata IDs."""
+        all_referenced: set[str] = set()
+
+        app_model_config_rows = (
+            db.session.query(AppModelConfig.dataset_configs)
+            .join(App, App.id == AppModelConfig.app_id)
+            .filter(
+                App.tenant_id == tenant_id,
+                AppModelConfig.dataset_configs.isnot(None),
+                AppModelConfig.dataset_configs.contains('"metadata_id"'),
+            )
+            .all()
+        )
+
+        workflow_rows = (
+            db.session.query(Workflow.graph)
+            .filter(
+                Workflow.tenant_id == tenant_id,
+                Workflow.graph.contains('"metadata_id"'),
+            )
+            .all()
+        )
+
+        for (raw_payload,) in app_model_config_rows:
+            payload = MetadataService._load_reference_payload(raw_payload, "app_model_configs.dataset_configs")
+            if payload is not None:
+                MetadataService._collect_referenced_metadata_ids(payload, all_referenced)
+
+        for (raw_payload,) in workflow_rows:
+            payload = MetadataService._load_reference_payload(raw_payload, "workflows.graph")
+            if payload is not None:
+                MetadataService._collect_referenced_metadata_ids(payload, all_referenced)
+
+        return all_referenced
+
+    @staticmethod
+    def _get_referenced_metadata_ids(
+        tenant_id: str, metadata_ids: set[str], *, bypass_cache: bool = False
+    ) -> set[str]:
+        """Return metadata IDs (from the given set) that are referenced by pipeline configurations.
+
+        Results are cached per-tenant for _PIPELINE_REF_CACHE_TTL seconds.
+        Pass bypass_cache=True for write paths (e.g. delete) that require fresh data.
+        """
+        if not metadata_ids:
+            return set()
+
+        cache_key = f"metadata:pipeline_refs:{tenant_id}"
+
+        if not bypass_cache:
+            raw = redis_client.get(cache_key)
+            if raw:
+                all_referenced = set(json.loads(raw))
+                return all_referenced & metadata_ids
+
+        all_referenced = MetadataService._scan_all_referenced_metadata_ids(tenant_id)
+        redis_client.setex(cache_key, _PIPELINE_REF_CACHE_TTL, json.dumps(list(all_referenced)))
+        return all_referenced & metadata_ids
+
     @staticmethod
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
         # check if metadata name is too long
@@ -103,6 +199,12 @@ class MetadataService:
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
+            _, current_tenant_id = current_account_with_tenant()
+            referenced_metadata_ids = MetadataService._get_referenced_metadata_ids(
+                current_tenant_id, {metadata_id}, bypass_cache=True
+            )
+            if metadata_id in referenced_metadata_ids:
+                raise MetadataInUseError("This metadata is referenced by a pipeline and cannot be deleted.")
             db.session.delete(metadata)
 
             # deal related documents
@@ -122,8 +224,11 @@ class MetadataService:
                     db.session.add(document)
             db.session.commit()
             return metadata
+        except MetadataInUseError:
+            raise
         except Exception:
             logger.exception("Delete metadata failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
@@ -268,6 +373,9 @@ class MetadataService:
 
     @staticmethod
     def get_dataset_metadatas(dataset: Dataset):
+        metadata_items = [item for item in dataset.doc_metadata or [] if item.get("id") != "built-in"]
+        metadata_ids: set[str] = {mid for item in metadata_items if (mid := item.get("id")) is not None}
+        referenced_metadata_ids = MetadataService._get_referenced_metadata_ids(dataset.tenant_id, metadata_ids)
         return {
             "doc_metadata": [
                 {
@@ -277,9 +385,9 @@ class MetadataService:
                     "count": db.session.query(DatasetMetadataBinding)
                     .filter_by(metadata_id=item.get("id"), dataset_id=dataset.id)
                     .count(),
+                    "is_referenced_by_pipeline": item.get("id") in referenced_metadata_ids,
                 }
-                for item in dataset.doc_metadata or []
-                if item.get("id") != "built-in"
+                for item in metadata_items
             ],
             "built_in_field_enabled": dataset.built_in_field_enabled,
         }

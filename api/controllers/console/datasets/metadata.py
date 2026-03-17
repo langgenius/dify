@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -16,6 +16,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata_service import MetadataInUseError
 from services.metadata_service import MetadataService
 
 
@@ -97,7 +98,12 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
+        try:
+            MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
+        except MetadataInUseError as exc:
+            raise BadRequest(str(exc))
+        except ValueError as exc:
+            raise NotFound(str(exc))
         return {"result": "success"}, 204
 
 

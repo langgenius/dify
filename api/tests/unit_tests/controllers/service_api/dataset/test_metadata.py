@@ -19,7 +19,7 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
@@ -28,6 +28,7 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
+from services.errors.metadata_service import MetadataInUseError
 from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
@@ -316,6 +317,39 @@ class TestDatasetMetadataServiceApiDelete:
         ):
             api = DatasetMetadataServiceApi()
             with pytest.raises(NotFound):
+                self._call_delete(
+                    api,
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    metadata_id=metadata_id,
+                )
+
+    @patch("controllers.service_api.dataset.metadata.MetadataService")
+    @patch("controllers.service_api.dataset.metadata.DatasetService")
+    @patch("controllers.service_api.dataset.metadata.current_user")
+    def test_delete_metadata_referenced_by_pipeline(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_meta_svc,
+        app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test 400 when metadata is still referenced by a pipeline."""
+        metadata_id = str(uuid.uuid4())
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+        mock_meta_svc.delete_metadata.side_effect = MetadataInUseError(
+            "This metadata is referenced by a pipeline and cannot be deleted."
+        )
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/metadata/{metadata_id}",
+            method="DELETE",
+        ):
+            api = DatasetMetadataServiceApi()
+            with pytest.raises(BadRequest, match="referenced by a pipeline"):
                 self._call_delete(
                     api,
                     tenant_id=mock_tenant.id,

@@ -19,6 +19,7 @@ export type MetadataItemWithValue = MetadataItem & {
 
 export type MetadataItemWithValueLength = MetadataItem & {
   count: number
+  isReferencedByPipeline?: boolean
 }
 
 export type MetadataItemInBatchEdit = MetadataItemWithValue & {

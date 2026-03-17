@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import (
@@ -18,6 +18,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
+from services.errors.metadata_service import MetadataInUseError
 from services.metadata_service import MetadataService
 
 
@@ -266,6 +267,34 @@ class TestDatasetMetadataApi:
 
         assert status == 204
         assert result["result"] == "success"
+
+    def test_delete_metadata_referenced_by_pipeline(self, app, current_user, dataset, dataset_id, metadata_id):
+        api = DatasetMetadataApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.metadata.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch.object(
+                DatasetService,
+                "get_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+            ),
+            patch.object(
+                MetadataService,
+                "delete_metadata",
+                side_effect=MetadataInUseError("This metadata is referenced by a pipeline and cannot be deleted."),
+            ),
+        ):
+            with pytest.raises(BadRequest, match="referenced by a pipeline"):
+                method(api, dataset_id, metadata_id)
 
 
 class TestDatasetMetadataBuiltInFieldApi:

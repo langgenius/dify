@@ -122,6 +122,7 @@
   "metadata.datasetMetadata.builtIn": "Built-in",
   "metadata.datasetMetadata.builtInDescription": "Built-in metadata is automatically extracted and generated. It must be enabled before use and cannot be edited.",
   "metadata.datasetMetadata.deleteContent": "Are you sure you want to delete the metadata \"{{name}}\"",
+  "metadata.datasetMetadata.deleteDisabledByPipeline": "This metadata is used by a pipeline and cannot be deleted.",
   "metadata.datasetMetadata.deleteTitle": "Confirm to delete",
   "metadata.datasetMetadata.description": "You can manage all metadata in this knowledge here. Modifications will be synchronized to every document.",
   "metadata.datasetMetadata.disabled": "Disabled",
