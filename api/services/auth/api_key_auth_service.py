@@ -1,6 +1,8 @@
 import json
 from collections.abc import Mapping
-from typing import Annotated, TypedDict, TypeVar
+from typing import Annotated, TypeVar
+
+from typing_extensions import TypedDict
 
 from pydantic import StringConstraints, TypeAdapter, ValidationError
 from sqlalchemy import select
