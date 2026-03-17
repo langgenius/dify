@@ -5,6 +5,8 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+from pydantic import TypeAdapter
+
 from core.model_manager import ModelInstance
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -63,6 +65,7 @@ from .prompts import (
 )
 
 logger = logging.getLogger(__name__)
+_JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, object])
 
 if TYPE_CHECKING:
     from dify_graph.entities import GraphInitParams
@@ -679,7 +682,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     with contextlib.suppress(Exception):
-                        return cast(dict[str, object], json.loads(json_str))
+                        return _JSON_OBJECT_ADAPTER.validate_python(json.loads(json_str))
         logger.info("extra error: %s", result)
         return None
 
@@ -697,7 +700,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     with contextlib.suppress(Exception):
-                        return cast(dict[str, object], json.loads(json_str))
+                        return _JSON_OBJECT_ADAPTER.validate_python(json.loads(json_str))
 
         logger.info("extra error: %s", result)
         return None

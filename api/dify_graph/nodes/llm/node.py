@@ -9,6 +9,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
+from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -89,6 +90,7 @@ if TYPE_CHECKING:
     from dify_graph.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+_JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, object])
 
 
 class LLMNode(Node[LLMNodeData]):
@@ -923,6 +925,12 @@ class LLMNode(Node[LLMNodeData]):
             # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
 
+        structured_output = (
+            dict(invoke_result.structured_output)
+            if isinstance(invoke_result, LLMResultWithStructuredOutput) and invoke_result.structured_output is not None
+            else None
+        )
+
         event = ModelInvokeCompletedEvent(
             # Use clean_text for separated mode, full_text for tagged mode
             text=clean_text if reasoning_format == "separated" else full_text,
@@ -931,7 +939,7 @@ class LLMNode(Node[LLMNodeData]):
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
             # Pass structured output if enabled
-            structured_output=getattr(invoke_result, "structured_output", None),
+            structured_output=structured_output,
         )
         if request_latency is not None:
             event.usage.latency = round(request_latency, 3)
@@ -976,7 +984,7 @@ class LLMNode(Node[LLMNodeData]):
         schema = structured_output.get("schema")
         if not schema:
             raise LLMNodeError("Please provide a valid structured output schema")
-        return dict(schema)
+        return _JSON_OBJECT_ADAPTER.validate_python(schema)
 
     @staticmethod
     def _save_multimodal_output_and_convert_result_to_markdown(

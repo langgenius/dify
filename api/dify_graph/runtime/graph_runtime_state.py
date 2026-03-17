@@ -66,6 +66,11 @@ class GraphExecutionProtocol(Protocol):
     exceptions_count: int
     pause_reasons: list[PauseReason]
 
+    @property
+    def node_executions(self) -> Mapping[str, NodeExecutionProtocol]:
+        """Return node execution state keyed by node id for resume support."""
+        ...
+
     def start(self) -> None:
         """Transition execution into the running state."""
         ...
@@ -89,6 +94,12 @@ class GraphExecutionProtocol(Protocol):
     def loads(self, data: str) -> None:
         """Restore execution state from a previously serialized payload."""
         ...
+
+
+class NodeExecutionProtocol(Protocol):
+    """Structural interface for per-node execution state used during resume."""
+
+    execution_id: str | None
 
 
 class ResponseStreamCoordinatorProtocol(Protocol):

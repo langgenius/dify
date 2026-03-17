@@ -336,13 +336,11 @@ class Node(Generic[NodeDataT]):
 
     def _restore_execution_id_from_runtime_state(self) -> str | None:
         graph_execution = self.graph_runtime_state.graph_execution
-        node_executions = getattr(graph_execution, "node_executions", None)
-        if not isinstance(node_executions, dict):
-            return None
+        node_executions = graph_execution.node_executions
         node_execution = node_executions.get(self._node_id)
         if node_execution is None:
             return None
-        execution_id = getattr(node_execution, "execution_id", None)
+        execution_id = node_execution.execution_id
         if not execution_id:
             return None
         return str(execution_id)
