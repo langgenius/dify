@@ -8,6 +8,7 @@ from dify_graph.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
+    NodeRunSucceededEvent,
 )
 from dify_graph.nodes.human_input.enums import HumanInputFormStatus
 from dify_graph.nodes.human_input.human_input_node import HumanInputNode
@@ -165,6 +166,20 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     assert filled_event.rendered_content.endswith("Alice")
     assert filled_event.action_id == "Accept"
     assert filled_event.action_text == "Approve"
+
+
+def test_human_input_node_includes_submitted_data_in_tracing_inputs():
+    """Submitted form data must appear in node_run_result.inputs for Tracing UI."""
+    node = _build_node()
+
+    events = list(node.run())
+
+    assert len(events) >= 3
+    succeeded_event = events[2]
+    assert isinstance(succeeded_event, NodeRunSucceededEvent)
+    assert succeeded_event.node_run_result.inputs == {"name": "Alice"}
+    assert succeeded_event.node_run_result.outputs["name"] == "Alice"
+    assert succeeded_event.node_run_result.outputs["__action_id"] == "Accept"
 
 
 def test_human_input_node_emits_timeout_event_before_succeeded():

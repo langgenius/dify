@@ -299,9 +299,12 @@ class HumanInputNode(Node[HumanInputNodeData]):
             action_text=action_text,
         )
 
+        # Include submitted form data as inputs for tracing/auditing so execution
+        # details display the user-provided payload in the Tracing UI.
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=dict(submitted_data),
                 outputs=outputs,
                 edge_source_handle=selected_action_id,
             )
