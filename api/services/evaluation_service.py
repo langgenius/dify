@@ -11,12 +11,15 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
+    EVALUATION_METRICS,
+    METRIC_NODE_TYPE_MAPPING,
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
     EvaluationDatasetInput,
     EvaluationRunData,
     EvaluationRunRequest,
+    NodeInfo,
 )
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
@@ -422,6 +425,75 @@ class EvaluationService:
     @classmethod
     def get_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
         return EvaluationManager.get_supported_metrics(category)
+
+    @staticmethod
+    def get_available_metrics() -> list[str]:
+        """Return the centrally-defined list of evaluation metrics."""
+        return list(EVALUATION_METRICS)
+
+    @classmethod
+    def get_nodes_for_metrics(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+        metrics: list[str] | None = None,
+    ) -> dict[str, list[dict[str, str]]]:
+        """Return node info grouped by metric (or all nodes when *metrics* is empty).
+
+        :param target: App or CustomizedSnippet instance.
+        :param target_type: ``"app"`` or ``"snippets"``.
+        :param metrics: Optional list of metric names to filter by.
+            When *None* or empty, returns ``{"all": [<every node>]}``.
+        :returns: ``{metric_name: [NodeInfo dict, ...]}`` or
+            ``{"all": [NodeInfo dict, ...]}``.
+        """
+        workflow = cls._resolve_workflow(target, target_type)
+        if not workflow:
+            return {"all": []} if not metrics else {m: [] for m in metrics}
+
+        if not metrics:
+            all_nodes = [
+                NodeInfo(node_id=node_id, type=node_data.get("type", ""), title=node_data.get("title", "")).model_dump()
+                for node_id, node_data in workflow.walk_nodes()
+            ]
+            return {"all": all_nodes}
+
+        node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
+        for node_id, node_data in workflow.walk_nodes():
+            ntype = node_data.get("type", "")
+            node_type_to_nodes.setdefault(ntype, []).append(
+                NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
+            )
+
+        result: dict[str, list[dict[str, str]]] = {}
+        for metric in metrics:
+            required_node_type = METRIC_NODE_TYPE_MAPPING.get(metric)
+            if required_node_type is None:
+                result[metric] = []
+                continue
+            result[metric] = node_type_to_nodes.get(required_node_type, [])
+        return result
+
+    @classmethod
+    def _resolve_workflow(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+    ) -> "Workflow | None":
+        """Resolve the *published* (preferred) or *draft* workflow for the target."""
+        if target_type == "snippets" and isinstance(target, CustomizedSnippet):
+            snippet_service = SnippetService()
+            workflow = snippet_service.get_published_workflow(snippet=target)
+            if not workflow:
+                workflow = snippet_service.get_draft_workflow(snippet=target)
+            return workflow
+        elif target_type == "app" and isinstance(target, App):
+            workflow_service = WorkflowService()
+            workflow = workflow_service.get_published_workflow(app_model=target)
+            if not workflow:
+                workflow = workflow_service.get_draft_workflow(app_model=target)
+            return workflow
+        return None
 
     # ---- Category Resolution ----
 

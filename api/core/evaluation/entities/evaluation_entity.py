@@ -15,6 +15,29 @@ class EvaluationCategory(StrEnum):
     RETRIEVAL_TEST = "retrieval_test"
 
 
+# ---- Default Metrics & Node-Type Mapping ----
+
+EVALUATION_METRICS: list[str] = [
+    "Groundedness",
+    "Correctness",
+    "Context Precision",
+    "Context Recall",
+    "Tool Correctness",
+    "Task Completion",
+    "Argument Correctness",
+]
+
+METRIC_NODE_TYPE_MAPPING: dict[str, str] = {
+    "Groundedness": "llm",
+    "Correctness": "llm",
+    "Context Precision": "knowledge-retrieval",
+    "Context Recall": "knowledge-retrieval",
+    "Tool Correctness": "agent",
+    "Task Completion": "agent",
+    "Argument Correctness": "agent",
+}
+
+
 class EvaluationMetric(BaseModel):
     name: str
     value: Any

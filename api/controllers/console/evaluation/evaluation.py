@@ -483,6 +483,48 @@ class EvaluationMetricsApi(Resource):
         return {"metrics": result}
 
 
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/node-info")
+class EvaluationNodeInfoApi(Resource):
+    @console_ns.doc("get_evaluation_node_info")
+    @console_ns.response(200, "Node info grouped by metric")
+    @console_ns.response(404, "Target not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    def post(self, target: Union[App, CustomizedSnippet], target_type: str):
+        """Return workflow/snippet node info grouped by requested metrics.
+
+        Request body (JSON):
+            - metrics: list[str] | None  – metric names to query; omit or pass
+              an empty list to get all nodes under key ``"all"``.
+
+        Response:
+            ``{metric_or_all: [{"node_id": ..., "type": ..., "title": ...}, ...]}``
+        """
+        body = request.get_json(silent=True) or {}
+        metrics: list[str] | None = body.get("metrics") or None
+
+        result = EvaluationService.get_nodes_for_metrics(
+            target=target,
+            target_type=target_type,
+            metrics=metrics,
+        )
+        return result
+
+
+@console_ns.route("/evaluation/available-metrics")
+class EvaluationAvailableMetricsApi(Resource):
+    @console_ns.doc("get_available_evaluation_metrics")
+    @console_ns.response(200, "Available metrics list")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """Return the centrally-defined list of evaluation metrics."""
+        return {"metrics": EvaluationService.get_available_metrics()}
+
+
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/files/<uuid:file_id>")
 class EvaluationFileDownloadApi(Resource):
     @console_ns.doc("download_evaluation_file")
