@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -18,13 +18,10 @@ export default function VerifyEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const emailToken = useAccountDeleteStore(state => state.sendEmailToken)
   const [verificationCode, setVerificationCode] = useState<string>()
-  const [shouldButtonDisabled, setShouldButtonDisabled] = useState(true)
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
   const { isPending: isDeleting, mutateAsync: confirmDeleteAccount } = useConfirmDeleteAccount()
 
-  useEffect(() => {
-    setShouldButtonDisabled(!(verificationCode && CODE_EXP.test(verificationCode)) || isDeleting)
-  }, [verificationCode, isDeleting])
+  const shouldButtonDisabled = !(verificationCode && CODE_EXP.test(verificationCode)) || isDeleting
 
   const handleConfirm = useCallback(async () => {
     try {

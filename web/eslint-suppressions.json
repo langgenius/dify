@@ -283,9 +283,6 @@
     }
   },
   "app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     }
@@ -1216,9 +1213,6 @@
   "app/components/app/overview/app-card.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 8
