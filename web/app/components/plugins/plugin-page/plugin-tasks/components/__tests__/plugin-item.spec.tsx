@@ -74,6 +74,24 @@ describe('PluginItem', () => {
       expect(screen.getByTestId('status-icon')).toBeInTheDocument()
     })
 
+    it('should anchor the status icon to the card icon wrapper', () => {
+      render(
+        <PluginItem
+          plugin={createPlugin()}
+          getIconUrl={mockGetIconUrl}
+          language="en_US"
+          statusIcon={<span data-testid="status-icon" />}
+          statusText="status"
+        />,
+      )
+
+      const cardIcon = screen.getByTestId('card-icon')
+      const iconWrapper = cardIcon.parentElement
+
+      expect(iconWrapper).toHaveClass('relative', 'self-start')
+      expect(screen.getByTestId('status-icon').parentElement).toHaveClass('absolute', '-bottom-0.5', '-right-0.5')
+    })
+
     it('should pass icon url to CardIcon', () => {
       render(
         <PluginItem

@@ -26,7 +26,7 @@ const PluginItem: FC<PluginItemProps> = ({
 }) => {
   return (
     <div className="group/item flex gap-1 rounded-lg p-2 hover:bg-state-base-hover">
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 self-start">
         <CardIcon
           size="small"
           src={getIconUrl(plugin.icon)}
