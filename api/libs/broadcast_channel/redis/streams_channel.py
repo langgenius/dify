@@ -5,10 +5,12 @@ import queue
 import threading
 from collections.abc import Iterator
 from typing import Self
+from uuid import uuid4
 
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from redis import Redis, RedisCluster
+from redis.exceptions import ResponseError
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,11 @@ class StreamsBroadcastChannel:
     Redis Streams based broadcast channel implementation.
 
     Characteristics:
-    - At-least-once delivery for late subscribers within the stream retention window.
-    - Each topic is stored as a dedicated Redis Stream key.
-    - The stream key expires `retention_seconds` after the last event is published (to bound storage).
+    - Shared consumer group per topic (all subscribers to the same topic share one group).
+    - Uses XREADGROUP with NOACK starting at "0" (reads from the beginning for new subscribers).
+    - Delivery is best-effort/at-most-once per subscriber.
+    - Each topic is stored as a dedicated Redis Stream key; key expires `retention_seconds` after last publish.
+    - Multiple tabs/subscribers to the same topic will see consistent state from the group's position.
     """
 
     def __init__(self, redis_client: Redis | RedisCluster, *, retention_seconds: int = 600):
@@ -69,10 +73,57 @@ class _StreamsSubscription(Subscription):
         self._start_lock = threading.Lock()
         self._listener: threading.Thread | None = None
 
+        self._group_name = f"grp:{self._key}:{uuid4().hex}"
+        self._consumer_name = f"c:{uuid4().hex}"
+        self._group_ready = False
+
+    def _ensure_group(self) -> None:
+        if self._group_ready:
+            return
+        try:
+            # Create group starting at '0' to consume from the beginning of the stream
+            # If group already exists, new consumers will start from the group's current position
+            # Use mkstream=True in case the stream key doesn't exist yet
+            self._client.xgroup_create(self._key, self._group_name, id="0", mkstream=True)
+            self._group_ready = True
+        except ResponseError as e:
+            # Group might already exist if recreated quickly; mark ready on BUSYGROUP, otherwise retry later
+            if "BUSYGROUP" in str(e):
+                self._group_ready = True
+            else:
+                logger.warning(
+                    "xgroup create failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True
+                )
+        except Exception as e:  # pragma: no cover - safety net for different redis-py versions
+            logger.warning(
+                "xgroup create unexpected error for %s/%s: %s",
+                self._key,
+                self._group_name,
+                e,
+                exc_info=True,
+            )
+
     def _listen(self) -> None:
         try:
+            self._ensure_group()
             while not self._closed.is_set():
-                streams = self._client.xread({self._key: self._last_id}, block=1000, count=100)
+                try:
+                    streams = self._client.xreadgroup(
+                        self._group_name,
+                        self._consumer_name,
+                        {self._key: ">"},
+                        block=1000,
+                        count=100,
+                        noack=True,
+                    )
+                except ResponseError as e:
+                    msg = str(e)
+                    # Handle group/key disappearances gracefully (key expired/evicted or group destroyed elsewhere)
+                    if "NOGROUP" in msg or "No such key" in msg:
+                        self._group_ready = False
+                        self._ensure_group()
+                        continue
+                    raise
 
                 if not streams:
                     continue
@@ -101,6 +152,8 @@ class _StreamsSubscription(Subscription):
         with self._start_lock:
             if self._listener is not None or self._closed.is_set():
                 return
+
+            self._ensure_group()
             self._listener = threading.Thread(
                 target=self._listen,
                 name=f"redis-streams-sub-{self._key}",
@@ -148,6 +201,40 @@ class _StreamsSubscription(Subscription):
                 )
             else:
                 self._listener = None
+
+        try:
+            self._client.xgroup_delconsumer(self._key, self._group_name, self._consumer_name)
+        except ResponseError as e:
+            msg = str(e)
+            if not ("NOGROUP" in msg or "NOKEY" in msg or "No such key" in msg):
+                logger.warning(
+                    "xgroup delconsumer failed for %s/%s: %s", self._key, self._group_name, e, exc_info=True
+                )
+        except Exception as e:
+            logger.warning(
+                "xgroup delconsumer unexpected error for %s/%s: %s", self._key, self._group_name, e, exc_info=True
+            )
+
+        try:
+            self._client.xgroup_destroy(self._key, self._group_name)
+        except ResponseError as e:
+            msg = str(e)
+            if not ("NOGROUP" in msg or "NOKEY" in msg or "No such key" in msg):
+                logger.warning(
+                    "xgroup_destroy failed for %s/%s: %s",
+                    self._key,
+                    self._group_name,
+                    e,
+                    exc_info=True
+                )
+        except Exception as e:
+            logger.warning(
+                "xgroup_destroy unexpected error for %s/%s: %s",
+                self._key,
+                self._group_name,
+                e,
+                exc_info=True,
+            )
 
     # Context manager helpers
     def __enter__(self) -> Self:

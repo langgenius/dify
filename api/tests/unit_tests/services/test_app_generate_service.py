@@ -137,21 +137,21 @@ class TestBuildStreamingTaskOnSubscribe:
         assert called == [1]
 
     def test_exception_in_start_task_returns_false(self, monkeypatch):
-        """When start_task raises, _try_start returns False and next call retries."""
+        """When start_task raises in streams mode, _try_start returns False and callback is a no-op."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         call_count = 0
 
         def _bad():
             nonlocal call_count
             call_count += 1
-            if call_count == 1:
-                raise RuntimeError("boom")
+            raise RuntimeError("boom")
 
         cb = AppGenerateService._build_streaming_task_on_subscribe(_bad)
-        # first call inside build raised, but is caught; second call via cb succeeds
+        # In streams mode, the callback is a no-op since _try_start was already called
         assert call_count == 1
         cb()
-        assert call_count == 2
+        # Callback does nothing in streams mode, so count stays at 1
+        assert call_count == 1
 
     def test_concurrent_subscribe_only_starts_once(self, monkeypatch):
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")

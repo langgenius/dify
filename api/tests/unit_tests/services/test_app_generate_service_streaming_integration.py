@@ -59,6 +59,8 @@ class _FakeStreams:
         # key -> list[(id, {field: value})]
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
+        # key -> group -> {"last_id": str}
+        self._groups: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
 
     def xadd(self, key: str, fields: dict, *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
@@ -71,6 +73,68 @@ class _FakeStreams:
         # no-op for tests
         return None
 
+    def xgroup_create(self, key: str, group: str, id: str = "$", mkstream: bool = False):
+        if mkstream and key not in self._data:
+            self._data[key] = []
+            self._seq[key] = 0
+        if group in self._groups[key]:
+            raise RuntimeError("BUSYGROUP Consumer Group name already exists")
+        if id == "$":
+            entries = self._data.get(key, [])
+            resolved = entries[-1][0] if entries else "0-0"
+        else:
+            resolved = id
+        self._groups[key][group] = {"last_id": resolved}
+
+    def xreadgroup(
+        self,
+        group: str,
+        consumer: str,
+        streams: dict,
+        count: int | None = None,
+        block: int | None = None,
+        noack: bool | None = None,
+    ):
+        assert len(streams) == 1
+        key, special = next(iter(streams.items()))
+        assert special == ">"
+        entries = self._data.get(key, [])
+        g = self._groups[key]
+        info = g.setdefault(group, {"last_id": "0-0"})
+        last_id = info["last_id"]
+        start = 0
+        if last_id == "$":
+            start = len(entries)
+        elif last_id != "0-0":
+            for i, (eid, _f) in enumerate(entries):
+                if eid == last_id:
+                    start = i + 1
+                    break
+        if start >= len(entries):
+            return []
+        end = len(entries) if count is None else min(len(entries), start + count)
+        batch = entries[start:end]
+        if batch:
+            info["last_id"] = batch[-1][0]
+        return [(key, batch)]
+
+    def xack(self, key: str, group: str, *ids: str):
+        return len(ids)
+
+    def xautoclaim(
+        self,
+        key: str,
+        group: str,
+        consumer: str,
+        min_idle_time: int,
+        start_id: str = "0-0",
+        count: int | None = None,
+        justid: bool | None = None,
+    ):
+        # Minimal fake: no PEL tracking; return no entries
+        return start_id, []
+
+    # Fallback path if xreadgroup not used
     def xread(self, streams: dict, block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
@@ -134,11 +198,11 @@ def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
 
 
 @pytest.mark.usefixtures("_patch_get_channel_streams")
-def test_streams_full_flow_prepublish_and_replay():
+def test_streams_full_flow_start_on_subscribe_only_new():
     app_mode = AppMode.WORKFLOW
     run_id = str(uuid.uuid4())
 
-    # Build start_task that publishes two events immediately
+    # Publish on subscribe; with XREADGROUP + NOACK + "$", we receive only new events
     events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
 
     def start_task():
@@ -146,7 +210,6 @@ def test_streams_full_flow_prepublish_and_replay():
 
     on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
 
-    # Start retrieving BEFORE subscription is established; in streams mode, we also started immediately
     gen = MessageGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
 
     received = []

@@ -63,14 +63,8 @@ class AppGenerateService:
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
         if channel_type == "streams":
-            # With Redis Streams, we can safely start right away; consumers can read past events.
             _try_start()
-
-            # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
-            def _on_subscribe_streams() -> None:
-                _try_start()
-
-            return _on_subscribe_streams
+            return lambda: None
 
         # Pub/Sub modes (at-most-once): subscribe-gated start with a tiny fallback.
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
