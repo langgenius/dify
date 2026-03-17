@@ -544,7 +544,7 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self) -> list[Tag]:
+    def tags(self) -> Sequence[Tag]:
         tags = db.session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -1140,7 +1140,9 @@ class Conversation(Base):
 
     @property
     def annotation(self):
-        return db.session.scalar(select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id))
+        return db.session.scalar(
+            select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1)
+        )
 
     @property
     def message_count(self):
@@ -1551,7 +1553,7 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self) -> list[MessageAgentThought]:
+    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
         return db.session.scalars(
             select(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)

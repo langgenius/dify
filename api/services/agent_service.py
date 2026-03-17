@@ -47,7 +47,7 @@ class AgentService:
         if not message:
             raise ValueError(f"Message not found: {message_id}")
 
-        agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
+        agent_thoughts = message.agent_thoughts
 
         if conversation.from_end_user_id:
             # only select name field

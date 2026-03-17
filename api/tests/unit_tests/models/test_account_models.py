@@ -622,17 +622,10 @@ class TestAccountGetByOpenId:
         mock_account = Account(name="Test User", email="test@example.com")
         mock_account.id = account_id
 
-        # Mock db.session.scalar to return AccountIntegrate first, then Account
-        call_count = 0
-
-        def scalar_side_effect(stmt):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return mock_account_integrate
-            return mock_account
-
-        mock_db.session.scalar.side_effect = scalar_side_effect
+        # Mock db.session.execute().scalar_one_or_none() for AccountIntegrate lookup
+        mock_db.session.execute.return_value.scalar_one_or_none.return_value = mock_account_integrate
+        # Mock db.session.scalar() for Account lookup
+        mock_db.session.scalar.return_value = mock_account
 
         # Act
         result = Account.get_by_openid(provider, open_id)
@@ -647,8 +640,8 @@ class TestAccountGetByOpenId:
         provider = "github"
         open_id = "github_user_456"
 
-        # Mock db.session.scalar to return None (no account integrate found)
-        mock_db.session.scalar.return_value = None
+        # Mock db.session.execute().scalar_one_or_none() to return None
+        mock_db.session.execute.return_value.scalar_one_or_none.return_value = None
 
         # Act
         result = Account.get_by_openid(provider, open_id)

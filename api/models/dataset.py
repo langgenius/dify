@@ -10,6 +10,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
+from collections.abc import Sequence
 from typing import Any, TypedDict, cast
 from uuid import uuid4
 
@@ -818,7 +819,7 @@ class DocumentSegment(Base):
         )
 
     @property
-    def child_chunks(self) -> list[Any]:
+    def child_chunks(self) -> Sequence[Any]:
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
@@ -835,7 +836,7 @@ class DocumentSegment(Base):
                     return child_chunks or []
         return []
 
-    def get_child_chunks(self) -> list[Any]:
+    def get_child_chunks(self) -> Sequence[Any]:
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
