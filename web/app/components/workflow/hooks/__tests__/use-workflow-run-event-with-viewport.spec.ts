@@ -41,7 +41,7 @@ describe('useWorkflowNodeStarted', () => {
     })
 
     result.current.handleWorkflowNodeStarted(
-      { data: { node_id: 'n1' } } as NodeStartedResponse,
+      { data: { id: 'trace-n1', node_id: 'n1' } } as NodeStartedResponse,
       containerParams,
     )
 
@@ -65,7 +65,7 @@ describe('useWorkflowNodeStarted', () => {
     })
 
     result.current.handleWorkflowNodeStarted(
-      { data: { node_id: 'n2' } } as NodeStartedResponse,
+      { data: { id: 'trace-n2', node_id: 'n2' } } as NodeStartedResponse,
       containerParams,
     )
 

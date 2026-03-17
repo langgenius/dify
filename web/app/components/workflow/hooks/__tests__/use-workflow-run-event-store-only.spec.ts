@@ -109,13 +109,13 @@ describe('useWorkflowAgentLog', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({
-          tracing: [{ node_id: 'n1', execution_metadata: {} }],
+          tracing: [{ id: 'trace-1', node_id: 'n1', execution_metadata: {} }],
         }),
       },
     })
 
     result.current.handleWorkflowAgentLog({
-      data: { node_id: 'n1', message_id: 'm1' },
+      data: { node_id: 'n1', node_execution_id: 'trace-1', message_id: 'm1' },
     } as AgentLogResponse)
 
     const trace = store.getState().workflowRunningData!.tracing![0]
@@ -128,6 +128,7 @@ describe('useWorkflowAgentLog', () => {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [{
+            id: 'trace-1',
             node_id: 'n1',
             execution_metadata: { agent_log: [{ message_id: 'm1', text: 'log1' }] },
           }],
@@ -136,7 +137,7 @@ describe('useWorkflowAgentLog', () => {
     })
 
     result.current.handleWorkflowAgentLog({
-      data: { node_id: 'n1', message_id: 'm2' },
+      data: { node_id: 'n1', node_execution_id: 'trace-1', message_id: 'm2' },
     } as AgentLogResponse)
 
     expect(store.getState().workflowRunningData!.tracing![0].execution_metadata!.agent_log).toHaveLength(2)
@@ -147,6 +148,7 @@ describe('useWorkflowAgentLog', () => {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [{
+            id: 'trace-1',
             node_id: 'n1',
             execution_metadata: { agent_log: [{ message_id: 'm1', text: 'old' }] },
           }],
@@ -155,7 +157,7 @@ describe('useWorkflowAgentLog', () => {
     })
 
     result.current.handleWorkflowAgentLog({
-      data: { node_id: 'n1', message_id: 'm1', text: 'new' },
+      data: { node_id: 'n1', node_execution_id: 'trace-1', message_id: 'm1', text: 'new' },
     } as unknown as AgentLogResponse)
 
     const log = store.getState().workflowRunningData!.tracing![0].execution_metadata!.agent_log!
@@ -167,13 +169,13 @@ describe('useWorkflowAgentLog', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({
-          tracing: [{ node_id: 'n1' }],
+          tracing: [{ id: 'trace-1', node_id: 'n1' }],
         }),
       },
     })
 
     result.current.handleWorkflowAgentLog({
-      data: { node_id: 'n1', message_id: 'm1' },
+      data: { node_id: 'n1', node_execution_id: 'trace-1', message_id: 'm1' },
     } as AgentLogResponse)
 
     expect(store.getState().workflowRunningData!.tracing![0].execution_metadata!.agent_log).toHaveLength(1)
@@ -199,6 +201,22 @@ describe('useWorkflowAgentLog', () => {
     expect(tracing[0].execution_metadata!.agent_log).toBeUndefined()
     expect(tracing[1].execution_metadata!.agent_log).toHaveLength(1)
     expect(tracing[1].execution_metadata!.agent_log![0].message_id).toBe('m2')
+  })
+
+  it('should ignore agent logs when node_execution_id is missing', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [{ id: 'trace-1', node_id: 'n1', execution_metadata: {} }],
+        }),
+      },
+    })
+
+    result.current.handleWorkflowAgentLog({
+      data: { node_id: 'n1', message_id: 'm1' },
+    } as AgentLogResponse)
+
+    expect(store.getState().workflowRunningData!.tracing![0].execution_metadata!.agent_log).toBeUndefined()
   })
 })
 

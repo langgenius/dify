@@ -530,7 +530,10 @@ export const useChat = (
           }
         },
         onAgentLog: ({ data }) => {
-          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (!data.node_execution_id)
+            return
+
+          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.node_execution_id)
           if (currentNodeIndex > -1) {
             const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
 
@@ -775,7 +778,7 @@ export const useChat = (
 
           upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
             ...nodeStartedData,
-            status: WorkflowRunningStatus.Running,
+            status: NodeRunningStatus.Running,
           })
         })
       },

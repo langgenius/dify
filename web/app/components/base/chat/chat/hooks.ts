@@ -452,7 +452,7 @@ export const useChat = (
 
           upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
             ...nodeStartedData,
-            status: WorkflowRunningStatus.Running,
+            status: NodeRunningStatus.Running,
           })
         })
       },
@@ -1005,7 +1005,7 @@ export const useChat = (
 
         upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
           ...nodeStartedData,
-          status: WorkflowRunningStatus.Running,
+          status: NodeRunningStatus.Running,
         })
         updateCurrentQAOnTree({
           placeholderQuestionId,

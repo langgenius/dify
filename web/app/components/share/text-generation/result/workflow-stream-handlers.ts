@@ -5,6 +5,7 @@ import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse }
 import { produce } from 'immer'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
@@ -96,17 +97,13 @@ const upsertWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
 
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
     const nextTrace = {
       ...data,
       status: NodeRunningStatus.Running,
       expand: true,
     }
 
-    if (currentIndex > -1)
-      draft.tracing[currentIndex] = nextTrace
-    else
-      draft.tracing.push(nextTrace)
+    upsertTopLevelTracingNodeOnStart(draft.tracing, nextTrace)
   })
 }
 

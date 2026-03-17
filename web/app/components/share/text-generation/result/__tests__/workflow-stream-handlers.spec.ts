@@ -101,6 +101,7 @@ const createHumanInput = (overrides: Partial<HumanInputFormData> = {}): HumanInp
 describe('workflow-stream-handlers helpers', () => {
   it('should update tracing, result text, and human input state', () => {
     const parallelTrace = createTrace({
+      id: 'parallel-trace-1',
       node_id: 'parallel-node',
       execution_metadata: { parallel_id: 'parallel-1' },
       details: [[]],
@@ -109,11 +110,13 @@ describe('workflow-stream-handlers helpers', () => {
     let workflowProcessData = appendParallelStart(undefined, parallelTrace)
     workflowProcessData = appendParallelNext(workflowProcessData, parallelTrace)
     workflowProcessData = finishParallelTrace(workflowProcessData, createTrace({
+      id: 'parallel-trace-1',
       node_id: 'parallel-node',
       execution_metadata: { parallel_id: 'parallel-1' },
       error: 'failed',
     }))
     workflowProcessData = upsertWorkflowNode(workflowProcessData, createTrace({
+      id: 'node-trace-1',
       node_id: 'node-1',
       execution_metadata: { parallel_id: 'parallel-2' },
     }))!
@@ -158,6 +161,29 @@ describe('workflow-stream-handlers helpers', () => {
 
     expect(startedProcess.tracing[0]?.details).toEqual([[]])
     expect(nextProcess.tracing[0]?.details).toEqual([[], []])
+  })
+
+  it('should append a new top-level trace when the same node starts with a different execution id', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'trace-1',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Succeeded,
+      }),
+    ]
+
+    const updatedProcess = upsertWorkflowNode(process, createTrace({
+      id: 'trace-2',
+      node_id: 'node-1',
+    }))!
+
+    expect(updatedProcess.tracing).toHaveLength(2)
+    expect(updatedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'trace-2',
+      node_id: 'node-1',
+      status: NodeRunningStatus.Running,
+    }))
   })
 
   it('should leave tracing unchanged when a parallel next event has no matching trace', () => {
