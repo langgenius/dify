@@ -26,7 +26,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
-from models import App
+from models import App, Dataset
 from models.model import UploadFile
 from models.snippet import CustomizedSnippet
 from services.errors.evaluation import (
@@ -150,7 +150,7 @@ def get_evaluation_target(view_func: Callable[P, R]):
         del kwargs["evaluate_target_type"]
         del kwargs["evaluate_target_id"]
 
-        target: Union[App, CustomizedSnippet] | None = None
+        target: Union[App, CustomizedSnippet, Dataset] | None = None
 
         if target_type == "app":
             target = db.session.query(App).where(App.id == target_id, App.tenant_id == current_tenant_id).first()
@@ -160,6 +160,8 @@ def get_evaluation_target(view_func: Callable[P, R]):
                 .where(CustomizedSnippet.id == target_id, CustomizedSnippet.tenant_id == current_tenant_id)
                 .first()
             )
+        elif target_type == "knowledge":
+            target = db.session.query(Dataset).where(Dataset.id == target_id, Dataset.tenant_id == current_tenant_id).first()
 
         if not target:
             raise NotFound(f"{str(target_type)} not found")
@@ -330,7 +332,7 @@ class EvaluationRunApi(Resource):
     @account_initialization_required
     @get_evaluation_target
     @edit_permission_required
-    def post(self, target: Union[App, CustomizedSnippet], target_type: str):
+    def post(self, target: Union[App, CustomizedSnippet, Dataset], target_type: str):
         """
         Start an evaluation run.
 

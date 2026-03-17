@@ -115,7 +115,7 @@ class SnippetEvaluationRunner(BaseEvaluationRunner):
             raise ValueError("Default metric is required for snippet evaluation")
         merged_items = self._merge_results_into_items(node_run_result_list)
         return self.evaluation_instance.evaluate_workflow(
-            merged_items, default_metric.metric, model_provider, model_name, tenant_id
+            merged_items, [default_metric.metric], model_provider, model_name, tenant_id
         )
 
     @staticmethod

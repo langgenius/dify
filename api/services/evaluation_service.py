@@ -209,6 +209,57 @@ class EvaluationService:
 
         return output.getvalue()
 
+    @classmethod
+    def generate_retrieval_dataset_template(cls) -> tuple[bytes, str]:
+        """Generate evaluation dataset XLSX template for knowledge base retrieval.
+
+        The template contains three columns: ``index``, ``query``, and
+        ``expected_output``.  Callers upload a filled copy and start an
+        evaluation run with ``target_type="dataset"``.
+
+        :returns: (xlsx_content_bytes, filename)
+        """
+        wb = Workbook()
+        ws = wb.active
+        if ws is None:
+            ws = wb.create_sheet("Evaluation Dataset")
+        ws.title = "Evaluation Dataset"
+
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        headers = ["index", "query", "expected_output"]
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+
+        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["B"].width = 30
+        ws.column_dimensions["C"].width = 30
+
+        # Add one sample row
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=2, column=col_idx, value="")
+            cell.border = thin_border
+            if col_idx == 1:
+                cell.value = 1
+                cell.alignment = Alignment(horizontal="center")
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output.getvalue(), "retrieval-evaluation-dataset.xlsx"
+
     # ---- Evaluation Configuration CRUD ----
 
     @classmethod
@@ -757,3 +808,86 @@ class EvaluationService:
 
         wb.close()
         return items
+
+    @classmethod
+    def execute_retrieval_test_targets(
+        cls,
+        dataset_id: str,
+        account_id: str,
+        input_list: list[EvaluationDatasetInput],
+        max_workers: int = 5,
+    ) -> list[NodeRunResult]:
+        """Run hit testing against a knowledge base for every input item in parallel.
+
+        Each item must supply a ``query`` key in its ``inputs`` dict.  The
+        retrieved segments are normalised into the same ``NodeRunResult`` format
+        that :class:`RetrievalEvaluationRunner` expects:
+
+        .. code-block:: python
+
+            NodeRunResult(
+                inputs={"query": "..."},
+                outputs={"result": [{"content": "...", "score": ...}, ...]},
+            )
+
+        :returns: Ordered list of ``NodeRunResult`` — one per input item.
+            If retrieval fails for an item the result has an empty ``result``
+            list so the runner can still persist a (metric-less) row.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        from flask import current_app
+
+        flask_app = current_app._get_current_object()  # type: ignore
+
+        def _worker(item: EvaluationDatasetInput) -> NodeRunResult:
+            with flask_app.app_context():
+                from extensions.ext_database import db as flask_db
+                from models.account import Account
+                from models.dataset import Dataset
+                from services.hit_testing_service import HitTestingService
+
+                dataset = flask_db.session.query(Dataset).filter_by(id=dataset_id).first()
+                if not dataset:
+                    raise ValueError(f"Dataset {dataset_id} not found")
+
+                account = flask_db.session.query(Account).filter_by(id=account_id).first()
+                if not account:
+                    raise ValueError(f"Account {account_id} not found")
+
+                query = str(item.inputs.get("query", ""))
+                response = HitTestingService.retrieve(
+                    dataset=dataset,
+                    query=query,
+                    account=account,
+                    retrieval_model=None,  # Use dataset's configured retrieval model
+                    external_retrieval_model={},
+                    limit=10,
+                )
+
+                records = response.get("records", [])
+                result_list = [
+                    {
+                        "content": r.get("segment", {}).get("content", "") or r.get("content", ""),
+                        "score": r.get("score"),
+                    }
+                    for r in records
+                    if r.get("segment", {}).get("content") or r.get("content")
+                ]
+
+                return NodeRunResult(
+                    inputs={"query": query},
+                    outputs={"result": result_list},
+                )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_worker, item) for item in input_list]
+            results: list[NodeRunResult] = []
+            for item, future in zip(input_list, futures):
+                try:
+                    results.append(future.result())
+                except Exception:
+                    logger.exception("Retrieval test failed for item %d (dataset=%s)", item.index, dataset_id)
+                    results.append(NodeRunResult(inputs={}, outputs={"result": []}))
+
+        return results
