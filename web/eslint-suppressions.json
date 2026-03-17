@@ -928,12 +928,6 @@
   "app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 2
     }
   },
   "app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
@@ -2918,11 +2912,6 @@
   "app/components/custom/custom-page/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/custom/custom-web-app-brand/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/datasets/chunk.tsx": {
@@ -7886,8 +7875,11 @@
     "no-restricted-imports": {
       "count": 1
     },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 4
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message.tsx": {
