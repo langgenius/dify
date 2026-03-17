@@ -226,9 +226,13 @@ class TestPassportService:
             mock_config.SECRET_KEY = "test-secret-key-for-testing"
             token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
 
-        # Mock redis_client
+        # Mock redis_client (via storage layer) and force storage backend to redis
         mock_redis = MagicMock()
-        with patch("libs.passport.redis_client", mock_redis):
+        import libs.session_revocation_storage as srs
+        srs._singleton = None
+        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
+             patch("libs.session_revocation_storage.redis_client", mock_redis):
+            s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(token)
 
         assert result is True
@@ -250,9 +254,12 @@ class TestPassportService:
             mock_config.SECRET_KEY = "test-secret-key-for-testing"
             token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
 
-        # Mock redis_client
         mock_redis = MagicMock()
-        with patch("libs.passport.redis_client", mock_redis):
+        import libs.session_revocation_storage as srs
+        srs._singleton = None
+        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
+             patch("libs.session_revocation_storage.redis_client", mock_redis):
+            s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(token)
 
         assert result is False
@@ -271,9 +278,13 @@ class TestPassportService:
         mock_redis = MagicMock()
         mock_redis.exists.return_value = True
 
-        with patch("libs.passport.redis_client", mock_redis):
-            with pytest.raises(Unauthorized) as exc_info:
-                passport_service.verify(token)
+        with patch("libs.session_revocation_storage.redis_client", mock_redis):
+            import libs.session_revocation_storage as srs
+            srs._singleton = None
+            with patch("libs.session_revocation_storage.dify_config") as s_cfg:
+                s_cfg.SESSION_REVOCATION_STORAGE = "redis"
+                with pytest.raises(Unauthorized) as exc_info:
+                    passport_service.verify(token)
 
         assert "revoked" in str(exc_info.value).lower()
         # Verify that jti was used to check blacklist
@@ -292,8 +303,12 @@ class TestPassportService:
         mock_redis = MagicMock()
         mock_redis.exists.return_value = False
 
-        with patch("libs.passport.redis_client", mock_redis):
-            decoded = passport_service.verify(token)
+        with patch("libs.session_revocation_storage.redis_client", mock_redis):
+            import libs.session_revocation_storage as srs
+            srs._singleton = None
+            with patch("libs.session_revocation_storage.dify_config") as s_cfg:
+                s_cfg.SESSION_REVOCATION_STORAGE = "redis"
+                decoded = passport_service.verify(token)
 
         assert decoded["user_id"] == payload["user_id"]
         assert "jti" in decoded
@@ -303,9 +318,12 @@ class TestPassportService:
         """Test that revoke handles invalid tokens gracefully"""
         invalid_token = "invalid.token.here"
 
-        # Mock redis_client
         mock_redis = MagicMock()
-        with patch("libs.passport.redis_client", mock_redis):
+        import libs.session_revocation_storage as srs
+        srs._singleton = None
+        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
+             patch("libs.session_revocation_storage.redis_client", mock_redis):
+            s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(invalid_token)
 
         assert result is False

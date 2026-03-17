@@ -1,15 +1,15 @@
 import time
 import uuid
+from datetime import UTC, datetime
 
 import jwt
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from extensions.ext_redis import redis_client
+from libs.session_revocation_storage import get_session_revocation_storage
 
 
 def _get_blacklist_key(jti: str) -> str:
-    """Generate Redis key for token blacklist using JWT ID."""
     return f"passport:blacklist:jti:{jti}"
 
 
@@ -31,22 +31,13 @@ class PassportService:
 
     @classmethod
     def revoke(cls, token: str) -> bool:
-        """Add token to blacklist until its expiration using JWT ID (jti).
-
-        Returns False if the token is invalid, missing exp/jti, or already expired.
-        """
         try:
             payload = jwt.decode(token, options={"verify_signature": False})
         except jwt.PyJWTError:
             # Invalid/garbled token: treat as non-revocable
             return False
 
-        jti = payload.get("jti")
-        if not jti:
-            # Fallback for tokens without jti (old format)
-            # Use the full token as key for backward compatibility
-            jti = token
-
+        token_id = payload.get("jti") or token
         exp = payload.get("exp")
         if not exp:
             return False
@@ -55,15 +46,16 @@ class PassportService:
         if ttl <= 0:
             return False
 
-        redis_client.setex(cls._get_blacklist_key(jti), ttl, "1")
+        storage = get_session_revocation_storage()
+        storage.revoke(token_id, datetime.fromtimestamp(exp, tz=UTC))
         return True
 
     def verify(self, token):
-        """Verify a JWT and then enforce revocation via Redis blacklist.
+        """Verify a JWT and then enforce revocation via SessionRevocationStorage.
 
         The signature and standard claims are verified first to avoid any processing
-        of untrusted data (including Redis lookups) for invalid tokens. Only after a
-        successful verification do we consult the blacklist using the token's `jti`.
+        of untrusted data for invalid tokens. After successful verification we consult
+        the configured revocation storage using the token's `jti` when present.
         """
         # 1) Verify signature/claims first
         try:
@@ -77,14 +69,10 @@ class PassportService:
         except jwt.PyJWTError:  # Catch-all for other JWT errors
             raise Unauthorized("Invalid token.")
 
-        # 2) Enforce revocation via blacklist using jti (if present)
-        jti = verified_payload.get("jti")
-        if jti:
-            if redis_client.exists(self._get_blacklist_key(jti)):
-                raise Unauthorized("Token has been revoked.")
-        else:
-            # Fallback for old tokens without jti
-            if redis_client.exists(self._get_blacklist_key(token)):
-                raise Unauthorized("Token has been revoked.")
+        # 2) Enforce revocation using storage (supports old tokens without jti)
+        storage = get_session_revocation_storage()
+        token_id = verified_payload.get("jti") or token
+        if storage.is_revoked(token_id):
+            raise Unauthorized("Token has been revoked.")
 
         return verified_payload
