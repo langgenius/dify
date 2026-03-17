@@ -1,11 +1,11 @@
 import type { ResultInputValue } from '../result-request'
 import type { ResultRunStateController } from './use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
-import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
+  AppSourceType,
   sendCompletionMessage,
   sendWorkflowMessage,
 } from '@/service/share'
@@ -117,6 +117,7 @@ export const useResultSender = ({
       const otherOptions = createWorkflowStreamHandlers({
         getCompletionRes: runState.getCompletionRes,
         getWorkflowProcessData: runState.getWorkflowProcessData,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
         isTimedOut: () => isTimeout,
         markEnded: () => {
           isEnd = true
