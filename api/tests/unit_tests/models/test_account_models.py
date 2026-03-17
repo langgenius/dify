@@ -622,28 +622,17 @@ class TestAccountGetByOpenId:
         mock_account = Account(name="Test User", email="test@example.com")
         mock_account.id = account_id
 
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where = MagicMock()
-        mock_where.one_or_none.return_value = mock_account_integrate
-        mock_query.where.return_value = mock_where
-        mock_db.session.query.return_value = mock_query
+        # Mock db.session.scalar to return AccountIntegrate first, then Account
+        call_count = 0
 
-        # Mock the second query for account
-        mock_account_query = MagicMock()
-        mock_account_where = MagicMock()
-        mock_account_where.one_or_none.return_value = mock_account
-        mock_account_query.where.return_value = mock_account_where
+        def scalar_side_effect(stmt):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return mock_account_integrate
+            return mock_account
 
-        # Setup query to return different results based on model
-        def query_side_effect(model):
-            if model.__name__ == "AccountIntegrate":
-                return mock_query
-            elif model.__name__ == "Account":
-                return mock_account_query
-            return MagicMock()
-
-        mock_db.session.query.side_effect = query_side_effect
+        mock_db.session.scalar.side_effect = scalar_side_effect
 
         # Act
         result = Account.get_by_openid(provider, open_id)
@@ -658,12 +647,8 @@ class TestAccountGetByOpenId:
         provider = "github"
         open_id = "github_user_456"
 
-        # Mock the query chain to return None
-        mock_query = MagicMock()
-        mock_where = MagicMock()
-        mock_where.one_or_none.return_value = None
-        mock_query.where.return_value = mock_where
-        mock_db.session.query.return_value = mock_query
+        # Mock db.session.scalar to return None (no account integrate found)
+        mock_db.session.scalar.return_value = None
 
         # Act
         result = Account.get_by_openid(provider, open_id)

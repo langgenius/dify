@@ -6,7 +6,7 @@ from functools import cached_property
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, text
+from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
@@ -96,7 +96,7 @@ class Provider(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.query(ProviderCredential).where(ProviderCredential.id == self.credential_id).first()
+            return db.session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
 
     @property
     def credential_name(self):
@@ -159,10 +159,8 @@ class ProviderModel(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return (
-                db.session.query(ProviderModelCredential)
-                .where(ProviderModelCredential.id == self.credential_id)
-                .first()
+            return db.session.scalar(
+                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
             )
 
     @property
