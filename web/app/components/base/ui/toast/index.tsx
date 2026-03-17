@@ -11,20 +11,22 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type ToastData = Record<string, never>
-type ToastType = 'success' | 'error' | 'warning' | 'info'
+export type ToastType = 'success' | 'error' | 'warning' | 'info'
 
-type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+export type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+export type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
 }
 
-type ToastPromiseOptions<Value> = {
+type ToastPromiseResultOption<Value> = string | ToastUpdateOptions | ((value: Value) => string | ToastUpdateOptions)
+
+export type ToastPromiseOptions<Value> = {
   loading: string | ToastUpdateOptions
-  success: string | ToastUpdateOptions | ((result: Value) => string | ToastUpdateOptions)
-  error: string | ToastUpdateOptions | ((error: unknown) => string | ToastUpdateOptions)
+  success: ToastPromiseResultOption<Value>
+  error: ToastPromiseResultOption<unknown>
 }
 
 export type ToastHostProps = {
@@ -32,7 +34,37 @@ export type ToastHostProps = {
   limit?: number
 }
 
+const TOAST_ICON_CLASSNAMES: Record<ToastType, string> = {
+  success: 'i-ri-checkbox-circle-fill text-text-success',
+  error: 'i-ri-error-warning-fill text-text-destructive',
+  warning: 'i-ri-alert-fill text-text-warning-secondary',
+  info: 'i-ri-information-2-fill text-text-accent',
+}
+
+const TOAST_TONE_GRADIENT_CLASSNAMES: Record<ToastType, string> = {
+  success: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
+  error: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
+  warning: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
+  info: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+}
+
 const toastManager = BaseToast.createToastManager<ToastData>()
+
+function createToastPromiseResultOption<Value>(
+  option: ToastPromiseResultOption<Value>,
+): ToastManagerPromiseOptions<Value, ToastData>['success'] {
+  if (typeof option !== 'function')
+    return option
+
+  return value => option(value)
+}
+
+function getToastType(type?: string): ToastType | undefined {
+  if (type && type in TOAST_ICON_CLASSNAMES)
+    return type as ToastType
+
+  return undefined
+}
 
 export const toast = {
   add(options: ToastAddOptions) {
@@ -45,43 +77,23 @@ export const toast = {
     toastManager.update(toastId, options)
   },
   promise<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-    return toastManager.promise(promiseValue, options as ToastManagerPromiseOptions<Value, ToastData>)
+    return toastManager.promise(promiseValue, {
+      loading: options.loading,
+      success: createToastPromiseResultOption(options.success),
+      error: createToastPromiseResultOption(options.error),
+    })
   },
 }
 
-function ToastIcon({ type }: { type?: string }) {
-  if (type === 'success') {
-    return <span aria-hidden="true" className="i-ri-checkbox-circle-fill h-5 w-5 text-text-success" />
-  }
-
-  if (type === 'error') {
-    return <span aria-hidden="true" className="i-ri-error-warning-fill h-5 w-5 text-text-destructive" />
-  }
-
-  if (type === 'warning') {
-    return <span aria-hidden="true" className="i-ri-alert-fill h-5 w-5 text-text-warning-secondary" />
-  }
-
-  if (type === 'info') {
-    return <span aria-hidden="true" className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
-  }
-
-  return null
+function ToastIcon({ type }: { type?: ToastType }) {
+  return type
+    ? <span aria-hidden="true" className={cn('h-5 w-5', TOAST_ICON_CLASSNAMES[type])} />
+    : null
 }
 
-function getToneGradientClasses(type?: string) {
-  if (type === 'success')
-    return 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent'
-
-  if (type === 'error')
-    return 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent'
-
-  if (type === 'warning')
-    return 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent'
-
-  if (type === 'info')
-    return 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent'
-
+function getToneGradientClasses(type?: ToastType) {
+  if (type)
+    return TOAST_TONE_GRADIENT_CLASSNAMES[type]
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
@@ -93,12 +105,13 @@ function ToastCard({
   showHoverBridge?: boolean
 }) {
   const { t } = useTranslation('common')
+  const toastType = getToastType(toastItem.type)
 
   return (
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top-right cursor-default select-none outline-none',
+        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top-right cursor-default select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         '[height:var(--toast-current-height)] [z-index:calc(100-var(--toast-index))]',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
@@ -110,11 +123,11 @@ function ToastCard({
       <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div
           aria-hidden="true"
-          className={cn('absolute inset-[-1px] bg-gradient-to-r opacity-40', getToneGradientClasses(toastItem.type))}
+          className={cn('absolute inset-[-1px] bg-gradient-to-r opacity-40', getToneGradientClasses(toastType))}
         />
         <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-[behind]:opacity-0 data-[expanded]:opacity-100">
           <div className="flex shrink-0 items-center justify-center p-0.5">
-            <ToastIcon type={toastItem.type} />
+            <ToastIcon type={toastType} />
           </div>
           <div className="min-w-0 flex-1 p-1">
             <div className="flex w-full items-center gap-1">
