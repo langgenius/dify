@@ -2,7 +2,7 @@ import sys
 from collections.abc import Mapping
 from typing import Any, Final, Literal
 
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, with_config
+from pydantic import BaseModel, Field, field_validator, with_config
 
 if sys.version_info >= (3, 12):
     from typing import TypedDict
@@ -60,14 +60,18 @@ class GraphInitParams(BaseModel):
 
     @field_validator("graph_config", mode="before")
     @classmethod
-    def _validate_graph_config(cls, value: Mapping[str, Any]) -> GraphConfigDict:
-        return GraphConfigDictAdapter.validate_python(value)
+    def _validate_graph_config(cls, value: Any) -> Any:
+        # Coerce generic mappings (e.g., MappingProxyType) to a plain dict and
+        # let the field's TypedDict schema perform validation once.
+        if isinstance(value, Mapping):
+            return dict(value)
+        return value
 
     @field_validator("run_context", mode="before")
     @classmethod
-    def _validate_run_context(cls, value: Mapping[str, Any]) -> RunContextDict:
-        return RunContextDictAdapter.validate_python(value)
-
-
-GraphConfigDictAdapter = TypeAdapter(GraphConfigDict)
-RunContextDictAdapter = TypeAdapter(RunContextDict)
+    def _validate_run_context(cls, value: Any) -> Any:
+        # Coerce generic mappings (e.g., MappingProxyType) to a plain dict and
+        # let the field's TypedDict schema perform validation once.
+        if isinstance(value, Mapping):
+            return dict(value)
+        return value
