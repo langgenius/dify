@@ -85,6 +85,15 @@ const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     ],
     message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
   },
+  {
+    group: [
+      '**/base/toast',
+      '**/base/toast/index',
+      '**/base/toast/context',
+      '**/base/toast/context/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/toast instead. See issue #32811.',
+  },
 ]
 
 export default antfu(
