@@ -64,6 +64,8 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
   const isDisabled = status !== 'active' && status !== 'empty'
   const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status]
   const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status]
+  const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common', defaultValue: statusI18nKey }) : null
+  const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common', defaultValue: tooltipI18nKey }) : null
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = status === 'active'
 
@@ -118,7 +120,7 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
         {isSelected && !readonly && !isActive && statusI18nKey && (
           <Tooltip>
             <TooltipTrigger
-              disabled={!tooltipI18nKey}
+              disabled={!tooltipLabel}
               render={(
                 <div
                   className={cn(
@@ -128,14 +130,14 @@ const ModelSelectorTrigger: FC<ModelSelectorTriggerProps> = ({
                 >
                   <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                   <span className="whitespace-nowrap text-text-warning system-xs-medium">
-                    {t(statusI18nKey as 'modelProvider.selector.creditsExhausted', { ns: 'common' })}
+                    {statusLabel}
                   </span>
                 </div>
               )}
             />
-            {tooltipI18nKey && (
+            {tooltipLabel && (
               <TooltipContent placement="top">
-                {t(tooltipI18nKey as 'modelProvider.selector.incompatibleTip', { ns: 'common' })}
+                {tooltipLabel}
               </TooltipContent>
             )}
           </Tooltip>

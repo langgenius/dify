@@ -35,14 +35,21 @@ export const deriveModelStatus = (
   if (!modelId || !providerName)
     return 'empty'
 
-  if (!currentModelProvider || !currentModel)
+  if (!currentModelProvider)
     return 'incompatible'
 
-  if (credentialState.priority === 'credits'
+  const isCreditsExhaustedWithoutApiKey = credentialState.supportsCredits
+    && credentialState.isCreditsExhausted
+    && !credentialState.hasCredentials
+  const isCreditsPriorityExhausted = credentialState.priority === 'credits'
     && credentialState.supportsCredits
-    && credentialState.isCreditsExhausted) {
+    && credentialState.isCreditsExhausted
+
+  if (isCreditsPriorityExhausted || isCreditsExhaustedWithoutApiKey)
     return 'credits-exhausted'
-  }
+
+  if (!currentModel)
+    return 'incompatible'
 
   if (credentialState.variant === 'api-unavailable')
     return 'api-key-unavailable'

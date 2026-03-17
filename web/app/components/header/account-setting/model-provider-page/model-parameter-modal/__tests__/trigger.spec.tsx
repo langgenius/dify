@@ -224,6 +224,27 @@ describe('Trigger', () => {
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })
 
+    it('should render credits exhausted badge when model is missing and AI credits are exhausted without api key', () => {
+      mockUseCredentialPanelState.mockReturnValue({
+        ...activeCredentialState,
+        variant: 'no-usage',
+        priority: 'apiKey',
+        hasCredentials: false,
+        isCreditsExhausted: true,
+        credentialName: undefined,
+      })
+
+      render(
+        <Trigger
+          currentProvider={currentProvider}
+          providerName="openai"
+          modelId="gpt-4"
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
+    })
+
     it('should render configure required badge when model status is no-configure', () => {
       render(
         <Trigger

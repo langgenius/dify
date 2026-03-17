@@ -60,6 +60,17 @@ describe('deriveTriggerStatus', () => {
     expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, undefined, baseCredentialState)).toBe('incompatible')
   })
 
+  it('returns credits-exhausted when currentModel is missing and AI credits are exhausted without api key', () => {
+    const state: CredentialPanelState = {
+      ...baseCredentialState,
+      priority: 'apiKey',
+      hasCredentials: false,
+      isCreditsExhausted: true,
+      credentialName: undefined,
+    }
+    expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, undefined, state)).toBe('credits-exhausted')
+  })
+
   it('returns configure-required when model status is no-configure', () => {
     const model = { ...mockModel, status: ModelStatusEnum.noConfigure } as ModelItem
     expect(deriveTriggerStatus('gpt-4', 'openai', mockProvider, model, baseCredentialState)).toBe('configure-required')

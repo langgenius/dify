@@ -42,6 +42,8 @@ const Trigger: FC<TriggerProps> = ({
   const status = deriveTriggerStatus(modelId, providerName, currentModelProvider, currentModel, credentialState)
   const badgeKey = TRIGGER_STATUS_BADGE_I18N[status]
   const tooltipKey = TRIGGER_STATUS_TOOLTIP_I18N[status]
+  const badgeLabel = badgeKey ? t(badgeKey, { ns: 'common', defaultValue: badgeKey }) : null
+  const tooltipLabel = tooltipKey ? t(tooltipKey, { ns: 'common', defaultValue: tooltipKey }) : null
   const isActive = status === 'active'
   const iconProvider = currentProvider || modelProviders.find(item => item.provider === providerName)
 
@@ -89,7 +91,7 @@ const Trigger: FC<TriggerProps> = ({
             : <div className="truncate text-[13px] font-normal text-components-input-text-filled">{modelId}</div>}
         </div>
         {badgeKey && (
-          tooltipKey
+          tooltipLabel
             ? (
                 <Tooltip>
                   <TooltipTrigger
@@ -98,14 +100,14 @@ const Trigger: FC<TriggerProps> = ({
                         <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                           <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                           <span className="whitespace-nowrap text-text-warning system-xs-medium">
-                            {t(badgeKey as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                            {badgeLabel}
                           </span>
                         </div>
                       </div>
                     )}
                   />
                   <TooltipContent placement="top">
-                    {t(tooltipKey as 'modelProvider.selector.incompatibleTip', { ns: 'common' })}
+                    {tooltipLabel}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -114,7 +116,7 @@ const Trigger: FC<TriggerProps> = ({
                   <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                     <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
                     <span className="whitespace-nowrap text-text-warning system-xs-medium">
-                      {t(badgeKey as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                      {badgeLabel}
                     </span>
                   </div>
                 </div>

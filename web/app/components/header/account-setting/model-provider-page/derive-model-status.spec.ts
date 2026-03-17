@@ -64,6 +64,22 @@ describe('deriveModelStatus', () => {
     ).toBe('incompatible')
   })
 
+  it('should return credits-exhausted when model is missing and AI credits are exhausted without api key', () => {
+    expect(
+      deriveModelStatus(
+        'text-embedding-3-large',
+        'openai',
+        createModelProvider(),
+        undefined,
+        createCredentialState({
+          priority: 'apiKey',
+          hasCredentials: false,
+          isCreditsExhausted: true,
+        }),
+      ),
+    ).toBe('credits-exhausted')
+  })
+
   it('should return configure-required when the model status is no-configure', () => {
     expect(
       deriveModelStatus('text-embedding-3-large', 'openai', createModelProvider(), createModelItem({ status: ModelStatusEnum.noConfigure }), createCredentialState()),
