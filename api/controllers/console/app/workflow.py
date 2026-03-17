@@ -7,7 +7,7 @@ from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import console_ns
@@ -46,7 +46,7 @@ from models import App
 from models.model import AppMode
 from models.workflow import MaskedSecretRestoreError, Workflow
 from services.app_generate_service import AppGenerateService
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -286,7 +286,10 @@ class DraftWorkflowApi(Resource):
         source_workflow = None
 
         if source_workflow_id := args.get("source_workflow_id"):
-            source_workflow = workflow_service.get_published_workflow_by_id(app_model, source_workflow_id)
+            try:
+                source_workflow = workflow_service.get_published_workflow_by_id(app_model, source_workflow_id)
+            except IsDraftWorkflowError as exc:
+                raise BadRequest(str(exc)) from exc
             if source_workflow is None:
                 raise NotFound("Workflow not found")
 
