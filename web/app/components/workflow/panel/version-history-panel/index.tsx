@@ -147,6 +147,7 @@ export const VersionHistoryPanel = ({
 
   const handleRestore = useCallback((item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
+    setCurrentVersion(item)
     handleRestoreFromPublishedWorkflow(item)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
@@ -169,7 +170,7 @@ export const VersionHistoryPanel = ({
         resetWorkflowVersionHistory()
       },
     })
-  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 

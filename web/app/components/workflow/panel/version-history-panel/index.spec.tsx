@@ -1,5 +1,6 @@
+import * as React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { WorkflowVersion } from '../../types'
+import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
@@ -109,11 +110,33 @@ vi.mock('./delete-confirm-modal', () => ({
 }))
 
 vi.mock('./restore-confirm-modal', () => ({
-  default: () => null,
+  default: ({ isOpen, versionInfo, onRestore }: any) => isOpen
+    ? <button onClick={() => onRestore(versionInfo)}>confirm restore</button>
+    : null,
 }))
 
 vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
   default: () => null,
+}))
+
+vi.mock('./version-history-item', () => ({
+  default: ({ item, onClick, handleClickMenuItem }: any) => {
+    React.useEffect(() => {
+      if (item.version === WorkflowVersion.Draft)
+        onClick(item)
+    }, [item, onClick])
+
+    return (
+      <div>
+        <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
+        {item.version !== WorkflowVersion.Draft && (
+          <button onClick={() => handleClickMenuItem(VersionHistoryContextMenuOptions.restore)}>
+            restore-{item.id}
+          </button>
+        )}
+      </div>
+    )
+  },
 }))
 
 describe('VersionHistoryPanel', () => {
@@ -154,5 +177,27 @@ describe('VersionHistoryPanel', () => {
       expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalled()
       expect(mockHandleLoadBackupDraft).not.toHaveBeenCalled()
     })
+  })
+
+  it('should set current version before confirming restore from context menu', async () => {
+    const { VersionHistoryPanel } = await import('./index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+      />,
+    )
+
+    vi.clearAllMocks()
+
+    fireEvent.click(screen.getByText('restore-published-version-id'))
+    fireEvent.click(screen.getByText('confirm restore'))
+
+    expect(mockSetCurrentVersion).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'published-version-id',
+    }))
+    expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'published-version-id',
+    }))
   })
 })

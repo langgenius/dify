@@ -172,6 +172,49 @@ def test_sync_draft_workflow_restore_uses_source_secret(app, monkeypatch: pytest
     ]
 
 
+def test_sync_draft_workflow_restore_returns_400_when_source_secret_missing(
+    app, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_workflow = SimpleNamespace(environment_variables=[])
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+    monkeypatch.setattr(
+        workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
+    )
+
+    service = SimpleNamespace(
+        get_published_workflow_by_id=lambda *_args, **_kwargs: source_workflow,
+        sync_draft_workflow=lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={
+            "graph": {},
+            "features": {},
+            "hash": "h",
+            "source_workflow_id": "published-workflow",
+            "environment_variables": [
+                {
+                    "id": "missing-secret",
+                    "name": "api_key",
+                    "value": encrypter.full_mask_token(),
+                    "value_type": "secret",
+                }
+            ],
+        },
+    ):
+        response, status = handler(api, app_model=SimpleNamespace(id="app", tenant_id="tenant-1"))
+
+    assert status == 400
+    assert response["message"] == "cannot resolve secret environment variable from source workflow, id=missing-secret"
+
+
 def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
 

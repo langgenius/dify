@@ -18,9 +18,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: mockWorkflowStoreGetState,
   }),
-  useStore: (selector: (state: { currentVersion: { id: string, version: string } }) => unknown) => selector({
-    currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
-  }),
 }))
 
 const mockGetNodesReadOnly = vi.fn()
@@ -81,6 +78,7 @@ describe('useNodesSyncDraft', () => {
       environmentVariables: [],
       syncWorkflowDraftHash: 'test-hash',
       ragPipelineVariables: [],
+      currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
       setSyncWorkflowDraftHash: vi.fn(),
       setDraftUpdatedAt: vi.fn(),
     })
@@ -152,6 +150,7 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
+        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
       })
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -296,6 +295,7 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
+        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
         setDraftUpdatedAt: mockSetDraftUpdatedAt,
       })
@@ -384,6 +384,7 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [{ key: 'API_KEY', value: 'secret' }],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
+        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })
@@ -407,6 +408,7 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [{ variable: 'input', type: 'text-input' }],
+        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })

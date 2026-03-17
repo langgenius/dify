@@ -6,7 +6,6 @@ import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
 import {
-  useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { WorkflowVersion } from '@/app/components/workflow/types'
@@ -18,7 +17,6 @@ import { usePipelineRefreshDraft } from '.'
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const currentVersion = useStore(s => s.currentVersion)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
@@ -36,6 +34,7 @@ export const useNodesSyncDraft = () => {
       environmentVariables,
       syncWorkflowDraftHash,
       ragPipelineVariables,
+      currentVersion,
     } = workflowStore.getState()
 
     if (pipelineId && !!nodes.length) {
@@ -74,7 +73,7 @@ export const useNodesSyncDraft = () => {
         },
       }
     }
-  }, [store, workflowStore, currentVersion])
+  }, [store, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly())

@@ -42,7 +42,7 @@ from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
-from models.workflow import Workflow
+from models.workflow import MaskedSecretRestoreError, Workflow
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -235,6 +235,8 @@ class DraftRagPipelineApi(Resource):
                 conversation_variables=conversation_variables,
                 rag_pipeline_variables=payload.rag_pipeline_variables or [],
             )
+        except MaskedSecretRestoreError as exc:
+            return {"message": str(exc)}, 400
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
 

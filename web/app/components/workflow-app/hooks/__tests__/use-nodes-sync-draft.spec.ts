@@ -16,12 +16,10 @@ vi.mock('@/app/components/workflow/store', () => ({
       syncWorkflowDraftHash: 'hash-123',
       environmentVariables: [],
       conversationVariables: [],
+      currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
       setSyncWorkflowDraftHash: vi.fn(),
       setDraftUpdatedAt: vi.fn(),
     }),
-  }),
-  useStore: (selector: (state: { currentVersion: { id: string, version: string } }) => unknown) => selector({
-    currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
   }),
 }))
 

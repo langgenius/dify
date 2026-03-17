@@ -44,7 +44,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import MaskedSecretRestoreError, Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
@@ -311,6 +311,8 @@ class DraftWorkflowApi(Resource):
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
             )
+        except MaskedSecretRestoreError as exc:
+            return {"message": str(exc)}, 400
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
 

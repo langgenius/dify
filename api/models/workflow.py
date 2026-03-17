@@ -116,6 +116,10 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
+class MaskedSecretRestoreError(ValueError):
+    """Raised when a restore request cannot resolve a masked secret value."""
+
+
 class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
@@ -549,6 +553,10 @@ class Workflow(Base):  # bug
                 variable_id = normalized_mapping.get("id")
                 if isinstance(variable_id, str) and variable_id in source_secret_values_by_id:
                     normalized_mapping["value"] = source_secret_values_by_id[variable_id]
+                elif source_workflow is not None:
+                    raise MaskedSecretRestoreError(
+                        f"cannot resolve secret environment variable from source workflow, id={variable_id}"
+                    )
                 else:
                     normalized_mapping["value"] = HIDDEN_VALUE
             normalized_mappings.append(normalized_mapping)
