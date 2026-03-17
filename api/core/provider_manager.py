@@ -196,6 +196,8 @@ class ProviderManager:
 
             if preferred_provider_type_record:
                 preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
+            elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
+                preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
             elif system_configuration.enabled:
