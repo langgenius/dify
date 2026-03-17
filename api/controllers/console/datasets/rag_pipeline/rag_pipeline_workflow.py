@@ -42,6 +42,7 @@ from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
+from models.workflow import Workflow
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -59,6 +60,7 @@ class DraftWorkflowSyncPayload(BaseModel):
     conversation_variables: list[dict[str, Any]] | None = None
     rag_pipeline_variables: list[dict[str, Any]] | None = None
     features: dict[str, Any] | None = None
+    source_workflow_id: str | None = None
 
 
 class NodeRunPayload(BaseModel):
@@ -196,6 +198,7 @@ class DraftRagPipelineApi(Resource):
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
                     "rag_pipeline_variables": data.get("rag_pipeline_variables"),
+                    "source_workflow_id": data.get("source_workflow_id"),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -203,9 +206,19 @@ class DraftRagPipelineApi(Resource):
             abort(415)
 
         payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
+        rag_pipeline_service = RagPipelineService()
+        source_workflow = None
+
+        if payload.source_workflow_id:
+            source_workflow = rag_pipeline_service.get_published_workflow_by_id(pipeline, payload.source_workflow_id)
+            if source_workflow is None:
+                raise NotFound("Workflow not found")
 
         try:
-            environment_variables_list = payload.environment_variables or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                payload.environment_variables or [],
+                source_workflow=source_workflow,
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
@@ -213,7 +226,6 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
                 graph=payload.graph,

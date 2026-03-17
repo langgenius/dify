@@ -226,6 +226,21 @@ class RagPipelineService:
 
         return workflow
 
+    def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+        """Fetch a published workflow snapshot by ID for restore operations."""
+        workflow = (
+            db.session.query(Workflow)
+            .where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.id == workflow_id,
+            )
+            .first()
+        )
+        if workflow and workflow.version == Workflow.VERSION_DRAFT:
+            return None
+        return workflow
+
     def get_all_published_workflow(
         self,
         *,

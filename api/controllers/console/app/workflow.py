@@ -97,6 +97,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     hash: str | None = None
     environment_variables: list[dict[str, Any]] = Field(default_factory=list)
     conversation_variables: list[dict[str, Any]] = Field(default_factory=list)
+    source_workflow_id: str | None = None
 
 
 class BaseWorkflowRunPayload(BaseModel):
@@ -282,9 +283,18 @@ class DraftWorkflowApi(Resource):
         args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         args = args_model.model_dump()
         workflow_service = WorkflowService()
+        source_workflow = None
+
+        if source_workflow_id := args.get("source_workflow_id"):
+            source_workflow = workflow_service.get_published_workflow_by_id(app_model, source_workflow_id)
+            if source_workflow is None:
+                raise NotFound("Workflow not found")
 
         try:
-            environment_variables_list = args.get("environment_variables") or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                args.get("environment_variables") or [],
+                source_workflow=source_workflow,
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]

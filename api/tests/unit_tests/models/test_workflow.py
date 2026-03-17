@@ -4,6 +4,7 @@ from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
+from core.helper import encrypter
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
 from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
@@ -142,6 +143,41 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_normalize_environment_variable_mappings_restores_source_secret():
+    source_workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="2024-01-01T00:00:00",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    secret_variable = SecretVariable.model_validate({"name": "secret", "value": "source-secret", "id": str(uuid4())})
+
+    with (
+        mock.patch("core.helper.encrypter.encrypt_token", side_effect=lambda tenant_id, token: token),
+        mock.patch("core.helper.encrypter.decrypt_token", side_effect=lambda tenant_id, token: token),
+    ):
+        source_workflow.environment_variables = [secret_variable]
+
+        normalized = Workflow.normalize_environment_variable_mappings(
+            [
+                {
+                    "id": secret_variable.id,
+                    "name": "secret",
+                    "value": encrypter.full_mask_token(),
+                    "value_type": "secret",
+                }
+            ],
+            source_workflow=source_workflow,
+        )
+
+    assert normalized[0]["value"] == "source-secret"
 
 
 class TestWorkflowNodeExecution:

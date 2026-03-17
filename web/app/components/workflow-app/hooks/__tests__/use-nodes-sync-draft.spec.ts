@@ -20,6 +20,9 @@ vi.mock('@/app/components/workflow/store', () => ({
       setDraftUpdatedAt: vi.fn(),
     }),
   }),
+  useStore: (selector: (state: { currentVersion: { id: string, version: string } }) => unknown) => selector({
+    currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
+  }),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -107,5 +110,19 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     await new Promise(r => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should include source_workflow_id when syncing a restored published version', async () => {
+    const { result } = renderHook(() => useNodesSyncDraft())
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({
+        source_workflow_id: 'published-workflow-1',
+      }),
+    }))
   })
 })

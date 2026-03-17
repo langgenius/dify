@@ -6,8 +6,10 @@ import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
 import {
+  useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
+import { WorkflowVersion } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
@@ -16,6 +18,7 @@ import { usePipelineRefreshDraft } from '.'
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const currentVersion = useStore(s => s.currentVersion)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
@@ -67,10 +70,11 @@ export const useNodesSyncDraft = () => {
           environment_variables: environmentVariables,
           rag_pipeline_variables: ragPipelineVariables,
           hash: syncWorkflowDraftHash,
+          source_workflow_id: currentVersion?.version !== WorkflowVersion.Draft ? currentVersion?.id : undefined,
         },
       }
     }
-  }, [store, workflowStore])
+  }, [store, workflowStore, currentVersion])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly())

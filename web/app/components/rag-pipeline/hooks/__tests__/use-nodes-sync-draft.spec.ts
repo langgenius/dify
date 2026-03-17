@@ -18,6 +18,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: mockWorkflowStoreGetState,
   }),
+  useStore: (selector: (state: { currentVersion: { id: string, version: string } }) => unknown) => selector({
+    currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
+  }),
 }))
 
 const mockGetNodesReadOnly = vi.fn()
@@ -419,6 +422,21 @@ describe('useNodesSyncDraft', () => {
 
       const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
+    })
+
+    it('should include source_workflow_id when restoring a published version', () => {
+      mockGetNodes.mockReturnValue([
+        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
+      ])
+
+      const { result } = renderHook(() => useNodesSyncDraft())
+
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
+      expect(sentParams.source_workflow_id).toBe('published-workflow-1')
     })
 
     it('should remove underscore-prefixed keys from edges', () => {

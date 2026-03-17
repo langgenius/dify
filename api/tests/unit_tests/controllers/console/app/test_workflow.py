@@ -9,8 +9,10 @@ from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from core.helper import encrypter
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
+from dify_graph.variables import SecretVariable
 
 
 def _unwrap(func):
@@ -106,6 +108,68 @@ def test_sync_draft_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> No
         response = handler(api, app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
+
+
+def test_sync_draft_workflow_restore_uses_source_secret(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="h",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
+    captured_env_mappings: list[dict] = []
+    source_secret = SecretVariable.model_validate(
+        {"id": "env-secret", "name": "api_key", "value": "restored-secret", "value_type": "secret"}
+    )
+    source_workflow = SimpleNamespace(environment_variables=[source_secret])
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+    monkeypatch.setattr(
+        workflow_module.variable_factory,
+        "build_environment_variable_from_mapping",
+        lambda obj: captured_env_mappings.append(obj) or obj,
+    )
+    monkeypatch.setattr(
+        workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
+    )
+
+    service = SimpleNamespace(
+        get_published_workflow_by_id=lambda *_args, **_kwargs: source_workflow,
+        sync_draft_workflow=lambda **_kwargs: workflow,
+    )
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={
+            "graph": {},
+            "features": {},
+            "hash": "h",
+            "source_workflow_id": "published-workflow",
+            "environment_variables": [
+                {
+                    "id": "env-secret",
+                    "name": "api_key",
+                    "value": encrypter.full_mask_token(),
+                    "value_type": "secret",
+                }
+            ],
+        },
+    ):
+        response = handler(api, app_model=SimpleNamespace(id="app", tenant_id="tenant-1"))
+
+    assert response["result"] == "success"
+    assert captured_env_mappings == [
+        {
+            "id": "env-secret",
+            "name": "api_key",
+            "value": "restored-secret",
+            "value_type": "secret",
+        }
+    ]
 
 
 def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch) -> None:

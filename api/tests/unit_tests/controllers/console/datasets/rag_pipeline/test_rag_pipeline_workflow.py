@@ -25,6 +25,8 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineWorkflowLastRunApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.helper import encrypter
+from dify_graph.variables import SecretVariable
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 
@@ -115,6 +117,82 @@ class TestDraftWorkflowApi:
         ):
             response, status = method(api, pipeline)
             assert status == 400
+
+    def test_sync_restore_uses_source_secret(self, app):
+        api = DraftRagPipelineApi()
+        method = unwrap(api.post)
+
+        pipeline = MagicMock()
+        user = MagicMock()
+        workflow = MagicMock(unique_hash="hash", updated_at=None, created_at=datetime(2024, 1, 1))
+        source_secret = SecretVariable.model_validate(
+            {"id": "env-secret", "name": "api_key", "value": "restored-secret", "value_type": "secret"}
+        )
+        source_workflow = MagicMock(environment_variables=[source_secret])
+        captured_env_mappings: list[dict] = []
+
+        service = MagicMock()
+        service.get_published_workflow_by_id.return_value = source_workflow
+        service.sync_draft_workflow.return_value = workflow
+
+        with (
+            app.test_request_context(
+                "/",
+                json={
+                    "graph": {},
+                    "features": {},
+                    "source_workflow_id": "published-workflow",
+                    "environment_variables": [
+                        {
+                            "id": "env-secret",
+                            "name": "api_key",
+                            "value": encrypter.full_mask_token(),
+                            "value_type": "secret",
+                        }
+                    ],
+                },
+            ),
+            patch.object(
+                type(console_ns),
+                "payload",
+                {
+                    "graph": {},
+                    "features": {},
+                    "source_workflow_id": "published-workflow",
+                    "environment_variables": [
+                        {
+                            "id": "env-secret",
+                            "name": "api_key",
+                            "value": encrypter.full_mask_token(),
+                            "value_type": "secret",
+                        }
+                    ],
+                },
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.current_account_with_tenant",
+                return_value=(user, "t"),
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.variable_factory.build_environment_variable_from_mapping",
+                side_effect=lambda obj: captured_env_mappings.append(obj) or obj,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            result = method(api, pipeline)
+
+        assert result["result"] == "success"
+        assert captured_env_mappings == [
+            {
+                "id": "env-secret",
+                "name": "api_key",
+                "value": "restored-secret",
+                "value_type": "secret",
+            }
+        ]
 
 
 class TestDraftRunNodes:

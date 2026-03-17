@@ -518,6 +518,43 @@ class Workflow(Base):  # bug
         )
         self._environment_variables = environment_variables_json
 
+    @staticmethod
+    def normalize_environment_variable_mappings(
+        mappings: Sequence[Mapping[str, Any]],
+        *,
+        source_workflow: "Workflow | None" = None,
+    ) -> list[dict[str, Any]]:
+        """Resolve masked secret placeholders before rebuilding workflow variables.
+
+        Version-history restore requests send secret environment variables back as masked
+        placeholders. When the selected published workflow is known, reuse that version's
+        decrypted secret value. Otherwise, downgrade the placeholder to `HIDDEN_VALUE`
+        so the draft setter preserves the existing stored secret instead of encrypting
+        the literal mask string.
+        """
+        source_secret_values_by_id = {
+            var.id: var.value
+            for var in (source_workflow.environment_variables if source_workflow else [])
+            if isinstance(var, SecretVariable)
+        }
+        masked_secret_value = encrypter.full_mask_token()
+        normalized_mappings: list[dict[str, Any]] = []
+
+        for mapping in mappings:
+            normalized_mapping = dict(mapping)
+            if normalized_mapping.get("value_type") == SegmentType.SECRET.value and normalized_mapping.get("value") in {
+                HIDDEN_VALUE,
+                masked_secret_value,
+            }:
+                variable_id = normalized_mapping.get("id")
+                if isinstance(variable_id, str) and variable_id in source_secret_values_by_id:
+                    normalized_mapping["value"] = source_secret_values_by_id[variable_id]
+                else:
+                    normalized_mapping["value"] = HIDDEN_VALUE
+            normalized_mappings.append(normalized_mapping)
+
+        return normalized_mappings
+
     def to_dict(self, *, include_secret: bool = False) -> WorkflowContentDict:
         environment_variables = list(self.environment_variables)
         environment_variables = [
