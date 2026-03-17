@@ -229,9 +229,12 @@ class TestPassportService:
         # Mock redis_client (via storage layer) and force storage backend to redis
         mock_redis = MagicMock()
         import libs.session_revocation_storage as srs
+
         srs._singleton = None
-        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
-             patch("libs.session_revocation_storage.redis_client", mock_redis):
+        with (
+            patch("libs.session_revocation_storage.dify_config") as s_cfg,
+            patch("libs.session_revocation_storage.redis_client", mock_redis),
+        ):
             s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(token)
 
@@ -256,9 +259,12 @@ class TestPassportService:
 
         mock_redis = MagicMock()
         import libs.session_revocation_storage as srs
+
         srs._singleton = None
-        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
-             patch("libs.session_revocation_storage.redis_client", mock_redis):
+        with (
+            patch("libs.session_revocation_storage.dify_config") as s_cfg,
+            patch("libs.session_revocation_storage.redis_client", mock_redis),
+        ):
             s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(token)
 
@@ -280,6 +286,7 @@ class TestPassportService:
 
         with patch("libs.session_revocation_storage.redis_client", mock_redis):
             import libs.session_revocation_storage as srs
+
             srs._singleton = None
             with patch("libs.session_revocation_storage.dify_config") as s_cfg:
                 s_cfg.SESSION_REVOCATION_STORAGE = "redis"
@@ -305,6 +312,7 @@ class TestPassportService:
 
         with patch("libs.session_revocation_storage.redis_client", mock_redis):
             import libs.session_revocation_storage as srs
+
             srs._singleton = None
             with patch("libs.session_revocation_storage.dify_config") as s_cfg:
                 s_cfg.SESSION_REVOCATION_STORAGE = "redis"
@@ -320,9 +328,12 @@ class TestPassportService:
 
         mock_redis = MagicMock()
         import libs.session_revocation_storage as srs
+
         srs._singleton = None
-        with patch("libs.session_revocation_storage.dify_config") as s_cfg, \
-             patch("libs.session_revocation_storage.redis_client", mock_redis):
+        with (
+            patch("libs.session_revocation_storage.dify_config") as s_cfg,
+            patch("libs.session_revocation_storage.redis_client", mock_redis),
+        ):
             s_cfg.SESSION_REVOCATION_STORAGE = "redis"
             result = passport_service.revoke(invalid_token)
 

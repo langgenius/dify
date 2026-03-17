@@ -47,4 +47,3 @@ class TestSessionRevocationStorage:
             cfg.SESSION_REVOCATION_STORAGE = "redis"
             inst = get_session_revocation_storage()
             assert isinstance(inst, RedisSessionRevocationStorage)
-

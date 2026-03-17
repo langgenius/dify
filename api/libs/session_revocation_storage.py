@@ -29,7 +29,6 @@ class NullSessionRevocationStorage(SessionRevocationStorage):
 
 
 class RedisSessionRevocationStorage(SessionRevocationStorage):
-
     def __init__(self, key_prefix: str = "passport:blacklist:jti:") -> None:
         self.key_prefix = key_prefix
 
