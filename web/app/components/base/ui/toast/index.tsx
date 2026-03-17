@@ -171,7 +171,7 @@ function ToastViewport() {
     >
       <div
         className={cn(
-          'pointer-events-none absolute right-4 top-4 w-[360px] max-w-[calc(100vw-2rem)] sm:right-8 sm:top-8',
+          'pointer-events-none absolute right-4 top-4 w-[360px] max-w-[calc(100vw-2rem)] sm:right-8',
         )}
       >
         {toasts.map((toastItem, index) => (
