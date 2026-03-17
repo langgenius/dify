@@ -1,10 +1,24 @@
-import * as React from 'react'
+import type { Shape } from '../../store'
+import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useEffect } from 'react'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockSetCurrentVersion = vi.fn()
+
+type MockVersionStoreState = Pick<Shape, 'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'>
+type MockRestoreConfirmModalProps = {
+  isOpen: boolean
+  versionInfo: VersionHistory
+  onRestore: (item: VersionHistory) => void
+}
+type MockVersionHistoryItemProps = {
+  item: VersionHistory
+  onClick: (item: VersionHistory) => void
+  handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+}
 
 vi.mock('@/context/app-context', () => ({
   useSelector: () => ({ id: 'test-user-id' }),
@@ -87,8 +101,8 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  useStore: (selector: (state: any) => any) => {
-    const state = {
+  useStore: <T,>(selector: (state: MockVersionStoreState) => T) => {
+    const state: MockVersionStoreState = {
       setShowWorkflowVersionHistoryPanel: vi.fn(),
       currentVersion: null,
       setCurrentVersion: mockSetCurrentVersion,
@@ -110,9 +124,18 @@ vi.mock('./delete-confirm-modal', () => ({
 }))
 
 vi.mock('./restore-confirm-modal', () => ({
-  default: ({ isOpen, versionInfo, onRestore }: any) => isOpen
-    ? <button onClick={() => onRestore(versionInfo)}>confirm restore</button>
-    : null,
+  default: (props: MockRestoreConfirmModalProps) => {
+    const MockRestoreConfirmModal = () => {
+      const { isOpen, versionInfo, onRestore } = props
+
+      if (!isOpen)
+        return null
+
+      return <button onClick={() => onRestore(versionInfo)}>confirm restore</button>
+    }
+
+    return <MockRestoreConfirmModal />
+  },
 }))
 
 vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
@@ -120,22 +143,28 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
 }))
 
 vi.mock('./version-history-item', () => ({
-  default: ({ item, onClick, handleClickMenuItem }: any) => {
-    React.useEffect(() => {
-      if (item.version === WorkflowVersion.Draft)
-        onClick(item)
-    }, [item, onClick])
+  default: (props: MockVersionHistoryItemProps) => {
+    const MockVersionHistoryItem = () => {
+      const { item, onClick, handleClickMenuItem } = props
 
-    return (
-      <div>
-        <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
-        {item.version !== WorkflowVersion.Draft && (
-          <button onClick={() => handleClickMenuItem(VersionHistoryContextMenuOptions.restore)}>
-            restore-{item.id}
-          </button>
-        )}
-      </div>
-    )
+      useEffect(() => {
+        if (item.version === WorkflowVersion.Draft)
+          onClick(item)
+      }, [item, onClick])
+
+      return (
+        <div>
+          <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
+          {item.version !== WorkflowVersion.Draft && (
+            <button onClick={() => handleClickMenuItem(VersionHistoryContextMenuOptions.restore)}>
+              {`restore-${item.id}`}
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    return <MockVersionHistoryItem />
   },
 }))
 
