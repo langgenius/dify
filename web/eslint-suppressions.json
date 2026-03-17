@@ -379,7 +379,7 @@
   },
   "app/components/app-sidebar/dataset-info/dropdown.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -515,6 +515,9 @@
     }
   },
   "app/components/app/annotation/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -565,6 +568,9 @@
     }
   },
   "app/components/app/app-access-control/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
@@ -587,7 +593,7 @@
   },
   "app/components/app/app-publisher/index.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 3
     },
     "ts/no-explicit-any": {
       "count": 5
@@ -2991,6 +2997,9 @@
     }
   },
   "app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
     }
@@ -3011,6 +3020,9 @@
     }
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     },
@@ -4137,6 +4149,11 @@
       "count": 1
     }
   },
+  "app/components/datasets/hit-testing/modify-retrieval-modal.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/datasets/list/dataset-card/components/dataset-card-footer.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4307,7 +4324,7 @@
   },
   "app/components/datasets/rename-modal/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/datasets/settings/form/components/basic-info-section.tsx": {
@@ -4460,7 +4477,7 @@
   },
   "app/components/explore/sidebar/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/explore/sidebar/no-apps/index.tsx": {
@@ -4541,6 +4558,11 @@
     }
   },
   "app/components/header/account-about/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/header/account-dropdown/compliance.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5876,6 +5898,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/plugin-page/use-reference-setting.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/plugins/provider-card.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -5952,7 +5979,7 @@
   },
   "app/components/plugins/update-plugin/from-market-place.tsx": {
     "no-restricted-imports": {
-      "count": 1
+      "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -6329,6 +6356,9 @@
     }
   },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
     },
@@ -6846,6 +6876,9 @@
     }
   },
   "app/components/workflow/header/header-in-restoring.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -9710,6 +9743,9 @@
     }
   },
   "app/init/InitPasswordPopup.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9889,6 +9925,9 @@
     }
   },
   "context/provider-context-provider.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
