@@ -41,8 +41,8 @@ describe('base/ui/toast', () => {
     expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).toBeInTheDocument()
   })
 
-  // Multiple viewport toasts should remain independent toast roots.
-  it('should render multiple viewport toasts without extra decoration nodes', async () => {
+  // Collapsed stacks should keep multiple toast roots mounted for smooth stack animation.
+  it('should keep multiple toast roots mounted in a collapsed stack', async () => {
     render(<ToastHost />)
 
     act(() => {
@@ -52,18 +52,19 @@ describe('base/ui/toast', () => {
     })
 
     expect(await screen.findByText('First toast')).toBeInTheDocument()
-    expect(document.body.querySelector('.bg-components-panel-bg-alt.opacity-80')).not.toBeInTheDocument()
 
     act(() => {
       toast.add({
         title: 'Second toast',
       })
+      toast.add({
+        title: 'Third toast',
+      })
     })
 
-    expect(await screen.findByText('Second toast')).toBeInTheDocument()
-    expect(screen.getAllByRole('dialog')).toHaveLength(2)
-    expect(document.body.querySelector('.bg-components-panel-bg-alt.opacity-80')).not.toBeInTheDocument()
-    expect(document.body.querySelectorAll('button[aria-label="common.toast.close"][aria-hidden="true"]')).toHaveLength(2)
+    expect(await screen.findByText('Third toast')).toBeInTheDocument()
+    expect(screen.getAllByRole('dialog')).toHaveLength(3)
+    expect(document.body.querySelectorAll('button[aria-label="common.toast.close"][aria-hidden="true"]')).toHaveLength(3)
 
     fireEvent.mouseEnter(screen.getByRole('region', { name: 'common.toast.notifications' }))
 

@@ -98,11 +98,13 @@ function ToastCard({
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top-right outline-none',
-        '[height:var(--toast-frontmost-height)] [z-index:calc(100-var(--toast-index))] data-[expanded]:[height:var(--toast-height)]',
-        'transition-[transform,opacity] duration-200 ease-out data-[limited]:pointer-events-none data-[ending-style]:opacity-0 data-[limited]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
-        'translate-y-[calc(var(--toast-index)*6px)] scale-[calc(1-var(--toast-index)*0.03)]',
-        'data-[expanded]:translate-y-[calc(var(--toast-offset-y)+var(--toast-index)*8px)] data-[expanded]:scale-100',
+        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top-right cursor-default select-none outline-none',
+        '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
+        '[height:var(--toast-current-height)] [z-index:calc(100-var(--toast-index))]',
+        '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
+        'translate-x-[var(--toast-swipe-movement-x)] translate-y-[calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height)))] scale-[var(--toast-scale)]',
+        'data-[expanded]:translate-x-[var(--toast-swipe-movement-x)] data-[expanded]:translate-y-[calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px))] data-[expanded]:scale-100 data-[expanded]:[height:var(--toast-height)]',
+        'data-[limited]:pointer-events-none data-[ending-style]:translate-y-[calc(var(--toast-swipe-movement-y)-150%)] data-[starting-style]:-translate-y-[150%] data-[ending-style]:opacity-0 data-[limited]:opacity-0 data-[starting-style]:opacity-0',
       )}
     >
       <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -110,7 +112,7 @@ function ToastCard({
           aria-hidden="true"
           className={cn('absolute inset-[-1px] bg-gradient-to-r opacity-40', getToneGradientClasses(toastItem.type))}
         />
-        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-150 data-[behind]:opacity-0 data-[expanded]:opacity-100">
+        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-[behind]:opacity-0 data-[expanded]:opacity-100">
           <div className="flex shrink-0 items-center justify-center p-0.5">
             <ToastIcon type={toastItem.type} />
           </div>
@@ -166,7 +168,7 @@ function ToastViewport() {
       aria-label={t('toast.notifications')}
       className={cn(
         // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
-        'pointer-events-none fixed inset-0 z-[1101] overflow-visible',
+        'group/toast-viewport pointer-events-none fixed inset-0 z-[1101] overflow-visible',
       )}
     >
       <div
