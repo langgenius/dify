@@ -213,7 +213,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: Mapping
+        inputs: Mapping[str, object]
 
     single_iteration_run: SingleIterationRunEntity | None = None
 
@@ -223,7 +223,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: Mapping
+        inputs: Mapping[str, object]
 
     single_loop_run: SingleLoopRunEntity | None = None
 
@@ -243,7 +243,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         """
 
         node_id: str
-        inputs: dict
+        inputs: Mapping[str, object]
 
     single_iteration_run: SingleIterationRunEntity | None = None
 
@@ -253,7 +253,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         """
 
         node_id: str
-        inputs: dict
+        inputs: Mapping[str, object]
 
     single_loop_run: SingleLoopRunEntity | None = None
 

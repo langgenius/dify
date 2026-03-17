@@ -1,13 +1,17 @@
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Protocol, TypeAlias
 
 from pydantic import ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
+from core.app.entities.app_invoke_entities import (
+    InvokeFrom,
+    UserFrom,
+    build_dify_run_context,
+)
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -36,7 +40,7 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
+from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired
 from dify_graph.graph import Graph
 from dify_graph.graph_engine.layers.base import GraphEngineLayer
@@ -75,6 +79,14 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
 
+GraphConfigObject: TypeAlias = dict[str, object]
+GraphConfigMapping: TypeAlias = Mapping[str, object]
+
+
+class SingleNodeRunEntity(Protocol):
+    node_id: str
+    inputs: Mapping[str, object]
+
 
 class WorkflowBasedAppRunner:
     def __init__(
@@ -98,7 +110,7 @@ class WorkflowBasedAppRunner:
 
     def _init_graph(
         self,
-        graph_config: Mapping[str, Any],
+        graph_config: GraphConfigMapping,
         graph_runtime_state: GraphRuntimeState,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
@@ -154,8 +166,8 @@ class WorkflowBasedAppRunner:
     def _prepare_single_node_execution(
         self,
         workflow: Workflow,
-        single_iteration_run: Any | None = None,
-        single_loop_run: Any | None = None,
+        single_iteration_run: SingleNodeRunEntity | None = None,
+        single_loop_run: SingleNodeRunEntity | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -208,11 +220,88 @@ class WorkflowBasedAppRunner:
         # This ensures all nodes in the graph reference the same GraphRuntimeState instance
         return graph, variable_pool, graph_runtime_state
 
+    @staticmethod
+    def _get_graph_items(graph_config: GraphConfigMapping) -> tuple[list[GraphConfigMapping], list[GraphConfigMapping]]:
+        nodes = graph_config.get("nodes")
+        edges = graph_config.get("edges")
+        if not isinstance(nodes, list):
+            raise ValueError("nodes in workflow graph must be a list")
+        if not isinstance(edges, list):
+            raise ValueError("edges in workflow graph must be a list")
+
+        validated_nodes: list[GraphConfigMapping] = []
+        for node in nodes:
+            if not isinstance(node, Mapping):
+                raise ValueError("nodes in workflow graph must be mappings")
+            validated_nodes.append(node)
+
+        validated_edges: list[GraphConfigMapping] = []
+        for edge in edges:
+            if not isinstance(edge, Mapping):
+                raise ValueError("edges in workflow graph must be mappings")
+            validated_edges.append(edge)
+
+        return validated_nodes, validated_edges
+
+    @staticmethod
+    def _extract_start_node_id(node_config: GraphConfigMapping | None) -> str | None:
+        if node_config is None:
+            return None
+        node_data = node_config.get("data")
+        if not isinstance(node_data, Mapping):
+            return None
+        start_node_id = node_data.get("start_node_id")
+        return start_node_id if isinstance(start_node_id, str) else None
+
+    @classmethod
+    def _build_single_node_graph_config(
+        cls,
+        *,
+        graph_config: GraphConfigMapping,
+        node_id: str,
+        node_type_filter_key: str,
+    ) -> tuple[GraphConfigObject, NodeConfigDict]:
+        node_configs, edge_configs = cls._get_graph_items(graph_config)
+        main_node_config = next((node for node in node_configs if node.get("id") == node_id), None)
+        start_node_id = cls._extract_start_node_id(main_node_config)
+
+        filtered_node_configs = [
+            dict(node)
+            for node in node_configs
+            if node.get("id") == node_id
+            or (isinstance(node_data := node.get("data"), Mapping) and node_data.get(node_type_filter_key) == node_id)
+            or (start_node_id and node.get("id") == start_node_id)
+        ]
+        if not filtered_node_configs:
+            raise ValueError(f"node id {node_id} not found in workflow graph")
+
+        filtered_node_ids = {
+            str(node_id_value) for node in filtered_node_configs if isinstance((node_id_value := node.get("id")), str)
+        }
+        filtered_edge_configs = [
+            dict(edge)
+            for edge in edge_configs
+            if (edge.get("source") is None or edge.get("source") in filtered_node_ids)
+            and (edge.get("target") is None or edge.get("target") in filtered_node_ids)
+        ]
+
+        target_node_config = next((node for node in filtered_node_configs if node.get("id") == node_id), None)
+        if target_node_config is None:
+            raise ValueError(f"node id {node_id} not found in workflow graph")
+
+        return (
+            {
+                "nodes": filtered_node_configs,
+                "edges": filtered_edge_configs,
+            },
+            NodeConfigDictAdapter.validate_python(target_node_config),
+        )
+
     def _get_graph_and_variable_pool_for_single_node_run(
         self,
         workflow: Workflow,
         node_id: str,
-        user_inputs: dict[str, Any],
+        user_inputs: Mapping[str, object],
         graph_runtime_state: GraphRuntimeState,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
@@ -236,41 +325,14 @@ class WorkflowBasedAppRunner:
         if not graph_config:
             raise ValueError("workflow graph not found")
 
-        graph_config = cast(dict[str, Any], graph_config)
-
         if "nodes" not in graph_config or "edges" not in graph_config:
             raise ValueError("nodes or edges not found in workflow graph")
 
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
-
-        # filter nodes only in the specified node type (iteration or loop)
-        main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
-        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
-        node_configs = [
-            node
-            for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id
-            or node.get("data", {}).get(node_type_filter_key, "") == node_id
-            or (start_node_id and node.get("id") == start_node_id)
-        ]
-
-        graph_config["nodes"] = node_configs
-
-        node_ids = [node.get("id") for node in node_configs]
-
-        # filter edges only in the specified node type
-        edge_configs = [
-            edge
-            for edge in graph_config.get("edges", [])
-            if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
-        ]
-
-        graph_config["edges"] = edge_configs
+        graph_config, target_node_config = self._build_single_node_graph_config(
+            graph_config=graph_config,
+            node_id=node_id,
+            node_type_filter_key=node_type_filter_key,
+        )
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
@@ -298,18 +360,6 @@ class WorkflowBasedAppRunner:
 
         if not graph:
             raise ValueError("graph not found in workflow")
-
-        # fetch node config from node id
-        target_node_config = None
-        for node in node_configs:
-            if node.get("id") == node_id:
-                target_node_config = node
-                break
-
-        if not target_node_config:
-            raise ValueError(f"{node_type_label} node id not found in workflow graph")
-
-        target_node_config = NodeConfigDictAdapter.validate_python(target_node_config)
 
         # Get node class
         node_type = target_node_config["data"].type

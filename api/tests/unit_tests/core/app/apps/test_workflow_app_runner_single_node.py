@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,8 +33,8 @@ def _make_graph_state():
     ],
 )
 def test_run_uses_single_node_execution_branch(
-    single_iteration_run: Any,
-    single_loop_run: Any,
+    single_iteration_run: WorkflowAppGenerateEntity.SingleIterationRunEntity | None,
+    single_loop_run: WorkflowAppGenerateEntity.SingleLoopRunEntity | None,
 ) -> None:
     app_config = MagicMock()
     app_config.app_id = "app"
@@ -130,10 +130,23 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
                     "break_conditions": [],
                     "logical_operator": "and",
                 },
+            },
+            {
+                "id": "other-node",
+                "data": {
+                    "type": "answer",
+                    "title": "Answer",
+                },
+            },
+        ],
+        "edges": [
+            {
+                "source": "other-node",
+                "target": "loop-node",
             }
         ],
-        "edges": [],
     }
+    original_graph_dict = deepcopy(workflow.graph_dict)
 
     _, _, graph_runtime_state = _make_graph_state()
     seen_configs: list[object] = []
@@ -143,13 +156,19 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
         seen_configs.append(value)
         return original_validate_python(value)
 
+    class FakeNodeClass:
+        @staticmethod
+        def extract_variable_selector_to_variable_mapping(**_kwargs):
+            return {}
+
     monkeypatch.setattr(NodeConfigDictAdapter, "validate_python", record_validate_python)
 
     with (
         patch("core.app.apps.workflow_app_runner.DifyNodeFactory"),
-        patch("core.app.apps.workflow_app_runner.Graph.init", return_value=MagicMock()),
+        patch("core.app.apps.workflow_app_runner.Graph.init", return_value=MagicMock()) as graph_init,
         patch("core.app.apps.workflow_app_runner.load_into_variable_pool"),
         patch("core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
+        patch("core.app.apps.workflow_app_runner.resolve_workflow_node_class", return_value=FakeNodeClass),
     ):
         runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
@@ -161,3 +180,8 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
         )
 
     assert seen_configs == [workflow.graph_dict["nodes"][0]]
+    assert workflow.graph_dict == original_graph_dict
+    graph_config = graph_init.call_args.kwargs["graph_config"]
+    assert graph_config is not workflow.graph_dict
+    assert graph_config["nodes"] == [workflow.graph_dict["nodes"][0]]
+    assert graph_config["edges"] == []

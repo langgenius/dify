@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -31,6 +31,13 @@ from factories import file_factory
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+SpecialValueScalar: TypeAlias = str | int | float | bool | None
+SpecialValue: TypeAlias = SpecialValueScalar | File | Mapping[str, "SpecialValue"] | list["SpecialValue"]
+SerializedSpecialValue: TypeAlias = (
+    SpecialValueScalar | dict[str, "SerializedSpecialValue"] | list["SerializedSpecialValue"]
+)
+SingleNodeGraphConfig: TypeAlias = dict[str, list[dict[str, object]]]
 
 
 class _WorkflowChildEngineBuilder:
@@ -276,10 +283,10 @@ class WorkflowEntry:
     @staticmethod
     def _create_single_node_graph(
         node_id: str,
-        node_data: dict[str, Any],
+        node_data: Mapping[str, object],
         node_width: int = 114,
         node_height: int = 514,
-    ) -> dict[str, Any]:
+    ) -> SingleNodeGraphConfig:
         """
         Create a minimal graph structure for testing a single node in isolation.
 
@@ -289,14 +296,14 @@ class WorkflowEntry:
         :param node_height: height for UI layout (default: 100)
         :return: graph dictionary with start node and target node
         """
-        node_config = {
+        node_config: dict[str, object] = {
             "id": node_id,
             "width": node_width,
             "height": node_height,
             "type": "custom",
-            "data": node_data,
+            "data": dict(node_data),
         }
-        start_node_config = {
+        start_node_config: dict[str, object] = {
             "id": "start",
             "width": node_width,
             "height": node_height,
@@ -321,7 +328,12 @@ class WorkflowEntry:
 
     @classmethod
     def run_free_node(
-        cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
+        cls,
+        node_data: Mapping[str, object],
+        node_id: str,
+        tenant_id: str,
+        user_id: str,
+        user_inputs: Mapping[str, object],
     ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Run free node
@@ -339,6 +351,8 @@ class WorkflowEntry:
         graph_dict = cls._create_single_node_graph(node_id, node_data)
 
         node_type = node_data.get("type", "")
+        if not isinstance(node_type, str):
+            raise ValueError("Node type must be a string")
         if node_type not in {BuiltinNodeTypes.PARAMETER_EXTRACTOR, BuiltinNodeTypes.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
@@ -369,7 +383,7 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
+        node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": dict(node_data)})
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -405,30 +419,34 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Mapping[str, SpecialValue] | None) -> dict[str, SerializedSpecialValue] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain
         # data integrity and type information.
         result = WorkflowEntry._handle_special_values(value)
-        return result if isinstance(result, Mapping) or result is None else dict(result)
+        if result is None:
+            return None
+        if isinstance(result, dict):
+            return result
+        raise TypeError("handle_special_values expects a mapping input")
 
     @staticmethod
-    def _handle_special_values(value: Any):
+    def _handle_special_values(value: SpecialValue) -> SerializedSpecialValue:
         if value is None:
             return value
-        if isinstance(value, dict):
-            res = {}
+        if isinstance(value, Mapping):
+            res: dict[str, SerializedSpecialValue] = {}
             for k, v in value.items():
                 res[k] = WorkflowEntry._handle_special_values(v)
             return res
         if isinstance(value, list):
-            res_list = []
+            res_list: list[SerializedSpecialValue] = []
             for item in value:
                 res_list.append(WorkflowEntry._handle_special_values(item))
             return res_list
         if isinstance(value, File):
-            return value.to_dict()
+            return dict(value.to_dict())
         return value
 
     @classmethod
