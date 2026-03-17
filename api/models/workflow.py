@@ -22,13 +22,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from typing_extensions import deprecated
 
+from core.trigger.constants import TRIGGER_INFO_METADATA_KEY, TRIGGER_PLUGIN_NODE_TYPE
 from dify_graph.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
 from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from dify_graph.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from dify_graph.enums import NodeType, WorkflowExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, NodeType, WorkflowExecutionStatus
 from dify_graph.file.constants import maybe_file_object
 from dify_graph.file.models import File
 from dify_graph.variables import utils as variable_utils
@@ -53,7 +54,7 @@ from libs import helper
 from .account import Account
 from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
-from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
+from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ class Workflow(Base):  # bug
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False)
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
@@ -188,7 +189,7 @@ class Workflow(Base):  # bug
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
         workflow.app_id = app_id
-        workflow.type = type
+        workflow.type = WorkflowType(type)
         workflow.version = version
         workflow.graph = graph
         workflow.features = features
@@ -233,8 +234,11 @@ class Workflow(Base):  # bug
 
     def get_node_config_by_id(self, node_id: str) -> NodeConfigDict:
         """Extract a node configuration from the workflow graph by node ID.
-        A node configuration is a dictionary containing the node's properties, including
-        the node's id, title, and its data as a dict.
+
+        A node configuration includes the node id and a typed `BaseNodeData` for `data`.
+        `BaseNodeData` keeps a dict-like `get`/`__getitem__` compatibility layer backed by
+        model fields plus Pydantic extra storage for legacy consumers, but callers should
+        prefer attribute access.
         """
         workflow_graph = self.graph_dict
 
@@ -252,12 +256,9 @@ class Workflow(Base):  # bug
         return NodeConfigDictAdapter.validate_python(node_config)
 
     @staticmethod
-    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+    def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
         """Extract type of a node from the node configuration returned by `get_node_config_by_id`."""
-        node_config_data = node_config.get("data", {})
-        # Get node class
-        node_type = NodeType(node_config_data.get("type"))
-        return node_type
+        return node_config["data"].type
 
     @staticmethod
     def get_enclosing_node_type_and_id(
@@ -269,12 +270,12 @@ class Workflow(Base):  # bug
             loop_id = node_config.get("loop_id")
             if loop_id is None:
                 raise _InvalidGraphDefinitionError("invalid graph")
-            return NodeType.LOOP, loop_id
+            return BuiltinNodeTypes.LOOP, loop_id
         elif in_iteration:
             iteration_id = node_config.get("iteration_id")
             if iteration_id is None:
                 raise _InvalidGraphDefinitionError("invalid graph")
-            return NodeType.ITERATION, iteration_id
+            return BuiltinNodeTypes.ITERATION, iteration_id
         else:
             return None
 
@@ -353,9 +354,7 @@ class Workflow(Base):  # bug
 
         if specific_node_type:
             yield from (
-                (node["id"], node["data"])
-                for node in graph_dict["nodes"]
-                if node["data"]["type"] == specific_node_type.value
+                (node["id"], node["data"]) for node in graph_dict["nodes"] if node["data"]["type"] == specific_node_type
             )
         else:
             yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
@@ -608,8 +607,8 @@ class WorkflowRun(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    type: Mapped[str] = mapped_column(String(255))
-    triggered_from: Mapped[str] = mapped_column(String(255))
+    type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255))
+    triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(EnumText(WorkflowRunTriggeredFrom, length=255))
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(LongText)
     inputs: Mapped[str | None] = mapped_column(LongText)
@@ -830,7 +829,9 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    triggered_from: Mapped[str] = mapped_column(String(255))
+    triggered_from: Mapped[WorkflowNodeExecutionTriggeredFrom] = mapped_column(
+        EnumText(WorkflowNodeExecutionTriggeredFrom, length=255)
+    )
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     index: Mapped[int] = mapped_column(sa.Integer)
     predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
@@ -846,7 +847,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
     execution_metadata: Mapped[str | None] = mapped_column(LongText)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
-    created_by_role: Mapped[str] = mapped_column(String(255))
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255))
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
@@ -921,18 +922,18 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         extras: dict[str, Any] = {}
         execution_metadata = self.execution_metadata_dict
         if execution_metadata:
-            if self.node_type == NodeType.TOOL and "tool_info" in execution_metadata:
+            if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
                 tool_info: dict[str, Any] = execution_metadata["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in execution_metadata:
+            elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
                 datasource_info = execution_metadata["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
-            elif self.node_type == NodeType.TRIGGER_PLUGIN and "trigger_info" in execution_metadata:
-                trigger_info = execution_metadata["trigger_info"] or {}
+            elif self.node_type == TRIGGER_PLUGIN_NODE_TYPE and TRIGGER_INFO_METADATA_KEY in execution_metadata:
+                trigger_info = execution_metadata[TRIGGER_INFO_METADATA_KEY] or {}
                 provider_id = trigger_info.get("provider_id")
                 if provider_id:
                     extras["icon"] = TriggerManager.get_trigger_plugin_icon(
@@ -1130,7 +1131,7 @@ class WorkflowAppLog(TypeBase):
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -1204,7 +1205,7 @@ class WorkflowArchiveLog(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     log_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -1213,7 +1214,9 @@ class WorkflowArchiveLog(TypeBase):
 
     run_version: Mapped[str] = mapped_column(String(255), nullable=False)
     run_status: Mapped[str] = mapped_column(String(255), nullable=False)
-    run_triggered_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_triggered_from: Mapped[WorkflowRunTriggeredFrom] = mapped_column(
+        EnumText(WorkflowRunTriggeredFrom, length=255), nullable=False
+    )
     run_error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     run_elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     run_total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
@@ -1283,16 +1286,17 @@ class WorkflowDraftVariable(Base):
     """
 
     @staticmethod
-    def unique_app_id_node_id_name() -> list[str]:
+    def unique_app_id_user_id_node_id_name() -> list[str]:
         return [
             "app_id",
+            "user_id",
             "node_id",
             "name",
         ]
 
     __tablename__ = "workflow_draft_variables"
     __table_args__ = (
-        UniqueConstraint(*unique_app_id_node_id_name()),
+        UniqueConstraint(*unique_app_id_user_id_node_id_name()),
         Index("workflow_draft_variable_file_id_idx", "file_id"),
     )
     # Required for instance variable annotation.
@@ -1318,6 +1322,11 @@ class WorkflowDraftVariable(Base):
 
     # "`app_id` maps to the `id` field in the `model.App` model."
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Owner of this draft variable.
+    #
+    # This field is nullable during migration and will be migrated to NOT NULL
+    # in a follow-up release.
+    user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     # `last_edited_at` records when the value of a given draft variable
     # is edited.
@@ -1570,6 +1579,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None,
         node_id: str,
         name: str,
         value: Segment,
@@ -1583,6 +1593,7 @@ class WorkflowDraftVariable(Base):
         variable.updated_at = naive_utc_now()
         variable.description = description
         variable.app_id = app_id
+        variable.user_id = user_id
         variable.node_id = node_id
         variable.name = name
         variable.set_value(value)
@@ -1596,12 +1607,14 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         name: str,
         value: Segment,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
             name=name,
             value=value,
@@ -1616,6 +1629,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         name: str,
         value: Segment,
         node_execution_id: str,
@@ -1623,6 +1637,7 @@ class WorkflowDraftVariable(Base):
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=SYSTEM_VARIABLE_NODE_ID,
             name=name,
             node_execution_id=node_execution_id,
@@ -1636,6 +1651,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
+        user_id: str | None = None,
         node_id: str,
         name: str,
         value: Segment,
@@ -1646,6 +1662,7 @@ class WorkflowDraftVariable(Base):
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
+            user_id=user_id,
             node_id=node_id,
             name=name,
             node_execution_id=node_execution_id,

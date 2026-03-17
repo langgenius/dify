@@ -263,6 +263,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
         VectorType.IRIS,
+        VectorType.HOLOGRES,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
@@ -807,7 +808,7 @@ class DatasetApiKeyApi(Resource):
             console_ns.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
+                custom="max_keys_exceeded",
             )
 
         key = ApiToken.generate_api_key(self.token_prefix, 24)

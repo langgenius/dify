@@ -27,8 +27,8 @@ jobs:
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           filters: |
@@ -39,6 +39,7 @@ jobs:
             web:
               - 'web/**'
               - '.github/workflows/web-tests.yml'
+              - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'docker/**'
@@ -61,6 +62,10 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/web-tests.yml
+    with:
+      base_sha: ${{ github.event.before || github.event.pull_request.base.sha }}
+      diff_range_mode: ${{ github.event.before && 'exact' || 'merge-base' }}
+      head_sha: ${{ github.event.after || github.event.pull_request.head.sha || github.sha }}
 
   style-check:
     name: Style Check

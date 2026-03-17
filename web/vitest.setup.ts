@@ -67,10 +67,11 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   globalThis.IntersectionObserver = class {
     readonly root: Element | Document | null = null
     readonly rootMargin: string = ''
+    readonly scrollMargin: string = ''
     readonly thresholds: ReadonlyArray<number> = []
     constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
-    observe() { /* noop */ }
-    unobserve() { /* noop */ }
+    observe(_target: Element) { /* noop */ }
+    unobserve(_target: Element) { /* noop */ }
     disconnect() { /* noop */ }
     takeRecords(): IntersectionObserverEntry[] { return [] }
   }
@@ -98,9 +99,6 @@ afterEach(async () => {
     cleanup()
   })
 })
-
-// mock next/image to avoid width/height requirements for data URLs
-vi.mock('next/image')
 
 // mock foxact/use-clipboard - not available in test environment
 vi.mock('foxact/use-clipboard', () => ({

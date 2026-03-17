@@ -2,6 +2,14 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import mermaid from 'mermaid'
 import Flowchart from '../index'
 
+const HAND_DRAWN_RE = /handDrawn/i
+const HAND_DRAWN_EXACT_RE = /handDrawn/
+const CLASSIC_RE = /classic/i
+const SWITCH_LIGHT_RE = /switchLight$/
+const SWITCH_DARK_RE = /switchDark$/
+const RENDERING_FAILED_RE = /Rendering failed/i
+const UNKNOWN_ERROR_RE = /Unknown error\. Please check the console\./i
+
 vi.mock('mermaid', () => ({
   default: {
     initialize: vi.fn(),
@@ -101,7 +109,7 @@ describe('Mermaid Flowchart Component', () => {
 
       await waitFor(() => screen.getByText('test-svg'), { timeout: 3000 })
 
-      const handDrawnBtn = screen.getByText(/handDrawn/i)
+      const handDrawnBtn = screen.getByText(HAND_DRAWN_RE)
       await act(async () => {
         fireEvent.click(handDrawnBtn)
       })
@@ -110,7 +118,7 @@ describe('Mermaid Flowchart Component', () => {
         expect(screen.getByText('test-svg-api')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      const classicBtn = screen.getByText(/classic/i)
+      const classicBtn = screen.getByText(CLASSIC_RE)
       await act(async () => {
         fireEvent.click(classicBtn)
       })
@@ -148,13 +156,13 @@ describe('Mermaid Flowchart Component', () => {
       const initialApiRenderCalls = vi.mocked(mermaid.mermaidAPI.render).mock.calls.length
 
       await act(async () => {
-        fireEvent.click(screen.getByText(/classic/i))
+        fireEvent.click(screen.getByText(CLASSIC_RE))
       })
       expect(vi.mocked(mermaid.render).mock.calls.length).toBe(initialRenderCalls)
       expect(vi.mocked(mermaid.mermaidAPI.render).mock.calls.length).toBe(initialApiRenderCalls)
 
       await act(async () => {
-        fireEvent.click(screen.getByText(/handDrawn/i))
+        fireEvent.click(screen.getByText(HAND_DRAWN_RE))
       })
       await waitFor(() => {
         expect(screen.getByText('test-svg-api')).toBeInTheDocument()
@@ -162,7 +170,7 @@ describe('Mermaid Flowchart Component', () => {
 
       const afterFirstHandDrawnApiCalls = vi.mocked(mermaid.mermaidAPI.render).mock.calls.length
       await act(async () => {
-        fireEvent.click(screen.getByText(/handDrawn/i))
+        fireEvent.click(screen.getByText(HAND_DRAWN_RE))
       })
       expect(vi.mocked(mermaid.mermaidAPI.render).mock.calls.length).toBe(afterFirstHandDrawnApiCalls)
     })
@@ -180,14 +188,14 @@ describe('Mermaid Flowchart Component', () => {
         fireEvent.click(toggleBtn)
       })
       await waitFor(() => {
-        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(/switchLight$/))
+        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(SWITCH_LIGHT_RE))
       }, { timeout: 3000 })
 
       await act(async () => {
         fireEvent.click(screen.getByRole('button'))
       })
       await waitFor(() => {
-        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(/switchDark$/))
+        expect(screen.getByRole('button')).toHaveAttribute('title', expect.stringMatching(SWITCH_DARK_RE))
       }, { timeout: 3000 })
     })
 
@@ -202,7 +210,7 @@ describe('Mermaid Flowchart Component', () => {
       }, { timeout: 3000 })
 
       await act(async () => {
-        fireEvent.click(screen.getByText(/handDrawn/i))
+        fireEvent.click(screen.getByText(HAND_DRAWN_RE))
       })
 
       await waitFor(() => {
@@ -253,7 +261,7 @@ describe('Mermaid Flowchart Component', () => {
         const uniqueCode = 'graph TD\n  X-->Y\n  Y-->Z'
         render(<Flowchart PrimitiveCode={uniqueCode} />)
 
-        const errorMessage = await screen.findByText(/Rendering failed/i)
+        const errorMessage = await screen.findByText(RENDERING_FAILED_RE)
         expect(errorMessage).toBeInTheDocument()
       }
       finally {
@@ -267,7 +275,7 @@ describe('Mermaid Flowchart Component', () => {
 
       try {
         render(<Flowchart PrimitiveCode={'graph TD\n  P-->Q\n  Q-->R'} />)
-        expect(await screen.findByText(/Unknown error\. Please check the console\./i)).toBeInTheDocument()
+        expect(await screen.findByText(UNKNOWN_ERROR_RE)).toBeInTheDocument()
       }
       finally {
         consoleSpy.mockRestore()
@@ -510,10 +518,10 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
 
       // Wait for initial render to complete
       await waitFor(() => {
-        expect(screen.getByText(/handDrawn/)).toBeInTheDocument()
+        expect(screen.getByText(HAND_DRAWN_EXACT_RE)).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      const handDrawnBtn = screen.getByText(/handDrawn/)
+      const handDrawnBtn = screen.getByText(HAND_DRAWN_EXACT_RE)
       await act(async () => {
         fireEvent.click(handDrawnBtn)
       })
@@ -631,128 +639,50 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
       }
     })
 
-    it('should tolerate missing hidden container during classic render and cleanup', async () => {
-      vi.resetModules()
-      let pendingContainerRef: unknown | null = null
-      let patchedContainerRef = false
-      let patchedTimeoutRef = false
-      let containerReadCount = 0
-      const virtualContainer = { innerHTML: 'seed' } as HTMLDivElement
-
-      vi.doMock('react', async () => {
-        const reactActual = await vi.importActual<typeof import('react')>('react')
-        const mockedUseRef = ((initialValue: unknown) => {
-          const ref = reactActual.useRef(initialValue as never)
-          if (!patchedContainerRef && initialValue === null)
-            pendingContainerRef = ref
-
-          if (!patchedContainerRef
-            && pendingContainerRef
-            && typeof initialValue === 'string'
-            && initialValue.startsWith('mermaid-chart-')) {
-            Object.defineProperty(pendingContainerRef as { current: unknown }, 'current', {
-              configurable: true,
-              get() {
-                containerReadCount += 1
-                if (containerReadCount === 1)
-                  return virtualContainer
-                return null
-              },
-              set(_value: HTMLDivElement | null) { },
-            })
-            patchedContainerRef = true
-            pendingContainerRef = null
-          }
-
-          if (patchedContainerRef && !patchedTimeoutRef && initialValue === undefined) {
-            patchedTimeoutRef = true
-            Object.defineProperty(ref, 'current', {
-              configurable: true,
-              get() {
-                return undefined
-              },
-              set(_value: NodeJS.Timeout | undefined) { },
-            })
-            return ref
-          }
-
-          return ref
-        }) as typeof reactActual.useRef
-
-        return {
-          ...reactActual,
-          useRef: mockedUseRef,
-        }
-      })
-
-      try {
-        const { default: FlowchartFresh } = await import('../index')
-        const { unmount } = render(<FlowchartFresh PrimitiveCode={mockCode} />)
-        await waitFor(() => {
-          expect(screen.getByText('test-svg')).toBeInTheDocument()
-        }, { timeout: 3000 })
-        unmount()
-      }
-      finally {
-        vi.doUnmock('react')
-      }
-    })
-
-    it('should tolerate missing hidden container during handDrawn render', async () => {
-      vi.resetModules()
-      let pendingContainerRef: unknown | null = null
-      let patchedContainerRef = false
-      let containerReadCount = 0
-      const virtualContainer = { innerHTML: 'seed' } as HTMLDivElement
-
-      vi.doMock('react', async () => {
-        const reactActual = await vi.importActual<typeof import('react')>('react')
-        const mockedUseRef = ((initialValue: unknown) => {
-          const ref = reactActual.useRef(initialValue as never)
-          if (!patchedContainerRef && initialValue === null)
-            pendingContainerRef = ref
-
-          if (!patchedContainerRef
-            && pendingContainerRef
-            && typeof initialValue === 'string'
-            && initialValue.startsWith('mermaid-chart-')) {
-            Object.defineProperty(pendingContainerRef as { current: unknown }, 'current', {
-              configurable: true,
-              get() {
-                containerReadCount += 1
-                if (containerReadCount === 1)
-                  return virtualContainer
-                return null
-              },
-              set(_value: HTMLDivElement | null) { },
-            })
-            patchedContainerRef = true
-            pendingContainerRef = null
-          }
-          return ref
-        }) as typeof reactActual.useRef
-
-        return {
-          ...reactActual,
-          useRef: mockedUseRef,
-        }
-      })
+    it('should cancel a pending classic render on unmount', async () => {
+      const { default: FlowchartFresh } = await import('../index')
 
       vi.useFakeTimers()
       try {
-        const { default: FlowchartFresh } = await import('../index')
-        const { rerender } = render(<FlowchartFresh PrimitiveCode="graph" />)
+        const { unmount } = render(<FlowchartFresh PrimitiveCode={mockCode} />)
+
         await act(async () => {
-          fireEvent.click(screen.getByText(/handDrawn/i))
-          rerender(<FlowchartFresh PrimitiveCode={mockCode} />)
+          unmount()
           await vi.advanceTimersByTimeAsync(350)
         })
-        await Promise.resolve()
-        expect(screen.getByText('test-svg-api')).toBeInTheDocument()
+
+        expect(vi.mocked(mermaidFresh.render)).not.toHaveBeenCalled()
       }
       finally {
         vi.useRealTimers()
-        vi.doUnmock('react')
+      }
+    })
+
+    it('should cancel a pending handDrawn render on unmount', async () => {
+      const { default: FlowchartFresh } = await import('../index')
+      const { unmount } = render(<FlowchartFresh PrimitiveCode={mockCode} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('test-svg')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      const initialHandDrawnCalls = vi.mocked(mermaidFresh.mermaidAPI.render).mock.calls.length
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          fireEvent.click(screen.getByText(HAND_DRAWN_RE))
+        })
+
+        await act(async () => {
+          unmount()
+          await vi.advanceTimersByTimeAsync(350)
+        })
+
+        expect(vi.mocked(mermaidFresh.mermaidAPI.render).mock.calls.length).toBe(initialHandDrawnCalls)
+      }
+      finally {
+        vi.useRealTimers()
       }
     })
   })
