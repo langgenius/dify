@@ -102,6 +102,25 @@ class LLMNodeData(BaseNodeData):
             return PromptConfig()
         return v
 
+    @field_validator("structured_output", mode="before")
+    @classmethod
+    def convert_legacy_structured_output(cls, v: object) -> StructuredOutputConfig | None | object:
+        if not isinstance(v, Mapping):
+            return v
+
+        schema = v.get("schema")
+        if schema is None:
+            return None
+
+        normalized: StructuredOutputConfig = {"schema": schema}
+        name = v.get("name")
+        description = v.get("description")
+        if isinstance(name, str):
+            normalized["name"] = name
+        if isinstance(description, str):
+            normalized["description"] = description
+        return normalized
+
     @property
     def structured_output_enabled(self) -> bool:
         return self.structured_output_switch_on and self.structured_output is not None

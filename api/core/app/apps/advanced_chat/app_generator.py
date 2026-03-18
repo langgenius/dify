@@ -698,12 +698,19 @@ def _refresh_model(session: Session, model: Workflow) -> Workflow: ...
 def _refresh_model(session: Session, model: Message) -> Message: ...
 
 
-def _refresh_model(session: Session, model: Workflow | Message) -> Workflow | Message:
-    if isinstance(model, Workflow):
-        detached_workflow = session.get(Workflow, model.id)
-        assert detached_workflow is not None
-        return detached_workflow
+def _refresh_model(session: Session, model: Any) -> Any:
+    del session
+    with Session(bind=db.engine, expire_on_commit=False) as refresh_session:
+        if isinstance(model, Workflow):
+            detached_workflow = refresh_session.get(Workflow, model.id)
+            assert detached_workflow is not None
+            return detached_workflow
 
-    detached_message = session.get(Message, model.id)
-    assert detached_message is not None
-    return detached_message
+        if isinstance(model, Message):
+            detached_message = refresh_session.get(Message, model.id)
+            assert detached_message is not None
+            return detached_message
+
+        detached_model = refresh_session.get(type(model), model.id)
+        assert detached_model is not None
+        return detached_model
