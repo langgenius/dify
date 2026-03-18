@@ -38,45 +38,62 @@ class TestWorkflowChildEngineBuilder:
 
     def test_build_child_engine_raises_when_root_node_is_missing(self):
         builder = workflow_entry._WorkflowChildEngineBuilder()
+        graph_init_params = SimpleNamespace(graph_config={"nodes": []})
+        parent_graph_runtime_state = SimpleNamespace(
+            execution_context=sentinel.execution_context,
+            variable_pool=sentinel.variable_pool,
+        )
 
         with patch.object(workflow_entry, "DifyNodeFactory", return_value=sentinel.factory):
             with pytest.raises(ChildGraphNotFoundError, match="child graph root node 'missing' not found"):
                 builder.build_child_engine(
                     workflow_id="workflow-id",
-                    graph_init_params=sentinel.graph_init_params,
-                    graph_runtime_state=sentinel.graph_runtime_state,
-                    graph_config={"nodes": []},
+                    graph_init_params=graph_init_params,
+                    parent_graph_runtime_state=parent_graph_runtime_state,
                     root_node_id="missing",
                 )
 
-    def test_build_child_engine_constructs_graph_engine_and_layers(self):
+    def test_build_child_engine_constructs_graph_engine_without_layers(self):
         builder = workflow_entry._WorkflowChildEngineBuilder()
+        graph_init_params = SimpleNamespace(graph_config={"nodes": [{"id": "root"}]})
+        parent_graph_runtime_state = SimpleNamespace(
+            execution_context=sentinel.execution_context,
+            variable_pool=sentinel.parent_variable_pool,
+        )
         child_graph = sentinel.child_graph
+        child_graph_runtime_state = sentinel.child_graph_runtime_state
         child_engine = MagicMock()
-        quota_layer = sentinel.quota_layer
-        additional_layers = [sentinel.layer_one, sentinel.layer_two]
 
         with (
+            patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
+            patch.object(
+                workflow_entry,
+                "GraphRuntimeState",
+                return_value=child_graph_runtime_state,
+            ) as graph_runtime_state_cls,
             patch.object(workflow_entry, "DifyNodeFactory", return_value=sentinel.factory) as dify_node_factory,
             patch.object(workflow_entry.Graph, "init", return_value=child_graph) as graph_init,
             patch.object(workflow_entry, "GraphEngine", return_value=child_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=quota_layer),
         ):
             result = builder.build_child_engine(
                 workflow_id="workflow-id",
-                graph_init_params=sentinel.graph_init_params,
-                graph_runtime_state=sentinel.graph_runtime_state,
-                graph_config={"nodes": [{"id": "root"}]},
+                graph_init_params=graph_init_params,
+                parent_graph_runtime_state=parent_graph_runtime_state,
                 root_node_id="root",
-                layers=additional_layers,
+                variable_pool=sentinel.child_variable_pool,
             )
 
         assert result is child_engine
+        graph_runtime_state_cls.assert_called_once_with(
+            variable_pool=sentinel.child_variable_pool,
+            start_at=123.0,
+            execution_context=sentinel.execution_context,
+        )
         dify_node_factory.assert_called_once_with(
-            graph_init_params=sentinel.graph_init_params,
-            graph_runtime_state=sentinel.graph_runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=child_graph_runtime_state,
         )
         graph_init.assert_called_once_with(
             graph_config={"nodes": [{"id": "root"}]},
@@ -86,16 +103,12 @@ class TestWorkflowChildEngineBuilder:
         graph_engine_cls.assert_called_once_with(
             workflow_id="workflow-id",
             graph=child_graph,
-            graph_runtime_state=sentinel.graph_runtime_state,
+            graph_runtime_state=child_graph_runtime_state,
             command_channel=sentinel.command_channel,
             config=sentinel.graph_engine_config,
             child_engine_builder=builder,
         )
-        assert child_engine.layer.call_args_list == [
-            ((quota_layer,), {}),
-            ((sentinel.layer_one,), {}),
-            ((sentinel.layer_two,), {}),
-        ]
+        child_engine.layer.assert_not_called()
 
 
 class TestWorkflowEntryInit:

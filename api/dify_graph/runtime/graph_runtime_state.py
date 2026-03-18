@@ -143,10 +143,9 @@ class ChildGraphEngineBuilderProtocol(Protocol):
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> Any: ...
 
 
@@ -290,21 +289,19 @@ class GraphRuntimeState:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> Any:
+        """Create a child graph engine that derives its runtime state from the parent."""
         if self._child_engine_builder is None:
             raise ChildEngineBuilderNotConfiguredError("Child engine builder is not configured.")
 
         return self._child_engine_builder.build_child_engine(
             workflow_id=workflow_id,
             graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-            graph_config=graph_config,
+            parent_graph_runtime_state=self,
             root_node_id=root_node_id,
-            layers=layers,
+            variable_pool=variable_pool,
         )
 
     # ------------------------------------------------------------------

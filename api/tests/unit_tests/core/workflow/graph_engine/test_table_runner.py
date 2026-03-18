@@ -12,12 +12,12 @@ This module provides a robust table-driven testing framework with support for:
 
 import logging
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
@@ -28,7 +28,6 @@ from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_events import (
     GraphEngineEvent,
     GraphRunStartedEvent,
@@ -61,20 +60,28 @@ class _TableTestChildEngineBuilder:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
+        child_graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=parent_graph_runtime_state.execution_context,
+        )
         if self._use_mock_factory:
             node_factory = MockNodeFactory(
                 graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state,
+                graph_runtime_state=child_graph_runtime_state,
                 mock_config=self._mock_config,
             )
         else:
-            node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
+            node_factory = DifyNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=child_graph_runtime_state,
+            )
 
+        graph_config = graph_init_params.graph_config
         child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
         if not child_graph:
             raise ValueError("child graph not found")
@@ -82,13 +89,11 @@ class _TableTestChildEngineBuilder:
         child_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=child_graph,
-            graph_runtime_state=graph_runtime_state,
+            graph_runtime_state=child_graph_runtime_state,
             command_channel=InMemoryChannel(),
             config=GraphEngineConfig(),
             child_engine_builder=self,
         )
-        for layer in layers:
-            child_engine.layer(cast(GraphEngineLayer, layer))
         return child_engine
 
 

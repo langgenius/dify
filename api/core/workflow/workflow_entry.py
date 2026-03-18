@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from configs import dify_config
 from context import capture_current_context
@@ -24,7 +24,6 @@ from dify_graph.graph import Graph
 from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
 from dify_graph.graph_engine.command_channels import InMemoryChannel
 from dify_graph.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
 from dify_graph.graph_engine.protocols.command_channel import CommandChannel
 from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from dify_graph.nodes import BuiltinNodeTypes
@@ -64,16 +63,22 @@ class _WorkflowChildEngineBuilder:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
+        """Build a child engine with a fresh runtime state and no inherited layers."""
+        child_graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=parent_graph_runtime_state.execution_context,
+        )
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            graph_runtime_state=child_graph_runtime_state,
         )
 
+        graph_config = graph_init_params.graph_config
         has_root_node = self._has_node_id(graph_config=graph_config, node_id=root_node_id)
         if has_root_node is False:
             raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
@@ -89,14 +94,11 @@ class _WorkflowChildEngineBuilder:
         child_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=child_graph,
-            graph_runtime_state=graph_runtime_state,
+            graph_runtime_state=child_graph_runtime_state,
             command_channel=command_channel,
             config=config,
             child_engine_builder=self,
         )
-        child_engine.layer(LLMQuotaLayer())
-        for layer in layers:
-            child_engine.layer(cast(GraphEngineLayer, layer))
         return child_engine
 
 

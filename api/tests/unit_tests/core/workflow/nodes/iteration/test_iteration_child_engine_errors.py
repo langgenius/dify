@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -22,10 +22,9 @@ class _MissingGraphBuilder:
         *,
         workflow_id: str,
         graph_init_params: GraphInitParams,
-        graph_runtime_state: GraphRuntimeState,
-        graph_config: Mapping[str, Any],
+        parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        layers: Sequence[object] = (),
+        variable_pool: VariablePool | None = None,
     ) -> object:
         raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
 
@@ -69,8 +68,6 @@ def test_graph_runtime_state_raises_specific_error_when_child_builder_is_missing
         runtime_state.create_child_engine(
             workflow_id="workflow",
             graph_init_params=graph_init_params,
-            graph_runtime_state=_build_runtime_state(),
-            graph_config={},
             root_node_id="root",
         )
 

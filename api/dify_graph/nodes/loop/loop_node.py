@@ -408,7 +408,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
         from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import GraphRuntimeState
 
         # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
@@ -418,16 +417,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             call_depth=self.workflow_call_depth,
         )
 
-        # Create a new GraphRuntimeState for this iteration
-        graph_runtime_state_copy = GraphRuntimeState(
-            variable_pool=self.graph_runtime_state.variable_pool,
-            start_at=start_at.timestamp(),
-        )
-
         return self.graph_runtime_state.create_child_engine(
             workflow_id=self.workflow_id,
             graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state_copy,
-            graph_config=self.graph_config,
             root_node_id=root_node_id,
         )

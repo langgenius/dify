@@ -548,7 +548,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         from dify_graph.entities import GraphInitParams
-        from dify_graph.runtime import ChildGraphNotFoundError, GraphRuntimeState
+        from dify_graph.runtime import ChildGraphNotFoundError
 
         # Create GraphInitParams for child graph execution.
         graph_init_params = GraphInitParams(
@@ -563,14 +563,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         # append iteration variable (item, index) to variable pool
         variable_pool_copy.add([self._node_id, "index"], index)
         variable_pool_copy.add([self._node_id, "item"], item)
-
-        # Create a new GraphRuntimeState for this iteration
-        graph_runtime_state_copy = GraphRuntimeState(
-            variable_pool=variable_pool_copy,
-            start_at=self.graph_runtime_state.start_at,
-            total_tokens=0,
-            node_run_steps=0,
-        )
         root_node_id = self.node_data.start_node_id
         if root_node_id is None:
             raise StartNodeIdNotFoundError(f"field start_node_id in iteration {self._node_id} not found")
@@ -579,9 +571,8 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             return self.graph_runtime_state.create_child_engine(
                 workflow_id=self.workflow_id,
                 graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state_copy,
-                graph_config=self.graph_config,
                 root_node_id=root_node_id,
+                variable_pool=variable_pool_copy,
             )
         except ChildGraphNotFoundError as exc:
             raise IterationGraphNotFoundError("iteration graph not found") from exc
