@@ -13,7 +13,7 @@ import Statistics from '../statistics'
 
 // Mock Setup
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),

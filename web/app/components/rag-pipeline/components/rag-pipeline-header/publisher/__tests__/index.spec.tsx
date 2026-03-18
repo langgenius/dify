@@ -8,7 +8,7 @@ import Publisher from '../index'
 import Popup from '../popup'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))

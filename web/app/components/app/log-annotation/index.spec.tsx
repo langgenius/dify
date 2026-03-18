@@ -7,7 +7,7 @@ import { AppModeEnum } from '@/types/app'
 import LogAnnotation from './index'
 
 const mockRouterPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),

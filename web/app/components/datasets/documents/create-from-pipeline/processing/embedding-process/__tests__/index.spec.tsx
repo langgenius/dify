@@ -10,7 +10,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

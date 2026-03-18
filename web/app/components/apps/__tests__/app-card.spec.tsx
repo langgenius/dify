@@ -11,7 +11,7 @@ import AppCard from '../app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

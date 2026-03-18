@@ -8,7 +8,7 @@ import List from '../list'
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(''),
 }))

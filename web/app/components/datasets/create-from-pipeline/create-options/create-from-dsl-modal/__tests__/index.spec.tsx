@@ -8,7 +8,7 @@ import TabItem from '../tab/item'
 import Uploader from '../uploader'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

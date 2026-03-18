@@ -10,7 +10,7 @@ import RagPipelineChildren from '../rag-pipeline-children'
 import PipelineScreenShot from '../screenshot'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))

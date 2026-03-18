@@ -50,6 +50,10 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
     group: ['next/link'],
     message: 'Import Next APIs from @/next/link instead of next/link.',
   },
+  {
+    group: ['next/navigation'],
+    message: 'Import Next APIs from @/next/navigation instead of next/navigation.',
+  },
 ]
 
 const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [

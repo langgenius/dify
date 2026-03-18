@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/app/test-app-id/configuration',
 }))

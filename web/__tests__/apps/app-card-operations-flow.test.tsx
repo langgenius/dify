@@ -29,7 +29,7 @@ const mockOnPlanInfoChanged = vi.fn()
 const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
 let mockDeleteMutationPending = false
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),

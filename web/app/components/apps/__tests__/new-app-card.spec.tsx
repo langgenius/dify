@@ -4,7 +4,7 @@ import * as React from 'react'
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),

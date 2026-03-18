@@ -38,7 +38,7 @@ let mockShowTagManagementModal = false
 const mockRouterPush = vi.fn()
 const mockRouterReplace = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,

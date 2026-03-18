@@ -1,7 +1,6 @@
 'use client'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -10,9 +9,10 @@ import Toast from '@/app/components/base/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
-
 import useDocumentTitle from '@/hooks/use-document-title'
+
 import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {

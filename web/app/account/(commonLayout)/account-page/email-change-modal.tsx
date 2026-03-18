@@ -1,7 +1,6 @@
 import type { ResponseError } from '@/service/fetch'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -10,6 +9,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast/context'
+import { useRouter } from '@/next/navigation'
 import {
   checkEmailExisted,
   resetEmail,

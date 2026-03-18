@@ -7,12 +7,12 @@ import type { Mock } from 'vitest'
  */
 
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
 
 // Mock Next.js router
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: mockPush,
   })),

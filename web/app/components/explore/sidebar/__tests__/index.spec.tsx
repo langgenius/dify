@@ -13,7 +13,7 @@ let mockIsPending = false
 let mockInstalledApps: InstalledApp[] = []
 let mockMediaType: string = MediaType.pc
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
