@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from controllers.console import console_ns
@@ -609,6 +609,57 @@ class TestRagPipelineByIdApi:
         ):
             result, status = method(api, pipeline, "w1")
             assert status == 400
+
+    def test_delete_success(self, app):
+        api = RagPipelineByIdApi()
+        method = unwrap(api.delete)
+
+        pipeline = MagicMock(tenant_id="t1", workflow_id="active-workflow", id="pipeline-1")
+
+        workflow_service = MagicMock()
+
+        session = MagicMock()
+        session_ctx = MagicMock()
+        session_ctx.__enter__.return_value = session
+        session_ctx.__exit__.return_value = None
+
+        fake_db = MagicMock()
+        fake_db.engine = MagicMock()
+
+        with (
+            app.test_request_context("/", method="DELETE"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.db",
+                fake_db,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.Session",
+                return_value=session_ctx,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.WorkflowService",
+                return_value=workflow_service,
+            ),
+        ):
+            result = method(api, pipeline, "old-workflow")
+
+        workflow_service.delete_workflow.assert_called_once_with(
+            session=session,
+            workflow_id="old-workflow",
+            tenant_id="t1",
+        )
+        session.commit.assert_called_once()
+        assert result == (None, 204)
+
+    def test_delete_active_workflow_rejected(self, app):
+        api = RagPipelineByIdApi()
+        method = unwrap(api.delete)
+
+        pipeline = MagicMock(tenant_id="t1", workflow_id="active-workflow", id="pipeline-1")
+
+        with app.test_request_context("/", method="DELETE"):
+            with pytest.raises(BadRequest, match="currently in use by pipeline"):
+                method(api, pipeline, "active-workflow")
 
 
 class TestRagPipelineWorkflowLastRunApi:
