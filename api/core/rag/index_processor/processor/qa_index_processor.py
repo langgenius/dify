@@ -15,6 +15,7 @@ from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
@@ -185,7 +186,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ):
         # Set search parameters.
         results = RetrievalService.retrieve(
