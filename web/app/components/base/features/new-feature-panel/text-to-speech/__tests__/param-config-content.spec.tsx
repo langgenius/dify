@@ -22,7 +22,7 @@ const mockUseAppVoices = vi.fn((_appId: string, _language?: string) => ({
   data: mockVoiceItems,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
   useParams: () => ({}),
 }))

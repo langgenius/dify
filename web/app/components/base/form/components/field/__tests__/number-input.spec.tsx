@@ -27,7 +27,21 @@ describe('NumberInputField', () => {
 
   it('should update value when users click increment', () => {
     render(<NumberInputField label="Count" />)
-    fireEvent.click(screen.getByRole('button', { name: 'increment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.increment' }))
     expect(mockField.handleChange).toHaveBeenCalledWith(3)
+  })
+
+  it('should reset field value when users clear the input', () => {
+    render(<NumberInputField label="Count" />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(mockField.handleChange).toHaveBeenCalledWith(0)
+  })
+
+  it('should clamp out-of-range edits before updating field state', () => {
+    render(<NumberInputField label="Count" min={0} max={10} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '12' } })
+
+    expect(mockField.handleChange).toHaveBeenLastCalledWith(10)
   })
 })

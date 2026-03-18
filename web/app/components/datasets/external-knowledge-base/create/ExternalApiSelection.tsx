@@ -1,7 +1,6 @@
 'use client'
 
 import { RiAddLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +8,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
+import { useRouter } from '@/next/navigation'
 import ExternalApiSelect from './ExternalApiSelect'
 
 type ExternalApiSelectionProps = {
