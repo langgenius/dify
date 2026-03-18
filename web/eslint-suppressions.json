@@ -5172,9 +5172,6 @@
   "app/components/plugins/plugin-detail-panel/app-selector/app-picker.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/app-selector/app-trigger.tsx": {
@@ -5184,9 +5181,6 @@
   },
   "app/components/plugins/plugin-detail-panel/app-selector/index.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
