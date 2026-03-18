@@ -1,9 +1,9 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
-from werkzeug.exceptions import NotFound
 from faker import Faker
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
