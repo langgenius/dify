@@ -46,8 +46,12 @@ describe('useCheckVerticalScrollbar', () => {
     vi.clearAllMocks()
     resizeCallback = null
     mutationCallback = null
-    globalThis.ResizeObserver = MockResizeObserver
-    globalThis.MutationObserver = MockMutationObserver
+    vi.stubGlobal('ResizeObserver', MockResizeObserver)
+    vi.stubGlobal('MutationObserver', MockMutationObserver)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('should return false when the element ref is empty', () => {
