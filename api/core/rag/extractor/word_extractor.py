@@ -9,6 +9,8 @@ import os
 import re
 import tempfile
 import uuid
+from collections.abc import Iterable
+from typing import cast
 from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
@@ -267,7 +269,7 @@ class WordExtractor(BaseExtractor):
     def parse_docx(self, docx_path):
         doc = DocxDocument(docx_path)
 
-        content = []
+        content: list[str] = []
 
         image_map = self._extract_images_from_docx(doc)
 
@@ -365,10 +367,10 @@ class WordExtractor(BaseExtractor):
                 if link_text:
                     target_buffer.append(link_text)
 
-            paragraph_content = []
+            paragraph_content: list[str] = []
             # State for legacy HYPERLINK fields
-            hyperlink_field_url = None
-            hyperlink_field_text_parts: list = []
+            hyperlink_field_url: str | None = None
+            hyperlink_field_text_parts: list[str] = []
             is_collecting_field_text = False
             # Iterate through paragraph elements in document order
             for child in paragraph._element:
@@ -425,7 +427,8 @@ class WordExtractor(BaseExtractor):
 
         paragraphs = doc.paragraphs.copy()
         tables = doc.tables.copy()
-        for element in doc.element.body:
+        body_elements = cast(Iterable[object], getattr(doc.element, "body", []))
+        for element in body_elements:
             if hasattr(element, "tag"):
                 if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
                     para = paragraphs.pop(0)

@@ -135,12 +135,6 @@ extensions/storage/supabase_storage.py
 extensions/storage/tencent_cos_storage.py
 extensions/storage/volcengine_tos_storage.py
 
-# no need to fix for now: auth adapters
-services/auth/firecrawl/firecrawl.py
-services/auth/jina.py
-services/auth/jina/jina.py
-services/auth/watercrawl/watercrawl.py
-
 # no need to fix for now: keyword adapters
 core/rag/datasource/keyword/jieba/jieba.py
 core/rag/datasource/keyword/jieba/jieba_keyword_table_handler.py
@@ -154,7 +148,6 @@ core/rag/datasource/vdb/clickzetta/clickzetta_vector.py
 core/rag/datasource/vdb/couchbase/couchbase_vector.py
 core/rag/datasource/vdb/elasticsearch/elasticsearch_vector.py
 core/rag/datasource/vdb/huawei/huawei_cloud_vector.py
-core/rag/datasource/vdb/lindorm/lindorm_vector.py
 core/rag/datasource/vdb/matrixone/matrixone_vector.py
 core/rag/datasource/vdb/milvus/milvus_vector.py
 core/rag/datasource/vdb/myscale/myscale_vector.py
@@ -181,7 +174,6 @@ core/rag/extractor/html_extractor.py
 core/rag/extractor/jina_reader_extractor.py
 core/rag/extractor/markdown_extractor.py
 core/rag/extractor/notion_extractor.py
-core/rag/extractor/pdf_extractor.py
 core/rag/extractor/text_extractor.py
 core/rag/extractor/unstructured/unstructured_doc_extractor.py
 core/rag/extractor/unstructured/unstructured_eml_extractor.py
@@ -194,7 +186,6 @@ core/rag/extractor/unstructured/unstructured_xml_extractor.py
 core/rag/extractor/watercrawl/client.py
 core/rag/extractor/watercrawl/extractor.py
 core/rag/extractor/watercrawl/provider.py
-core/rag/extractor/word_extractor.py
 
 # no need to fix for now: index processors
 core/rag/index_processor/processor/paragraph_index_processor.py
