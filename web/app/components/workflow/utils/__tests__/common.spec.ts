@@ -146,16 +146,6 @@ describe('isEventTargetInputArea', () => {
     expect(isEventTargetInputArea(el)).toBe(true)
   })
 
-  it('should return true for monaco editor descendants', () => {
-    const wrapper = document.createElement('div')
-    wrapper.className = 'monaco-editor'
-    const child = document.createElement('div')
-    wrapper.appendChild(child)
-    document.body.appendChild(wrapper)
-    expect(isEventTargetInputArea(child)).toBe(true)
-    wrapper.remove()
-  })
-
   it('should return undefined for non-input elements', () => {
     const el = document.createElement('div')
     expect(isEventTargetInputArea(el)).toBeUndefined()

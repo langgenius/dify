@@ -4,7 +4,7 @@ import pytest
 
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.nodes.list_operator.node import ListOperatorNode
 from dify_graph.runtime import GraphRuntimeState
 from dify_graph.variables import ArrayNumberSegment, ArrayStringSegment
@@ -71,7 +71,7 @@ class TestListOperatorNode:
             graph_runtime_state=mock_graph_runtime_state,
         )
 
-        assert node.node_type == NodeType.LIST_OPERATOR
+        assert node.node_type == BuiltinNodeTypes.LIST_OPERATOR
         assert node._node_data.title == "List Operator"
 
     def test_version(self):

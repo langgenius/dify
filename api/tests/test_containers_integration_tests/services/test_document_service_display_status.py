@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
 
 
@@ -11,7 +12,7 @@ def _create_dataset(db_session_with_containers) -> Dataset:
     dataset = Dataset(
         tenant_id=str(uuid4()),
         name=f"dataset-{uuid4()}",
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=str(uuid4()),
     )
     dataset.id = str(uuid4())
@@ -35,11 +36,11 @@ def _create_document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         position=position,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         data_source_info="{}",
         batch=f"batch-{uuid4()}",
         name=f"doc-{uuid4()}",
-        created_from="web",
+        created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
         doc_form="text_model",
     )
@@ -48,7 +49,7 @@ def _create_document(
     document.enabled = enabled
     document.archived = archived
     document.is_paused = is_paused
-    if indexing_status == "completed":
+    if indexing_status == IndexingStatus.COMPLETED:
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
     db_session_with_containers.add(document)
@@ -62,7 +63,7 @@ def test_build_display_status_filters_available(db_session_with_containers):
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
         position=1,
@@ -71,7 +72,7 @@ def test_build_display_status_filters_available(db_session_with_containers):
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=False,
         archived=False,
         position=2,
@@ -80,7 +81,7 @@ def test_build_display_status_filters_available(db_session_with_containers):
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=True,
         position=3,
@@ -101,14 +102,14 @@ def test_apply_display_status_filter_applies_when_status_present(db_session_with
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="waiting",
+        indexing_status=IndexingStatus.WAITING,
         position=1,
     )
     _create_document(
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         position=2,
     )
 
@@ -125,14 +126,14 @@ def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_c
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="waiting",
+        indexing_status=IndexingStatus.WAITING,
         position=1,
     )
     doc2 = _create_document(
         db_session_with_containers,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         position=2,
     )
 
