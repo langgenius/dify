@@ -406,11 +406,12 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             SegmentType.ARRAY_OBJECT,
             SegmentType.ARRAY_STRING,
         ]:
-            if original_value and isinstance(original_value, str):
-                value = json.loads(original_value)
+            # New typed payloads may already provide native lists, while legacy
+            # configs still serialize array constants as JSON strings.
+            if isinstance(original_value, str):
+                value = json.loads(original_value) if original_value else []
             else:
-                logger.warning("unexpected value for LoopNode, value_type=%s, value=%s", original_value, var_type)
-                value = []
+                value = original_value
         else:
             raise AssertionError("this statement should be unreachable.")
         try:
