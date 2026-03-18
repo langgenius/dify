@@ -136,6 +136,7 @@ export const ProviderContextProvider = ({
           toast.add({
             type: 'info',
             title: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
+            timeout: 60000,
           })
         }
       }
