@@ -1,19 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, NotRequired
 
-from pydantic import StringConstraints
 from typing_extensions import TypedDict
 
-NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 
-
-class ApiKeyAuthConfig(TypedDict):
-    api_key: NotRequired[str]
-    base_url: NotRequired[str]
+class ApiKeyAuthConfig(TypedDict, total=False):
+    api_key: str
+    base_url: str
 
 
 class ApiKeyAuthCredentials(TypedDict):
-    auth_type: NonEmptyString
+    auth_type: object
     config: ApiKeyAuthConfig
 
 

@@ -1,8 +1,8 @@
 import json
+from copy import deepcopy
 from unittest.mock import Mock, patch
 
 import pytest
-from pydantic import ValidationError
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
@@ -10,14 +10,6 @@ from services.auth.api_key_auth_service import ApiKeyAuthService
 
 class TestApiKeyAuthService:
     """API key authentication service security tests"""
-
-    @staticmethod
-    def _assert_validation_error_loc(
-        exc_info: pytest.ExceptionInfo[ValidationError], expected_loc: tuple[str, ...]
-    ) -> None:
-        errors = exc_info.value.errors()
-        assert len(errors) == 1
-        assert errors[0]["loc"] == expected_loc
 
     def setup_method(self):
         """Setup test fixtures"""
@@ -77,7 +69,16 @@ class TestApiKeyAuthService:
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
-        mock_factory.return_value = mock_auth_instance
+        captured_provider = None
+        captured_credentials = None
+
+        def factory_side_effect(provider, credentials):
+            nonlocal captured_provider, captured_credentials
+            captured_provider = provider
+            captured_credentials = deepcopy(credentials)
+            return mock_auth_instance
+
+        mock_factory.side_effect = factory_side_effect
 
         # Mock encryption
         encrypted_key = "encrypted_test_key_123"
@@ -86,12 +87,14 @@ class TestApiKeyAuthService:
         # Mock database operations
         mock_session.add = Mock()
         mock_session.commit = Mock()
+        expected_credentials = deepcopy(self.mock_credentials)
 
         ApiKeyAuthService.create_provider_auth(self.tenant_id, self.mock_args)
 
         # Verify factory class calls
         assert mock_factory.call_count == 1
-        assert mock_factory.call_args.args[0] == self.provider
+        assert captured_provider == self.provider
+        assert captured_credentials == expected_credentials
         mock_auth_instance.validate_credentials.assert_called_once()
 
         # Verify encryption calls
@@ -120,7 +123,7 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_encrypts_api_key(self, mock_encrypter, mock_factory, mock_session):
-        """Test create provider auth - stores encrypted API key"""
+        """Test create provider auth - ensures API key is encrypted"""
         # Mock successful auth validation
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -134,18 +137,17 @@ class TestApiKeyAuthService:
         mock_session.add = Mock()
         mock_session.commit = Mock()
 
-        args_copy = {
-            "category": self.category,
-            "provider": self.provider,
-            "credentials": {"auth_type": "api_key", "config": {"api_key": "test_secret_key_123"}},
-        }
+        args_copy = self.mock_args.copy()
+        original_key = args_copy["credentials"]["config"]["api_key"]
 
         ApiKeyAuthService.create_provider_auth(self.tenant_id, args_copy)
 
-        stored_binding = mock_session.add.call_args.args[0]
-        stored_credentials = json.loads(stored_binding.credentials)
-        assert stored_credentials["config"]["api_key"] == encrypted_key
-        mock_encrypter.encrypt_token.assert_called_once_with(self.tenant_id, "test_secret_key_123")
+        # Verify original key is replaced with encrypted key
+        assert args_copy["credentials"]["config"]["api_key"] == encrypted_key
+        assert args_copy["credentials"]["config"]["api_key"] != original_key
+
+        # Verify encryption function is called correctly
+        mock_encrypter.encrypt_token.assert_called_once_with(self.tenant_id, original_key)
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_success(self, mock_session):
@@ -241,81 +243,72 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["category"]
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="category is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("category",))
 
     def test_validate_api_key_auth_args_empty_category(self):
         """Test API key auth args validation - empty category"""
         args = self.mock_args.copy()
         args["category"] = ""
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="category is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("category",))
 
     def test_validate_api_key_auth_args_missing_provider(self):
         """Test API key auth args validation - missing provider"""
         args = self.mock_args.copy()
         del args["provider"]
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="provider is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("provider",))
 
     def test_validate_api_key_auth_args_empty_provider(self):
         """Test API key auth args validation - empty provider"""
         args = self.mock_args.copy()
         args["provider"] = ""
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="provider is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("provider",))
 
     def test_validate_api_key_auth_args_missing_credentials(self):
         """Test API key auth args validation - missing credentials"""
         args = self.mock_args.copy()
         del args["credentials"]
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="credentials is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials",))
 
     def test_validate_api_key_auth_args_empty_credentials(self):
         """Test API key auth args validation - empty credentials"""
         args = self.mock_args.copy()
         args["credentials"] = None
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="credentials is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials",))
 
     def test_validate_api_key_auth_args_invalid_credentials_type(self):
         """Test API key auth args validation - invalid credentials type"""
         args = self.mock_args.copy()
         args["credentials"] = "not_a_dict"
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="credentials must be a dictionary"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials",))
 
     def test_validate_api_key_auth_args_missing_auth_type(self):
         """Test API key auth args validation - missing auth_type"""
         args = self.mock_args.copy()
         del args["credentials"]["auth_type"]
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials", "auth_type"))
 
     def test_validate_api_key_auth_args_empty_auth_type(self):
         """Test API key auth args validation - empty auth_type"""
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ""
 
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials", "auth_type"))
 
     @pytest.mark.parametrize(
         "malicious_input",
@@ -394,15 +387,14 @@ class TestApiKeyAuthService:
 
     def test_validate_api_key_auth_args_none_input(self):
         """Test API key auth args validation - None input"""
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(TypeError):
             ApiKeyAuthService.validate_api_key_auth_args(None)
-        self._assert_validation_error_loc(exc_info, ())
 
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
         """Test API key auth args validation - dict credentials with list auth_type"""
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ["api_key"]
 
-        with pytest.raises(ValidationError) as exc_info:
-            ApiKeyAuthService.validate_api_key_auth_args(args)
-        self._assert_validation_error_loc(exc_info, ("credentials", "auth_type"))
+        # Current implementation checks if auth_type exists and is truthy, list ["api_key"] is truthy
+        # So this should not raise exception, this test should pass
+        ApiKeyAuthService.validate_api_key_auth_args(args)

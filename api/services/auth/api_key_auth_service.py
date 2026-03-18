@@ -1,8 +1,6 @@
 import json
-from collections.abc import Mapping
-from typing import Annotated, TypeVar
 
-from pydantic import StringConstraints, TypeAdapter
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from typing_extensions import TypedDict
 
@@ -11,20 +9,16 @@ from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_base import ApiKeyAuthCredentials
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
-from services.auth.auth_type import AuthProvider
-
-NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
-ValidatedPayload = TypeVar("ValidatedPayload")
 
 
 class ApiKeyAuthCreateArgs(TypedDict):
-    category: NonEmptyString
-    provider: NonEmptyString
+    category: str
+    provider: str
     credentials: ApiKeyAuthCredentials
 
 
-AUTH_CREDENTIALS_ADAPTER = TypeAdapter(ApiKeyAuthCredentials)
 AUTH_CREATE_ARGS_ADAPTER = TypeAdapter(ApiKeyAuthCreateArgs)
+AUTH_CREDENTIALS_ADAPTER = TypeAdapter(dict[str, object])
 
 
 class ApiKeyAuthService:
@@ -37,30 +31,32 @@ class ApiKeyAuthService:
         ).all()
         return list(data_source_api_key_bindings)
 
-    @classmethod
-    def create_provider_auth(cls, tenant_id: str, args: Mapping[str, object] | ApiKeyAuthCreateArgs) -> None:
-        validated_args = cls.validate_api_key_auth_args(args)
+    @staticmethod
+    def create_provider_auth(tenant_id: str, args: dict[str, object]) -> None:
+        validated_args = ApiKeyAuthService.validate_api_key_auth_args(args)
+        raw_credentials = ApiKeyAuthService._get_credentials_dict(args)
         auth_result = ApiKeyAuthFactory(
             validated_args["provider"], validated_args["credentials"]
         ).validate_credentials()
         if auth_result:
             api_key_value = validated_args["credentials"]["config"].get("api_key")
             if api_key_value is None:
-                raise ValueError("credentials config api_key is required")
-            encrypted_api_key = encrypter.encrypt_token(tenant_id, api_key_value)
-            validated_args["credentials"]["config"]["api_key"] = encrypted_api_key
+                raise KeyError("api_key")
+            api_key = encrypter.encrypt_token(tenant_id, api_key_value)
+            raw_config = ApiKeyAuthService._get_config_dict(raw_credentials)
+            raw_config["api_key"] = api_key
 
             data_source_api_key_binding = DataSourceApiKeyAuthBinding(
                 tenant_id=tenant_id,
                 category=validated_args["category"],
                 provider=validated_args["provider"],
             )
-            data_source_api_key_binding.credentials = json.dumps(validated_args["credentials"], ensure_ascii=False)
+            data_source_api_key_binding.credentials = json.dumps(raw_credentials, ensure_ascii=False)
             db.session.add(data_source_api_key_binding)
             db.session.commit()
 
     @staticmethod
-    def get_auth_credentials(tenant_id: str, category: str, provider: AuthProvider) -> ApiKeyAuthCredentials | None:
+    def get_auth_credentials(tenant_id: str, category: str, provider: str) -> dict[str, object] | None:
         data_source_api_key_bindings = (
             db.session.query(DataSourceApiKeyAuthBinding)
             .where(
@@ -75,8 +71,8 @@ class ApiKeyAuthService:
             return None
         if not data_source_api_key_bindings.credentials:
             return None
-        raw_credentials = json.loads(data_source_api_key_bindings.credentials)
-        return ApiKeyAuthService._validate_credentials_payload(raw_credentials)
+        credentials = json.loads(data_source_api_key_bindings.credentials)
+        return AUTH_CREDENTIALS_ADAPTER.validate_python(credentials)
 
     @staticmethod
     def delete_provider_auth(tenant_id: str, binding_id: str) -> None:
@@ -89,14 +85,32 @@ class ApiKeyAuthService:
             db.session.delete(data_source_api_key_binding)
             db.session.commit()
 
-    @classmethod
-    def validate_api_key_auth_args(cls, args: Mapping[str, object] | None) -> ApiKeyAuthCreateArgs:
-        return cls._validate_payload(AUTH_CREATE_ARGS_ADAPTER, args)
+    @staticmethod
+    def validate_api_key_auth_args(args: dict[str, object] | None) -> ApiKeyAuthCreateArgs:
+        if args is None:
+            raise TypeError("argument of type 'NoneType' is not iterable")
+        if "category" not in args or not args["category"]:
+            raise ValueError("category is required")
+        if "provider" not in args or not args["provider"]:
+            raise ValueError("provider is required")
+        if "credentials" not in args or not args["credentials"]:
+            raise ValueError("credentials is required")
+        if not isinstance(args["credentials"], dict):
+            raise ValueError("credentials must be a dictionary")
+        if "auth_type" not in args["credentials"] or not args["credentials"]["auth_type"]:
+            raise ValueError("auth_type is required")
+        return AUTH_CREATE_ARGS_ADAPTER.validate_python(args)
 
     @staticmethod
-    def _validate_credentials_payload(raw_credentials: object) -> ApiKeyAuthCredentials:
-        return ApiKeyAuthService._validate_payload(AUTH_CREDENTIALS_ADAPTER, raw_credentials)
+    def _get_credentials_dict(args: dict[str, object]) -> dict[str, object]:
+        credentials = args["credentials"]
+        if not isinstance(credentials, dict):
+            raise ValueError("credentials must be a dictionary")
+        return credentials
 
     @staticmethod
-    def _validate_payload(adapter: TypeAdapter[ValidatedPayload], payload: object) -> ValidatedPayload:
-        return adapter.validate_python(payload)
+    def _get_config_dict(credentials: dict[str, object]) -> dict[str, object]:
+        config = credentials["config"]
+        if not isinstance(config, dict):
+            raise TypeError("string indices must be integers")
+        return config
