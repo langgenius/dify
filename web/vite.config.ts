@@ -79,6 +79,14 @@ export default defineConfig(({ mode }) => {
             // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
             noExternal: ['emoji-mart'],
           },
+          environments: {
+            rsc: {
+              optimizeDeps: { include: ['semver'] },
+            },
+            ssr: {
+              optimizeDeps: { include: ['semver'] },
+            },
+          },
         }
       : {}),
 
