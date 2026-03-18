@@ -40,7 +40,6 @@ from core.workflow.system_variables import (
     inject_default_system_variable_mappings,
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
@@ -137,7 +136,6 @@ class WorkflowBasedAppRunner:
                 invoke_from=invoke_from,
             ),
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
         # Use the provided graph_runtime_state for consistent state management
@@ -292,7 +290,6 @@ class WorkflowBasedAppRunner:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
         node_factory = DifyNodeFactory(

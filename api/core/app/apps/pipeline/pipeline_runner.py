@@ -16,7 +16,6 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from core.workflow.workflow_entry import WorkflowEntry
 from dify_graph.entities.graph_init_params import GraphInitParams
 from dify_graph.enums import WorkflowType
@@ -275,7 +274,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 invoke_from=invoke_from,
             ),
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
 
         node_factory = DifyNodeFactory(

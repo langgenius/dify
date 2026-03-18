@@ -15,7 +15,7 @@ from core.workflow.system_variables import (
     inject_default_system_variable_mappings,
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS, ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -234,7 +234,6 @@ class WorkflowEntry:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
@@ -385,7 +384,6 @@ class WorkflowEntry:
                 invoke_from=InvokeFrom.DEBUGGER,
             ),
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,

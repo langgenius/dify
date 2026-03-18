@@ -94,6 +94,10 @@ class EventHandler:
         Args:
             event: The event to handle
         """
+        if isinstance(event, NodeRunVariableUpdatedEvent):
+            self._dispatch(event)
+            return
+
         # Events in loops or iterations are always collected
         if event.in_loop_id or event.in_iteration_id:
             self._event_collector.collect(event)

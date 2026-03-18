@@ -7,7 +7,6 @@ import pytest
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow import workflow_entry
-from core.workflow.variable_prefixes import CHILD_SYNC_VARIABLE_NODE_IDS
 from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import NodeType
 from dify_graph.errors import WorkflowNodeRunFailedError
@@ -503,7 +502,6 @@ class TestWorkflowEntryHelpers:
             ),
             run_context={"_dify": "context"},
             call_depth=0,
-            child_sync_variable_node_ids=CHILD_SYNC_VARIABLE_NODE_IDS,
         )
         dify_node_factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,

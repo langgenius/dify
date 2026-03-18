@@ -416,7 +416,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             graph_config=self.graph_config,
             run_context=self.run_context,
             call_depth=self.workflow_call_depth,
-            child_sync_variable_node_ids=self.graph_init_params.child_sync_variable_node_ids,
         )
 
         # Create a new GraphRuntimeState for this iteration
