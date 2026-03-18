@@ -297,6 +297,7 @@ describe('workflow-stream-handlers helpers', () => {
     ]
 
     const nextProcess = appendParallelNext(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing-node',
       execution_metadata: { parallel_id: 'parallel-2' },
     }))
@@ -354,6 +355,7 @@ describe('workflow-stream-handlers helpers', () => {
       },
     }))
     const notFinished = finishParallelTrace(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing',
       execution_metadata: {
         parallel_id: 'parallel-missing',
