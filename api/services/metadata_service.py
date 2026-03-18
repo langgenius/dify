@@ -197,7 +197,7 @@ class MetadataService:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                return None
             _, current_tenant_id = current_account_with_tenant()
             referenced_metadata_ids = MetadataService._get_referenced_metadata_ids(
                 current_tenant_id, {metadata_id}, bypass_cache=True

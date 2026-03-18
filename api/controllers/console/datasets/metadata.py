@@ -102,8 +102,6 @@ class DatasetMetadataApi(Resource):
             MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
         except MetadataInUseError as exc:
             raise BadRequest(str(exc))
-        except ValueError as exc:
-            raise NotFound(str(exc))
         return {"result": "success"}, 204
 
 
