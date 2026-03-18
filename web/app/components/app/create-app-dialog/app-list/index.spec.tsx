@@ -62,7 +62,7 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 

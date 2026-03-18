@@ -23,7 +23,6 @@ import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
-import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,6 +71,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
+import { usePathname } from '@/next/navigation'
 import { fetchAppDetailDirect, updateAppModelConfig } from '@/service/apps'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
@@ -966,10 +966,10 @@ const Configuration: FC = () => {
               <div className="bg-default-subtle absolute left-0 top-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center">
-                    <div className="system-xl-semibold text-text-primary">{t('orchestrate', { ns: 'appDebug' })}</div>
+                    <div className="text-text-primary system-xl-semibold">{t('orchestrate', { ns: 'appDebug' })}</div>
                     <div className="flex h-[14px] items-center space-x-1 text-xs">
                       {isAdvancedMode && (
-                        <div className="system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary">{t('promptMode.advanced', { ns: 'appDebug' })}</div>
+                        <div className="ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary system-xs-medium-uppercase">{t('promptMode.advanced', { ns: 'appDebug' })}</div>
                       )}
                     </div>
                   </div>
@@ -1030,8 +1030,8 @@ const Configuration: FC = () => {
                 <Config />
               </div>
               {!isMobile && (
-                <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                  <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg ">
+                <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                  <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
                       isAPIKeySet={isAPIKeySet}
                       onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}

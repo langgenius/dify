@@ -9,7 +9,7 @@ import ServiceApi from '../index'
 
 // Mock Setup
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock next/link
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode, href: string, [key: string]: unknown }) => (
     <a href={href} {...props}>{children}</a>
   ),

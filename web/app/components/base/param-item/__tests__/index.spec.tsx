@@ -53,7 +53,7 @@ describe('ParamItem', () => {
     it('should render InputNumber and Slider', () => {
       render(<ParamItem {...defaultProps} />)
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(screen.getByRole('slider')).toBeInTheDocument()
     })
   })
@@ -68,7 +68,7 @@ describe('ParamItem', () => {
     it('should disable InputNumber when enable is false', () => {
       render(<ParamItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('spinbutton')).toBeDisabled()
+      expect(screen.getByRole('textbox')).toBeDisabled()
     })
 
     it('should disable Slider when enable is false', () => {
@@ -104,12 +104,69 @@ describe('ParamItem', () => {
       }
 
       render(<StatefulParamItem />)
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
 
       await user.clear(input)
       await user.type(input, '0.8')
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0.8)
+    })
+
+    it('should reset the textbox and slider when users clear the input', async () => {
+      const user = userEvent.setup()
+      const StatefulParamItem = () => {
+        const [value, setValue] = useState(defaultProps.value)
+
+        return (
+          <ParamItem
+            {...defaultProps}
+            value={value}
+            onChange={(key: string, nextValue: number) => {
+              defaultProps.onChange(key, nextValue)
+              setValue(nextValue)
+            }}
+          />
+        )
+      }
+
+      render(<StatefulParamItem />)
+
+      const input = screen.getByRole('textbox')
+      await user.clear(input)
+
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0)
+      expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '0')
+
+      await user.tab()
+
+      expect(input).toHaveValue('0')
+    })
+
+    it('should clamp out-of-range text edits before updating state', async () => {
+      const user = userEvent.setup()
+      const StatefulParamItem = () => {
+        const [value, setValue] = useState(defaultProps.value)
+
+        return (
+          <ParamItem
+            {...defaultProps}
+            value={value}
+            onChange={(key: string, nextValue: number) => {
+              defaultProps.onChange(key, nextValue)
+              setValue(nextValue)
+            }}
+          />
+        )
+      }
+
+      render(<StatefulParamItem />)
+
+      const input = screen.getByRole('textbox')
+      await user.clear(input)
+      await user.type(input, '1.5')
+
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 1)
+      expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '100')
     })
 
     it('should pass scaled value to slider when max < 5', () => {
@@ -166,14 +223,10 @@ describe('ParamItem', () => {
       expect(slider).toHaveAttribute('aria-valuemax', '10')
     })
 
-    it('should use default step of 0.1 and min of 0 when not provided', () => {
+    it('should expose default minimum of 0 when min is not provided', () => {
       render(<ParamItem {...defaultProps} />)
-      const input = screen.getByRole('spinbutton')
-
-      // Component renders without error with default step/min
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
-      expect(input).toHaveAttribute('step', '0.1')
-      expect(input).toHaveAttribute('min', '0')
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
     })
   })
 })

@@ -1,10 +1,10 @@
 'use client'
-import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { useAppContext } from '@/context/app-context'
+import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
 
 type DeleteAccountProps = {
