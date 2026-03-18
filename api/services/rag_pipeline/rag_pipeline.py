@@ -126,7 +126,7 @@ class RagPipelineService:
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
-            if not built_in_result:
+            if built_in_result is None:
                 logger.warning(
                     "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
                     template_id,
