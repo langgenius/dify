@@ -6,6 +6,13 @@ import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
 
+const mockReplace = vi.fn()
+const mockRouter = { replace: mockReplace }
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => mockRouter,
+  useSearchParams: () => new URLSearchParams(''),
+}))
+
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockIsLoadingCurrentWorkspace = vi.fn(() => false)
@@ -124,7 +131,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 

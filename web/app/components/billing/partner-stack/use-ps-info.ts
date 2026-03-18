@@ -1,8 +1,8 @@
 import { useBoolean } from 'ahooks'
 import Cookies from 'js-cookie'
-import { useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { PARTNER_STACK_CONFIG } from '@/config'
+import { useSearchParams } from '@/next/navigation'
 import { useBindPartnerStackInfo } from '@/service/use-billing'
 
 const usePSInfo = () => {

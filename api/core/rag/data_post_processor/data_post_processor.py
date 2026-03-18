@@ -1,3 +1,5 @@
+from typing_extensions import TypedDict
+
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.index_processor.constant.query_type import QueryType
@@ -10,6 +12,26 @@ from dify_graph.model_runtime.entities.model_entities import ModelType
 from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
+class RerankingModelDict(TypedDict):
+    reranking_provider_name: str
+    reranking_model_name: str
+
+
+class VectorSettingDict(TypedDict):
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class KeywordSettingDict(TypedDict):
+    keyword_weight: float
+
+
+class WeightsDict(TypedDict):
+    vector_setting: VectorSettingDict
+    keyword_setting: KeywordSettingDict
+
+
 class DataPostProcessor:
     """Interface for data post-processing document."""
 
@@ -17,8 +39,8 @@ class DataPostProcessor:
         self,
         tenant_id: str,
         reranking_mode: str,
-        reranking_model: dict | None = None,
-        weights: dict | None = None,
+        reranking_model: RerankingModelDict | None = None,
+        weights: WeightsDict | None = None,
         reorder_enabled: bool = False,
     ):
         self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
@@ -45,8 +67,8 @@ class DataPostProcessor:
         self,
         reranking_mode: str,
         tenant_id: str,
-        reranking_model: dict | None = None,
-        weights: dict | None = None,
+        reranking_model: RerankingModelDict | None = None,
+        weights: WeightsDict | None = None,
     ) -> BaseRerankRunner | None:
         if reranking_mode == RerankMode.WEIGHTED_SCORE and weights:
             runner = RerankRunnerFactory.create_rerank_runner(
@@ -79,12 +101,14 @@ class DataPostProcessor:
             return ReorderRunner()
         return None
 
-    def _get_rerank_model_instance(self, tenant_id: str, reranking_model: dict | None) -> ModelInstance | None:
+    def _get_rerank_model_instance(
+        self, tenant_id: str, reranking_model: RerankingModelDict | None
+    ) -> ModelInstance | None:
         if reranking_model:
             try:
                 model_manager = ModelManager()
-                reranking_provider_name = reranking_model.get("reranking_provider_name")
-                reranking_model_name = reranking_model.get("reranking_model_name")
+                reranking_provider_name = reranking_model["reranking_provider_name"]
+                reranking_model_name = reranking_model["reranking_model_name"]
                 if not reranking_provider_name or not reranking_model_name:
                     return None
                 rerank_model_instance = model_manager.get_model_instance(

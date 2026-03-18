@@ -1,13 +1,25 @@
 import type { ReactNode } from 'react'
 import type { ModelAndParameter } from '../types'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  FormValue,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
-import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { createMockProviderContextValue } from '@/__mocks__/provider-context'
+import {
+  ConfigurationMethodEnum,
+  CurrentSystemQuotaTypeEnum,
+  CustomConfigurationStatusEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+  PreferredProviderTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterTrigger from './model-parameter-trigger'
 
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseDebugWithMultipleModelContext = vi.fn()
-const mockUseLanguage = vi.fn()
+const mockUseProviderContext = vi.fn()
+const mockUseCredentialPanelState = vi.fn()
 
 type RenderTriggerProps = {
   open: boolean
@@ -35,8 +47,12 @@ vi.mock('./context', () => ({
   useDebugWithMultipleModelContext: () => mockUseDebugWithMultipleModelContext(),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => mockUseLanguage(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => mockUseProviderContext(),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: () => mockUseCredentialPanelState(),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
@@ -84,6 +100,41 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
   ...overrides,
 })
 
+const createModelProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
+  provider: 'openai',
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  help: {
+    title: { en_US: 'Help', zh_Hans: 'Help' },
+    url: { en_US: 'https://example.com', zh_Hans: 'https://example.com' },
+  },
+  icon_small: { en_US: '', zh_Hans: '' },
+  supported_model_types: [ModelTypeEnum.textGeneration],
+  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+  provider_credential_schema: {
+    credential_form_schemas: [],
+  },
+  model_credential_schema: {
+    model: {
+      label: { en_US: 'Model', zh_Hans: 'Model' },
+      placeholder: { en_US: 'Select model', zh_Hans: 'Select model' },
+    },
+    credential_form_schemas: [],
+  },
+  preferred_provider_type: PreferredProviderTypeEnum.custom,
+  custom_configuration: {
+    status: CustomConfigurationStatusEnum.active,
+    current_credential_id: 'cred-1',
+    current_credential_name: 'Primary Key',
+    available_credentials: [{ credential_id: 'cred-1', credential_name: 'Primary Key' }],
+  },
+  system_configuration: {
+    enabled: true,
+    current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+    quota_configurations: [],
+  },
+  ...overrides,
+})
+
 const renderComponent = (props: Partial<{ modelAndParameter: ModelAndParameter }> = {}) => {
   const defaultProps = {
     modelAndParameter: createModelAndParameter(),
@@ -106,8 +157,19 @@ describe('ModelParameterTrigger', () => {
       onMultipleModelConfigsChange: vi.fn(),
       onDebugWithMultipleModelChange: vi.fn(),
     })
-
-    mockUseLanguage.mockReturnValue('en_US')
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
+      modelProviders: [createModelProvider()],
+    }))
+    mockUseCredentialPanelState.mockReturnValue({
+      variant: 'api-active',
+      priority: 'apiKey',
+      supportsCredits: true,
+      showPrioritySwitcher: true,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'Primary Key',
+      credits: 10,
+    })
   })
 
   describe('rendering', () => {
@@ -311,23 +373,66 @@ describe('ModelParameterTrigger', () => {
       expect(screen.getByTestId('model-parameter-modal')).toBeInTheDocument()
     })
 
-    it('should render "Select Model" text when no provider/model', () => {
-      renderComponent()
+    it('should render "Select Model" text when no provider or model is configured', () => {
+      renderComponent({
+        modelAndParameter: createModelAndParameter({
+          provider: '',
+          model: '',
+        }),
+      })
 
       // When currentProvider and currentModel are null, shows "Select Model"
       expect(screen.getByText('common.modelProvider.selectModel')).toBeInTheDocument()
     })
-  })
 
-  describe('language context', () => {
-    it('should use language from useLanguage hook', () => {
-      mockUseLanguage.mockReturnValue('zh_Hans')
-
+    it('should render configured model id and incompatible tooltip when model is missing from the provider list', () => {
       renderComponent()
 
-      // The language is used for MODEL_STATUS_TEXT tooltip
-      // We verify the hook is called
-      expect(mockUseLanguage).toHaveBeenCalled()
+      expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument()
+      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'common.modelProvider.selector.incompatibleTip')
+    })
+
+    it('should render configure required tooltip for no-configure status', () => {
+      const { unmount } = renderComponent()
+      const triggerContent = capturedModalProps?.renderTrigger({
+        open: false,
+        currentProvider: { provider: 'openai' },
+        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
+      })
+
+      unmount()
+      render(<>{triggerContent}</>)
+
+      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'common.modelProvider.selector.configureRequired')
+    })
+
+    it('should render disabled tooltip for disabled status', () => {
+      const { unmount } = renderComponent()
+      const triggerContent = capturedModalProps?.renderTrigger({
+        open: false,
+        currentProvider: { provider: 'openai' },
+        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.disabled },
+      })
+
+      unmount()
+      render(<>{triggerContent}</>)
+
+      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'common.modelProvider.selector.disabled')
+    })
+
+    it('should apply expanded and warning styles when the trigger is open for a non-active status', () => {
+      const { unmount } = renderComponent()
+      const triggerContent = capturedModalProps?.renderTrigger({
+        open: true,
+        currentProvider: { provider: 'openai' },
+        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
+      })
+
+      unmount()
+      const { container } = render(<>{triggerContent}</>)
+
+      expect(container.firstChild).toHaveClass('bg-state-base-hover')
+      expect(container.firstChild).toHaveClass('!bg-[#FFFAEB]')
     })
   })
 

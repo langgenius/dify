@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
-import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
@@ -18,6 +17,7 @@ import {
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
 import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
