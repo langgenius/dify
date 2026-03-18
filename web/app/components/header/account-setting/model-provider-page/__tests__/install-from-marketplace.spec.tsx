@@ -7,7 +7,7 @@ import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
 
 // Mock dependencies
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 

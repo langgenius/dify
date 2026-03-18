@@ -46,6 +46,10 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
     group: ['next/server'],
     message: 'Import Next APIs from @/next/server instead of next/server.',
   },
+  {
+    group: ['next/link'],
+    message: 'Import Next APIs from @/next/link instead of next/link.',
+  },
 ]
 
 const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [

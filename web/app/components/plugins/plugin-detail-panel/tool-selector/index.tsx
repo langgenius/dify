@@ -7,7 +7,6 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import {
   ToolAuthorizationSection,
