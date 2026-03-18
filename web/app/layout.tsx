@@ -1,4 +1,4 @@
-import type { Viewport } from 'next'
+import type { Viewport } from '@/next'
 import { Agentation } from 'agentation'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
