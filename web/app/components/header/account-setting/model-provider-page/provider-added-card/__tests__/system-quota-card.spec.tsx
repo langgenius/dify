@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import SystemQuotaCard from './system-quota-card'
+import SystemQuotaCard from '../system-quota-card'
 
 describe('SystemQuotaCard', () => {
   // Renders container with children

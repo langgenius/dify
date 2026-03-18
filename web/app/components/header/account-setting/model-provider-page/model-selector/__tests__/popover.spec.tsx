@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import ModelSelector from './index'
+import ModelSelector from '../index'
 
 type PopoverProps = {
   children: ReactNode
@@ -9,7 +9,7 @@ type PopoverProps = {
 
 let latestOnOpenChange: PopoverProps['onOpenChange']
 
-vi.mock('../hooks', () => ({
+vi.mock('../../hooks', () => ({
   useCurrentProviderAndModel: () => ({
     currentProvider: undefined,
     currentModel: undefined,
@@ -25,7 +25,7 @@ vi.mock('@/app/components/base/ui/popover', () => ({
   PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./model-selector-trigger', () => ({
+vi.mock('../model-selector-trigger', () => ({
   default: ({ open, readonly }: { open: boolean, readonly?: boolean }) => (
     <span>
       {open ? 'open' : 'closed'}
@@ -35,7 +35,7 @@ vi.mock('./model-selector-trigger', () => ({
   ),
 }))
 
-vi.mock('./popup', () => ({
+vi.mock('../popup', () => ({
   default: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="popup">
       <button type="button" onClick={onHide}>hide-popup</button>

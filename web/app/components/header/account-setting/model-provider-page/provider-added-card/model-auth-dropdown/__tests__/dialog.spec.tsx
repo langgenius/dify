@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import type { ModelProvider } from '../../declarations'
-import type { CredentialPanelState } from '../use-credential-panel-state'
+import type { ModelProvider } from '../../../declarations'
+import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import DropdownContent from './dropdown-content'
+import DropdownContent from '../dropdown-content'
 
 type AlertDialogProps = {
   children: ReactNode
@@ -15,7 +15,7 @@ const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 const mockHandleOpenModal = vi.fn()
 
-vi.mock('../../model-auth/hooks', () => ({
+vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
     openConfirmDelete: mockOpenConfirmDelete,
     closeConfirmDelete: mockCloseConfirmDelete,
@@ -26,7 +26,7 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('./use-activate-credential', () => ({
+vi.mock('../use-activate-credential', () => ({
   useActivateCredential: () => ({
     selectedCredentialId: 'cred-1',
     isActivating: false,
@@ -47,7 +47,7 @@ vi.mock('@/app/components/base/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./api-key-section', () => ({
+vi.mock('../api-key-section', () => ({
   default: ({ credentials, onDelete }: { credentials: unknown[], onDelete: (credential?: unknown) => void }) => (
     <div>
       <span>{`credentials:${credentials.length}`}</span>
@@ -56,15 +56,15 @@ vi.mock('./api-key-section', () => ({
   ),
 }))
 
-vi.mock('./credits-exhausted-alert', () => ({
+vi.mock('../credits-exhausted-alert', () => ({
   default: () => <div>credits alert</div>,
 }))
 
-vi.mock('./credits-fallback-alert', () => ({
+vi.mock('../credits-fallback-alert', () => ({
   default: () => <div>fallback alert</div>,
 }))
 
-vi.mock('./usage-priority-section', () => ({
+vi.mock('../usage-priority-section', () => ({
   default: () => <div>priority section</div>,
 }))
 

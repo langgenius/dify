@@ -1,7 +1,7 @@
-import type { ModelItem, ModelProvider } from '../declarations'
-import type { CredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-import { ModelStatusEnum } from '../declarations'
-import { deriveTriggerStatus } from './derive-trigger-status'
+import type { ModelItem, ModelProvider } from '../../declarations'
+import type { CredentialPanelState } from '../../provider-added-card/use-credential-panel-state'
+import { ModelStatusEnum } from '../../declarations'
+import { deriveTriggerStatus } from '../derive-trigger-status'
 
 const baseCredentialState: CredentialPanelState = {
   variant: 'api-active',

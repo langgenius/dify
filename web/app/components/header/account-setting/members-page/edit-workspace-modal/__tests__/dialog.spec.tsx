@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
-import EditWorkspaceModal from './index'
+import EditWorkspaceModal from '../index'
 
 type DialogProps = {
   children: ReactNode

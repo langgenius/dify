@@ -3,8 +3,8 @@ import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
   QuotaUnitEnum,
-} from './declarations'
-import ModelProviderPage from './index'
+} from '../declarations'
+import ModelProviderPage from '../index'
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -42,23 +42,23 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('./hooks', () => ({
+vi.mock('../hooks', () => ({
   useDefaultModel: () => ({ data: null, isLoading: false }),
 }))
 
-vi.mock('./provider-added-card', () => ({
+vi.mock('../provider-added-card', () => ({
   default: () => <div data-testid="provider-card" />,
 }))
 
-vi.mock('./provider-added-card/quota-panel', () => ({
+vi.mock('../provider-added-card/quota-panel', () => ({
   default: () => <div data-testid="quota-panel" />,
 }))
 
-vi.mock('./system-model-selector', () => ({
+vi.mock('../system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
-vi.mock('./install-from-marketplace', () => ({
+vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
 

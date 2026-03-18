@@ -1,17 +1,17 @@
-import type { ModelProvider } from '../declarations'
+import type { ModelProvider } from '../../declarations'
 import { renderHook } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
-} from '../declarations'
-import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
+} from '../../declarations'
+import { isDestructiveVariant, useCredentialPanelState } from '../use-credential-panel-state'
 
 const mockTrialCredits = { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
 const mockTrialModels = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
-vi.mock('./use-trial-credits', () => ({
+vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
 }))
 

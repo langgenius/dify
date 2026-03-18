@@ -1,7 +1,7 @@
-import type { Credential, ModelProvider } from '../../declarations'
+import type { Credential, ModelProvider } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
 import Toast from '@/app/components/base/toast'
-import { useActivateCredential } from './use-activate-credential'
+import { useActivateCredential } from '../use-activate-credential'
 
 const mockMutate = vi.fn()
 const mockUpdateModelProviders = vi.fn()
@@ -15,7 +15,7 @@ vi.mock('@/service/use-models', () => ({
   }),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../../hooks', () => ({
   useUpdateModelProviders: () => mockUpdateModelProviders,
   useUpdateModelList: () => mockUpdateModelList,
 }))

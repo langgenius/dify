@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
-import MenuDialog from './menu-dialog'
+import MenuDialog from '../menu-dialog'
 
 type DialogProps = {
   children: ReactNode

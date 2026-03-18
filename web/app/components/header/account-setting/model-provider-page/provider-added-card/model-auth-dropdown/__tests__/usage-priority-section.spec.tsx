@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { PreferredProviderTypeEnum } from '../../declarations'
-import UsagePrioritySection from './usage-priority-section'
+import { PreferredProviderTypeEnum } from '../../../declarations'
+import UsagePrioritySection from '../usage-priority-section'
 
 describe('UsagePrioritySection', () => {
   const onSelect = vi.fn()

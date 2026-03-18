@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import type { ModelProvider } from '../declarations'
+import type { ModelProvider } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ConfigurationMethodEnum, ModelTypeEnum, PreferredProviderTypeEnum } from '../declarations'
-import { useChangeProviderPriority } from './use-change-provider-priority'
+import { ConfigurationMethodEnum, ModelTypeEnum, PreferredProviderTypeEnum } from '../../declarations'
+import { useChangeProviderPriority } from '../use-change-provider-priority'
 
 const mockUpdateModelList = vi.fn()
 const mockUpdateModelProviders = vi.fn()
@@ -35,7 +35,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../../hooks', () => ({
   useUpdateModelList: () => mockUpdateModelList,
   useUpdateModelProviders: () => mockUpdateModelProviders,
 }))

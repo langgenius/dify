@@ -1,4 +1,4 @@
-import type { Model, ModelItem } from '../declarations'
+import type { Model, ModelItem } from '../../declarations'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -6,15 +6,15 @@ import {
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
-} from '../declarations'
-import ModelSelectorTrigger from './model-selector-trigger'
+} from '../../declarations'
+import ModelSelectorTrigger from '../model-selector-trigger'
 
 const mockUseProviderContext = vi.hoisted(() => vi.fn())
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
 }))
-vi.mock('../provider-added-card/use-credential-panel-state', () => ({
+vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockUseCredentialPanelState,
 }))
 

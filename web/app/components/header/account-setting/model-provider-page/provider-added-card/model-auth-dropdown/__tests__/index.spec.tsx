@@ -1,10 +1,10 @@
-import type { ModelProvider } from '../../declarations'
-import type { CredentialPanelState } from '../use-credential-panel-state'
+import type { ModelProvider } from '../../../declarations'
+import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../declarations'
-import ModelAuthDropdown from './index'
+import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
+import ModelAuthDropdown from '../index'
 
-vi.mock('../../model-auth/hooks', () => ({
+vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
     openConfirmDelete: vi.fn(),
     closeConfirmDelete: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('./use-activate-credential', () => ({
+vi.mock('../use-activate-credential', () => ({
   useActivateCredential: () => ({
     selectedCredentialId: undefined,
     isActivating: false,
@@ -23,7 +23,7 @@ vi.mock('./use-activate-credential', () => ({
   }),
 }))
 
-vi.mock('../use-trial-credits', () => ({
+vi.mock('../../use-trial-credits', () => ({
   useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
 }))
 

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import type { Credential, ModelProvider } from '../declarations'
+import type { Credential, ModelProvider } from '../../declarations'
 import { act, render, screen } from '@testing-library/react'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '../declarations'
-import ModelModal from './index'
+import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
+import ModelModal from '../index'
 
 type DialogProps = {
   children: ReactNode
@@ -27,7 +27,7 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: () => <div data-testid="auth-form" />,
 }))
 
-vi.mock('../model-auth', () => ({
+vi.mock('../../model-auth', () => ({
   CredentialSelector: ({ credentials }: { credentials: Credential[] }) => <div>{`credentials:${credentials.length}`}</div>,
 }))
 
@@ -52,7 +52,7 @@ vi.mock('@/app/components/base/ui/alert-dialog', () => ({
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('../model-auth/hooks', () => ({
+vi.mock('../../model-auth/hooks', () => ({
   useCredentialData: () => ({
     isLoading: false,
     credentialData: {
@@ -87,7 +87,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: Record<string, string>) => value[mockLanguage] || value.en_US,
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../../hooks', () => ({
   useLanguage: () => mockLanguage,
 }))
 

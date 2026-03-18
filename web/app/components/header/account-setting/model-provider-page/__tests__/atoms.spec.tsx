@@ -7,7 +7,7 @@ import {
   useModelProviderListExpanded,
   useResetModelProviderListExpanded,
   useSetModelProviderListExpanded,
-} from './atoms'
+} from '../atoms'
 
 const createWrapper = () => {
   return ({ children }: { children: ReactNode }) => (

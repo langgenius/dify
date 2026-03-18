@@ -1,8 +1,8 @@
-import type { ModelProvider } from '../../declarations'
-import type { CredentialPanelState } from '../use-credential-panel-state'
+import type { ModelProvider } from '../../../declarations'
+import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../declarations'
-import DropdownContent from './dropdown-content'
+import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
+import DropdownContent from '../dropdown-content'
 
 const mockHandleOpenModal = vi.fn()
 const mockActivate = vi.fn()
@@ -11,11 +11,11 @@ const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
 
-vi.mock('../use-trial-credits', () => ({
+vi.mock('../../use-trial-credits', () => ({
   useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
 }))
 
-vi.mock('./use-activate-credential', () => ({
+vi.mock('../use-activate-credential', () => ({
   useActivateCredential: () => ({
     selectedCredentialId: 'cred-1',
     isActivating: false,
@@ -23,7 +23,7 @@ vi.mock('./use-activate-credential', () => ({
   }),
 }))
 
-vi.mock('../../model-auth/hooks', () => ({
+vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
     openConfirmDelete: mockOpenConfirmDelete,
     closeConfirmDelete: mockCloseConfirmDelete,
@@ -34,7 +34,7 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('../../model-auth/authorized/credential-item', () => ({
+vi.mock('../../../model-auth/authorized/credential-item', () => ({
   default: ({ credential, onItemClick, onEdit, onDelete }: {
     credential: { credential_id: string, credential_name: string }
     onItemClick?: (c: unknown) => void

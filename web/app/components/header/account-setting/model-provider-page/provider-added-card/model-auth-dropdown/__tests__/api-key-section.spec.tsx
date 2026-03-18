@@ -1,7 +1,7 @@
-import type { Credential, ModelProvider } from '../../declarations'
+import type { Credential, ModelProvider } from '../../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../declarations'
-import ApiKeySection from './api-key-section'
+import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
+import ApiKeySection from '../api-key-section'
 
 const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
   credential_id: 'cred-1',

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import CreditsExhaustedAlert from './credits-exhausted-alert'
+import CreditsExhaustedAlert from '../credits-exhausted-alert'
 
 const mockTrialCredits = { credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false, nextCreditResetDate: undefined }
 const mockSetShowPricingModal = vi.fn()
@@ -24,7 +24,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
-vi.mock('../use-trial-credits', () => ({
+vi.mock('../../use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
 }))
 

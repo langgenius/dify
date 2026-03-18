@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import ParameterItem from './parameter-item'
+import ParameterItem from '../parameter-item'
 
-vi.mock('../hooks', () => ({
+vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 

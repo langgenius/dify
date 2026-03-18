@@ -1,11 +1,11 @@
-import type { Model, ModelItem, ModelProvider } from './declarations'
-import type { CredentialPanelState } from './provider-added-card/use-credential-panel-state'
+import type { Model, ModelItem, ModelProvider } from '../declarations'
+import type { CredentialPanelState } from '../provider-added-card/use-credential-panel-state'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
-} from './declarations'
-import { deriveModelStatus } from './derive-model-status'
+} from '../declarations'
+import { deriveModelStatus } from '../derive-model-status'
 
 const createCredentialState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'credits-active',

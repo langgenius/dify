@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { useTrialCredits } from './use-trial-credits'
+import { useTrialCredits } from '../use-trial-credits'
 
 const mockUseCurrentWorkspace = vi.fn()
 

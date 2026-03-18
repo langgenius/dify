@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PluginSource } from '@/app/components/plugins/types'
-import ProviderCardActions from './provider-card-actions'
+import ProviderCardActions from '../provider-card-actions'
 
 const mockHandleUpdate = vi.fn()
 const mockHandleUpdatedFromMarketplace = vi.fn()

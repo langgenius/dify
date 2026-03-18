@@ -1,6 +1,6 @@
-import type { ModelProvider } from './declarations'
-import { CurrentSystemQuotaTypeEnum } from './declarations'
-import { providerSupportsCredits } from './supports-credits'
+import type { ModelProvider } from '../declarations'
+import { CurrentSystemQuotaTypeEnum } from '../declarations'
+import { providerSupportsCredits } from '../supports-credits'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
