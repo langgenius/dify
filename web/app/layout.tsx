@@ -71,7 +71,7 @@ const LocaleLayout = async ({
                   <SentryInitializer>
                     <TanstackQueryInitializer>
                       <I18nServerProvider>
-                        <ToastHost timeout={5000} />
+                        <ToastHost timeout={5000} limit={3} />
                         <ToastProvider>
                           <GlobalPublicStoreProvider>
                             <TooltipProvider delay={300} closeDelay={200}>
