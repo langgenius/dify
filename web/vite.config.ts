@@ -83,7 +83,6 @@ export default defineConfig(({ mode }) => {
             rsc: {
               optimizeDeps: {
                 include: [
-                  'semver',
                   'lamejs',
                   'lamejs/src/js/BitStream',
                   'lamejs/src/js/Lame',
@@ -94,7 +93,6 @@ export default defineConfig(({ mode }) => {
             ssr: {
               optimizeDeps: {
                 include: [
-                  'semver',
                   'lamejs',
                   'lamejs/src/js/BitStream',
                   'lamejs/src/js/Lame',
