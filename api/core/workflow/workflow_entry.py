@@ -90,25 +90,15 @@ class _WorkflowChildEngineBuilder:
 
         command_channel = InMemoryChannel()
         config = GraphEngineConfig()
-        if self._execution_context is None:
-            child_engine = GraphEngine(
-                workflow_id=workflow_id,
-                graph=child_graph,
-                graph_runtime_state=graph_runtime_state,
-                command_channel=command_channel,
-                config=config,
-                child_engine_builder=self,
-            )
-        else:
-            child_engine = GraphEngine(
-                workflow_id=workflow_id,
-                graph=child_graph,
-                graph_runtime_state=graph_runtime_state,
-                command_channel=command_channel,
-                config=config,
-                child_engine_builder=self,
-                execution_context=self._execution_context,
-            )
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=command_channel,
+            config=config,
+            child_engine_builder=self,
+            execution_context=self._execution_context,
+        )
         child_engine.layer(LLMQuotaLayer())
         for layer in layers:
             child_engine.layer(cast(GraphEngineLayer, layer))
