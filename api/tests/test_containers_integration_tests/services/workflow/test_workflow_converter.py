@@ -510,7 +510,7 @@ class TestWorkflowConverter:
                 retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
                 top_k=10,
                 score_threshold=0.8,
-                reranking_model={"provider": "cohere", "model": "rerank-v2"},
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
                 reranking_enabled=True,
             ),
         )
