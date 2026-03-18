@@ -370,7 +370,7 @@ class Vector:
                     page_content=document.page_content,
                     vector=document.vector,
                     metadata=document.metadata,
-                    provider=document.provider if isinstance(document, AttachmentDocument) else "dify",
+                    provider=(document.provider or "dify") if isinstance(document, AttachmentDocument) else "dify",
                 )
             )
 

@@ -767,3 +767,42 @@ def test_vector_create_multimodal_normalizes_attachment_documents(
     assert isinstance(normalized_document, Document)
     assert normalized_document.provider == "custom-provider"
     assert normalized_document.metadata["doc_id"] == "file-1"
+
+
+@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
+@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
+@patch("core.rag.datasource.vdb.vector_factory.storage")
+@patch("core.rag.datasource.vdb.vector_factory.db.session")
+def test_vector_create_multimodal_falls_back_to_dify_provider_when_attachment_provider_is_none(
+    mock_session: Mock,
+    mock_storage: Mock,
+    mock_get_embeddings: Mock,
+    mock_init_vector: Mock,
+) -> None:
+    dataset = _make_dataset()
+    file_document = AttachmentDocument(
+        page_content="Attachment content",
+        provider=None,
+        metadata={"doc_id": "file-1", "doc_type": "image/png"},
+    )
+    upload_file = Mock(id="file-1", key="upload-key")
+
+    mock_scalars = Mock()
+    mock_scalars.all.return_value = [upload_file]
+    mock_session.scalars.return_value = mock_scalars
+    mock_storage.load_once.return_value = b"binary-content"
+
+    mock_embeddings = Mock()
+    mock_embeddings.embed_multimodal_documents.return_value = [[0.2] * 1536]
+    mock_get_embeddings.return_value = mock_embeddings
+
+    mock_vector_processor = Mock()
+    mock_init_vector.return_value = mock_vector_processor
+
+    vector = Vector(dataset=dataset)
+
+    vector.create_multimodal(file_documents=[file_document])
+
+    normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
+    assert isinstance(normalized_document, Document)
+    assert normalized_document.provider == "dify"
