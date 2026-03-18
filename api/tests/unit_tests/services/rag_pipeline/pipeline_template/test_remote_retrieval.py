@@ -83,6 +83,7 @@ def test_fetch_pipeline_template_detail_from_dify_official(mocker) -> None:
     success_response.json.return_value = {"id": "remote-1", "name": "Remote Template"}
 
     failed_response = mocker.Mock(status_code=404)
+    failed_response.text = "Not Found"
 
     http_get_mock = mocker.patch(
         "services.rag_pipeline.pipeline_template.remote.remote_retrieval.httpx.get",
@@ -90,8 +91,8 @@ def test_fetch_pipeline_template_detail_from_dify_official(mocker) -> None:
     )
 
     success_result = RemotePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_dify_official("remote-1")
-    failed_result = RemotePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_dify_official("missing")
+    with pytest.raises(ValueError):
+        RemotePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_dify_official("missing")
 
     assert success_result == {"id": "remote-1", "name": "Remote Template"}
-    assert failed_result is None
     assert http_get_mock.call_count == 2
