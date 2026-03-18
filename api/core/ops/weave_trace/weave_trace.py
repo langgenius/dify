@@ -1,16 +1,9 @@
 import logging
 import os
-import tempfile
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-# Ensure .netrc is writable for wandb authentication.
-# wandb.login() persists credentials to ~/.netrc, which fails in read-only
-# environments (e.g. Dify Cloud). Redirect to a temp directory instead.
-os.environ.setdefault("NETRC", os.path.join(tempfile.gettempdir(), f".wandb_netrc.{os.getpid()}"))
-
-import wandb
 import weave
 from sqlalchemy.orm import sessionmaker
 from weave.trace_server.trace_server_interface import (
@@ -55,17 +48,13 @@ class WeaveDataTrace(BaseTraceInstance):
         self.entity = weave_config.entity
         self.host = weave_config.host
 
-        # Login with API key first, including host if provided
+        # Authenticate via env var instead of wandb.login() to avoid
+        # writing credentials to .netrc (fails in read-only environments)
+        os.environ["WANDB_API_KEY"] = self.weave_api_key
         if self.host:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
-        else:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+            os.environ["WANDB_BASE_URL"] = self.host
 
-        if not login_status:
-            logger.error("Failed to login to Weights & Biases with the provided API key")
-            raise ValueError("Weave login failed")
-
-        # Then initialize weave client
+        # Initialize weave client
         self.weave_client = weave.init(
             project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
         )
@@ -425,16 +414,17 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
+            os.environ["WANDB_API_KEY"] = self.weave_api_key
             if self.host:
-                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
-            else:
-                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+                os.environ["WANDB_BASE_URL"] = self.host
 
-            if not login_status:
-                raise ValueError("Weave login failed")
-            else:
-                logger.info("Weave login successful")
+            weave_client = weave.init(
+                project_name=(f"{self.entity}/{self.project_name}" if self.entity else self.project_name)
+            )
+            if weave_client:
+                logger.info("Weave API check successful")
                 return True
+            raise ValueError("Weave initialization failed")
         except Exception as e:
             logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
