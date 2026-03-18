@@ -17,7 +17,7 @@ from dify_graph.entities import (
     WorkflowNodeExecution,
 )
 from dify_graph.enums import (
-    NodeType,
+    BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -230,7 +230,7 @@ def test_to_db_model(repository):
         index=1,
         predecessor_node_id="test-predecessor-id",
         node_id="test-node-id",
-        node_type=NodeType.START,
+        node_type=BuiltinNodeTypes.START,
         title="Test Node",
         inputs={"input_key": "input_value"},
         process_data={"process_key": "process_value"},
@@ -298,7 +298,7 @@ def test_to_domain_model(repository):
     db_model.predecessor_node_id = "test-predecessor-id"
     db_model.node_execution_id = "test-node-execution-id"
     db_model.node_id = "test-node-id"
-    db_model.node_type = NodeType.START
+    db_model.node_type = BuiltinNodeTypes.START
     db_model.title = "Test Node"
     db_model.inputs = json.dumps(inputs_dict)
     db_model.process_data = json.dumps(process_data_dict)
@@ -324,7 +324,7 @@ def test_to_domain_model(repository):
     assert domain_model.predecessor_node_id == db_model.predecessor_node_id
     assert domain_model.node_execution_id == db_model.node_execution_id
     assert domain_model.node_id == db_model.node_id
-    assert domain_model.node_type == NodeType(db_model.node_type)
+    assert domain_model.node_type == db_model.node_type
     assert domain_model.title == db_model.title
     assert domain_model.inputs == inputs_dict
     assert domain_model.process_data == process_data_dict

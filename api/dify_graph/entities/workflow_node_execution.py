@@ -48,7 +48,7 @@ class WorkflowNodeExecution(BaseModel):
     index: int  # Sequence number for ordering in trace visualization
     predecessor_node_id: str | None = None  # ID of the node that executed before this one
     node_id: str  # ID of the node being executed
-    node_type: NodeType  # Type of node (e.g., start, llm, knowledge)
+    node_type: NodeType  # Type of node (e.g., start, llm, downstream response node)
     title: str  # Display title of the node
 
     # Execution data

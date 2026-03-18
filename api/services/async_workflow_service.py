@@ -18,7 +18,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser
-from models.trigger import WorkflowTriggerLog
+from models.trigger import WorkflowTriggerLog, WorkflowTriggerLogDict
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
@@ -224,7 +224,9 @@ class AsyncWorkflowService:
         return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
-    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
+    def get_trigger_log(
+        cls, workflow_trigger_log_id: str, tenant_id: str | None = None
+    ) -> WorkflowTriggerLogDict | None:
         """
         Get trigger log by ID
 
@@ -247,7 +249,7 @@ class AsyncWorkflowService:
     @classmethod
     def get_recent_logs(
         cls, tenant_id: str, app_id: str, hours: int = 24, limit: int = 100, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    ) -> list[WorkflowTriggerLogDict]:
         """
         Get recent trigger logs
 
@@ -272,7 +274,7 @@ class AsyncWorkflowService:
     @classmethod
     def get_failed_logs_for_retry(
         cls, tenant_id: str, max_retry_count: int = 3, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    ) -> list[WorkflowTriggerLogDict]:
         """
         Get failed logs eligible for retry
 

@@ -14,6 +14,88 @@ process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: ['next/image'],
+    message: 'Do not import next/image. Use native img tags instead.',
+  },
+  {
+    group: ['next/font', 'next/font/*'],
+    message: 'Do not import next/font. Use the project font styles instead.',
+  },
+]
+
+const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '**/portal-to-follow-elem',
+      '**/portal-to-follow-elem/index',
+    ],
+    message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/tooltip',
+      '**/base/tooltip/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/modal',
+      '**/base/modal/index',
+      '**/base/modal/modal',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/select',
+      '**/base/select/index',
+      '**/base/select/custom',
+      '**/base/select/pure',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/confirm',
+      '**/base/confirm/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/popover',
+      '**/base/popover/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/dropdown',
+      '**/base/dropdown/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/dialog',
+      '**/base/dialog/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/toast',
+      '**/base/toast/index',
+      '**/base/toast/context',
+      '**/base/toast/context/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/toast instead. See issue #32811.',
+  },
+]
+
 export default antfu(
   {
     react: {
@@ -53,6 +135,7 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'next/no-img-element': 'off',
     },
   },
   {
@@ -157,6 +240,15 @@ export default antfu(
     },
   },
   {
+    name: 'dify/no-next-image-or-font',
+    files: [GLOB_TS, GLOB_TSX],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
     name: 'dify/overlay-migration',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
@@ -165,58 +257,10 @@ export default antfu(
     ],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{
-          group: [
-            '**/portal-to-follow-elem',
-            '**/portal-to-follow-elem/index',
-          ],
-          message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/tooltip',
-            '**/base/tooltip/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/modal',
-            '**/base/modal/index',
-            '**/base/modal/modal',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/select',
-            '**/base/select/index',
-            '**/base/select/custom',
-            '**/base/select/pure',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/confirm',
-            '**/base/confirm/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/popover',
-            '**/base/popover/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/dropdown',
-            '**/base/dropdown/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/dialog',
-            '**/base/dialog/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-        }],
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
       }],
     },
   },
