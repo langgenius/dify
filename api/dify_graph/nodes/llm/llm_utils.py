@@ -258,10 +258,10 @@ def fetch_prompt_messages(
                 prompt_message_content.append(content_item)
             if not prompt_message_content:
                 continue
-            content = prompt_message_content
-            if len(content) == 1 and isinstance(content[0], TextPromptMessageContent):
-                content = content[0].data
-            prompt_message.content = content
+            if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
+                prompt_message.content = prompt_message_content[0].data
+            else:
+                prompt_message.content = prompt_message_content
             filtered_prompt_messages.append(prompt_message)
         elif not prompt_message.is_empty():
             filtered_prompt_messages.append(prompt_message)
