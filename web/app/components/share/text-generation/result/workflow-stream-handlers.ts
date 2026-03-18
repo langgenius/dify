@@ -50,6 +50,15 @@ const matchParallelTrace = (trace: WorkflowProcess['tracing'][number], data: Nod
       || trace.parallel_id === data.execution_metadata?.parallel_id)
 }
 
+const findParallelTraceIndex = (tracing: WorkflowProcess['tracing'], data: NodeTracing) => {
+  return tracing.findIndex((trace) => {
+    if (trace.id && data.id)
+      return trace.id === data.id
+
+    return matchParallelTrace(trace, data)
+  })
+}
+
 const ensureParallelTraceDetails = (details?: NodeTracing['details']) => {
   return details?.length ? details : [[]]
 }
@@ -69,7 +78,8 @@ const appendParallelStart = (current: WorkflowProcess | undefined, data: NodeTra
 const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const trace = draft.tracing.find(item => matchParallelTrace(item, data))
+    const traceIndex = findParallelTraceIndex(draft.tracing, data)
+    const trace = draft.tracing[traceIndex]
     if (!trace)
       return
 
@@ -81,7 +91,7 @@ const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTrac
 const finishParallelTrace = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const traceIndex = draft.tracing.findIndex(item => matchParallelTrace(item, data))
+    const traceIndex = findParallelTraceIndex(draft.tracing, data)
     if (traceIndex > -1) {
       draft.tracing[traceIndex] = {
         ...data,

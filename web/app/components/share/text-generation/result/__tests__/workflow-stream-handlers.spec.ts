@@ -163,6 +163,72 @@ describe('workflow-stream-handlers helpers', () => {
     expect(nextProcess.tracing[0]?.details).toEqual([[], []])
   })
 
+  it('should keep separate iteration and loop traces for repeated executions with different ids', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'iter-trace-1',
+        node_id: 'iter-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'iter-trace-2',
+        node_id: 'iter-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'loop-trace-1',
+        node_id: 'loop-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'loop-trace-2',
+        node_id: 'loop-1',
+        details: [[]],
+      }),
+    ]
+
+    const iterNextProcess = appendParallelNext(process, createTrace({
+      id: 'iter-trace-2',
+      node_id: 'iter-1',
+    }))
+    const iterFinishedProcess = finishParallelTrace(iterNextProcess, createTrace({
+      id: 'iter-trace-2',
+      node_id: 'iter-1',
+      status: NodeRunningStatus.Succeeded,
+    }))
+    const loopNextProcess = appendParallelNext(iterFinishedProcess, createTrace({
+      id: 'loop-trace-2',
+      node_id: 'loop-1',
+    }))
+    const loopFinishedProcess = finishParallelTrace(loopNextProcess, createTrace({
+      id: 'loop-trace-2',
+      node_id: 'loop-1',
+      status: NodeRunningStatus.Succeeded,
+    }))
+
+    expect(loopFinishedProcess.tracing[0]).toEqual(expect.objectContaining({
+      id: 'iter-trace-1',
+      details: [[]],
+      status: NodeRunningStatus.Running,
+    }))
+    expect(loopFinishedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'iter-trace-2',
+      details: [[], []],
+      status: NodeRunningStatus.Succeeded,
+    }))
+    expect(loopFinishedProcess.tracing[2]).toEqual(expect.objectContaining({
+      id: 'loop-trace-1',
+      details: [[]],
+      status: NodeRunningStatus.Running,
+    }))
+    expect(loopFinishedProcess.tracing[3]).toEqual(expect.objectContaining({
+      id: 'loop-trace-2',
+      details: [[], []],
+      status: NodeRunningStatus.Succeeded,
+    }))
+  })
+
   it('should append a new top-level trace when the same node starts with a different execution id', () => {
     const process = createWorkflowProcess()
     process.tracing = [
