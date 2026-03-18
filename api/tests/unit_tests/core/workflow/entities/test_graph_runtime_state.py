@@ -23,6 +23,17 @@ class StubCoordinator:
 
 
 class TestGraphRuntimeState:
+    def test_execution_context_defaults_to_empty_context(self):
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
+        state.execution_context = None
+
+        with state.execution_context:
+            assert state.execution_context is not None
+
     def test_property_getters_and_setters(self):
         # FIXME(-LAN-): Mock VariablePool if needed
         variable_pool = VariablePool()

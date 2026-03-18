@@ -1,7 +1,6 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import AbstractContextManager
 from typing import Any, cast
 
 from configs import dify_config
@@ -40,9 +39,6 @@ logger = logging.getLogger(__name__)
 
 
 class _WorkflowChildEngineBuilder:
-    def __init__(self, execution_context: AbstractContextManager[object] | None = None) -> None:
-        self._execution_context = execution_context
-
     @staticmethod
     def _has_node_id(graph_config: Mapping[str, Any], node_id: str) -> bool | None:
         """
@@ -97,7 +93,6 @@ class _WorkflowChildEngineBuilder:
             command_channel=command_channel,
             config=config,
             child_engine_builder=self,
-            execution_context=self._execution_context,
         )
         child_engine.layer(LLMQuotaLayer())
         for layer in layers:
@@ -149,7 +144,8 @@ class WorkflowEntry:
 
         self.command_channel = command_channel
         execution_context = capture_current_context()
-        self._child_engine_builder = _WorkflowChildEngineBuilder(execution_context=execution_context)
+        graph_runtime_state.execution_context = execution_context
+        self._child_engine_builder = _WorkflowChildEngineBuilder()
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -162,7 +158,6 @@ class WorkflowEntry:
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
             child_engine_builder=self._child_engine_builder,
-            execution_context=execution_context,
         )
 
         # Add debug logging layer when in debug mode

@@ -120,6 +120,7 @@ class TestWorkflowEntryInit:
 
     def test_applies_debug_and_observability_layers(self):
         graph_engine = MagicMock()
+        graph_runtime_state = SimpleNamespace(execution_context=None)
         debug_layer = sentinel.debug_layer
         execution_limits_layer = sentinel.execution_limits_layer
         llm_quota_layer = sentinel.llm_quota_layer
@@ -153,7 +154,7 @@ class TestWorkflowEntryInit:
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
                 variable_pool=sentinel.variable_pool,
-                graph_runtime_state=sentinel.graph_runtime_state,
+                graph_runtime_state=graph_runtime_state,
                 command_channel=None,
             )
 
@@ -161,12 +162,12 @@ class TestWorkflowEntryInit:
         graph_engine_cls.assert_called_once_with(
             workflow_id="workflow-id-123456",
             graph=sentinel.graph,
-            graph_runtime_state=sentinel.graph_runtime_state,
+            graph_runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             config=sentinel.graph_engine_config,
             child_engine_builder=entry._child_engine_builder,
-            execution_context=sentinel.execution_context,
         )
+        assert graph_runtime_state.execution_context is sentinel.execution_context
         debug_logging_layer.assert_called_once_with(
             level="DEBUG",
             include_inputs=True,

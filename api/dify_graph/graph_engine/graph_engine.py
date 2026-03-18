@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import queue
 from collections.abc import Generator, Mapping
-from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, cast, final
 
 from dify_graph.entities.workflow_start_reason import WorkflowStartReason
@@ -77,7 +76,6 @@ class GraphEngine:
         command_channel: CommandChannel,
         config: GraphEngineConfig = _DEFAULT_CONFIG,
         child_engine_builder: ChildGraphEngineBuilderProtocol | None = None,
-        execution_context: AbstractContextManager[object] | None = None,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
 
@@ -90,8 +88,6 @@ class GraphEngine:
         self._child_engine_builder = child_engine_builder
         if child_engine_builder is not None:
             self._graph_runtime_state.bind_child_engine_builder(child_engine_builder)
-        if execution_context is not None:
-            self._graph_runtime_state.execution_context = execution_context
 
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
