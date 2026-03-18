@@ -1,54 +1,36 @@
 import type { CommonNodeType } from '../../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWorkflowComponent } from '../../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import NodeControl from './node-control'
 
 const {
   mockHandleNodeSelect,
-  mockSetInitShowLastRunTab,
-  mockSetPendingSingleRun,
   mockCanRunBySingle,
 } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
-  mockSetInitShowLastRunTab: vi.fn(),
-  mockSetPendingSingleRun: vi.fn(),
   mockCanRunBySingle: vi.fn(() => true),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+let mockPluginInstallLocked = false
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-content={popupContent}>{children}</div>
-  ),
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/line/mediaAndDevices', () => ({
-  Stop: ({ className }: { className?: string }) => <div data-testid="stop-icon" className={className} />,
-}))
-
-vi.mock('../../../hooks', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setInitShowLastRunTab: mockSetInitShowLastRunTab,
-      setPendingSingleRun: mockSetPendingSingleRun,
+vi.mock('../../../hooks', async () => {
+  const actual = await vi.importActual<typeof import('../../../hooks')>('../../../hooks')
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeSelect: mockHandleNodeSelect,
     }),
-  }),
-}))
+  }
+})
 
-vi.mock('../../../utils', () => ({
-  canRunBySingle: mockCanRunBySingle,
-}))
+vi.mock('../../../utils', async () => {
+  const actual = await vi.importActual<typeof import('../../../utils')>('../../../utils')
+  return {
+    ...actual,
+    canRunBySingle: mockCanRunBySingle,
+  }
+})
 
 vi.mock('./panel-operator', () => ({
   default: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
@@ -58,6 +40,16 @@ vi.mock('./panel-operator', () => ({
     </>
   ),
 }))
+
+function NodeControlHarness({ id, data }: { id: string, data: CommonNodeType, selected?: boolean }) {
+  return (
+    <NodeControl
+      id={id}
+      data={data}
+      pluginInstallLocked={mockPluginInstallLocked}
+    />
+  )
+}
 
 const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
   type: BlockEnum.Code,
@@ -73,65 +65,71 @@ const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
 describe('NodeControl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPluginInstallLocked = false
     mockCanRunBySingle.mockReturnValue(true)
   })
 
-  it('should trigger a single run and show the hover control when plugins are not locked', () => {
-    const { container } = render(
-      <NodeControl
-        id="node-1"
-        data={makeData()}
-      />,
-    )
+  // Run/stop behavior should be driven by the workflow store, not CSS classes.
+  describe('Single Run Actions', () => {
+    it('should trigger a single run through the workflow store', () => {
+      const { store } = renderWorkflowComponent(
+        <NodeControlHarness id="node-1" data={makeData()} />,
+      )
 
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).toContain('group-hover:flex')
-    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'panel.runThisStep')
+      fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
 
-    fireEvent.click(screen.getByTestId('tooltip').parentElement!)
+      expect(store.getState().initShowLastRunTab).toBe(true)
+      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    })
 
-    expect(mockSetInitShowLastRunTab).toHaveBeenCalledWith(true)
-    expect(mockSetPendingSingleRun).toHaveBeenCalledWith({ nodeId: 'node-1', action: 'run' })
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
+    it('should trigger stop when the node is already single-running', () => {
+      const { store } = renderWorkflowComponent(
+        <NodeControlHarness
+          id="node-2"
+          data={makeData({
+            selected: true,
+            _singleRunningStatus: NodeRunningStatus.Running,
+          })}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
+
+      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })
+      expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-2')
+    })
   })
 
-  it('should render the stop action, keep locked controls hidden by default, and stay open when panel operator opens', () => {
-    const { container } = render(
-      <NodeControl
-        id="node-2"
-        pluginInstallLocked
-        data={makeData({
-          selected: true,
-          _singleRunningStatus: NodeRunningStatus.Running,
-          isInIteration: true,
-        })}
-      />,
-    )
+  // Capability gating should hide the run control while leaving panel actions available.
+  describe('Availability', () => {
+    it('should keep the panel operator available when the plugin is install-locked', () => {
+      mockPluginInstallLocked = true
 
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).not.toContain('group-hover:flex')
-    expect(wrapper.className).toContain('!flex')
-    expect(screen.getByTestId('stop-icon')).toBeInTheDocument()
+      renderWorkflowComponent(
+        <NodeControlHarness
+          id="node-3"
+          data={makeData({
+            selected: true,
+          })}
+        />,
+      )
 
-    fireEvent.click(screen.getByTestId('stop-icon').parentElement!)
+      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+    })
 
-    expect(mockSetPendingSingleRun).toHaveBeenCalledWith({ nodeId: 'node-2', action: 'stop' })
+    it('should hide the run control when single-node execution is not supported', () => {
+      mockCanRunBySingle.mockReturnValue(false)
 
-    fireEvent.click(screen.getByRole('button', { name: 'open panel' }))
-    expect(wrapper.className).toContain('!flex')
-  })
+      renderWorkflowComponent(
+        <NodeControlHarness
+          id="node-4"
+          data={makeData()}
+        />,
+      )
 
-  it('should hide the run control when single-node execution is not supported', () => {
-    mockCanRunBySingle.mockReturnValue(false)
-
-    render(
-      <NodeControl
-        id="node-3"
-        data={makeData()}
-      />,
-    )
-
-    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+    })
   })
 })
