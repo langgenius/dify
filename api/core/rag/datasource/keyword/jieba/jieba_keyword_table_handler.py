@@ -87,7 +87,7 @@ class JiebaKeywordTableHandler:
                 elif callable(cut):
                     tokens = list(cut(sentence))
                 else:
-                    tokens = re.findall(r"\w+", sentence)
+                    tokens = re.findall(r"\w+(?:-\w+)*", sentence)
 
                 words = [w for w in tokens if w and w not in self.stop_words]
                 freq: dict[str, int] = {}
@@ -103,25 +103,68 @@ class JiebaKeywordTableHandler:
         return _SimpleTFIDF()
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: int | None = 10) -> set[str]:
-        """Extract keywords with JIEBA tfidf."""
+        """Extract keywords with JIEBA tfidf.
+
+        Jieba's tokeniser splits compound identifiers like "st-771" (hyphen) or
+        "model_function_description" (underscore) into separate tokens before
+        TF-IDF scoring. Those sub-tokens are returned instead of the whole term,
+        so the identifier is never indexed as a unit and cannot be recalled by an
+        exact keyword match.
+
+        To recover these compound terms we scan the raw text with a regex after
+        TF-IDF and add every hyphen- or underscore-joined match directly to the
+        keyword set, bypassing jieba's segmentation for those terms. The loose
+        sub-tokens are then removed so they don't pollute the index.
+        """
         keywords = self._tfidf.extract_tags(
             sentence=text,
             topK=max_keywords_per_chunk,
         )
         # jieba.analyse.extract_tags returns list[Any] when withFlag is False by default.
         keywords = cast(list[str], keywords)
+        tfidf_keywords = set(keywords)
+        keyword_set = set(keywords)
 
-        return set(self._expand_tokens_with_subtokens(set(keywords)))
+        # Collect compound identifiers that jieba's segmenter would otherwise split.
+        # Covers both hyphenated terms (e.g. "st-771", "read-write") and
+        # underscore-joined terms (e.g. "model_function_description"). These are
+        # added unconditionally because their presence in the text is an explicit
+        # authorial choice and they must match as whole units during retrieval.
+        compound_terms = list(dict.fromkeys(re.findall(r"[^\W_]+(?:[_-][^\W_]+)+", text)))
+        if max_keywords_per_chunk is not None:
+            compound_terms = compound_terms[:max_keywords_per_chunk]
+        keyword_set.update(compound_terms)
+
+        # Remove loose subtokens that are already covered by a compound term, but
+        # only when jieba did not independently identify them as significant keywords.
+        # If jieba returned "st" on its own (because it appears standalone in the
+        # text), we preserve it; we only drop subtokens that jieba produced solely
+        # as a byproduct of splitting the compound identifier.
+        subtoken_noise: set[str] = set()
+        for term in compound_terms:
+            parts = re.split(r"[_-]", term)
+            subtoken_noise.update(parts)
+        keyword_set -= subtoken_noise - tfidf_keywords
+
+        return set(self._expand_tokens_with_subtokens(keyword_set))
 
     def _expand_tokens_with_subtokens(self, tokens: set[str]) -> set[str]:
-        """Get subtokens from a list of tokens., filtering for stopwords."""
+        """Get subtokens from a list of tokens, filtering for stopwords.
+
+        Hyphenated terms (e.g. "st-771", "type-a") are treated as atomic units and
+        are NOT split, so manual keywords and technical identifiers survive both
+        indexing and query expansion unchanged. Splitting only occurs for tokens that
+        contain non-hyphen, non-word separators (e.g. spaces, slashes).
+        """
         from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
         results = set()
         for token in tokens:
             results.add(token)
-            sub_tokens = re.findall(r"\w+", token)
+            # r"\w+(?:-\w+)*" keeps hyphenated compound tokens (e.g. "st-771") intact
+            # while still splitting on other non-word characters.
+            sub_tokens = re.findall(r"\w+(?:-\w+)*", token)
             if len(sub_tokens) > 1:
-                results.update({w for w in sub_tokens if w not in list(STOPWORDS)})
+                results.update({w for w in sub_tokens if w not in STOPWORDS})
 
         return results
