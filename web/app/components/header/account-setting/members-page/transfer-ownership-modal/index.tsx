@@ -53,7 +53,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   }, [retimeCountdown, show])
 
   const startCount = () => {
-    retimeCountdown()
     setTime(60)
     retimeCountdown(window.setInterval(() => {
       setTime((prev) => {
