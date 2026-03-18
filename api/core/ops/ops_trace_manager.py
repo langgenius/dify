@@ -935,10 +935,25 @@ class TraceQueueManager:
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        # Lazy initialization: don't create trace instance until needed
+        # This prevents workflow from being blocked if tracing service is unavailable
+        self._trace_instance = None
+        self._trace_instance_initialized = False
         self.flask_app = current_app._get_current_object()  # type: ignore
         if trace_manager_timer is None:
             self.start_timer()
+
+    @property
+    def trace_instance(self):
+        """Lazy initialization of trace instance to avoid blocking workflow on startup."""
+        if not self._trace_instance_initialized:
+            self._trace_instance_initialized = True
+            try:
+                self._trace_instance = OpsTraceManager.get_ops_trace_instance(self.app_id)
+            except Exception:
+                logger.exception("Failed to initialize trace instance for app_id: %s", self.app_id)
+                self._trace_instance = None
+        return self._trace_instance
 
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue

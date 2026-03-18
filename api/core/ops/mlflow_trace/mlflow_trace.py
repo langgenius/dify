@@ -41,13 +41,35 @@ def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
 class MLflowDataTrace(BaseTraceInstance):
     def __init__(self, config: MLflowConfig | DatabricksConfig):
         super().__init__(config)
-        if isinstance(config, DatabricksConfig):
-            self._setup_databricks(config)
-        else:
-            self._setup_mlflow(config)
+        self._config = config
+        self._project_url = ""
+        # Defer actual setup to first use to avoid blocking workflow on initialization
+        self._initialized = False
 
         # Enable async logging to minimize performance overhead
         os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] = "true"
+
+    def _ensure_initialized(self):
+        """Lazy initialization to prevent blocking workflow when tracing service is unavailable."""
+        if self._initialized:
+            return
+        
+        try:
+            if isinstance(self._config, DatabricksConfig):
+                self._setup_databricks(self._config)
+            else:
+                self._setup_mlflow(self._config)
+            self._initialized = True
+        except Exception as e:
+            logger.warning("[MLflow] Failed to initialize tracing: %s. Tracing will be disabled.", e)
+            # Set a fallback project URL even on failure
+            if isinstance(self._config, DatabricksConfig):
+                host = self._config.host.rstrip("/")
+                self._project_url = f"{host}/ml/experiments/{self._config.experiment_id}/traces"
+            else:
+                self._project_url = f"{self._config.tracking_uri}/#/experiments/{self._config.experiment_id}/traces"
+            # Mark as initialized to avoid repeated attempts
+            self._initialized = True
 
     def _setup_databricks(self, config: DatabricksConfig):
         """Setup connection to Databricks-managed MLflow instances"""
@@ -87,6 +109,9 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def trace(self, trace_info: BaseTraceInfo):
         """Simple dispatch to trace methods"""
+        # Initialize on first use
+        self._ensure_initialized()
+        
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -104,7 +129,6 @@ class MLflowDataTrace(BaseTraceInstance):
                 self.generate_name_trace(trace_info)
         except Exception:
             logger.exception("[MLflow] Trace error")
-            raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         """Create workflow span as root, with node spans as children"""

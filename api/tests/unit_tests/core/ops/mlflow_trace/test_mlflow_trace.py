@@ -230,13 +230,26 @@ class TestDatetimeToNanoseconds:
 
 
 class TestInit:
-    def test_mlflow_config_no_auth(self, mock_mlflow):
+    def test_mlflow_config_no_auth_lazy_init(self, mock_mlflow):
+        """Test that MLflow setup is deferred until first use (lazy initialization)."""
         config = MLflowConfig(tracking_uri="http://localhost:5000", experiment_id="0")
         trace = MLflowDataTrace(config)
+        # Setup should NOT be called during __init__ (lazy initialization)
+        mock_mlflow.set_tracking_uri.assert_not_called()
+        mock_mlflow.set_experiment.assert_not_called()
+        # Project URL should be empty before initialization
+        assert trace._project_url == ""
+        assert os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] == "true"
+
+    def test_mlflow_config_initialized_on_first_use(self, mock_mlflow):
+        """Test that MLflow setup is called when _ensure_initialized is called."""
+        config = MLflowConfig(tracking_uri="http://localhost:5000", experiment_id="0")
+        trace = MLflowDataTrace(config)
+        # Trigger initialization
+        trace._ensure_initialized()
         mock_mlflow.set_tracking_uri.assert_called_with("http://localhost:5000")
         mock_mlflow.set_experiment.assert_called_with(experiment_id="0")
         assert trace.get_project_url() == "http://localhost:5000/#/experiments/0/traces"
-        assert os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] == "true"
 
     def test_mlflow_config_with_auth(self, mock_mlflow):
         config = MLflowConfig(
@@ -245,7 +258,9 @@ class TestInit:
             username="user",
             password="pass",
         )
-        MLflowDataTrace(config)
+        trace = MLflowDataTrace(config)
+        # Trigger initialization to set auth env vars
+        trace._ensure_initialized()
         assert os.environ["MLFLOW_TRACKING_USERNAME"] == "user"
         assert os.environ["MLFLOW_TRACKING_PASSWORD"] == "pass"
 
@@ -257,6 +272,8 @@ class TestInit:
             client_secret="csec",
         )
         trace = MLflowDataTrace(config)
+        # Trigger initialization
+        trace._ensure_initialized()
         assert os.environ["DATABRICKS_HOST"] == "https://db.com/"
         assert os.environ["DATABRICKS_CLIENT_ID"] == "cid"
         assert os.environ["DATABRICKS_CLIENT_SECRET"] == "csec"
@@ -271,13 +288,31 @@ class TestInit:
             personal_access_token="pat",
         )
         trace = MLflowDataTrace(config)
+        # Trigger initialization
+        trace._ensure_initialized()
         assert os.environ["DATABRICKS_TOKEN"] == "pat"
         assert "db.com/ml/experiments/1/traces" in trace.get_project_url()
 
-    def test_databricks_no_creds_raises(self, mock_mlflow):
+    def test_databricks_no_creds_raises_on_init(self, mock_mlflow):
         config = DatabricksConfig(host="https://db.com", experiment_id="1")
+        trace = MLflowDataTrace(config)
+        # Error is raised when initializing, not during __init__
         with pytest.raises(ValueError, match="Either Databricks token"):
-            MLflowDataTrace(config)
+            trace._ensure_initialized()
+
+    def test_initialization_error_handled_gracefully(self, mock_mlflow):
+        """Test that initialization errors are handled gracefully in trace method."""
+        config = MLflowConfig(tracking_uri="http://localhost:5000", experiment_id="0")
+        trace = MLflowDataTrace(config)
+        # Simulate initialization failure
+        mock_mlflow.set_tracking_uri.side_effect = ConnectionError("Connection refused")
+        # Should not raise when calling trace - error is logged and tracing is disabled
+        trace_info = _make_workflow_trace_info()
+        # trace() will call _ensure_initialized() which will catch the error
+        # and set _initialized=True to avoid repeated attempts
+        trace.trace(trace_info)
+        # After failed init, the instance should be marked as initialized
+        assert trace._initialized is True
 
 
 # ── trace dispatcher ────────────────────────────────────────────────────────

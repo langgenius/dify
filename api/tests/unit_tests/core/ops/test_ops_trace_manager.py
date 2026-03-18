@@ -517,14 +517,43 @@ def test_extract_streaming_metrics_invalid_json():
 
 
 def test_trace_queue_manager_add_and_collect(monkeypatch):
+    # With lazy initialization, get_ops_trace_instance should NOT be called during __init__
+    mock_get_instance = MagicMock(return_value=True)
     monkeypatch.setattr(
-        "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", classmethod(lambda cls, aid: True)
+        "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", mock_get_instance
     )
     manager = TraceQueueManager(app_id="app-id", user_id="user")
+    # get_ops_trace_instance should NOT be called during initialization (lazy init)
+    mock_get_instance.assert_not_called()
+    
+    # When trace_instance property is accessed, it should call get_ops_trace_instance
+    _ = manager.trace_instance
+    mock_get_instance.assert_called_once_with("app-id")
+    
     task = TraceTask(trace_type=TraceTaskName.CONVERSATION_TRACE)
     manager.add_trace_task(task)
     tasks = manager.collect_tasks()
     assert tasks == [task]
+
+
+def test_trace_queue_manager_lazy_init_error_handling(monkeypatch):
+    """Test that TraceQueueManager handles initialization errors gracefully."""
+    mock_get_instance = MagicMock(side_effect=ConnectionError("Service unavailable"))
+    monkeypatch.setattr(
+        "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", mock_get_instance
+    )
+    
+    manager = TraceQueueManager(app_id="app-id", user_id="user")
+    # get_ops_trace_instance should NOT be called during initialization
+    mock_get_instance.assert_not_called()
+    
+    # When trace_instance is accessed, it should handle the error gracefully
+    instance = manager.trace_instance
+    mock_get_instance.assert_called_once_with("app-id")
+    # Should return None when initialization fails
+    assert instance is None
+    # Should be marked as initialized even on failure
+    assert manager._trace_instance_initialized is True
 
 
 def test_trace_queue_manager_run_invokes_send(monkeypatch):
