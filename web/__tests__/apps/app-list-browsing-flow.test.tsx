@@ -46,7 +46,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (_loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComponent = (props: Record<string, unknown>) => {
       return <div data-testid="dynamic-component" {...props} />

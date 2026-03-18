@@ -117,7 +117,7 @@ vi.mock('ahooks', async () => {
 })
 
 // Mock dynamically loaded modals with test stubs
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {

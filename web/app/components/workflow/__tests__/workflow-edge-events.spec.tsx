@@ -80,7 +80,7 @@ function createMouseEvent() {
   } as unknown as React.MouseEvent<Element, MouseEvent>
 }
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
