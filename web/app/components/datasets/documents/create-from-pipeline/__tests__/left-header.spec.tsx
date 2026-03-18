@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LeftHeader from '../left-header'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-ds-id' }),
 }))
 

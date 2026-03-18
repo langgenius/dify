@@ -47,7 +47,7 @@ vi.mock('ahooks', () => ({
   },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),

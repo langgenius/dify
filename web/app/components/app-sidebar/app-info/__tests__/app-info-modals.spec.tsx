@@ -5,7 +5,7 @@ import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComp = React.lazy(loader)
     return function DynamicWrapper(props: Record<string, unknown>) {

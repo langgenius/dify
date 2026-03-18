@@ -4,7 +4,7 @@ import * as React from 'react'
 import NavLink from '..'
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 

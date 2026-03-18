@@ -29,7 +29,7 @@ const mockOnPlanInfoChanged = vi.fn()
 const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
 let mockDeleteMutationPending = false
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),
@@ -57,7 +57,7 @@ vi.mock('@headlessui/react', async () => {
   }
 })
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {

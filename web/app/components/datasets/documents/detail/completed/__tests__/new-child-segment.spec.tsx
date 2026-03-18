@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import NewChildSegmentModal from '../new-child-segment'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     datasetId: 'test-dataset-id',
     documentId: 'test-document-id',
