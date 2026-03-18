@@ -13,7 +13,7 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 

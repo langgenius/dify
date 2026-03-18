@@ -6,7 +6,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../hooks'
 import { IndexingModeSection } from '../indexing-mode-section'
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children?: React.ReactNode, href?: string, className?: string }) => <a href={href} {...props}>{children}</a>,
 }))
 

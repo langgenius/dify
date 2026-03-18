@@ -53,4 +53,14 @@ describe('useCredentialStatus', () => {
     expect(result.current.hasCredential).toBe(false)
     expect(result.current.available_credentials).toBeUndefined()
   })
+
+  it('handles undefined provider gracefully', () => {
+    const { result } = renderHook(() => useCredentialStatus(undefined))
+    expect(result.current.hasCredential).toBe(false)
+    expect(result.current.authorized).toBeFalsy()
+    expect(result.current.authRemoved).toBe(false)
+    expect(result.current.available_credentials).toBeUndefined()
+    expect(result.current.current_credential_id).toBeUndefined()
+    expect(result.current.current_credential_name).toBeUndefined()
+  })
 })

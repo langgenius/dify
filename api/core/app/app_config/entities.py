@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from dify_graph.file import FileUploadConfig
 from dify_graph.model_runtime.entities.llm_entities import LLMMode
 from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
@@ -194,8 +195,8 @@ class DatasetRetrieveConfigEntity(BaseModel):
     top_k: int | None = None
     score_threshold: float | None = 0.0
     rerank_mode: str | None = "reranking_model"
-    reranking_model: dict | None = None
-    weights: dict | None = None
+    reranking_model: RerankingModelDict | None = None
+    weights: WeightsDict | None = None
     reranking_enabled: bool | None = True
     metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
     metadata_model_config: ModelConfig | None = None

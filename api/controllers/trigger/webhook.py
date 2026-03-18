@@ -70,7 +70,14 @@ def handle_webhook(webhook_id: str):
 
 @bp.route("/webhook-debug/<string:webhook_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 def handle_webhook_debug(webhook_id: str):
-    """Handle webhook debug calls without triggering production workflow execution."""
+    """Handle webhook debug calls without triggering production workflow execution.
+
+    The debug webhook endpoint is only for draft inspection flows. It never enqueues
+    Celery work for the published workflow; instead it dispatches an in-memory debug
+    event to an active Variable Inspector listener. Returning a clear error when no
+    listener is registered prevents a misleading 200 response for requests that are
+    effectively dropped.
+    """
     try:
         webhook_trigger, _, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id, is_debug=True)
         if error:
@@ -94,11 +101,32 @@ def handle_webhook_debug(webhook_id: str):
                 "method": webhook_data.get("method"),
             },
         )
-        TriggerDebugEventBus.dispatch(
+        dispatch_count = TriggerDebugEventBus.dispatch(
             tenant_id=webhook_trigger.tenant_id,
             event=event,
             pool_key=pool_key,
         )
+        if dispatch_count == 0:
+            logger.warning(
+                "Webhook debug request dropped without an active listener for webhook %s (tenant=%s, app=%s, node=%s)",
+                webhook_trigger.webhook_id,
+                webhook_trigger.tenant_id,
+                webhook_trigger.app_id,
+                webhook_trigger.node_id,
+            )
+            return (
+                jsonify(
+                    {
+                        "error": "No active debug listener",
+                        "message": (
+                            "The webhook debug URL only works while the Variable Inspector is listening. "
+                            "Use the published webhook URL to execute the workflow in Celery."
+                        ),
+                        "execution_url": webhook_trigger.webhook_url,
+                    }
+                ),
+                409,
+            )
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
         return jsonify(response_data), status_code
 

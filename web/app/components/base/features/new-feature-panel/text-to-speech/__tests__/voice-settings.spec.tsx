@@ -35,7 +35,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/test-app-id/configuration',
   useParams: () => ({ appId: 'test-app-id' }),
 }))

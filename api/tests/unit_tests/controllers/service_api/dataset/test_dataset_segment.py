@@ -32,6 +32,7 @@ from controllers.service_api.dataset.segment import (
     SegmentListQuery,
 )
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 from services.dataset_service import DocumentService, SegmentService
 
 
@@ -657,12 +658,27 @@ class TestSegmentIndexingRequirements:
         dataset.indexing_technique = technique
         assert dataset.indexing_technique in ["high_quality", "economy"]
 
-    @pytest.mark.parametrize("status", ["waiting", "parsing", "indexing", "completed", "error"])
+    @pytest.mark.parametrize(
+        "status",
+        [
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.INDEXING,
+            IndexingStatus.COMPLETED,
+            IndexingStatus.ERROR,
+        ],
+    )
     def test_valid_indexing_statuses(self, status):
         """Test valid document indexing statuses."""
         document = Mock(spec=Document)
         document.indexing_status = status
-        assert document.indexing_status in ["waiting", "parsing", "indexing", "completed", "error"]
+        assert document.indexing_status in {
+            IndexingStatus.WAITING,
+            IndexingStatus.PARSING,
+            IndexingStatus.INDEXING,
+            IndexingStatus.COMPLETED,
+            IndexingStatus.ERROR,
+        }
 
     def test_completed_status_required_for_segments(self):
         """Test that completed status is required for segment operations."""

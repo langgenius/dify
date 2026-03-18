@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({
     push: vi.fn(),
@@ -101,7 +101,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock next/link
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => (
     <a href={href}>{children}</a>
   ),

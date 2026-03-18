@@ -14,14 +14,55 @@ type UseInstallMultiStateParams = {
   onLoadedAllPlugin: (installedInfo: Record<string, VersionInfo>) => void
 }
 
+type MarketplacePluginInfo = {
+  organization: string
+  plugin: string
+  version?: string
+}
+
+type MarketplaceRequest = {
+  dslIndex: number
+  dependency: GitHubItemAndMarketPlaceDependency
+  info: MarketplacePluginInfo
+}
+
 export function getPluginKey(plugin: Plugin | undefined): string {
   return `${plugin?.org || plugin?.author}/${plugin?.name}`
 }
 
-function parseMarketplaceIdentifier(identifier: string) {
-  const [orgPart, nameAndVersionPart] = identifier.split('@')[0].split('/')
-  const [name, version] = nameAndVersionPart.split(':')
-  return { organization: orgPart, plugin: name, version }
+function parseMarketplaceIdentifier(identifier?: string): MarketplacePluginInfo | null {
+  if (!identifier)
+    return null
+
+  const withoutHash = identifier.split('@')[0]
+  const [organization, nameAndVersionPart] = withoutHash.split('/')
+  if (!organization || !nameAndVersionPart)
+    return null
+
+  const [plugin, version] = nameAndVersionPart.split(':')
+  if (!plugin)
+    return null
+
+  return { organization, plugin, version }
+}
+
+function getMarketplacePluginInfo(
+  value: GitHubItemAndMarketPlaceDependency['value'],
+): MarketplacePluginInfo | null {
+  const parsedInfo = parseMarketplaceIdentifier(
+    value.marketplace_plugin_unique_identifier || value.plugin_unique_identifier,
+  )
+  if (parsedInfo)
+    return parsedInfo
+
+  if (!value.organization || !value.plugin)
+    return null
+
+  return {
+    organization: value.organization,
+    plugin: value.plugin,
+    version: value.version,
+  }
 }
 
 function initPluginsFromDependencies(allPlugins: Dependency[]): (Plugin | undefined)[] {
@@ -61,67 +102,73 @@ export function useInstallMultiState({
     }, [])
   }, [allPlugins])
 
-  // Marketplace data fetching: by unique identifier and by meta info
+  const { marketplaceRequests, invalidMarketplaceIndexes } = useMemo(() => {
+    return marketplacePlugins.reduce<{
+      marketplaceRequests: MarketplaceRequest[]
+      invalidMarketplaceIndexes: number[]
+    }>((acc, dependency, marketplaceIndex) => {
+      const dslIndex = marketPlaceInDSLIndex[marketplaceIndex]
+      if (dslIndex === undefined)
+        return acc
+
+      const marketplaceInfo = getMarketplacePluginInfo(dependency.value)
+      if (!marketplaceInfo)
+        acc.invalidMarketplaceIndexes.push(dslIndex)
+      else
+        acc.marketplaceRequests.push({ dslIndex, dependency, info: marketplaceInfo })
+
+      return acc
+    }, {
+      marketplaceRequests: [],
+      invalidMarketplaceIndexes: [],
+    })
+  }, [marketPlaceInDSLIndex, marketplacePlugins])
+
+  // Marketplace data fetching: by normalized marketplace info
   const {
     isLoading: isFetchingById,
     data: infoGetById,
     error: infoByIdError,
   } = useFetchPluginsInMarketPlaceByInfo(
-    marketplacePlugins.map(d => parseMarketplaceIdentifier(d.value.marketplace_plugin_unique_identifier!)),
-  )
-
-  const {
-    isLoading: isFetchingByMeta,
-    data: infoByMeta,
-    error: infoByMetaError,
-  } = useFetchPluginsInMarketPlaceByInfo(
-    marketplacePlugins.map(d => d.value!),
+    marketplaceRequests.map(request => request.info),
   )
 
   // Derive marketplace plugin data and errors from API responses
   const { marketplacePluginMap, marketplaceErrorIndexes } = useMemo(() => {
     const pluginMap = new Map<number, Plugin>()
-    const errorSet = new Set<number>()
+    const errorSet = new Set<number>(invalidMarketplaceIndexes)
 
     // Process "by ID" response
     if (!isFetchingById && infoGetById?.data.list) {
-      const sortedList = marketplacePlugins.map((d) => {
-        const id = d.value.marketplace_plugin_unique_identifier?.split(':')[0]
-        const retPluginInfo = infoGetById.data.list.find(item => item.plugin.plugin_id === id)?.plugin
-        return { ...retPluginInfo, from: d.type } as Plugin
-      })
-      marketPlaceInDSLIndex.forEach((index, i) => {
-        if (sortedList[i]) {
-          pluginMap.set(index, {
-            ...sortedList[i],
-            version: sortedList[i]!.version || sortedList[i]!.latest_version,
+      const payloads = infoGetById.data.list
+      const pluginById = new Map(
+        payloads.map(item => [item.plugin.plugin_id, item.plugin]),
+      )
+
+      marketplaceRequests.forEach((request, requestIndex) => {
+        const pluginId = (
+          request.dependency.value.marketplace_plugin_unique_identifier
+          || request.dependency.value.plugin_unique_identifier
+        )?.split(':')[0]
+        const pluginInfo = (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
+
+        if (pluginInfo) {
+          pluginMap.set(request.dslIndex, {
+            ...pluginInfo,
+            from: request.dependency.type,
+            version: pluginInfo.version || pluginInfo.latest_version,
           })
         }
-        else { errorSet.add(index) }
-      })
-    }
-
-    // Process "by meta" response (may overwrite "by ID" results)
-    if (!isFetchingByMeta && infoByMeta?.data.list) {
-      const payloads = infoByMeta.data.list
-      marketPlaceInDSLIndex.forEach((index, i) => {
-        if (payloads[i]) {
-          const item = payloads[i]
-          pluginMap.set(index, {
-            ...item.plugin,
-            plugin_id: item.version.unique_identifier,
-          } as Plugin)
-        }
-        else { errorSet.add(index) }
+        else { errorSet.add(request.dslIndex) }
       })
     }
 
     // Mark all marketplace indexes as errors on fetch failure
-    if (infoByMetaError || infoByIdError)
+    if (infoByIdError)
       marketPlaceInDSLIndex.forEach(index => errorSet.add(index))
 
     return { marketplacePluginMap: pluginMap, marketplaceErrorIndexes: errorSet }
-  }, [isFetchingById, isFetchingByMeta, infoGetById, infoByMeta, infoByMetaError, infoByIdError, marketPlaceInDSLIndex, marketplacePlugins])
+  }, [invalidMarketplaceIndexes, isFetchingById, infoGetById, infoByIdError, marketPlaceInDSLIndex, marketplaceRequests])
 
   // GitHub-fetched plugins and errors (imperative state from child callbacks)
   const [githubPluginMap, setGithubPluginMap] = useState<Map<number, Plugin>>(() => new Map())
