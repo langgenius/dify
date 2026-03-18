@@ -10,7 +10,31 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type ToastData = Record<string, never>
-export type ToastType = 'success' | 'error' | 'warning' | 'info'
+type ToastToneStyle = {
+  gradientClassName: string
+  iconClassName: string
+}
+
+const TOAST_TONE_STYLES = {
+  success: {
+    iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
+    gradientClassName: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
+  },
+  error: {
+    iconClassName: 'i-ri-error-warning-fill text-text-destructive',
+    gradientClassName: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
+  },
+  warning: {
+    iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
+    gradientClassName: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
+  },
+  info: {
+    iconClassName: 'i-ri-information-2-fill text-text-accent',
+    gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+  },
+} satisfies Record<string, ToastToneStyle>
+
+export type ToastType = keyof typeof TOAST_TONE_STYLES
 
 export type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
   type?: ToastType
@@ -33,35 +57,14 @@ export type ToastHostProps = {
   limit?: number
 }
 
-const TOAST_TONE_STYLES: Record<ToastType, {
-  gradientClassName: string
-  iconClassName: string
-}> = {
-  success: {
-    iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
-    gradientClassName: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
-  },
-  error: {
-    iconClassName: 'i-ri-error-warning-fill text-text-destructive',
-    gradientClassName: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
-  },
-  warning: {
-    iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
-    gradientClassName: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
-  },
-  info: {
-    iconClassName: 'i-ri-information-2-fill text-text-accent',
-    gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
-  },
-}
-
 const toastManager = BaseToast.createToastManager<ToastData>()
 
-function getToastType(type?: string): ToastType | undefined {
-  if (type && Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type))
-    return type as ToastType
+function isToastType(type: string): type is ToastType {
+  return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
+}
 
-  return undefined
+function getToastType(type?: string): ToastType | undefined {
+  return type && isToastType(type) ? type : undefined
 }
 
 export const toast = {
