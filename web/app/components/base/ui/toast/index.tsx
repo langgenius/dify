@@ -96,10 +96,8 @@ function getToneGradientClasses(type?: ToastType) {
 
 function ToastCard({
   toast: toastItem,
-  showHoverBridge = false,
 }: {
   toast: ToastObject<ToastData>
-  showHoverBridge?: boolean
 }) {
   const { t } = useTranslation('common')
   const toastType = getToastType(toastItem.type)
@@ -108,13 +106,14 @@ function ToastCard({
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top cursor-default select-none',
+        'pointer-events-auto absolute right-0 top-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top cursor-default select-none rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-hover',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         '[height:var(--toast-current-height)] [z-index:calc(100-var(--toast-index))]',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         'translate-x-[var(--toast-swipe-movement-x)] translate-y-[calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height)))] scale-[var(--toast-scale)]',
         'data-[expanded]:translate-x-[var(--toast-swipe-movement-x)] data-[expanded]:translate-y-[calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px))] data-[expanded]:scale-100 data-[expanded]:[height:var(--toast-height)]',
         'data-[limited]:pointer-events-none data-[ending-style]:translate-y-[calc(var(--toast-swipe-movement-y)-150%)] data-[starting-style]:-translate-y-[150%] data-[ending-style]:opacity-0 data-[limited]:opacity-0 data-[starting-style]:opacity-0',
+        'after:pointer-events-auto after:absolute after:left-0 after:top-full after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
       <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -162,9 +161,6 @@ function ToastCard({
           </div>
         </BaseToast.Content>
       </div>
-      {showHoverBridge && (
-        <div aria-hidden="true" className="absolute inset-x-0 -bottom-2 h-2" />
-      )}
     </BaseToast.Root>
   )
 }
@@ -186,11 +182,10 @@ function ToastViewport() {
           'pointer-events-none absolute right-4 top-4 w-[360px] max-w-[calc(100vw-2rem)] sm:right-8',
         )}
       >
-        {toasts.map((toastItem, index) => (
+        {toasts.map(toastItem => (
           <ToastCard
             key={toastItem.id}
             toast={toastItem}
-            showHoverBridge={index < toasts.length - 1}
           />
         ))}
       </div>
