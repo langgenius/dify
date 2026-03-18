@@ -93,8 +93,11 @@ const finishParallelTrace = (current: WorkflowProcess | undefined, data: NodeTra
     draft.expand = true
     const traceIndex = findParallelTraceIndex(draft.tracing, data)
     if (traceIndex > -1) {
+      const currentTrace = draft.tracing[traceIndex]
       draft.tracing[traceIndex] = {
+        ...currentTrace,
         ...data,
+        details: data.details ?? currentTrace.details,
         expand: !!data.error,
       }
     }

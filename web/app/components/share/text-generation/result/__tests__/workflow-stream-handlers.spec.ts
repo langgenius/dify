@@ -196,6 +196,7 @@ describe('workflow-stream-handlers helpers', () => {
       id: 'iter-trace-2',
       node_id: 'iter-1',
       status: NodeRunningStatus.Succeeded,
+      details: undefined,
     }))
     const loopNextProcess = appendParallelNext(iterFinishedProcess, createTrace({
       id: 'loop-trace-2',
@@ -205,6 +206,7 @@ describe('workflow-stream-handlers helpers', () => {
       id: 'loop-trace-2',
       node_id: 'loop-1',
       status: NodeRunningStatus.Succeeded,
+      details: undefined,
     }))
 
     expect(loopFinishedProcess.tracing[0]).toEqual(expect.objectContaining({
