@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-imports */
 import type { NextConfig } from 'next'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
