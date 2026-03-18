@@ -57,12 +57,12 @@ const HeaderInRestoring = ({
       return
 
     setShowWorkflowVersionHistoryPanel(false)
-    workflowStore.setState({ isRestoring: false })
-    workflowStore.setState({ backupDraft: undefined })
     const restoreUrl = `/${getFlowPrefix(configsMap.flowType)}/${configsMap.flowId}/workflows/${currentVersion.id}/restore`
 
     try {
       await restoreWorkflow(restoreUrl)
+      workflowStore.setState({ isRestoring: false })
+      workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
       Toast.notify({
         type: 'success',

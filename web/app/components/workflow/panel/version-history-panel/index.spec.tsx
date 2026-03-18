@@ -9,6 +9,8 @@ const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
+const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
+const mockWorkflowStoreSetState = vi.fn()
 
 type MockVersionStoreState = Pick<Shape, 'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'>
 type MockRestoreConfirmModalProps = {
@@ -106,7 +108,7 @@ vi.mock('../../hooks-store', () => ({
 vi.mock('../../store', () => ({
   useStore: <T,>(selector: (state: MockVersionStoreState) => T) => {
     const state: MockVersionStoreState = {
-      setShowWorkflowVersionHistoryPanel: vi.fn(),
+      setShowWorkflowVersionHistoryPanel: mockSetShowWorkflowVersionHistoryPanel,
       currentVersion: null,
       setCurrentVersion: mockSetCurrentVersion,
     }
@@ -115,10 +117,10 @@ vi.mock('../../store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       deleteAllInspectVars: vi.fn(),
-      setShowWorkflowVersionHistoryPanel: vi.fn(),
+      setShowWorkflowVersionHistoryPanel: mockSetShowWorkflowVersionHistoryPanel,
       setCurrentVersion: mockSetCurrentVersion,
     }),
-    setState: vi.fn(),
+    setState: mockWorkflowStoreSetState,
   }),
 }))
 
@@ -233,7 +235,34 @@ describe('VersionHistoryPanel', () => {
         id: 'published-version-id',
       }))
       expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/published-version-id/restore')
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ backupDraft: undefined })
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
     })
+  })
+
+  it('should keep restore mode backup state when restore request fails', async () => {
+    const { VersionHistoryPanel } = await import('./index')
+    mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    vi.clearAllMocks()
+
+    fireEvent.click(screen.getByText('restore-published-version-id'))
+    fireEvent.click(screen.getByText('confirm restore'))
+
+    await waitFor(() => {
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/published-version-id/restore')
+    })
+
+    expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })
+    expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ backupDraft: undefined })
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })
