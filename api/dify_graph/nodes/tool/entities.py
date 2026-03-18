@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Literal, TypeAlias, TypedDict, cast
+from typing import Literal, TypeAlias, cast
 
 from pydantic import BaseModel, TypeAdapter, field_validator
 from pydantic_core.core_schema import ValidationInfo
+from typing_extensions import TypedDict
 
 from core.tools.entities.tool_entities import ToolProviderType
 from dify_graph.entities.base_node_data import BaseNodeData
