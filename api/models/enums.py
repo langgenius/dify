@@ -215,6 +215,8 @@ class SegmentStatus(StrEnum):
     INDEXING = "indexing"
     COMPLETED = "completed"
     ERROR = "error"
+    PAUSED = "paused"
+    RE_SEGMENT = "re_segment"
 
 
 class DatasetRuntimeMode(StrEnum):
@@ -282,6 +284,7 @@ class SummaryStatus(StrEnum):
     GENERATING = "generating"
     COMPLETED = "completed"
     ERROR = "error"
+    TIMEOUT = "timeout"
 
 
 class MessageChainType(StrEnum):
