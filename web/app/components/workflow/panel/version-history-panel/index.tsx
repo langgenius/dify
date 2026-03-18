@@ -27,7 +27,7 @@ const INITIAL_PAGE = 1
 export type VersionHistoryPanelProps = {
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
-  restoreVersionUrl?: (versionId: string) => string
+  restoreVersionUrl: (versionId: string) => string
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
@@ -154,7 +154,7 @@ export const VersionHistoryPanel = ({
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
     try {
-      await restoreWorkflow(restoreVersionUrl?.(item.id) || '')
+      await restoreWorkflow(restoreVersionUrl(item.id))
       handleRefreshWorkflowDraft()
       toast.add({
         type: 'success',

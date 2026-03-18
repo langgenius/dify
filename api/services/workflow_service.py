@@ -63,7 +63,12 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    TriggerNodeLimitExceededError,
+    WorkflowHashNotEqualError,
+    WorkflowNotFoundError,
+)
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -293,7 +298,7 @@ class WorkflowService:
         """
         source_workflow = self.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
         if not source_workflow:
-            raise ValueError("Workflow not found.")
+            raise WorkflowNotFoundError("Workflow not found.")
 
         self.validate_features_structure(app_model=app_model, features=source_workflow.features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)

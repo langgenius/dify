@@ -79,7 +79,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
@@ -246,7 +246,7 @@ class RagPipelineService:
             .first()
         )
         if workflow and workflow.version == Workflow.VERSION_DRAFT:
-            return None
+            raise IsDraftWorkflowError("source workflow must be published")
         return workflow
 
     def get_all_published_workflow(
@@ -352,7 +352,7 @@ class RagPipelineService:
         """Restore a published pipeline workflow snapshot into the draft workflow."""
         source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
         if not source_workflow:
-            raise ValueError("Workflow not found.")
+            raise WorkflowNotFoundError("Workflow not found.")
 
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
         restored_environment_variables = list(source_workflow.environment_variables)

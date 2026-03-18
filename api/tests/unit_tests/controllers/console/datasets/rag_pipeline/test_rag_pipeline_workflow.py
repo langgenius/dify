@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, HTTPException, NotFound
 
 import services
 from controllers.console import console_ns
@@ -26,7 +26,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineWorkflowLastRunApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
 
@@ -152,7 +152,7 @@ class TestDraftWorkflowApi:
         user = MagicMock(id="account-1")
 
         service = MagicMock()
-        service.restore_published_workflow_to_draft.side_effect = NotFound("Workflow not found")
+        service.restore_published_workflow_to_draft.side_effect = WorkflowNotFoundError("Workflow not found")
 
         with (
             app.test_request_context("/", method="POST"),
@@ -167,6 +167,35 @@ class TestDraftWorkflowApi:
         ):
             with pytest.raises(NotFound):
                 method(api, pipeline, "published-workflow")
+
+    def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app):
+        api = RagPipelineDraftWorkflowRestoreApi()
+        method = unwrap(api.post)
+
+        pipeline = MagicMock()
+        user = MagicMock(id="account-1")
+
+        service = MagicMock()
+        service.restore_published_workflow_to_draft.side_effect = IsDraftWorkflowError(
+            "source workflow must be published"
+        )
+
+        with (
+            app.test_request_context("/", method="POST"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.current_account_with_tenant",
+                return_value=(user, "t"),
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            with pytest.raises(HTTPException) as exc:
+                method(api, pipeline, "draft-workflow")
+
+        assert exc.value.code == 400
+        assert exc.value.description == "source workflow must be published"
 
 
 class TestDraftRunNodes:

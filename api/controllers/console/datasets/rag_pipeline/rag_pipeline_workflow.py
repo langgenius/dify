@@ -6,7 +6,7 @@ from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.schema import register_schema_models
@@ -43,7 +43,7 @@ from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -725,7 +725,9 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
                 workflow_id=workflow_id,
                 account=current_user,
             )
-        except ValueError as exc:
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(str(exc)) from exc
+        except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
 
         return {

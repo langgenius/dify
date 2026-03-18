@@ -46,7 +46,7 @@ from models import App
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -1021,8 +1021,10 @@ class DraftWorkflowRestoreApi(Resource):
             )
         except IsDraftWorkflowError as exc:
             raise BadRequest(str(exc)) from exc
-        except ValueError as exc:
+        except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
 
         return {
             "result": "success",

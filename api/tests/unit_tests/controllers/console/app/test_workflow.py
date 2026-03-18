@@ -169,7 +169,9 @@ def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.
         workflow_module,
         "WorkflowService",
         lambda: SimpleNamespace(
-            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(NotFound("Workflow not found"))
+            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
+                workflow_module.WorkflowNotFoundError("Workflow not found")
+            )
         ),
     )
 
@@ -186,6 +188,72 @@ def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
+
+
+def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    user = SimpleNamespace(id="account-1")
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(
+            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
+                workflow_module.IsDraftWorkflowError("source workflow must be published")
+            )
+        ),
+    )
+
+    api = workflow_module.DraftWorkflowRestoreApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft-workflow/restore",
+        method="POST",
+    ):
+        with pytest.raises(HTTPException) as exc:
+            handler(
+                api,
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+                workflow_id="draft-workflow",
+            )
+
+    assert exc.value.code == 400
+    assert exc.value.description == "source workflow must be published"
+
+
+def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
+    app, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user = SimpleNamespace(id="account-1")
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(
+            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
+                ValueError("invalid workflow graph")
+            )
+        ),
+    )
+
+    api = workflow_module.DraftWorkflowRestoreApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/published-workflow/restore",
+        method="POST",
+    ):
+        with pytest.raises(HTTPException) as exc:
+            handler(
+                api,
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+                workflow_id="published-workflow",
+            )
+
+    assert exc.value.code == 400
+    assert exc.value.description == "invalid workflow graph"
 
 
 def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
