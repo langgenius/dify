@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NewType, cast
 
@@ -240,7 +240,6 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                     self._execute_single_iteration_parallel,
                     index=index,
                     item=item,
-                    execution_context=self._capture_execution_context(),
                 )
                 future_to_index[future] = index
 
@@ -321,10 +320,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _capture_execution_context(self) -> AbstractContextManager[object]:
         """Return the application-supplied execution context for parallel iterations."""
-        execution_context = self.graph_runtime_state.execution_context
-        if execution_context is not None:
-            return execution_context
-        return nullcontext()
+        return self.graph_runtime_state.execution_context
 
     def _handle_iteration_success(
         self,
