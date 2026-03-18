@@ -432,6 +432,7 @@ export enum TaskStatus {
 export type PluginStatus = {
   plugin_unique_identifier: string
   plugin_id: string
+  source: PluginSource
   status: TaskStatus
   message: string
   icon: string
@@ -508,6 +509,8 @@ export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
     repo?: string
+    organization?: string // from bundle marketplace dependency
+    plugin?: string // from bundle marketplace dependency
     version?: string // from app DSL
     package?: string // from app DSL
     release?: string // from local package. same to the version

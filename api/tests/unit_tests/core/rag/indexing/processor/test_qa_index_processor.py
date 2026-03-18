@@ -262,7 +262,8 @@ class TestQAIndexProcessor:
 
         with patch("core.rag.index_processor.processor.qa_index_processor.RetrievalService.retrieve") as mock_retrieve:
             mock_retrieve.return_value = [result_ok, result_low]
-            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, {})
+            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
 
         assert len(docs) == 1
         assert docs[0].page_content == "accepted"

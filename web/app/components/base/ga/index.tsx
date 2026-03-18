@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import { headers } from 'next/headers'
-import Script from 'next/script'
 import * as React from 'react'
 import { IS_CE_EDITION, IS_PROD } from '@/config'
+import { headers } from '@/next/headers'
+import Script from '@/next/script'
 
 export enum GaType {
   admin = 'admin',

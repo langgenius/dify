@@ -5,7 +5,6 @@ import type { SiteInfo } from '@/models/share'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +17,7 @@ import {
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { usePathname, useRouter } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
