@@ -62,6 +62,15 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: () => ({
+    systemFeatures: {
+      enable_explore_banner: false,
+      enable_trial_app: false,
+    },
+  }),
+}))
+
 vi.mock('@/service/use-common', () => ({
   useMembers: vi.fn(),
 }))
@@ -106,6 +115,10 @@ vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
       <button data-testid="dsl-cancel" onClick={onCancel}>cancel</button>
     </div>
   ),
+}))
+
+vi.mock('@/app/components/explore/try-app', () => ({
+  default: () => null,
 }))
 
 const createApp = (overrides: Partial<App> = {}): App => ({

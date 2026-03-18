@@ -84,6 +84,7 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
+      detectAsyncLeaks: true,
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],

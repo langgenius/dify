@@ -98,6 +98,10 @@ afterEach(async () => {
   await act(async () => {
     cleanup()
   })
+
+  // Give Headless UI transition scheduler tasks one event-loop turn to settle
+  // so detectAsyncLeaks does not report teardown false positives.
+  await new Promise<void>(resolve => setTimeout(resolve, 0))
 })
 
 // mock foxact/use-clipboard - not available in test environment

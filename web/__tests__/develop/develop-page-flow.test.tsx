@@ -6,26 +6,11 @@
  *
  * Uses real DevelopMain, ApiServer, and Doc components with minimal mocks.
  */
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DevelopMain from '@/app/components/develop'
 import { AppModeEnum, Theme } from '@/types/app'
-
-beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
-})
-
-afterEach(() => {
-  vi.runOnlyPendingTimers()
-  vi.useRealTimers()
-})
-
-async function flushUI() {
-  await act(async () => {
-    vi.runAllTimers()
-  })
-}
 
 let storeAppDetail: unknown
 
@@ -83,6 +68,10 @@ vi.mock('@/service/use-apps', () => ({
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiKeys: () => ({ data: null, isLoading: false }),
   useInvalidateDatasetApiKeys: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow }: { isShow: boolean }) => (isShow ? <div aria-label="Secret key modal" role="dialog" /> : null),
 }))
 
 // ---------- tests ----------
@@ -159,7 +148,7 @@ describe('DevelopMain page flow', () => {
   })
 
   it('should open API key modal from the page', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
 
     storeAppDetail = {
       id: 'app-1',
@@ -171,14 +160,11 @@ describe('DevelopMain page flow', () => {
     render(<DevelopMain appId="app-1" />)
 
     // Click API Key button in the header
-    await act(async () => {
-      await user.click(screen.getByText('appApi.apiKey'))
-    })
-    await flushUI()
+    await user.click(screen.getByText('appApi.apiKey'))
 
     // SecretKeyModal should open
     await waitFor(() => {
-      expect(screen.getByText('appApi.apiKeyModal.apiSecretKey')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Secret key modal' })).toBeInTheDocument()
     })
   })
 
