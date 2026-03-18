@@ -340,15 +340,15 @@ importers:
       scheduler:
         specifier: 0.27.0
         version: 0.27.0
-      semver:
-        specifier: 7.7.4
-        version: 7.7.4
       sharp:
         specifier: 0.34.5
         version: 0.34.5
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7
+      std-semver:
+        specifier: 1.0.8
+        version: 1.0.8
       streamdown:
         specifier: 2.5.0
         version: 2.5.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -500,9 +500,6 @@ importers:
       '@types/react-window':
         specifier: 1.8.8
         version: 1.8.8
-      '@types/semver':
-        specifier: 7.7.1
-        version: 7.7.1
       '@types/sortablejs':
         specifier: 1.15.9
         version: 1.15.9
@@ -3419,9 +3416,6 @@ packages:
 
   '@types/resolve@1.20.6':
     resolution: {integrity: sha512-A4STmOXPhMUtHH+S6ymgE2GiBSMqf4oTvcQZMcHzokuTLVYzXTB8ttjcgxOVaAp2lGwEdzZ0J+cRbbeevQj1UQ==}
-
-  '@types/semver@7.7.1':
-    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
   '@types/sortablejs@1.15.9':
     resolution: {integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==}
@@ -7115,6 +7109,10 @@ packages:
   std-env@4.0.0:
     resolution: {integrity: sha512-zUMPtQ/HBY3/50VbpkupYHbRroTRZJPRLvreamgErJVys0ceuzMkD44J/QjqhHjOzK42GQ3QZIeFG1OYfOtKqQ==}
 
+  std-semver@1.0.8:
+    resolution: {integrity: sha512-9SN0XIjBBXCT6ZXXVnScJN4KP2RyFg6B8sEoFlugVHMANysfaEni4LTWlvUQQ/R0wgZl1Ovt9KBQbzn21kHoZA==}
+    engines: {node: '>=20.19.0'}
+
   storybook@10.2.19:
     resolution: {integrity: sha512-UUm5eGSm6BLhkcFP0WbxkmAHJZfVN2ViLpIZOqiIPS++q32VYn+CLFC0lrTYTDqYvaG7i4BK4uowXYujzE4NdQ==}
     hasBin: true
@@ -10754,8 +10752,6 @@ snapshots:
       csstype: 3.2.3
 
   '@types/resolve@1.20.6': {}
-
-  '@types/semver@7.7.1': {}
 
   '@types/sortablejs@1.15.9': {}
 
@@ -15204,6 +15200,8 @@ snapshots:
   state-local@1.0.7: {}
 
   std-env@4.0.0: {}
+
+  std-semver@1.0.8: {}
 
   storybook@10.2.19(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
