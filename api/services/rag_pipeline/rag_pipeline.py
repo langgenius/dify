@@ -128,7 +128,7 @@ class RagPipelineService:
             built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
             if not built_in_result:
                 logger.warning(
-                    "pipeline template not found after all retrieval attempts, template_id: %s, mode: %s",
+                    "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
                     template_id,
                     mode,
                 )
