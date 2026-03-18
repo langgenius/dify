@@ -1,23 +1,29 @@
 import type { Shape as HooksStoreShape } from '../../hooks-store/store'
 import type { RunFile } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { createStartNode } from '../../__tests__/fixtures'
-import {
-  resetReactFlowMockState,
-  rfState,
-} from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '../../types'
 import InputsPanel from '../inputs-panel'
 
 const mockCheckInputsForm = vi.fn()
-const mockFormChangeValues: Record<string, unknown> = {}
+const mockNotify = vi.fn()
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+vi.mock('next/navigation', () => ({
+  useParams: () => ({}),
+}))
+
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+    close: vi.fn(),
+  }),
+}))
 
 vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
   useCheckInputsForms: () => ({
@@ -25,36 +31,15 @@ vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
   }),
 }))
 
-vi.mock('../../nodes/_base/components/before-run-form/form-item', () => ({
-  default: ({
-    payload,
-    value,
-    onChange,
-    autoFocus,
-  }: {
-    payload: { variable: string }
-    value: unknown
-    onChange: (value: unknown) => void
-    autoFocus?: boolean
-  }) => (
-    <div
-      data-testid={`form-item-${payload.variable}`}
-      data-value={JSON.stringify(value ?? null)}
-      data-autofocus={String(!!autoFocus)}
-    >
-      <button onClick={() => onChange(mockFormChangeValues[payload.variable])} type="button">
-        {`change-${payload.variable}`}
-      </button>
-    </div>
-  ),
-}))
-
-const fileSettingsWithImage: FileUpload = {
+const fileSettingsWithImage = {
   enabled: true,
   image: {
     enabled: true,
   },
-}
+  allowed_file_upload_methods: [TransferMethod.remote_url],
+  number_limits: 3,
+  image_file_size_limit: 10,
+} satisfies FileUpload & { image_file_size_limit: number }
 
 const uploadedRunFile = {
   transfer_method: TransferMethod.remote_url,
@@ -77,218 +62,262 @@ const createHooksStoreProps = (
   ...overrides,
 })
 
+const renderInputsPanel = (
+  startNode: ReturnType<typeof createStartNode>,
+  options?: Parameters<typeof renderWorkflowComponent>[1],
+) => {
+  return renderWorkflowComponent(
+    <div style={{ width: 800, height: 600 }}>
+      <ReactFlowProvider>
+        <ReactFlow nodes={[startNode]} edges={[]} fitView />
+        <InputsPanel onRun={vi.fn()} />
+      </ReactFlowProvider>
+    </div>,
+    options,
+  )
+}
+
 describe('InputsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    resetReactFlowMockState()
-    Object.keys(mockFormChangeValues).forEach(key => delete mockFormChangeValues[key])
     mockCheckInputsForm.mockReturnValue(true)
   })
 
-  it('renders start-node defaults, current inputs, and the image field when image upload is enabled', () => {
-    rfState.nodes = [
-      createStartNode({
-        data: {
-          variables: [
-            {
-              type: InputVarType.textInput,
-              variable: 'question',
-              label: 'Question',
-              required: true,
-              default: 'default question',
+  describe('Rendering', () => {
+    it('should render current inputs, defaults, and the image uploader from the start node', () => {
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.textInput,
+                variable: 'question',
+                label: 'Question',
+                required: true,
+                default: 'default question',
+              },
+              {
+                type: InputVarType.number,
+                variable: 'count',
+                label: 'Count',
+                required: false,
+                default: '2',
+              },
+            ],
+          },
+        }),
+        {
+          initialStoreState: {
+            inputs: {
+              question: 'overridden question',
             },
-            {
-              type: InputVarType.number,
-              variable: 'count',
-              label: 'Count',
-              required: false,
-              default: '2',
-            },
-          ],
+          },
+          hooksStoreProps: createHooksStoreProps(),
         },
-      }),
-    ]
+      )
 
-    renderWorkflowComponent(<InputsPanel onRun={vi.fn()} />, {
-      initialStoreState: {
-        inputs: {
-          question: 'overridden question',
-        },
-      },
-      hooksStoreProps: createHooksStoreProps(),
+      expect(screen.getByDisplayValue('overridden question')).toHaveFocus()
+      expect(screen.getByRole('spinbutton')).toHaveValue(2)
+      expect(screen.getByText('common.imageUploader.pasteImageLink')).toBeInTheDocument()
     })
-
-    expect(screen.getByTestId('form-item-question')).toHaveAttribute('data-value', JSON.stringify('overridden question'))
-    expect(screen.getByTestId('form-item-question')).toHaveAttribute('data-autofocus', 'true')
-    expect(screen.getByTestId('form-item-count')).toHaveAttribute('data-value', JSON.stringify('2'))
-    expect(screen.getByTestId('form-item-__image')).toBeInTheDocument()
   })
 
-  it('updates workflow inputs and files when the form items change', () => {
-    const imageFiles = [
-      {
-        transfer_method: TransferMethod.remote_url,
-        upload_file_id: 'file-1',
-      },
-    ]
-    mockFormChangeValues.question = 'changed question'
-    mockFormChangeValues.__image = imageFiles
-
-    rfState.nodes = [
-      createStartNode({
-        data: {
-          variables: [
-            {
-              type: InputVarType.textInput,
-              variable: 'question',
-              label: 'Question',
-              required: true,
-            },
-          ],
+  describe('User Interactions', () => {
+    it('should update workflow inputs and image files when users edit the form', async () => {
+      const user = userEvent.setup()
+      const { store } = renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.textInput,
+                variable: 'question',
+                label: 'Question',
+                required: true,
+              },
+            ],
+          },
+        }),
+        {
+          hooksStoreProps: createHooksStoreProps(),
         },
-      }),
-    ]
+      )
 
-    const { store } = renderWorkflowComponent(<InputsPanel onRun={vi.fn()} />, {
-      hooksStoreProps: createHooksStoreProps(),
+      await user.type(screen.getByPlaceholderText('Question'), 'changed question')
+      expect(store.getState().inputs).toEqual({ question: 'changed question' })
+
+      await user.click(screen.getByText('common.imageUploader.pasteImageLink'))
+      await user.type(
+        await screen.findByPlaceholderText('common.imageUploader.pasteImageLinkInputPlaceholder'),
+        'https://example.com/image.png',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+
+      await waitFor(() => {
+        expect(store.getState().files).toEqual([{
+          type: 'image',
+          transfer_method: TransferMethod.remote_url,
+          url: 'https://example.com/image.png',
+          upload_file_id: '',
+        }])
+      })
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'change-question' }))
-    fireEvent.click(screen.getByRole('button', { name: 'change-__image' }))
+    it('should not start a run when input validation fails', async () => {
+      const user = userEvent.setup()
+      mockCheckInputsForm.mockReturnValue(false)
+      const onRun = vi.fn()
+      const handleRun = vi.fn()
 
-    expect(store.getState().inputs).toEqual({ question: 'changed question' })
-    expect(store.getState().files).toEqual(imageFiles)
-  })
-
-  it('does not start the run when input validation fails', () => {
-    mockCheckInputsForm.mockReturnValue(false)
-    const onRun = vi.fn()
-    const handleRun = vi.fn()
-
-    rfState.nodes = [
-      createStartNode({
-        data: {
-          variables: [
-            {
-              type: InputVarType.textInput,
-              variable: 'question',
-              label: 'Question',
-              required: true,
-              default: 'default question',
-            },
-          ],
+      renderWorkflowComponent(
+        <div style={{ width: 800, height: 600 }}>
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={[
+                createStartNode({
+                  data: {
+                    variables: [
+                      {
+                        type: InputVarType.textInput,
+                        variable: 'question',
+                        label: 'Question',
+                        required: true,
+                        default: 'default question',
+                      },
+                    ],
+                  },
+                }),
+              ]}
+              edges={[]}
+              fitView
+            />
+            <InputsPanel onRun={onRun} />
+          </ReactFlowProvider>
+        </div>,
+        {
+          hooksStoreProps: createHooksStoreProps({ handleRun }),
         },
-      }),
-    ]
+      )
 
-    renderWorkflowComponent(<InputsPanel onRun={onRun} />, {
-      hooksStoreProps: createHooksStoreProps({ handleRun }),
+      await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+
+      expect(mockCheckInputsForm).toHaveBeenCalledWith(
+        { question: 'default question' },
+        expect.arrayContaining([
+          expect.objectContaining({ variable: 'question' }),
+          expect.objectContaining({ variable: '__image' }),
+        ]),
+      )
+      expect(onRun).not.toHaveBeenCalled()
+      expect(handleRun).not.toHaveBeenCalled()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
+    it('should start a run with processed inputs when validation succeeds', async () => {
+      const user = userEvent.setup()
+      const onRun = vi.fn()
+      const handleRun = vi.fn()
 
-    expect(mockCheckInputsForm).toHaveBeenCalledWith(
-      { question: 'default question' },
-      expect.arrayContaining([
-        expect.objectContaining({ variable: 'question' }),
-        expect.objectContaining({ variable: '__image' }),
-      ]),
-    )
-    expect(onRun).not.toHaveBeenCalled()
-    expect(handleRun).not.toHaveBeenCalled()
-  })
-
-  it('starts the run with processed inputs when validation succeeds', () => {
-    const onRun = vi.fn()
-    const handleRun = vi.fn()
-    const hooksStoreProps = createHooksStoreProps({
-      handleRun,
-      configsMap: {
-        flowId: 'flow-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {
-          enabled: false,
-        },
-      },
-    })
-
-    rfState.nodes = [
-      createStartNode({
-        data: {
-          variables: [
-            {
-              type: InputVarType.textInput,
-              variable: 'question',
-              label: 'Question',
-              required: true,
+      renderWorkflowComponent(
+        <div style={{ width: 800, height: 600 }}>
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={[
+                createStartNode({
+                  data: {
+                    variables: [
+                      {
+                        type: InputVarType.textInput,
+                        variable: 'question',
+                        label: 'Question',
+                        required: true,
+                      },
+                      {
+                        type: InputVarType.checkbox,
+                        variable: 'confirmed',
+                        label: 'Confirmed',
+                        required: false,
+                      },
+                    ],
+                  },
+                }),
+              ]}
+              edges={[]}
+              fitView
+            />
+            <InputsPanel onRun={onRun} />
+          </ReactFlowProvider>
+        </div>,
+        {
+          initialStoreState: {
+            inputs: {
+              question: 'run this',
+              confirmed: 'truthy',
             },
-            {
-              type: InputVarType.checkbox,
-              variable: 'confirmed',
-              label: 'Confirmed',
-              required: false,
+            files: [uploadedRunFile],
+          },
+          hooksStoreProps: createHooksStoreProps({
+            handleRun,
+            configsMap: {
+              flowId: 'flow-1',
+              flowType: FlowType.appFlow,
+              fileSettings: {
+                enabled: false,
+              },
             },
-          ],
+          }),
         },
-      }),
-    ]
+      )
 
-    renderWorkflowComponent(<InputsPanel onRun={onRun} />, {
-      initialStoreState: {
-        inputs: {
-          question: 'run this',
-          confirmed: 'truthy',
-        },
-        files: [uploadedRunFile],
-      },
-      hooksStoreProps,
-    })
+      await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
-
-    expect(onRun).toHaveBeenCalledTimes(1)
-    expect(handleRun).toHaveBeenCalledWith(
-      {
+      expect(onRun).toHaveBeenCalledTimes(1)
+      expect(handleRun).toHaveBeenCalledWith({
         inputs: {
           question: 'run this',
           confirmed: true,
         },
         files: [uploadedRunFile],
-      },
-    )
-  })
-
-  it('disables the run button when a local file is still uploading', () => {
-    rfState.nodes = [createStartNode()]
-
-    renderWorkflowComponent(<InputsPanel onRun={vi.fn()} />, {
-      initialStoreState: {
-        files: [uploadingRunFile],
-      },
-      hooksStoreProps: createHooksStoreProps(),
+      })
     })
-
-    expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
   })
 
-  it('disables the run button while the workflow is already running', () => {
-    rfState.nodes = [createStartNode()]
-
-    renderWorkflowComponent(<InputsPanel onRun={vi.fn()} />, {
-      initialStoreState: {
-        workflowRunningData: {
-          result: {
-            status: WorkflowRunningStatus.Running,
-            inputs_truncated: false,
-            process_data_truncated: false,
-            outputs_truncated: false,
-          },
-          tracing: [],
+  describe('Disabled States', () => {
+    it('should disable the run button while a local file is still uploading', () => {
+      renderInputsPanel(createStartNode(), {
+        initialStoreState: {
+          files: [uploadingRunFile],
         },
-      },
-      hooksStoreProps: createHooksStoreProps(),
+        hooksStoreProps: createHooksStoreProps({
+          configsMap: {
+            flowId: 'flow-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {
+              enabled: false,
+            },
+          },
+        }),
+      })
+
+      expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
     })
 
-    expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
+    it('should disable the run button while the workflow is already running', () => {
+      renderInputsPanel(createStartNode(), {
+        initialStoreState: {
+          workflowRunningData: {
+            result: {
+              status: WorkflowRunningStatus.Running,
+              inputs_truncated: false,
+              process_data_truncated: false,
+              outputs_truncated: false,
+            },
+            tracing: [],
+          },
+        },
+        hooksStoreProps: createHooksStoreProps(),
+      })
+
+      expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
+    })
   })
 })

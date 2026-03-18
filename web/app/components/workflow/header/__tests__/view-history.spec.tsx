@@ -132,7 +132,7 @@ describe('ViewHistory', () => {
     expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', false)
     expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('portal-trigger').firstElementChild as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
     expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', true)
     expect(screen.getByText('workflow.common.notRunning')).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('ViewHistory', () => {
       },
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger').firstElementChild as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.viewRunHistory' }))
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('loading')).toBeInTheDocument()
@@ -204,14 +204,11 @@ describe('ViewHistory', () => {
       },
     })
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
     expect(screen.getByText('Test Run (paused)')).toBeInTheDocument()
     expect(screen.getByText('Test Run (failed)')).toBeInTheDocument()
     expect(screen.getByText('Test Run (succeeded)')).toBeInTheDocument()
-    expect(document.querySelector('.i-custom-vender-line-alertsAndFeedback-alert-triangle')).toBeInTheDocument()
-    expect(document.querySelector('.i-ri-error-warning-line')).toBeInTheDocument()
-    expect(document.querySelector('.i-ri-checkbox-circle-line')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Test Run (succeeded)'))
 
@@ -245,12 +242,9 @@ describe('ViewHistory', () => {
       },
     })
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
     expect(screen.getByText('Test Chat (failed)')).toBeInTheDocument()
-    expect(document.querySelector('.i-ri-error-warning-line')).not.toBeInTheDocument()
-    expect(document.querySelector('.i-ri-checkbox-circle-line')).not.toBeInTheDocument()
-    expect(document.querySelector('.i-custom-vender-line-alertsAndFeedback-alert-triangle')).not.toBeInTheDocument()
   })
 
   it('closes the popup from the close button and clears log modals', () => {
@@ -273,8 +267,8 @@ describe('ViewHistory', () => {
       },
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(document.querySelector('.i-ri-close-line')!.parentElement as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()

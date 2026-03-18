@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import UndoRedo from '../undo-redo'
 
 type TemporalSnapshot = {
@@ -56,7 +56,7 @@ describe('UndoRedo', () => {
   })
 
   it('enables undo and redo when history exists and triggers the callbacks', () => {
-    const { container } = render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
+    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
 
     act(() => {
       latestTemporalListener?.({
@@ -65,32 +65,32 @@ describe('UndoRedo', () => {
       })
     })
 
-    fireEvent.click(container.querySelector('[data-tooltip-id="workflow.undo"]') as HTMLDivElement)
-    fireEvent.click(container.querySelector('[data-tooltip-id="workflow.redo"]') as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.undo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.redo' }))
 
     expect(mockHandleUndo).toHaveBeenCalledTimes(1)
     expect(mockHandleRedo).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the buttons disabled before history is available', () => {
-    const { container } = render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-    const undoButton = container.querySelector('[data-tooltip-id="workflow.undo"]') as HTMLDivElement
-    const redoButton = container.querySelector('[data-tooltip-id="workflow.redo"]') as HTMLDivElement
+    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
+    const undoButton = screen.getByRole('button', { name: 'workflow.common.undo' })
+    const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
 
     fireEvent.click(undoButton)
     fireEvent.click(redoButton)
 
-    expect(undoButton).toHaveClass('cursor-not-allowed')
-    expect(redoButton).toHaveClass('cursor-not-allowed')
+    expect(undoButton).toBeDisabled()
+    expect(redoButton).toBeDisabled()
     expect(mockHandleUndo).not.toHaveBeenCalled()
     expect(mockHandleRedo).not.toHaveBeenCalled()
   })
 
   it('does not trigger callbacks when the canvas is read only', () => {
     mockNodesReadOnly = true
-    const { container } = render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
-    const undoButton = container.querySelector('[data-tooltip-id="workflow.undo"]') as HTMLDivElement
-    const redoButton = container.querySelector('[data-tooltip-id="workflow.redo"]') as HTMLDivElement
+    render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
+    const undoButton = screen.getByRole('button', { name: 'workflow.common.undo' })
+    const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
 
     act(() => {
       latestTemporalListener?.({
@@ -102,8 +102,8 @@ describe('UndoRedo', () => {
     fireEvent.click(undoButton)
     fireEvent.click(redoButton)
 
-    expect(undoButton).toHaveClass('cursor-not-allowed')
-    expect(redoButton).toHaveClass('cursor-not-allowed')
+    expect(undoButton).toBeDisabled()
+    expect(redoButton).toBeDisabled()
     expect(mockHandleUndo).not.toHaveBeenCalled()
     expect(mockHandleRedo).not.toHaveBeenCalled()
   })
