@@ -11,6 +11,15 @@ from services.auth.api_key_auth_service import ApiKeyAuthService
 class TestApiKeyAuthService:
     """API key authentication service security tests"""
 
+    @staticmethod
+    def _assert_validation_error(
+        exc_info: pytest.ExceptionInfo[ValidationError], expected_loc: tuple[str, ...], expected_type: str
+    ) -> None:
+        errors = exc_info.value.errors()
+        assert len(errors) == 1
+        assert errors[0]["loc"] == expected_loc
+        assert errors[0]["type"] == expected_type
+
     def setup_method(self):
         """Setup test fixtures"""
         self.tenant_id = "test_tenant_123"
@@ -233,72 +242,81 @@ class TestApiKeyAuthService:
         args = self.mock_args.copy()
         del args["category"]
 
-        with pytest.raises(ValidationError, match="Field required"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("category",), "missing")
 
     def test_validate_api_key_auth_args_empty_category(self):
         """Test API key auth args validation - empty category"""
         args = self.mock_args.copy()
         args["category"] = ""
 
-        with pytest.raises(ValidationError, match="at least 1 character"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("category",), "string_too_short")
 
     def test_validate_api_key_auth_args_missing_provider(self):
         """Test API key auth args validation - missing provider"""
         args = self.mock_args.copy()
         del args["provider"]
 
-        with pytest.raises(ValidationError, match="Field required"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("provider",), "missing")
 
     def test_validate_api_key_auth_args_empty_provider(self):
         """Test API key auth args validation - empty provider"""
         args = self.mock_args.copy()
         args["provider"] = ""
 
-        with pytest.raises(ValidationError, match="at least 1 character"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("provider",), "string_too_short")
 
     def test_validate_api_key_auth_args_missing_credentials(self):
         """Test API key auth args validation - missing credentials"""
         args = self.mock_args.copy()
         del args["credentials"]
 
-        with pytest.raises(ValidationError, match="Field required"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials",), "missing")
 
     def test_validate_api_key_auth_args_empty_credentials(self):
         """Test API key auth args validation - empty credentials"""
         args = self.mock_args.copy()
         args["credentials"] = None
 
-        with pytest.raises(ValidationError, match="valid dictionary"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials",), "dict_type")
 
     def test_validate_api_key_auth_args_invalid_credentials_type(self):
         """Test API key auth args validation - invalid credentials type"""
         args = self.mock_args.copy()
         args["credentials"] = "not_a_dict"
 
-        with pytest.raises(ValidationError, match="valid dictionary"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials",), "dict_type")
 
     def test_validate_api_key_auth_args_missing_auth_type(self):
         """Test API key auth args validation - missing auth_type"""
         args = self.mock_args.copy()
         del args["credentials"]["auth_type"]
 
-        with pytest.raises(ValidationError, match="Field required"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials", "auth_type"), "missing")
 
     def test_validate_api_key_auth_args_empty_auth_type(self):
         """Test API key auth args validation - empty auth_type"""
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ""
 
-        with pytest.raises(ValidationError, match="at least 1 character"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials", "auth_type"), "string_too_short")
 
     @pytest.mark.parametrize(
         "malicious_input",
@@ -377,13 +395,15 @@ class TestApiKeyAuthService:
 
     def test_validate_api_key_auth_args_none_input(self):
         """Test API key auth args validation - None input"""
-        with pytest.raises(ValidationError, match="valid dictionary"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(None)
+        self._assert_validation_error(exc_info, (), "dict_type")
 
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
         """Test API key auth args validation - dict credentials with list auth_type"""
         args = self.mock_args.copy()
         args["credentials"]["auth_type"] = ["api_key"]
 
-        with pytest.raises(ValidationError, match="valid string"):
+        with pytest.raises(ValidationError) as exc_info:
             ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials", "auth_type"), "string_type")
