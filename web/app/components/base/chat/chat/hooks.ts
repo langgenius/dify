@@ -16,7 +16,6 @@ import type { NodeTracing } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
-import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -35,6 +34,7 @@ import { useToastContext } from '@/app/components/base/toast/context'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useParams, usePathname } from '@/next/navigation'
 import {
   sseGet,
   ssePost,

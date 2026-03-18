@@ -9,7 +9,7 @@ import DocumentList from '../../list'
 
 const mockPush = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

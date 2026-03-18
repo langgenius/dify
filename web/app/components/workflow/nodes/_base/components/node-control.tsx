@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { Node } from '../../../types'
 import {
-  RiPlayLargeLine,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useState,
@@ -21,10 +18,13 @@ import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
 
-type NodeControlProps = Pick<Node, 'id' | 'data'>
+type NodeControlProps = Pick<Node, 'id' | 'data'> & {
+  pluginInstallLocked?: boolean
+}
 const NodeControl: FC<NodeControlProps> = ({
   id,
   data,
+  pluginInstallLocked,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -40,7 +40,7 @@ const NodeControl: FC<NodeControlProps> = ({
     <div
       className={`
       absolute -top-7 right-0 hidden h-7 pb-1
-      ${!data._pluginInstallLocked && 'group-hover:flex'}
+      ${!pluginInstallLocked && 'group-hover:flex'}
       ${data.selected && '!flex'}
       ${open && '!flex'}
       `}
@@ -51,7 +51,9 @@ const NodeControl: FC<NodeControlProps> = ({
       >
         {
           canRunBySingle(data.type, isChildNode) && (
-            <div
+            <button
+              type="button"
+              aria-label={isSingleRunning ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' }) : t('panel.runThisStep', { ns: 'workflow' })}
               className={`flex h-5 w-5 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
               onClick={() => {
                 const action = isSingleRunning ? 'stop' : 'run'
@@ -73,11 +75,11 @@ const NodeControl: FC<NodeControlProps> = ({
                         popupContent={t('panel.runThisStep', { ns: 'workflow' })}
                         asChild={false}
                       >
-                        <RiPlayLargeLine className="h-3 w-3" />
+                        <span className="i-ri-play-large-line h-3 w-3" />
                       </Tooltip>
                     )
               }
-            </div>
+            </button>
           )
         }
         <PanelOperator

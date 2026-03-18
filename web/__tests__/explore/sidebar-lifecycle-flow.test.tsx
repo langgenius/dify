@@ -19,7 +19,7 @@ const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockInstalledApps: InstalledApp[] = []
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,

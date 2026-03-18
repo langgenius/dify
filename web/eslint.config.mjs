@@ -14,6 +14,13 @@ process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
+  {
+    name: 'next',
+    message: 'Import Next APIs from the corresponding @/next module instead of next.',
+  },
+]
+
 const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/image'],
@@ -22,6 +29,10 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/font', 'next/font/*'],
     message: 'Do not import next/font. Use the project font styles instead.',
+  },
+  {
+    group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+    message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
   },
 ]
 
@@ -240,10 +251,12 @@ export default antfu(
     },
   },
   {
-    name: 'dify/no-next-image-or-font',
+    name: 'dify/no-direct-next-imports',
     files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
       }],
     },
@@ -252,11 +265,13 @@ export default antfu(
     name: 'dify/overlay-migration',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
+      'next/**',
       ...GLOB_TESTS,
       ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: [
           ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
           ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,

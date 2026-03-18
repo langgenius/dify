@@ -1,11 +1,11 @@
 import type { INavSelectorProps, NavItem } from '../index'
 import type { AppContextValue } from '@/context/app-context'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import NavSelector from '../index'
 
@@ -63,7 +63,7 @@ vi.mock('@headlessui/react', () => {
 })
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
 

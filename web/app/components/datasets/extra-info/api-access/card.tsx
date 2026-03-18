@@ -1,5 +1,4 @@
 import { RiArrowRightUpLine, RiBookOpenLine } from '@remixicon/react'
-import Link from 'next/link'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +7,7 @@ import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import Link from '@/next/link'
 import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 

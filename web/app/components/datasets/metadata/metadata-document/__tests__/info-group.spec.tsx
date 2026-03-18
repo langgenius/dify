@@ -22,7 +22,7 @@ type InputCombinedProps = {
   type: DataType
 }
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),

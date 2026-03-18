@@ -9,7 +9,7 @@ vi.mock('@/app/components/base/toast/context', () => ({
   useToastContext: () => ({ notify: mockNotify }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
