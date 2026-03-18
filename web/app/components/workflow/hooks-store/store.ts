@@ -27,14 +27,10 @@ export type SyncDraftCallback = {
   onError?: () => void
   onSettled?: () => void
 }
-export type SyncDraftOptions = {
-  sourceWorkflowId?: string
-}
 export type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-    options?: SyncDraftOptions,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void

@@ -233,7 +233,7 @@ describe('useNodesSyncDraft', () => {
       expect(mockSyncWorkflowDraft).toHaveBeenCalled()
     })
 
-    it('should include source_workflow_id only when explicitly restoring a published version', async () => {
+    it('should not include source_workflow_id in sync payloads', async () => {
       mockGetNodesReadOnly.mockReturnValue(false)
       mockGetNodes.mockReturnValue([
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
@@ -242,12 +242,12 @@ describe('useNodesSyncDraft', () => {
       const { result } = renderHook(() => useNodesSyncDraft())
 
       await act(async () => {
-        await result.current.doSyncWorkflowDraft(false, undefined, { sourceWorkflowId: 'published-workflow-1' })
+        await result.current.doSyncWorkflowDraft()
       })
 
       expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-        params: expect.objectContaining({
-          source_workflow_id: 'published-workflow-1',
+        params: expect.not.objectContaining({
+          source_workflow_id: expect.anything(),
         }),
       }))
     })

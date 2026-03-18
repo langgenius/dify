@@ -9,8 +9,8 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import Divider from '@/app/components/base/divider'
 import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
@@ -27,12 +27,14 @@ const INITIAL_PAGE = 1
 export type VersionHistoryPanelProps = {
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
+  restoreVersionUrl?: (versionId: string) => string
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
+  restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
@@ -43,8 +45,8 @@ export const VersionHistoryPanel = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
@@ -144,33 +146,33 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
-  const handleRestore = useCallback((item: VersionHistory) => {
+  const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
     setCurrentVersion(item)
-    handleRestoreFromPublishedWorkflow(item)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        toast.add({
-          type: 'success',
-          title: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
-        deleteAllInspectVars()
-        invalidAllLastRun()
-      },
-      onError: () => {
-        toast.add({
-          type: 'error',
-          title: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
-      },
-      onSettled: () => {
-        resetWorkflowVersionHistory()
-      },
-    }, { sourceWorkflowId: item.id })
-  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+    try {
+      await restoreWorkflow(restoreVersionUrl?.(item.id) || '')
+      handleRefreshWorkflowDraft()
+      toast.add({
+        type: 'success',
+        title: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
+      })
+      deleteAllInspectVars()
+      invalidAllLastRun()
+    }
+    catch {
+      toast.add({
+        type: 'error',
+        title: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
+      })
+    }
+    finally {
+      resetWorkflowVersionHistory()
+    }
+  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, workflowStore, restoreWorkflow, restoreVersionUrl, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 

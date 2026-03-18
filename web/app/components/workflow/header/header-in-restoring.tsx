@@ -5,11 +5,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import useTheme from '@/hooks/use-theme'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
+import { getFlowPrefix } from '@/service/utils'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
-  useNodesSyncDraft,
+  useWorkflowRefreshDraft,
   useWorkflowRun,
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -42,7 +43,8 @@ const HeaderInRestoring = ({
   const {
     handleLoadBackupDraft,
   } = useWorkflowRun()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -50,30 +52,35 @@ const HeaderInRestoring = ({
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const handleRestore = useCallback(() => {
+  const handleRestore = useCallback(async () => {
+    if (!currentVersion?.id || !configsMap?.flowId)
+      return
+
     setShowWorkflowVersionHistoryPanel(false)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
-      onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
-      },
-      onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
-      },
-      onSettled: () => {
-        onRestoreSettled?.()
-      },
-    }, { sourceWorkflowId: currentVersion?.id })
-    deleteAllInspectVars()
-    invalidAllLastRun()
-  }, [currentVersion?.id, setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+    const restoreUrl = `/${getFlowPrefix(configsMap.flowType)}/${configsMap.flowId}/workflows/${currentVersion.id}/restore`
+
+    try {
+      await restoreWorkflow(restoreUrl)
+      handleRefreshWorkflowDraft()
+      Toast.notify({
+        type: 'success',
+        message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
+      })
+      deleteAllInspectVars()
+      invalidAllLastRun()
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
+      })
+    }
+    finally {
+      onRestoreSettled?.()
+    }
+  }, [currentVersion?.id, configsMap, setShowWorkflowVersionHistoryPanel, workflowStore, restoreWorkflow, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

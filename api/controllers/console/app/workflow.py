@@ -44,7 +44,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
-from models.workflow import MaskedSecretRestoreError, Workflow
+from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
@@ -97,7 +97,6 @@ class SyncDraftWorkflowPayload(BaseModel):
     hash: str | None = None
     environment_variables: list[dict[str, Any]] = Field(default_factory=list)
     conversation_variables: list[dict[str, Any]] = Field(default_factory=list)
-    source_workflow_id: str | None = None
 
 
 class BaseWorkflowRunPayload(BaseModel):
@@ -283,20 +282,10 @@ class DraftWorkflowApi(Resource):
         args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         args = args_model.model_dump()
         workflow_service = WorkflowService()
-        source_workflow = None
-
-        if source_workflow_id := args.get("source_workflow_id"):
-            try:
-                source_workflow = workflow_service.get_published_workflow_by_id(app_model, source_workflow_id)
-            except IsDraftWorkflowError as exc:
-                raise BadRequest(str(exc)) from exc
-            if source_workflow is None:
-                raise NotFound("Workflow not found")
 
         try:
             environment_variables_list = Workflow.normalize_environment_variable_mappings(
                 args.get("environment_variables") or [],
-                source_workflow=source_workflow,
             )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
@@ -314,8 +303,6 @@ class DraftWorkflowApi(Resource):
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
             )
-        except MaskedSecretRestoreError as exc:
-            return {"message": str(exc)}, 400
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
 
@@ -1007,6 +994,41 @@ class PublishedAllWorkflowApi(Resource):
                 "limit": limit,
                 "has_more": has_more,
             }
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
+class DraftWorkflowRestoreApi(Resource):
+    @console_ns.doc("restore_workflow_to_draft")
+    @console_ns.doc(description="Restore a published workflow version into the draft workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
+    @console_ns.response(200, "Workflow restored successfully")
+    @console_ns.response(400, "Source workflow must be published")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        workflow_service = WorkflowService()
+
+        try:
+            workflow = workflow_service.restore_published_workflow_to_draft(
+                app_model=app_model,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(str(exc)) from exc
+        except ValueError as exc:
+            raise NotFound(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")

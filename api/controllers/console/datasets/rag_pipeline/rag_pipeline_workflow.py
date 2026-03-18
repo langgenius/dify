@@ -42,7 +42,7 @@ from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
-from models.workflow import MaskedSecretRestoreError, Workflow
+from models.workflow import Workflow
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -60,7 +60,6 @@ class DraftWorkflowSyncPayload(BaseModel):
     conversation_variables: list[dict[str, Any]] | None = None
     rag_pipeline_variables: list[dict[str, Any]] | None = None
     features: dict[str, Any] | None = None
-    source_workflow_id: str | None = None
 
 
 class NodeRunPayload(BaseModel):
@@ -198,7 +197,6 @@ class DraftRagPipelineApi(Resource):
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
                     "rag_pipeline_variables": data.get("rag_pipeline_variables"),
-                    "source_workflow_id": data.get("source_workflow_id"),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -207,17 +205,10 @@ class DraftRagPipelineApi(Resource):
 
         payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         rag_pipeline_service = RagPipelineService()
-        source_workflow = None
-
-        if payload.source_workflow_id:
-            source_workflow = rag_pipeline_service.get_published_workflow_by_id(pipeline, payload.source_workflow_id)
-            if source_workflow is None:
-                raise NotFound("Workflow not found")
 
         try:
             environment_variables_list = Workflow.normalize_environment_variable_mappings(
                 payload.environment_variables or [],
-                source_workflow=source_workflow,
             )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
@@ -235,8 +226,6 @@ class DraftRagPipelineApi(Resource):
                 conversation_variables=conversation_variables,
                 rag_pipeline_variables=payload.rag_pipeline_variables or [],
             )
-        except MaskedSecretRestoreError as exc:
-            return {"message": str(exc)}, 400
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
 
@@ -717,6 +706,33 @@ class PublishedAllRagPipelineApi(Resource):
                 "limit": limit,
                 "has_more": has_more,
             }
+
+
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
+class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        rag_pipeline_service = RagPipelineService()
+
+        try:
+            workflow = rag_pipeline_service.restore_published_workflow_to_draft(
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except ValueError as exc:
+            raise NotFound(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")

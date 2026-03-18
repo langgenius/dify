@@ -1,4 +1,4 @@
-import type { SyncDraftCallback, SyncDraftOptions } from '@/app/components/workflow/hooks-store'
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -18,7 +18,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
 
-  const getPostParams = useCallback((options?: SyncDraftOptions) => {
+  const getPostParams = useCallback(() => {
     const {
       getNodes,
       edges,
@@ -77,7 +77,6 @@ export const useNodesSyncDraft = () => {
         environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        source_workflow_id: options?.sourceWorkflowId,
       },
     }
   }, [store, featuresStore, workflowStore])
@@ -94,13 +93,12 @@ export const useNodesSyncDraft = () => {
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-    options?: SyncDraftOptions,
   ) => {
     if (getNodesReadOnly())
       return
 
     // Get base params without hash
-    const baseParams = getPostParams(options)
+    const baseParams = getPostParams()
     if (!baseParams)
       return
 

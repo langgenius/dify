@@ -3,8 +3,6 @@ import json
 from unittest import mock
 from uuid import uuid4
 
-import pytest
-
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from dify_graph.file.enums import FileTransferMethod, FileType
@@ -13,7 +11,6 @@ from dify_graph.variables import FloatVariable, IntegerVariable, SecretVariable,
 from dify_graph.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
 from models.workflow import (
-    MaskedSecretRestoreError,
     Workflow,
     WorkflowDraftVariable,
     WorkflowNodeExecutionModel,
@@ -153,116 +150,22 @@ def test_to_dict():
         assert workflow_dict["environment_variables"][1]["value"] == "text"
 
 
-def test_normalize_environment_variable_mappings_restores_source_secret():
-    source_workflow = Workflow(
-        tenant_id="tenant_id",
-        app_id="app_id",
-        type="workflow",
-        version="2024-01-01T00:00:00",
-        graph="{}",
-        features="{}",
-        created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
+def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
+    normalized = Workflow.normalize_environment_variable_mappings(
+        [
+            {
+                "id": str(uuid4()),
+                "name": "secret",
+                "value": encrypter.full_mask_token(),
+                "value_type": "secret",
+            }
+        ]
     )
-    secret_variable = SecretVariable.model_validate({"name": "secret", "value": "source-secret", "id": str(uuid4())})
-
-    with (
-        mock.patch("core.helper.encrypter.encrypt_token", side_effect=lambda tenant_id, token: token),
-        mock.patch("core.helper.encrypter.decrypt_token", side_effect=lambda tenant_id, token: token),
-    ):
-        source_workflow.environment_variables = [secret_variable]
-
-        normalized = Workflow.normalize_environment_variable_mappings(
-            [
-                {
-                    "id": secret_variable.id,
-                    "name": "secret",
-                    "value": encrypter.full_mask_token(),
-                    "value_type": "secret",
-                }
-            ],
-            source_workflow=source_workflow,
-        )
-
-    assert normalized[0]["value"] == "source-secret"
-
-
-def test_normalize_environment_variable_mappings_raises_when_source_secret_missing():
-    source_workflow = Workflow(
-        tenant_id="tenant_id",
-        app_id="app_id",
-        type="workflow",
-        version="2024-01-01T00:00:00",
-        graph="{}",
-        features="{}",
-        created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
-    )
-
-    with pytest.raises(MaskedSecretRestoreError, match="cannot resolve secret environment variable"):
-        Workflow.normalize_environment_variable_mappings(
-            [
-                {
-                    "id": str(uuid4()),
-                    "name": "secret",
-                    "value": encrypter.full_mask_token(),
-                    "value_type": "secret",
-                }
-            ],
-            source_workflow=source_workflow,
-        )
-
-
-def test_normalize_environment_variable_mappings_preserves_hidden_value_with_source_workflow():
-    source_workflow = Workflow(
-        tenant_id="tenant_id",
-        app_id="app_id",
-        type="workflow",
-        version="2024-01-01T00:00:00",
-        graph="{}",
-        features="{}",
-        created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
-    )
-    secret_variable = SecretVariable.model_validate({"name": "secret", "value": "source-secret", "id": str(uuid4())})
-
-    with (
-        mock.patch("core.helper.encrypter.encrypt_token", side_effect=lambda tenant_id, token: token),
-        mock.patch("core.helper.encrypter.decrypt_token", side_effect=lambda tenant_id, token: token),
-    ):
-        source_workflow.environment_variables = [secret_variable]
-
-        normalized = Workflow.normalize_environment_variable_mappings(
-            [
-                {
-                    "id": secret_variable.id,
-                    "name": "secret",
-                    "value": HIDDEN_VALUE,
-                    "value_type": "secret",
-                }
-            ],
-            source_workflow=source_workflow,
-        )
 
     assert normalized[0]["value"] == HIDDEN_VALUE
 
 
-def test_normalize_environment_variable_mappings_keeps_hidden_value_when_source_secret_missing():
-    source_workflow = Workflow(
-        tenant_id="tenant_id",
-        app_id="app_id",
-        type="workflow",
-        version="2024-01-01T00:00:00",
-        graph="{}",
-        features="{}",
-        created_by="account_id",
-        environment_variables=[],
-        conversation_variables=[],
-    )
-
+def test_normalize_environment_variable_mappings_keeps_hidden_value():
     normalized = Workflow.normalize_environment_variable_mappings(
         [
             {
@@ -271,8 +174,7 @@ def test_normalize_environment_variable_mappings_keeps_hidden_value_when_source_
                 "value": HIDDEN_VALUE,
                 "value_type": "secret",
             }
-        ],
-        source_workflow=source_workflow,
+        ]
     )
 
     assert normalized[0]["value"] == HIDDEN_VALUE

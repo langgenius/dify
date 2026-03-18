@@ -119,10 +119,6 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class MaskedSecretRestoreError(ValueError):
-    """Raised when a restore request cannot resolve a masked secret value."""
-
-
 class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
@@ -524,22 +520,14 @@ class Workflow(Base):  # bug
     @staticmethod
     def normalize_environment_variable_mappings(
         mappings: Sequence[Mapping[str, Any]],
-        *,
-        source_workflow: "Workflow | None" = None,
     ) -> list[dict[str, Any]]:
-        """Resolve masked secret placeholders before rebuilding workflow variables.
+        """Convert masked secret placeholders into the draft hidden sentinel.
 
-        Version-history restore requests send secret environment variables back as masked
-        placeholders. When the selected published workflow is known, reuse that version's
-        decrypted secret value for the full mask token emitted by restore payloads.
-        `HIDDEN_VALUE` keeps its draft-edit meaning and is left untouched so the draft
-        setter preserves the currently stored secret.
+        Regular draft sync requests should preserve existing secrets without shipping
+        plaintext values back from the client. The dedicated restore endpoint now
+        copies published secrets server-side, so draft sync only needs to normalize
+        the UI mask into `HIDDEN_VALUE`.
         """
-        source_secret_values_by_id = {
-            var.id: var.value
-            for var in (source_workflow.environment_variables if source_workflow else [])
-            if isinstance(var, SecretVariable)
-        }
         masked_secret_value = encrypter.full_mask_token()
         normalized_mappings: list[dict[str, Any]] = []
 
@@ -549,15 +537,7 @@ class Workflow(Base):  # bug
                 normalized_mapping.get("value_type") == SegmentType.SECRET.value
                 and normalized_mapping.get("value") == masked_secret_value
             ):
-                variable_id = normalized_mapping.get("id")
-                if isinstance(variable_id, str) and variable_id in source_secret_values_by_id:
-                    normalized_mapping["value"] = source_secret_values_by_id[variable_id]
-                elif source_workflow is not None:
-                    raise MaskedSecretRestoreError(
-                        f"cannot resolve secret environment variable from source workflow, id={variable_id}"
-                    )
-                else:
-                    normalized_mapping["value"] = HIDDEN_VALUE
+                normalized_mapping["value"] = HIDDEN_VALUE
             normalized_mappings.append(normalized_mapping)
 
         return normalized_mappings

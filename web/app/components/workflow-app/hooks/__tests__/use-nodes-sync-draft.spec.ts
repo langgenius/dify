@@ -110,7 +110,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 
-  it('should not include source_workflow_id during a normal draft sync', async () => {
+  it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderHook(() => useNodesSyncDraft())
 
     await act(async () => {
@@ -118,22 +118,8 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.objectContaining({
-        source_workflow_id: undefined,
-      }),
-    }))
-  })
-
-  it('should include source_workflow_id when explicitly restoring a published version', async () => {
-    const { result } = renderHook(() => useNodesSyncDraft())
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, undefined, { sourceWorkflowId: 'published-workflow-1' })
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.objectContaining({
-        source_workflow_id: 'published-workflow-1',
+      params: expect.not.objectContaining({
+        source_workflow_id: expect.anything(),
       }),
     }))
   })

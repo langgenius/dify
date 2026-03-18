@@ -9,10 +9,8 @@ from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from core.helper import encrypter
 from dify_graph.file.enums import FileTransferMethod, FileType
 from dify_graph.file.models import File
-from dify_graph.variables import SecretVariable
 
 
 def _unwrap(func):
@@ -110,149 +108,6 @@ def test_sync_draft_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> No
     assert response["result"] == "success"
 
 
-def test_sync_draft_workflow_restore_uses_source_secret(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = SimpleNamespace(
-        unique_hash="h",
-        updated_at=None,
-        created_at=datetime(2024, 1, 1),
-    )
-    captured_env_mappings: list[dict] = []
-    source_secret = SecretVariable.model_validate(
-        {"id": "env-secret", "name": "api_key", "value": "restored-secret", "value_type": "secret"}
-    )
-    source_workflow = SimpleNamespace(environment_variables=[source_secret])
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
-    monkeypatch.setattr(
-        workflow_module.variable_factory,
-        "build_environment_variable_from_mapping",
-        lambda obj: captured_env_mappings.append(obj) or obj,
-    )
-    monkeypatch.setattr(
-        workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
-    )
-
-    service = SimpleNamespace(
-        get_published_workflow_by_id=lambda *_args, **_kwargs: source_workflow,
-        sync_draft_workflow=lambda **_kwargs: workflow,
-    )
-    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
-
-    api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
-
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        json={
-            "graph": {},
-            "features": {},
-            "hash": "h",
-            "source_workflow_id": "published-workflow",
-            "environment_variables": [
-                {
-                    "id": "env-secret",
-                    "name": "api_key",
-                    "value": encrypter.full_mask_token(),
-                    "value_type": "secret",
-                }
-            ],
-        },
-    ):
-        response = handler(api, app_model=SimpleNamespace(id="app", tenant_id="tenant-1"))
-
-    assert response["result"] == "success"
-    assert captured_env_mappings == [
-        {
-            "id": "env-secret",
-            "name": "api_key",
-            "value": "restored-secret",
-            "value_type": "secret",
-        }
-    ]
-
-
-def test_sync_draft_workflow_restore_returns_400_when_source_secret_missing(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    source_workflow = SimpleNamespace(environment_variables=[])
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
-    monkeypatch.setattr(
-        workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
-    )
-
-    service = SimpleNamespace(
-        get_published_workflow_by_id=lambda *_args, **_kwargs: source_workflow,
-        sync_draft_workflow=lambda **_kwargs: None,
-    )
-    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
-
-    api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
-
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        json={
-            "graph": {},
-            "features": {},
-            "hash": "h",
-            "source_workflow_id": "published-workflow",
-            "environment_variables": [
-                {
-                    "id": "missing-secret",
-                    "name": "api_key",
-                    "value": encrypter.full_mask_token(),
-                    "value_type": "secret",
-                }
-            ],
-        },
-    ):
-        response, status = handler(api, app_model=SimpleNamespace(id="app", tenant_id="tenant-1"))
-
-    assert status == 400
-    assert response["message"] == "cannot resolve secret environment variable from source workflow, id=missing-secret"
-
-
-def test_sync_draft_workflow_restore_returns_400_when_source_workflow_is_draft(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
-    monkeypatch.setattr(
-        workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
-    )
-
-    def _raise_is_draft(*_args, **_kwargs):
-        raise workflow_module.IsDraftWorkflowError("source workflow must be published")
-
-    service = SimpleNamespace(
-        get_published_workflow_by_id=_raise_is_draft,
-        sync_draft_workflow=lambda **_kwargs: None,
-    )
-    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
-
-    api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
-
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        json={
-            "graph": {},
-            "features": {},
-            "hash": "h",
-            "source_workflow_id": "draft-workflow",
-            "environment_variables": [],
-        },
-    ):
-        with pytest.raises(HTTPException) as exc:
-            handler(api, app_model=SimpleNamespace(id="app", tenant_id="tenant-1"))
-
-    assert exc.value.code == 400
-    assert exc.value.description == "source workflow must be published"
-
-
 def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
 
@@ -272,6 +127,65 @@ def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch)
     ):
         with pytest.raises(DraftWorkflowNotSync):
             handler(api, app_model=SimpleNamespace(id="app"))
+
+
+def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="restored-hash",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
+    user = SimpleNamespace(id="account-1")
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(restore_published_workflow_to_draft=lambda **_kwargs: workflow),
+    )
+
+    api = workflow_module.DraftWorkflowRestoreApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/published-workflow/restore",
+        method="POST",
+    ):
+        response = handler(
+            api,
+            app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+            workflow_id="published-workflow",
+        )
+
+    assert response["result"] == "success"
+    assert response["hash"] == "restored-hash"
+
+
+def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    user = SimpleNamespace(id="account-1")
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(
+            restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(NotFound("Workflow not found"))
+        ),
+    )
+
+    api = workflow_module.DraftWorkflowRestoreApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/published-workflow/restore",
+        method="POST",
+    ):
+        with pytest.raises(NotFound):
+            handler(
+                api,
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+                workflow_id="published-workflow",
+            )
 
 
 def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
