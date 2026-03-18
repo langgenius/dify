@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import type {
-  ModelItem,
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
+import type { PluginDetail } from '@/app/components/plugins/types'
 
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
@@ -13,9 +14,10 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchModelProviderModelList } from '@/service/common'
+import { useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { cn } from '@/utils/classnames'
+import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
 import ProviderIcon from '../provider-icon'
@@ -25,121 +27,123 @@ import {
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
+import ProviderCardActions from './provider-card-actions'
 
-export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
+  pluginDetail?: PluginDetail
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   notConfigured,
   provider,
+  pluginDetail,
 }) => {
   const { t } = useTranslation()
-  const { eventEmitter } = useEventEmitterContextContext()
-  const [fetched, setFetched] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [collapsed, setCollapsed] = useState(true)
-  const [modelList, setModelList] = useState<ModelItem[]>([])
-  const configurationMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
+  const refreshModelProviders = useProviderContextSelector(state => state.refreshModelProviders)
+  const currentProviderName = provider.provider
+  const expanded = useModelProviderListExpanded(currentProviderName)
+  const setExpanded = useSetModelProviderListExpanded(currentProviderName)
+  const supportsPredefinedModel = provider.configurate_methods.includes(ConfigurationMethodEnum.predefinedModel)
+  const supportsCustomizableModel = provider.configurate_methods.includes(ConfigurationMethodEnum.customizableModel)
   const systemConfig = provider.system_configuration
-  const hasModelList = fetched && !!modelList.length
+  const {
+    data: modelList = [],
+    isFetching: loading,
+    isSuccess: hasFetchedModelList,
+    refetch: refetchModelList,
+  } = useQuery(consoleQuery.modelProviders.models.queryOptions({
+    input: { params: { provider: currentProviderName } },
+    enabled: expanded,
+    refetchOnWindowFocus: false,
+    select: response => response.data,
+  }))
+  const hasModelList = hasFetchedModelList && !!modelList.length
+  const showCollapsedSection = !expanded || !hasFetchedModelList
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
+  const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
+  const showCredential = supportsPredefinedModel && isCurrentWorkspaceManager
+  const showCustomModelActions = supportsCustomizableModel && isCurrentWorkspaceManager
 
-  const getModelList = async (providerName: string) => {
+  const refreshModelList = useCallback((targetProviderName: string) => {
+    if (targetProviderName !== currentProviderName)
+      return
+
+    if (!expanded)
+      setExpanded(true)
+
+    refetchModelList().catch(() => {})
+  }, [currentProviderName, expanded, refetchModelList, setExpanded])
+
+  const handleOpenModelList = useCallback(() => {
     if (loading)
       return
-    try {
-      setLoading(true)
-      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
-      setModelList(modelsData.data)
-      setCollapsed(false)
-      setFetched(true)
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-  const handleOpenModelList = () => {
-    if (fetched) {
-      setCollapsed(false)
+
+    if (!expanded) {
+      setExpanded(true)
       return
     }
 
-    getModelList(provider.provider)
-  }
-
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST && v.payload === provider.provider)
-      getModelList(v.payload)
-  })
+    refetchModelList().catch(() => {})
+  }, [expanded, loading, refetchModelList, setExpanded])
 
   return (
     <div
       data-testid="provider-added-card"
       className={cn(
         'mb-2 rounded-xl border-[0.5px] border-divider-regular bg-third-party-model-bg-default shadow-xs',
-        provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
-        provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
+        currentProviderName === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
+        currentProviderName === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
       )}
     >
       <div className="flex rounded-t-xl py-2 pl-3 pr-2">
         <div className="grow px-1 pb-0.5 pt-1">
-          <ProviderIcon
-            className="mb-2"
-            provider={provider}
-          />
+          <div className="mb-2 flex items-center gap-1">
+            <ProviderIcon provider={provider} />
+            {pluginDetail && (
+              <ProviderCardActions
+                detail={pluginDetail}
+                onUpdate={refreshModelProviders}
+              />
+            )}
+          </div>
           <div className="flex gap-0.5">
-            {
-              provider.supported_model_types.map(modelType => (
-                <ModelBadge key={modelType}>
-                  {modelTypeFormat(modelType)}
-                </ModelBadge>
-              ))
-            }
+            {provider.supported_model_types.map(modelType => (
+              <ModelBadge key={modelType}>
+                {modelTypeFormat(modelType)}
+              </ModelBadge>
+            ))}
           </div>
         </div>
-        {
-          showCredential && (
-            <CredentialPanel
-              provider={provider}
-            />
-          )
-        }
+        {showCredential && (
+          <CredentialPanel
+            provider={provider}
+          />
+        )}
       </div>
       {
-        collapsed && (
+        showCollapsedSection && (
           <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
             {(showModelProvider || !notConfigured) && (
-              <>
-                <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
-                  {
-                    hasModelList
-                      ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
-                      : t('modelProvider.showModels', { ns: 'common' })
-                  }
-                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
-                </div>
-                <div
-                  data-testid="show-models-button"
-                  className="hidden h-6 cursor-pointer items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover group-hover:flex"
-                  onClick={handleOpenModelList}
-                >
-                  {
-                    hasModelList
-                      ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
-                      : t('modelProvider.showModels', { ns: 'common' })
-                  }
-                  {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
-                  {
-                    loading && (
-                      <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
-                    )
-                  }
-                </div>
-              </>
+              <button
+                type="button"
+                data-testid="show-models-button"
+                className="flex h-6 items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover"
+                aria-label={t('modelProvider.showModels', { ns: 'common' })}
+                onClick={handleOpenModelList}
+              >
+                {
+                  hasModelList
+                    ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
+                    : t('modelProvider.showModels', { ns: 'common' })
+                }
+                {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
+                {
+                  loading && (
+                    <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
+                  )
+                }
+              </button>
             )}
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
@@ -148,7 +152,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               </div>
             )}
             {
-              configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
+              showCustomModelActions && (
                 <div className="flex grow justify-end">
                   <ManageCustomModelCredentials
                     provider={provider}
@@ -166,12 +170,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         )
       }
       {
-        !collapsed && (
+        !showCollapsedSection && (
           <ModelList
             provider={provider}
             models={modelList}
-            onCollapse={() => setCollapsed(true)}
-            onChange={(provider: string) => getModelList(provider)}
+            onCollapse={() => setExpanded(false)}
+            onChange={refreshModelList}
           />
         )
       }
@@ -179,4 +183,4 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   )
 }
 
-export default ProviderAddedCard
+export default memo(ProviderAddedCard)

@@ -15,6 +15,7 @@ import httpx
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
 from core.helper import ssrf_proxy
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
@@ -98,7 +99,7 @@ class BaseIndexProcessor(ABC):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         raise NotImplementedError
 

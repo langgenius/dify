@@ -82,7 +82,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: PropsWithChildren<{ href: string }>) => (
     <a href={href} {...props}>{children}</a>
   ),

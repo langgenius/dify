@@ -14,6 +14,7 @@ from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 
 
@@ -242,7 +243,7 @@ def migrate_knowledge_vector_database():
                 dataset_documents = db.session.scalars(
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset.id,
-                        DatasetDocument.indexing_status == "completed",
+                        DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
                         DatasetDocument.enabled == True,
                         DatasetDocument.archived == False,
                     )
@@ -254,7 +255,7 @@ def migrate_knowledge_vector_database():
                     segments = db.session.scalars(
                         select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,
-                            DocumentSegment.status == "completed",
+                            DocumentSegment.status == SegmentStatus.COMPLETED,
                             DocumentSegment.enabled == True,
                         )
                     ).all()
@@ -430,7 +431,7 @@ def old_metadata_migration():
                                 tenant_id=document.tenant_id,
                                 dataset_id=document.dataset_id,
                                 name=key,
-                                type="string",
+                                type=DatasetMetadataType.STRING,
                                 created_by=document.created_by,
                             )
                             db.session.add(dataset_metadata)

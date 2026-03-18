@@ -7,7 +7,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-ds-id' }),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => (
     <a href={href} data-testid="back-link">{children}</a>
   ),

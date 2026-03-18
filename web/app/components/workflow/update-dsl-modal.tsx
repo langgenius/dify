@@ -262,7 +262,7 @@ const UpdateDSLModal = ({
         onClose={onCancel}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('common.importDSL', { ns: 'workflow' })}</div>
+          <div className="text-text-primary title-2xl-semi-bold">{t('common.importDSL', { ns: 'workflow' })}</div>
           <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
@@ -273,7 +273,7 @@ const UpdateDSLModal = ({
             <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
           </div>
           <div className="flex grow flex-col items-start gap-0.5 py-1">
-            <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
+            <div className="whitespace-pre-line text-text-primary system-xs-medium">{t('common.importDSLTip', { ns: 'workflow' })}</div>
             <div className="flex items-start gap-1 self-stretch pb-0.5 pt-1">
               <Button
                 size="small"
@@ -290,7 +290,7 @@ const UpdateDSLModal = ({
           </div>
         </div>
         <div>
-          <div className="system-md-semibold pt-2 text-text-primary">
+          <div className="pt-2 text-text-primary system-md-semibold">
             {t('common.chooseDSL', { ns: 'workflow' })}
           </div>
           <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
@@ -319,8 +319,8 @@ const UpdateDSLModal = ({
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="flex grow flex-col text-text-secondary system-md-regular">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
             <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />

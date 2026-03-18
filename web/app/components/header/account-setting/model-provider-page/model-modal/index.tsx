@@ -9,11 +9,9 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
-import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -21,15 +19,23 @@ import {
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Loading from '@/app/components/base/loading'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-} from '@/app/components/base/portal-to-follow-elem'
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from '@/app/components/base/ui/dialog'
 import {
   useAuth,
   useCredentialData,
@@ -197,7 +203,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }
 
     return (
-      <div className="title-2xl-semi-bold text-text-primary">
+      <div className="text-text-primary title-2xl-semi-bold">
         {label}
       </div>
     )
@@ -206,7 +212,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <div className="system-xs-regular mt-1 text-text-tertiary">
+        <div className="mt-1 text-text-tertiary system-xs-regular">
           {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
         </div>
       )
@@ -223,7 +229,7 @@ const ModelModal: FC<ModelModalProps> = ({
             className="mr-2 h-4 w-4 shrink-0"
             provider={provider}
           />
-          <div className="system-md-regular mr-1 text-text-secondary">{renderI18nObject(provider.label)}</div>
+          <div className="mr-1 text-text-secondary system-md-regular">{renderI18nObject(provider.label)}</div>
         </div>
       )
     }
@@ -235,7 +241,7 @@ const ModelModal: FC<ModelModalProps> = ({
             provider={provider}
             modelName={model.model}
           />
-          <div className="system-md-regular mr-1 text-text-secondary">{model.model}</div>
+          <div className="mr-1 text-text-secondary system-md-regular">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -275,174 +281,171 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [])
   const notAllowCustomCredential = provider.allow_custom_token === false
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onCancel()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      onCancel()
   }, [onCancel])
 
+  const handleConfirmOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      closeConfirmDelete()
+  }, [closeConfirmDelete])
+
   return (
-    <PortalToFollowElem open>
-      <PortalToFollowElemContent className="z-[60] h-full w-full">
-        <div className="fixed inset-0 flex items-center justify-center bg-black/[.25]">
-          <div className="relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl">
-            <div
-              className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
-              onClick={onCancel}
-            >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-            </div>
-            <div className="p-6 pb-3">
-              {modalTitle}
-              {modalDesc}
-              {modalModel}
-            </div>
-            <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3">
-              {
-                mode === ModelModalModeEnum.configCustomModel && (
-                  <AuthForm
-                    formSchemas={modelNameAndTypeFormSchemas.map((formSchema) => {
-                      return {
-                        ...formSchema,
-                        name: formSchema.variable,
-                      }
-                    }) as FormSchema[]}
-                    defaultValues={modelNameAndTypeFormValues}
-                    inputClassName="justify-start"
-                    ref={formRef1}
-                    onChange={handleModelNameAndTypeChange}
-                  />
-                )
-              }
-              {
-                mode === ModelModalModeEnum.addCustomModelToModelList && (
-                  <CredentialSelector
-                    credentials={available_credentials || []}
-                    onSelect={setSelectedCredential}
-                    selectedCredential={selectedCredential}
-                    disabled={isLoading}
-                    notAllowAddNewCredential={notAllowCustomCredential}
-                  />
-                )
-              }
-              {
-                showCredentialLabel && (
-                  <div className="system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary">
-                    {t('modelProvider.auth.modelCredential', { ns: 'common' })}
-                    <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
-                  </div>
-                )
-              }
-              {
-                isLoading && (
-                  <div className="mt-3 flex items-center justify-center">
-                    <Loading />
-                  </div>
-                )
-              }
-              {
-                !isLoading
-                && showCredentialForm
-                && (
-                  <AuthForm
-                    formSchemas={formSchemas.map((formSchema) => {
-                      return {
-                        ...formSchema,
-                        name: formSchema.variable,
-                        showRadioUI: formSchema.type === FormTypeEnum.radio,
-                      }
-                    }) as FormSchema[]}
-                    defaultValues={formValues}
-                    inputClassName="justify-start"
-                    ref={formRef2}
-                  />
-                )
-              }
-            </div>
-            <div className="flex justify-between p-6 pt-5">
-              {
-                (provider.help && (provider.help.title || provider.help.url))
-                  ? (
-                      <a
-                        href={provider.help?.url[language] || provider.help?.url.en_US}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="system-xs-regular mt-2 inline-block  align-middle text-text-accent"
-                        onClick={e => !provider.help.url && e.preventDefault()}
-                      >
-                        {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                        <LinkExternal02 className="ml-1 mt-[-2px] inline-block h-3 w-3" />
-                      </a>
-                    )
-                  : <div />
-              }
-              <div className="ml-2 flex items-center justify-end space-x-2">
-                {
-                  isEditMode && (
-                    <Button
-                      variant="warning"
-                      onClick={() => openConfirmDelete(credential, model)}
-                    >
-                      {t('operation.remove', { ns: 'common' })}
-                    </Button>
-                  )
-                }
-                <Button
-                  onClick={onCancel}
-                >
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSave}
-                  disabled={isLoading || doingAction}
-                >
-                  {saveButtonText}
-                </Button>
-              </div>
-            </div>
-            {
-              (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
-                <div className="border-t-[0.5px] border-t-divider-regular">
-                  <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-                    <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
-                    {t('modelProvider.encrypted.front', { ns: 'common' })}
-                    <a
-                      className="mx-1 text-text-accent"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-                    >
-                      PKCS1_OAEP
-                    </a>
-                    {t('modelProvider.encrypted.back', { ns: 'common' })}
-                  </div>
-                </div>
-              )
-            }
-          </div>
+    <Dialog open onOpenChange={handleOpenChange}>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-[640px] max-w-[640px] overflow-hidden p-0"
+      >
+        <DialogCloseButton className="right-5 top-5 h-8 w-8" />
+        <div className="p-6 pb-3">
+          {modalTitle}
+          {modalDesc}
+          {modalModel}
+        </div>
+        <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3">
           {
-            deleteCredentialId && (
-              <Confirm
-                isShow
-                title={t('modelProvider.confirmDelete', { ns: 'common' })}
-                isDisabled={doingAction}
-                onCancel={closeConfirmDelete}
-                onConfirm={handleDeleteCredential}
+            mode === ModelModalModeEnum.configCustomModel && (
+              <AuthForm
+                formSchemas={modelNameAndTypeFormSchemas.map((formSchema) => {
+                  return {
+                    ...formSchema,
+                    name: formSchema.variable,
+                  }
+                }) as FormSchema[]}
+                defaultValues={modelNameAndTypeFormValues}
+                inputClassName="justify-start"
+                ref={formRef1}
+                onChange={handleModelNameAndTypeChange}
+              />
+            )
+          }
+          {
+            mode === ModelModalModeEnum.addCustomModelToModelList && (
+              <CredentialSelector
+                credentials={available_credentials || []}
+                onSelect={setSelectedCredential}
+                selectedCredential={selectedCredential}
+                disabled={isLoading}
+                notAllowAddNewCredential={notAllowCustomCredential}
+              />
+            )
+          }
+          {
+            showCredentialLabel && (
+              <div className="mb-3 mt-6 flex items-center text-text-tertiary system-xs-medium-uppercase">
+                {t('modelProvider.auth.modelCredential', { ns: 'common' })}
+                <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
+              </div>
+            )
+          }
+          {
+            isLoading && (
+              <div className="mt-3 flex items-center justify-center">
+                <Loading />
+              </div>
+            )
+          }
+          {
+            !isLoading
+            && showCredentialForm
+            && (
+              <AuthForm
+                formSchemas={formSchemas.map((formSchema) => {
+                  return {
+                    ...formSchema,
+                    name: formSchema.variable,
+                    showRadioUI: formSchema.type === FormTypeEnum.radio,
+                  }
+                }) as FormSchema[]}
+                defaultValues={formValues}
+                inputClassName="justify-start"
+                ref={formRef2}
               />
             )
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        <div className="flex justify-between p-6 pt-5">
+          {
+            (provider.help && (provider.help.title || provider.help.url))
+              ? (
+                  <a
+                    href={provider.help?.url[language] || provider.help?.url.en_US}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block align-middle text-text-accent system-xs-regular"
+                    onClick={e => !provider.help.url && e.preventDefault()}
+                  >
+                    {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
+                    <LinkExternal02 className="ml-1 mt-[-2px] inline-block h-3 w-3" />
+                  </a>
+                )
+              : <div />
+          }
+          <div className="ml-2 flex items-center justify-end space-x-2">
+            {
+              isEditMode && (
+                <Button
+                  variant="warning"
+                  onClick={() => openConfirmDelete(credential, model)}
+                >
+                  {t('operation.remove', { ns: 'common' })}
+                </Button>
+              )
+            }
+            <Button
+              onClick={onCancel}
+            >
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={isLoading || doingAction}
+            >
+              {saveButtonText}
+            </Button>
+          </div>
+        </div>
+        {
+          (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
+            <div className="border-t-[0.5px] border-t-divider-regular">
+              <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
+                <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
+                {t('modelProvider.encrypted.front', { ns: 'common' })}
+                <a
+                  className="mx-1 text-text-accent"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
+                >
+                  PKCS1_OAEP
+                </a>
+                {t('modelProvider.encrypted.back', { ns: 'common' })}
+              </div>
+            </div>
+          )
+        }
+      </DialogContent>
+      <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
+              {t('modelProvider.confirmDelete', { ns: 'common' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={doingAction}
+              onClick={handleDeleteCredential}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Dialog>
   )
 }
 

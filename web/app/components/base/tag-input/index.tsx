@@ -1,9 +1,13 @@
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { useCallback, useState } from 'react'
-import AutosizeInput from 'react-18-input-autosize'
+import _AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast/context'
 import { cn } from '@/utils/classnames'
+
+// CJS/ESM interop: Turbopack may resolve the module namespace object instead of the default export
+// eslint-disable-next-line ts/no-explicit-any
+const AutosizeInput = ('default' in (_AutosizeInput as any) ? (_AutosizeInput as any).default : _AutosizeInput) as typeof _AutosizeInput
 
 type TagInputProps = {
   items: string[]
