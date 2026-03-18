@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing_extensions import TypedDict
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.data_post_processor.reorder import ReorderRunner

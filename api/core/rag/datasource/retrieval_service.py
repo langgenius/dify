@@ -1,7 +1,9 @@
 import concurrent.futures
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, NotRequired, TypedDict
+from typing import Any
+
+from typing_extensions import NotRequired, TypedDict
 
 from flask import Flask, current_app
 from sqlalchemy import select
