@@ -64,7 +64,7 @@ from models.dataset import (  # type: ignore
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import IndexingStatus, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
     Workflow,
@@ -117,13 +117,21 @@ class RagPipelineService:
     def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict | None:
         """
         Get pipeline template detail.
+
         :param template_id: template id
-        :return:
+        :param type: template type, "built-in" or "customized"
+        :return: template detail dict, or None if not found
         """
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            if built_in_result is None:
+                logger.warning(
+                    "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
+                    template_id,
+                    mode,
+                )
             return built_in_result
         else:
             mode = "customized"
@@ -906,7 +914,7 @@ class RagPipelineService:
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
                         if document:
-                            document.indexing_status = "error"
+                            document.indexing_status = IndexingStatus.ERROR
                             document.error = error
                             db.session.add(document)
                             db.session.commit()

@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import {
   buildGitDiffRevisionArgs,
+  normalizeDiffRangeMode,
+  resolveGitDiffContext,
 } from './check-components-diff-coverage-lib.mjs'
 import {
   createComponentCoverageContext,
@@ -10,7 +12,7 @@ import {
   isTrackedComponentSourceFile,
 } from './components-coverage-common.mjs'
 
-const DIFF_RANGE_MODE = process.env.DIFF_RANGE_MODE === 'exact' ? 'exact' : 'merge-base'
+const REQUESTED_DIFF_RANGE_MODE = normalizeDiffRangeMode(process.env.DIFF_RANGE_MODE)
 
 const repoRoot = repoRootFromCwd()
 const context = createComponentCoverageContext(repoRoot)
@@ -26,12 +28,20 @@ if (!baseSha || /^0+$/.test(baseSha)) {
   process.exit(0)
 }
 
-const changedFiles = getChangedFiles(baseSha, headSha)
+const diffContext = resolveGitDiffContext({
+  base: baseSha,
+  head: headSha,
+  mode: REQUESTED_DIFF_RANGE_MODE,
+  execGit,
+})
+const changedFiles = getChangedFiles(diffContext)
 const changedSourceFiles = changedFiles.filter(filePath => isTrackedComponentSourceFile(filePath, context.excludedComponentCoverageFiles))
 
 if (changedSourceFiles.length === 0) {
   appendSummary([
     '### app/components Test Touch',
+    '',
+    ...buildDiffContextSummary(diffContext),
     '',
     'No tracked source changes under `web/app/components/`. Test-touch report skipped.',
   ])
@@ -45,6 +55,7 @@ const totalChangedWebTests = [...new Set([...changedRelevantTestFiles, ...change
 appendSummary(buildSummary({
   changedOtherWebTestFiles,
   changedRelevantTestFiles,
+  diffContext,
   changedSourceFiles,
   totalChangedWebTests,
 }))
@@ -52,14 +63,14 @@ appendSummary(buildSummary({
 function buildSummary({
   changedOtherWebTestFiles,
   changedRelevantTestFiles,
+  diffContext,
   changedSourceFiles,
   totalChangedWebTests,
 }) {
   const lines = [
     '### app/components Test Touch',
     '',
-    `Compared \`${baseSha.slice(0, 12)}\` -> \`${headSha.slice(0, 12)}\``,
-    `Diff range mode: \`${DIFF_RANGE_MODE}\``,
+    ...buildDiffContextSummary(diffContext),
     '',
     `Tracked source files changed: ${changedSourceFiles.length}`,
     `Component-local or shared integration tests changed: ${changedRelevantTestFiles.length}`,
@@ -99,8 +110,36 @@ function buildSummary({
   return lines
 }
 
-function getChangedFiles(base, head) {
-  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(base, head, DIFF_RANGE_MODE), '--', 'web'])
+function buildDiffContextSummary(diffContext) {
+  const lines = [
+    `Compared \`${diffContext.base.slice(0, 12)}\` -> \`${diffContext.head.slice(0, 12)}\``,
+  ]
+
+  if (diffContext.useCombinedMergeDiff) {
+    lines.push(`Requested diff range mode: \`${diffContext.requestedMode}\``)
+    lines.push(`Effective diff strategy: \`combined-merge\` (${diffContext.reason})`)
+  }
+  else if (diffContext.reason) {
+    lines.push(`Requested diff range mode: \`${diffContext.requestedMode}\``)
+    lines.push(`Effective diff range mode: \`${diffContext.mode}\` (${diffContext.reason})`)
+  }
+  else {
+    lines.push(`Diff range mode: \`${diffContext.mode}\``)
+  }
+
+  return lines
+}
+
+function getChangedFiles(diffContext) {
+  if (diffContext.useCombinedMergeDiff) {
+    const output = execGit(['diff-tree', '--cc', '--no-commit-id', '--name-only', '-r', diffContext.head, '--', 'web'])
+    return output
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+  }
+
+  const output = execGit(['diff', '--name-only', '--diff-filter=ACMR', ...buildGitDiffRevisionArgs(diffContext.base, diffContext.head, diffContext.mode), '--', 'web'])
   return output
     .split('\n')
     .map(line => line.trim())

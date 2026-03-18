@@ -2,38 +2,38 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import WarningMask from '.'
 
 export type IHasNotSetAPIProps = {
-  isTrailFinished: boolean
   onSetting: () => void
 }
 
-const icon = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 6.00001L14 2.00001M14 2.00001H9.99999M14 2.00001L8 8M6.66667 2H5.2C4.0799 2 3.51984 2 3.09202 2.21799C2.71569 2.40973 2.40973 2.71569 2.21799 3.09202C2 3.51984 2 4.07989 2 5.2V10.8C2 11.9201 2 12.4802 2.21799 12.908C2.40973 13.2843 2.71569 13.5903 3.09202 13.782C3.51984 14 4.07989 14 5.2 14H10.8C11.9201 14 12.4802 14 12.908 13.782C13.2843 13.5903 13.5903 13.2843 13.782 12.908C14 12.4802 14 11.9201 14 10.8V9.33333" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-
-)
-
 const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
-  isTrailFinished,
   onSetting,
 }) => {
   const { t } = useTranslation()
 
   return (
-    <WarningMask
-      title={isTrailFinished ? t('notSetAPIKey.trailFinished', { ns: 'appDebug' }) : t('notSetAPIKey.title', { ns: 'appDebug' })}
-      description={t('notSetAPIKey.description', { ns: 'appDebug' })}
-      footer={(
-        <Button variant="primary" className="flex space-x-2" onClick={onSetting}>
-          <span>{t('notSetAPIKey.settingBtn', { ns: 'appDebug' })}</span>
-          {icon}
-        </Button>
-      )}
-    />
+    <div className="flex grow flex-col items-center justify-center pb-[120px]">
+      <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
+          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
+            <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="text-text-secondary system-md-semibold">{t('noModelProviderConfigured', { ns: 'appDebug' })}</div>
+          <div className="text-text-tertiary system-xs-regular">{t('noModelProviderConfiguredTip', { ns: 'appDebug' })}</div>
+        </div>
+        <button
+          type="button"
+          className="flex w-fit items-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]"
+          onClick={onSetting}
+        >
+          <span className="text-components-button-secondary-accent-text system-sm-medium">{t('manageModels', { ns: 'appDebug' })}</span>
+          <span className="i-ri-arrow-right-line h-4 w-4 text-components-button-secondary-accent-text" />
+        </button>
+      </div>
+    </div>
   )
 }
 export default React.memo(HasNotSetAPI)

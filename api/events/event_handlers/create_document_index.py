@@ -10,6 +10,7 @@ from events.document_index_event import document_index_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
+from models.enums import IndexingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def handle(sender, **kwargs):
         if not document:
             raise NotFound("Document not found")
 
-        document.indexing_status = "parsing"
+        document.indexing_status = IndexingStatus.PARSING
         document.processing_started_at = naive_utc_now()
         documents.append(document)
         db.session.add(document)
