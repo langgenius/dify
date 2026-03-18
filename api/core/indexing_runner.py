@@ -681,6 +681,16 @@ class IndexingRunner:
         embedding_model_instance: ModelInstance | None,
     ):
         with flask_app.app_context():
+            # Re-query dataset and document in the current thread's session to avoid
+            # "Instance is not bound to a Session" errors when the parent thread's
+            # session expires or closes these objects.
+            dataset = db.session.query(Dataset).filter_by(id=dataset.id).first()
+            if not dataset:
+                raise ValueError("no dataset found")
+            dataset_document = db.session.get(DatasetDocument, dataset_document.id)
+            if not dataset_document:
+                raise ValueError("no dataset document found")
+
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
 
