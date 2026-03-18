@@ -102,11 +102,11 @@ class AppMCPServerController(Resource):
         if not server:
             raise NotFound()
 
-        description = payload.description
-        if description is None or not description:
-            server.description = app_model.description or ""
+        # Always sync description from app model unless explicitly provided
+        if payload.description:
+            server.description = payload.description
         else:
-            server.description = description
+            server.description = app_model.description or ""
 
         server.name = app_model.name
 
