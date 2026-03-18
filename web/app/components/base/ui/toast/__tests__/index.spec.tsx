@@ -37,6 +37,7 @@ describe('base/ui/toast', () => {
     expect(viewport).toHaveAttribute('aria-live', 'polite')
     expect(viewport).toHaveClass('z-[1101]')
     expect(viewport.firstElementChild).toHaveClass('top-4')
+    expect(screen.getByRole('dialog')).not.toHaveClass('outline-none')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
     expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).toBeInTheDocument()
   })
