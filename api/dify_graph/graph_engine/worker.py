@@ -137,7 +137,7 @@ class Worker(threading.Thread):
                 try:
                     node_events = node.run()
                     for event in node_events:
-                        if isinstance(event, NodeRunStartedEvent):
+                        if isinstance(event, NodeRunStartedEvent) and event.id == node.execution_id:
                             self._current_node_started_at = event.start_at
                         self._event_queue.put(event)
                         if is_node_result_event(event):
@@ -152,7 +152,7 @@ class Worker(threading.Thread):
             try:
                 node_events = node.run()
                 for event in node_events:
-                    if isinstance(event, NodeRunStartedEvent):
+                    if isinstance(event, NodeRunStartedEvent) and event.id == node.execution_id:
                         self._current_node_started_at = event.start_at
                     self._event_queue.put(event)
                     if is_node_result_event(event):
