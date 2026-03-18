@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from models.dataset import Document
@@ -35,6 +35,13 @@ class WebsiteInfo(BaseModel):
     mode: Literal["crawl", "crawl_return_urls", "scrape"]
     tenant_id: str
     only_main_content: bool = False
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _normalize_legacy_mode(cls, value: str) -> str:
+        if value == "single":
+            return "crawl"
+        return value
 
 
 class ExtractSetting(BaseModel):
