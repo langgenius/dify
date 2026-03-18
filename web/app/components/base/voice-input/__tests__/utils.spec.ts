@@ -66,7 +66,7 @@ describe('convertToMp3', () => {
     vi.clearAllMocks()
   })
 
-  it('should convert mono WAV data to an MP3 blob', async () => {
+  it('should convert mono WAV data to an MP3 blob', () => {
     const recorder = createMockRecorder({
       channels: 1,
       sampleRate: 44100,
@@ -76,7 +76,7 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array([1, 2, 3]))
     mocks.flush.mockReturnValue(new Int8Array([4, 5]))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.type).toBe('audio/mp3')
@@ -87,7 +87,7 @@ describe('convertToMp3', () => {
     expect(mocks.flush).toHaveBeenCalled()
   })
 
-  it('should convert stereo WAV data to an MP3 blob', async () => {
+  it('should convert stereo WAV data to an MP3 blob', () => {
     const recorder = createMockRecorder({
       channels: 2,
       sampleRate: 48000,
@@ -98,7 +98,7 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array([10, 20]))
     mocks.flush.mockReturnValue(new Int8Array([30]))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.type).toBe('audio/mp3')
@@ -107,7 +107,7 @@ describe('convertToMp3', () => {
     expect(firstCall).toHaveLength(2)
   })
 
-  it('should skip empty encoded buffers', async () => {
+  it('should skip empty encoded buffers', () => {
     const recorder = createMockRecorder({
       channels: 1,
       sampleRate: 44100,
@@ -117,14 +117,14 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array(0))
     mocks.flush.mockReturnValue(new Int8Array(0))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.type).toBe('audio/mp3')
     expect(result.size).toBe(0)
   })
 
-  it('should include flush data when flush returns non-empty buffer', async () => {
+  it('should include flush data when flush returns non-empty buffer', () => {
     const recorder = createMockRecorder({
       channels: 1,
       sampleRate: 22050,
@@ -134,13 +134,13 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array(0))
     mocks.flush.mockReturnValue(new Int8Array([99, 98, 97]))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.size).toBe(3)
   })
 
-  it('should omit flush data when flush returns empty buffer', async () => {
+  it('should omit flush data when flush returns empty buffer', () => {
     const recorder = createMockRecorder({
       channels: 1,
       sampleRate: 44100,
@@ -150,13 +150,13 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array([1, 2]))
     mocks.flush.mockReturnValue(new Int8Array(0))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     expect(result.size).toBe(2)
   })
 
-  it('should process multiple chunks when sample count exceeds maxSamples (1152)', async () => {
+  it('should process multiple chunks when sample count exceeds maxSamples (1152)', () => {
     const samples = Array.from({ length: 2400 }, (_, i) => i % 32767)
     const recorder = createMockRecorder({
       channels: 1,
@@ -167,13 +167,13 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array([1]))
     mocks.flush.mockReturnValue(new Int8Array(0))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(mocks.encodeBuffer.mock.calls.length).toBeGreaterThan(1)
     expect(result).toBeInstanceOf(Blob)
   })
 
-  it('should encode stereo with right channel subarray', async () => {
+  it('should encode stereo with right channel subarray', () => {
     const recorder = createMockRecorder({
       channels: 2,
       sampleRate: 44100,
@@ -184,7 +184,7 @@ describe('convertToMp3', () => {
     mocks.encodeBuffer.mockReturnValue(new Int8Array([5, 6, 7]))
     mocks.flush.mockReturnValue(new Int8Array([8]))
 
-    const result = await convertToMp3(recorder)
+    const result = convertToMp3(recorder)
 
     expect(result).toBeInstanceOf(Blob)
     for (const call of mocks.encodeBuffer.mock.calls) {
