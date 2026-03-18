@@ -16,6 +16,7 @@ import pytest
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
@@ -54,7 +55,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
             tenant_id=tenant_id,
             name=f"dataset-{uuid4()}",
             description="sync test dataset",
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             indexing_technique="high_quality",
             created_by=created_by,
         )
@@ -76,11 +77,11 @@ class DocumentIndexingSyncTaskTestDataFactory:
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=0,
-            data_source_type="notion_import",
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info=json.dumps(data_source_info) if data_source_info is not None else None,
             batch="test-batch",
             name=f"doc-{uuid4()}",
-            created_from="notion_import",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             indexing_status=indexing_status,
             enabled=True,
@@ -113,7 +114,7 @@ class DocumentIndexingSyncTaskTestDataFactory:
                 word_count=10,
                 tokens=5,
                 index_node_id=f"node-{document_id}-{i}",
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 created_by=created_by,
             )
             db_session_with_containers.add(segment)
@@ -181,7 +182,7 @@ class TestDocumentIndexingSyncTask:
             dataset_id=dataset.id,
             created_by=account.id,
             data_source_info=notion_info,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         segments = DocumentIndexingSyncTaskTestDataFactory.create_segments(
@@ -276,7 +277,7 @@ class TestDocumentIndexingSyncTask:
             db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "error"
+        assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Datasource credential not found" in updated_document.error
         assert updated_document.stopped_at is not None
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
@@ -301,7 +302,7 @@ class TestDocumentIndexingSyncTask:
             .count()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "completed"
+        assert updated_document.indexing_status == IndexingStatus.COMPLETED
         assert updated_document.processing_started_at is None
         assert remaining_segments == 3
         mock_external_dependencies["index_processor"].clean.assert_not_called()
@@ -327,7 +328,7 @@ class TestDocumentIndexingSyncTask:
         )
 
         assert updated_document is not None
-        assert updated_document.indexing_status == "parsing"
+        assert updated_document.indexing_status == IndexingStatus.PARSING
         assert updated_document.processing_started_at is not None
         assert updated_document.data_source_info_dict.get("last_edited_time") == "2024-01-02T00:00:00Z"
         assert remaining_segments == 0
@@ -369,7 +370,7 @@ class TestDocumentIndexingSyncTask:
             db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "parsing"
+        assert updated_document.indexing_status == IndexingStatus.PARSING
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
@@ -393,7 +394,7 @@ class TestDocumentIndexingSyncTask:
             .count()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "parsing"
+        assert updated_document.indexing_status == IndexingStatus.PARSING
         assert remaining_segments == 0
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
@@ -412,7 +413,7 @@ class TestDocumentIndexingSyncTask:
             db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "parsing"
+        assert updated_document.indexing_status == IndexingStatus.PARSING
         assert updated_document.error is None
 
     def test_indexing_runner_general_error(self, db_session_with_containers, mock_external_dependencies):
@@ -430,7 +431,7 @@ class TestDocumentIndexingSyncTask:
             db_session_with_containers.query(Document).where(Document.id == context["document"].id).first()
         )
         assert updated_document is not None
-        assert updated_document.indexing_status == "error"
+        assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Indexing error" in updated_document.error
         assert updated_document.stopped_at is not None
 

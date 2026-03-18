@@ -1,3 +1,11 @@
+import type { ReactNode } from 'react'
+import type {
+  NumberFieldButtonProps,
+  NumberFieldControlsProps,
+  NumberFieldGroupProps,
+  NumberFieldInputProps,
+  NumberFieldUnitProps,
+} from '../index'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { render, screen } from '@testing-library/react'
 import {
@@ -10,104 +18,258 @@ import {
   NumberFieldUnit,
 } from '../index'
 
+type RenderNumberFieldOptions = {
+  defaultValue?: number
+  groupProps?: Partial<NumberFieldGroupProps>
+  inputProps?: Partial<NumberFieldInputProps>
+  unitProps?: Partial<NumberFieldUnitProps> & { children?: ReactNode }
+  controlsProps?: Partial<NumberFieldControlsProps>
+  incrementProps?: Partial<NumberFieldButtonProps>
+  decrementProps?: Partial<NumberFieldButtonProps>
+}
+
+const renderNumberField = ({
+  defaultValue = 8,
+  groupProps,
+  inputProps,
+  unitProps,
+  controlsProps,
+  incrementProps,
+  decrementProps,
+}: RenderNumberFieldOptions = {}) => {
+  const {
+    children: unitChildren = 'ms',
+    ...restUnitProps
+  } = unitProps ?? {}
+
+  return render(
+    <NumberField defaultValue={defaultValue}>
+      <NumberFieldGroup data-testid="group" {...groupProps}>
+        <NumberFieldInput
+          aria-label="Amount"
+          data-testid="input"
+          {...inputProps}
+        />
+        {unitProps && (
+          <NumberFieldUnit data-testid="unit" {...restUnitProps}>
+            {unitChildren}
+          </NumberFieldUnit>
+        )}
+        {(controlsProps || incrementProps || decrementProps) && (
+          <NumberFieldControls data-testid="controls" {...controlsProps}>
+            <NumberFieldIncrement data-testid="increment" {...incrementProps} />
+            <NumberFieldDecrement data-testid="decrement" {...decrementProps} />
+          </NumberFieldControls>
+        )}
+      </NumberFieldGroup>
+    </NumberField>,
+  )
+}
+
 describe('NumberField wrapper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // Export mapping should stay aligned with the Base UI primitive.
   describe('Exports', () => {
     it('should map NumberField to the matching base primitive root', () => {
       expect(NumberField).toBe(BaseNumberField.Root)
     })
   })
 
-  describe('Variants', () => {
-    it('should apply regular variant classes and forward className to group and input', () => {
-      render(
-        <NumberField defaultValue={12}>
-          <NumberFieldGroup size="regular" className="custom-group" data-testid="group">
-            <NumberFieldInput
-              aria-label="Regular amount"
-              placeholder="Regular placeholder"
-              size="regular"
-              className="custom-input"
-            />
-          </NumberFieldGroup>
-        </NumberField>,
-      )
+  // Group and input wrappers should preserve the design-system variants and DOM defaults.
+  describe('Group and input', () => {
+    it('should apply regular group classes by default and merge custom className', () => {
+      renderNumberField({
+        groupProps: {
+          className: 'custom-group',
+        },
+      })
 
       const group = screen.getByTestId('group')
-      const input = screen.getByRole('textbox', { name: 'Regular amount' })
 
       expect(group).toHaveClass('radius-md')
       expect(group).toHaveClass('custom-group')
-      expect(input).toHaveAttribute('placeholder', 'Regular placeholder')
-      expect(input).toHaveClass('px-3')
-      expect(input).toHaveClass('py-[7px]')
-      expect(input).toHaveClass('custom-input')
     })
 
-    it('should apply large variant classes to grouped parts when large size is provided', () => {
-      render(
-        <NumberField defaultValue={24}>
-          <NumberFieldGroup size="large" data-testid="group">
-            <NumberFieldInput aria-label="Large amount" size="large" />
-            <NumberFieldUnit size="large">ms</NumberFieldUnit>
-            <NumberFieldControls>
-              <NumberFieldIncrement aria-label="Increment amount" size="large" />
-              <NumberFieldDecrement aria-label="Decrement amount" size="large" />
-            </NumberFieldControls>
-          </NumberFieldGroup>
-        </NumberField>,
-      )
+    it('should apply large group and input classes when large size is provided', () => {
+      renderNumberField({
+        groupProps: {
+          size: 'large',
+        },
+        inputProps: {
+          size: 'large',
+        },
+      })
 
       const group = screen.getByTestId('group')
-      const input = screen.getByRole('textbox', { name: 'Large amount' })
-      const unit = screen.getByText('ms')
-      const increment = screen.getByRole('button', { name: 'Increment amount' })
-      const decrement = screen.getByRole('button', { name: 'Decrement amount' })
+      const input = screen.getByTestId('input')
 
       expect(group).toHaveClass('radius-lg')
       expect(input).toHaveClass('px-4')
       expect(input).toHaveClass('py-2')
-      expect(unit).toHaveClass('flex')
-      expect(unit).toHaveClass('items-center')
-      expect(unit).toHaveClass('pr-2.5')
-      expect(increment).toHaveClass('pt-1.5')
-      expect(decrement).toHaveClass('pb-1.5')
+    })
+
+    it('should set input defaults and forward passthrough props', () => {
+      renderNumberField({
+        inputProps: {
+          className: 'custom-input',
+          placeholder: 'Regular placeholder',
+          required: true,
+        },
+      })
+
+      const input = screen.getByRole('textbox', { name: 'Amount' })
+
+      expect(input).toHaveAttribute('autoComplete', 'off')
+      expect(input).toHaveAttribute('autoCorrect', 'off')
+      expect(input).toHaveAttribute('placeholder', 'Regular placeholder')
+      expect(input).toBeRequired()
+      expect(input).toHaveClass('px-3')
+      expect(input).toHaveClass('py-[7px]')
+      expect(input).toHaveClass('system-sm-regular')
+      expect(input).toHaveClass('custom-input')
     })
   })
 
-  describe('Passthrough props', () => {
-    it('should forward passthrough props and custom classes to controls and buttons', () => {
-      render(
-        <NumberField defaultValue={8}>
-          <NumberFieldGroup size="regular">
-            <NumberFieldInput aria-label="Amount" size="regular" />
-            <NumberFieldControls className="custom-controls" data-testid="controls">
-              <NumberFieldIncrement
-                aria-label="Increment"
-                size="regular"
-                className="custom-increment"
-                data-track-id="increment-track"
-              />
-              <NumberFieldDecrement
-                aria-label="Decrement"
-                size="regular"
-                className="custom-decrement"
-                data-track-id="decrement-track"
-              />
-            </NumberFieldControls>
-          </NumberFieldGroup>
-        </NumberField>,
-      )
+  // Unit and controls wrappers should preserve layout tokens and HTML passthrough props.
+  describe('Unit and controls', () => {
+    it.each([
+      ['regular', 'pr-2'],
+      ['large', 'pr-2.5'],
+    ] as const)('should apply the %s unit spacing variant', (size, spacingClass) => {
+      renderNumberField({
+        unitProps: {
+          size,
+          className: 'custom-unit',
+          title: `unit-${size}`,
+        },
+      })
+
+      const unit = screen.getByTestId('unit')
+
+      expect(unit).toHaveTextContent('ms')
+      expect(unit).toHaveAttribute('title', `unit-${size}`)
+      expect(unit).toHaveClass('custom-unit')
+      expect(unit).toHaveClass(spacingClass)
+    })
+
+    it('should forward passthrough props to controls', () => {
+      renderNumberField({
+        controlsProps: {
+          className: 'custom-controls',
+          title: 'controls-title',
+        },
+      })
 
       const controls = screen.getByTestId('controls')
-      const increment = screen.getByRole('button', { name: 'Increment' })
-      const decrement = screen.getByRole('button', { name: 'Decrement' })
 
-      expect(controls).toHaveClass('border-l')
+      expect(controls).toHaveAttribute('title', 'controls-title')
       expect(controls).toHaveClass('custom-controls')
+    })
+  })
+
+  // Increment and decrement buttons should preserve accessible naming, icon fallbacks, and spacing variants.
+  describe('Control buttons', () => {
+    it('should provide localized aria labels and default icons when labels are not provided', () => {
+      renderNumberField({
+        controlsProps: {},
+      })
+
+      const increment = screen.getByRole('button', { name: 'common.operation.increment' })
+      const decrement = screen.getByRole('button', { name: 'common.operation.decrement' })
+
+      expect(increment.querySelector('.i-ri-arrow-up-s-line')).toBeInTheDocument()
+      expect(decrement.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
+    })
+
+    it('should preserve explicit aria labels and custom children', () => {
+      renderNumberField({
+        controlsProps: {},
+        incrementProps: {
+          'aria-label': 'Increase amount',
+          'children': <span data-testid="custom-increment-icon">+</span>,
+        },
+        decrementProps: {
+          'aria-label': 'Decrease amount',
+          'children': <span data-testid="custom-decrement-icon">-</span>,
+        },
+      })
+
+      const increment = screen.getByRole('button', { name: 'Increase amount' })
+      const decrement = screen.getByRole('button', { name: 'Decrease amount' })
+
+      expect(increment).toContainElement(screen.getByTestId('custom-increment-icon'))
+      expect(decrement).toContainElement(screen.getByTestId('custom-decrement-icon'))
+      expect(increment.querySelector('.i-ri-arrow-up-s-line')).not.toBeInTheDocument()
+      expect(decrement.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
+    })
+
+    it('should keep the fallback aria labels when aria-label is omitted in props', () => {
+      renderNumberField({
+        controlsProps: {},
+        incrementProps: {
+          'aria-label': undefined,
+        },
+        decrementProps: {
+          'aria-label': undefined,
+        },
+      })
+
+      expect(screen.getByRole('button', { name: 'common.operation.increment' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.decrement' })).toBeInTheDocument()
+    })
+
+    it('should rely on aria-labelledby when provided instead of injecting a translated aria-label', () => {
+      render(
+        <>
+          <span id="increment-label">Increment from label</span>
+          <span id="decrement-label">Decrement from label</span>
+          <NumberField defaultValue={8}>
+            <NumberFieldGroup size="regular">
+              <NumberFieldInput aria-label="Amount" size="regular" />
+              <NumberFieldControls>
+                <NumberFieldIncrement aria-labelledby="increment-label" size="regular" />
+                <NumberFieldDecrement aria-labelledby="decrement-label" size="regular" />
+              </NumberFieldControls>
+            </NumberFieldGroup>
+          </NumberField>
+        </>,
+      )
+
+      const increment = screen.getByRole('button', { name: 'Increment from label' })
+      const decrement = screen.getByRole('button', { name: 'Decrement from label' })
+
+      expect(increment).not.toHaveAttribute('aria-label')
+      expect(decrement).not.toHaveAttribute('aria-label')
+    })
+
+    it.each([
+      ['regular', 'pt-1', 'pb-1'],
+      ['large', 'pt-1.5', 'pb-1.5'],
+    ] as const)('should apply the %s control button compound spacing classes', (size, incrementClass, decrementClass) => {
+      renderNumberField({
+        controlsProps: {},
+        incrementProps: {
+          size,
+          className: 'custom-increment',
+        },
+        decrementProps: {
+          size,
+          className: 'custom-decrement',
+          title: `decrement-${size}`,
+        },
+      })
+
+      const increment = screen.getByTestId('increment')
+      const decrement = screen.getByTestId('decrement')
+
+      expect(increment).toHaveClass(incrementClass)
       expect(increment).toHaveClass('custom-increment')
-      expect(increment).toHaveAttribute('data-track-id', 'increment-track')
+      expect(decrement).toHaveClass(decrementClass)
       expect(decrement).toHaveClass('custom-decrement')
-      expect(decrement).toHaveAttribute('data-track-id', 'decrement-track')
+      expect(decrement).toHaveAttribute('title', `decrement-${size}`)
     })
   })
 })

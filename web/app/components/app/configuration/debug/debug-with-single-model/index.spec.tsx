@@ -155,7 +155,7 @@ vi.mock('@/service/debug', () => ({
   stopChatMessageResponding: mockStopChatMessageResponding,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
   useParams: () => ({}),

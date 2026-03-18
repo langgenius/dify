@@ -7,14 +7,16 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, NotRequired, Optional
 from urllib.parse import unquote, urlparse
 
 import httpx
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
 from core.helper import ssrf_proxy
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
@@ -35,6 +37,13 @@ if TYPE_CHECKING:
     from core.model_manager import ModelInstance
 
 
+class SummaryIndexSettingDict(TypedDict):
+    enable: bool
+    model_name: NotRequired[str]
+    model_provider_name: NotRequired[str]
+    summary_prompt: NotRequired[str]
+
+
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
@@ -51,7 +60,7 @@ class BaseIndexProcessor(ABC):
         self,
         tenant_id: str,
         preview_texts: list[PreviewDetail],
-        summary_index_setting: dict,
+        summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
     ) -> list[PreviewDetail]:
         """
@@ -98,7 +107,7 @@ class BaseIndexProcessor(ABC):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         raise NotImplementedError
 

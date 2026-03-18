@@ -5,7 +5,7 @@ import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
 
