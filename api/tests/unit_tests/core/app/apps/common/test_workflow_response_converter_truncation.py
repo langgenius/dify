@@ -258,7 +258,7 @@ class TestWorkflowResponseConverter:
 
         event = QueueNodeSucceededEvent(
             node_id="test-node-id",
-            node_type=NodeType.CODE,
+            node_type=BuiltinNodeTypes.CODE,
             node_execution_id="node-exec-1",
             start_at=start_at,
             finished_at=finished_at,

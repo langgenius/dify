@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.graph_events import NodeRunSucceededEvent
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
@@ -32,7 +32,7 @@ def test_parallel_iteration_duration_map_uses_worker_measured_time() -> None:
                 NodeRunSucceededEvent(
                     id=f"exec-{index}",
                     node_id=f"llm-{index}",
-                    node_type=NodeType.LLM,
+                    node_type=BuiltinNodeTypes.LLM,
                     start_at=datetime.now(UTC).replace(tzinfo=None),
                 ),
             ],

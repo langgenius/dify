@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.graph_engine.ready_queue import InMemoryReadyQueue
 from dify_graph.graph_engine.worker import Worker
 from dify_graph.graph_events import NodeRunFailedEvent, NodeRunStartedEvent
@@ -23,7 +23,7 @@ def test_build_fallback_failure_event_uses_naive_utc_and_failed_node_run_result(
     node = SimpleNamespace(
         execution_id="exec-1",
         id="node-1",
-        node_type=NodeType.LLM,
+        node_type=BuiltinNodeTypes.LLM,
     )
 
     event = worker._build_fallback_failure_event(node, RuntimeError("boom"))
@@ -44,7 +44,7 @@ def test_worker_fallback_failure_event_reuses_observed_start_time() -> None:
     class FakeNode:
         execution_id = "exec-1"
         id = "node-1"
-        node_type = NodeType.LLM
+        node_type = BuiltinNodeTypes.LLM
 
         def ensure_execution_id(self) -> str:
             return self.execution_id
