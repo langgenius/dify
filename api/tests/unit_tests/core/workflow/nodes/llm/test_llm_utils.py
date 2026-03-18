@@ -29,11 +29,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
         ),
         mock.patch(
             "dify_graph.nodes.llm.llm_utils.handle_list_messages",
-            return_value=[
-                SystemPromptMessage(
-                    content=content
-                )
-            ],
+            return_value=[SystemPromptMessage(content=content)],
         ),
         mock.patch(
             "dify_graph.nodes.llm.llm_utils.handle_memory_chat_mode",
