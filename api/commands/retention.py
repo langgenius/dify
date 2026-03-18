@@ -88,6 +88,8 @@ def clean_workflow_runs(
     """
     Clean workflow runs and related workflow data for free tenants.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     if (start_from is None) ^ (end_before is None):
         raise click.UsageError("--start-from and --end-before must be provided together.")
 
@@ -104,16 +106,27 @@ def clean_workflow_runs(
         end_before = now - datetime.timedelta(days=to_days_ago)
         before_days = 0
 
+    if from_days_ago is not None and to_days_ago is not None:
+        task_label = f"{from_days_ago}to{to_days_ago}"
+    elif start_from is None:
+        task_label = f"before-{before_days}"
+    else:
+        task_label = "custom"
+
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
-    WorkflowRunCleanup(
-        days=before_days,
-        batch_size=batch_size,
-        start_from=start_from,
-        end_before=end_before,
-        dry_run=dry_run,
-    ).run()
+    try:
+        WorkflowRunCleanup(
+            days=before_days,
+            batch_size=batch_size,
+            start_from=start_from,
+            end_before=end_before,
+            dry_run=dry_run,
+            task_label=task_label,
+        ).run()
+    finally:
+        flush_telemetry()
 
     end_time = datetime.datetime.now(datetime.UTC)
     elapsed = end_time - start_time
@@ -659,6 +672,8 @@ def clean_expired_messages(
     """
     Clean expired messages and related data for tenants based on clean policy.
     """
+    from extensions.otel.runtime import flush_telemetry
+
     click.echo(click.style("clean_messages: start clean messages.", fg="green"))
 
     start_at = time.perf_counter()
@@ -698,6 +713,13 @@ def clean_expired_messages(
         # NOTE: graceful_period will be ignored when billing is disabled.
         policy = create_message_clean_policy(graceful_period_days=graceful_period)
 
+        if from_days_ago is not None and before_days is not None:
+            task_label = f"{from_days_ago}to{before_days}"
+        elif start_from is None and before_days is not None:
+            task_label = f"before-{before_days}"
+        else:
+            task_label = "custom"
+
         # Create and run the cleanup service
         if abs_mode:
             assert start_from is not None
@@ -708,6 +730,7 @@ def clean_expired_messages(
                 end_before=end_before,
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         elif from_days_ago is None:
             assert before_days is not None
@@ -716,6 +739,7 @@ def clean_expired_messages(
                 days=before_days,
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         else:
             assert before_days is not None
@@ -727,6 +751,7 @@ def clean_expired_messages(
                 end_before=now - datetime.timedelta(days=before_days),
                 batch_size=batch_size,
                 dry_run=dry_run,
+                task_label=task_label,
             )
         stats = service.run()
 
@@ -752,6 +777,8 @@ def clean_expired_messages(
             )
         )
         raise
+    finally:
+        flush_telemetry()
 
     click.echo(click.style("messages cleanup completed.", fg="green"))
 

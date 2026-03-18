@@ -9,7 +9,7 @@ import pytest
 
 from models import Account
 from models.dataset import Dataset, Document
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 
@@ -33,7 +33,7 @@ def make_dataset(db_session_with_containers, dataset_id=None, tenant_id=None, bu
     dataset = Dataset(
         tenant_id=tenant_id,
         name=f"dataset-{uuid4()}",
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         created_by=str(uuid4()),
     )
     dataset.id = dataset_id
@@ -62,11 +62,11 @@ def make_document(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         data_source_info=json.dumps(data_source_info or {}),
         batch=f"batch-{uuid4()}",
         name=name,
-        created_from="web",
+        created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
         doc_form="text_model",
     )
