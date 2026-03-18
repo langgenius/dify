@@ -83,6 +83,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
+from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
 
@@ -349,43 +350,30 @@ class RagPipelineService:
         workflow_id: str,
         account: Account,
     ) -> Workflow:
-        """Restore a published pipeline workflow snapshot into the draft workflow."""
+        """Restore a published pipeline workflow snapshot into the draft workflow.
+
+        Pipelines reuse the shared draft-restore field copy helper, but still own
+        the pipeline-specific flush/link step that wires a newly created draft
+        back onto ``pipeline.workflow_id``.
+        """
         source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
 
         draft_workflow = self.get_draft_workflow(pipeline=pipeline)
-        restored_environment_variables = list(source_workflow.environment_variables)
-        restored_conversation_variables = list(source_workflow.conversation_variables)
-        restored_rag_pipeline_variables = list(source_workflow.rag_pipeline_variables)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+        )
 
-        if not draft_workflow:
-            workflow_type = (
-                source_workflow.type.value if isinstance(source_workflow.type, WorkflowType) else source_workflow.type
-            )
-            draft_workflow = Workflow(
-                tenant_id=pipeline.tenant_id,
-                app_id=pipeline.id,
-                type=workflow_type,
-                version=Workflow.VERSION_DRAFT,
-                graph=source_workflow.graph,
-                features=source_workflow.features,
-                created_by=account.id,
-                environment_variables=restored_environment_variables,
-                conversation_variables=restored_conversation_variables,
-            )
-            draft_workflow.rag_pipeline_variables = restored_rag_pipeline_variables
+        if is_new_draft:
             db.session.add(draft_workflow)
             db.session.flush()
             pipeline.workflow_id = draft_workflow.id
-        else:
-            draft_workflow.graph = source_workflow.graph
-            draft_workflow.features = source_workflow.features
-            draft_workflow.updated_by = account.id
-            draft_workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            draft_workflow.environment_variables = restored_environment_variables
-            draft_workflow.conversation_variables = restored_conversation_variables
-            draft_workflow.rag_pipeline_variables = restored_rag_pipeline_variables
 
         db.session.commit()
 

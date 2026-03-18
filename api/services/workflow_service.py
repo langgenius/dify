@@ -80,6 +80,7 @@ from .human_input_delivery_test_service import (
     HumanInputDeliveryTestService,
 )
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 
 class WorkflowService:
@@ -304,35 +305,17 @@ class WorkflowService:
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
         draft_workflow = self.get_draft_workflow(app_model=app_model)
-        restored_environment_variables = list(source_workflow.environment_variables)
-        restored_conversation_variables = list(source_workflow.conversation_variables)
-        restored_rag_pipeline_variables = list(source_workflow.rag_pipeline_variables)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=naive_utc_now,
+        )
 
-        if not draft_workflow:
-            workflow_type = (
-                source_workflow.type.value if isinstance(source_workflow.type, WorkflowType) else source_workflow.type
-            )
-            draft_workflow = Workflow(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type=workflow_type,
-                version=Workflow.VERSION_DRAFT,
-                graph=source_workflow.graph,
-                features=source_workflow.features,
-                created_by=account.id,
-                environment_variables=restored_environment_variables,
-                conversation_variables=restored_conversation_variables,
-            )
-            draft_workflow.rag_pipeline_variables = restored_rag_pipeline_variables
+        if is_new_draft:
             db.session.add(draft_workflow)
-        else:
-            draft_workflow.graph = source_workflow.graph
-            draft_workflow.features = source_workflow.features
-            draft_workflow.updated_by = account.id
-            draft_workflow.updated_at = naive_utc_now()
-            draft_workflow.environment_variables = restored_environment_variables
-            draft_workflow.conversation_variables = restored_conversation_variables
-            draft_workflow.rag_pipeline_variables = restored_rag_pipeline_variables
 
         db.session.commit()
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
