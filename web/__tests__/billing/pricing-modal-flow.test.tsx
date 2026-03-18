@@ -51,7 +51,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),

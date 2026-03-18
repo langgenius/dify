@@ -17,7 +17,7 @@ const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
   {
     name: 'next',
-    message: 'Import Next APIs from @/next instead of next.',
+    message: 'Import Next APIs from the corresponding @/next module instead of next.',
   },
 ]
 
@@ -31,24 +31,8 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
     message: 'Do not import next/font. Use the project font styles instead.',
   },
   {
-    group: ['next/dynamic'],
-    message: 'Import Next APIs from @/next/dynamic instead of next/dynamic.',
-  },
-  {
-    group: ['next/headers'],
-    message: 'Import Next APIs from @/next/headers instead of next/headers.',
-  },
-  {
-    group: ['next/script'],
-    message: 'Import Next APIs from @/next/script instead of next/script.',
-  },
-  {
-    group: ['next/server'],
-    message: 'Import Next APIs from @/next/server instead of next/server.',
-  },
-  {
-    group: ['next/link'],
-    message: 'Import Next APIs from @/next/link instead of next/link.',
+    group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+    message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
   },
 ]
 

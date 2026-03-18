@@ -5,7 +5,7 @@ import MenuDropdown from '../menu-dropdown'
 
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),

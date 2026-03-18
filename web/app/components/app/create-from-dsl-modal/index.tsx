@@ -4,7 +4,6 @@ import type { MouseEventHandler } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -22,6 +21,7 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import {
   importDSL,
   importDSLConfirm,

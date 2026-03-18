@@ -7,11 +7,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { useRouter, useSelectedLayoutSegment } from 'next/navigation'
 import * as React from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
+import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
 
@@ -69,7 +69,7 @@ vi.mock('@headlessui/react', () => {
 })
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
   useRouter: vi.fn(),
 }))

@@ -4,7 +4,7 @@ import Actions from '../index'
 
 // Mock next/navigation - useParams returns datasetId
 const mockDatasetId = 'test-dataset-id'
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: mockDatasetId }),
 }))
 

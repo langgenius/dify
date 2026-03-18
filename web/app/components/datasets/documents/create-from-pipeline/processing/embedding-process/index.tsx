@@ -10,7 +10,6 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +25,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { cn } from '@/utils/classnames'

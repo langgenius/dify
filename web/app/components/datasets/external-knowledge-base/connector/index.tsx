@@ -1,12 +1,12 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useToastContext } from '@/app/components/base/toast/context'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
+import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'
 
 const ExternalKnowledgeBaseConnector = () => {
