@@ -530,9 +530,6 @@ export const useChat = (
           }
         },
         onAgentLog: ({ data }) => {
-          if (!data.node_execution_id)
-            return
-
           const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.node_execution_id)
           if (currentNodeIndex > -1) {
             const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
