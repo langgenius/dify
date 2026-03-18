@@ -5,6 +5,7 @@ This module provides integration with Weaviate vector database for storing and r
 document embeddings used in retrieval-augmented generation workflows.
 """
 
+import atexit
 import datetime
 import json
 import logging
@@ -12,7 +13,6 @@ import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
-import atexit
 
 import weaviate
 import weaviate.classes.config as wc
