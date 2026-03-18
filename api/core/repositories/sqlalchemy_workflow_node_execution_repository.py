@@ -13,7 +13,7 @@ import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
@@ -37,6 +37,17 @@ from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
+
+# Safe field mapping for WorkflowNodeExecutionModel to avoid getattr reflection
+WORKFLOW_NODE_EXECUTION_ORDER_FIELDS: dict[str, InstrumentedAttribute[Any]] = {
+    "id": WorkflowNodeExecutionModel.id,
+    "index": WorkflowNodeExecutionModel.index,
+    "created_at": WorkflowNodeExecutionModel.created_at,
+    "finished_at": WorkflowNodeExecutionModel.finished_at,
+    "node_id": WorkflowNodeExecutionModel.node_id,
+    "status": WorkflowNodeExecutionModel.status,
+    "elapsed_time": WorkflowNodeExecutionModel.elapsed_time,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -498,9 +509,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if order_config and order_config.order_by:
                 order_columns: list[UnaryExpression] = []
                 for field in order_config.order_by:
-                    column = getattr(WorkflowNodeExecutionModel, field, None)
-                    if not column:
+                    # Use safe field mapping instead of getattr reflection
+                    if field not in WORKFLOW_NODE_EXECUTION_ORDER_FIELDS:
+                        logger.warning(
+                            "Unsupported order field: %s. Supported fields: %s",
+                            field,
+                            list(WORKFLOW_NODE_EXECUTION_ORDER_FIELDS.keys()),
+                        )
                         continue
+
+                    column = WORKFLOW_NODE_EXECUTION_ORDER_FIELDS[field]
                     if order_config.order_direction == "desc":
                         order_columns.append(desc(column))
                     else:
