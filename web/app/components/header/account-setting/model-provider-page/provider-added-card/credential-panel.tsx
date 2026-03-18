@@ -1,151 +1,105 @@
-import type {
-  ModelProvider,
-} from '../declarations'
-import { useMemo } from 'react'
+import type { ModelProvider } from '../declarations'
+import type { CardVariant } from './use-credential-panel-state'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
-import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import Warning from '@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning'
 import Indicator from '@/app/components/header/indicator'
-import { IS_CLOUD_EDITION } from '@/config'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { changeModelProviderPriority } from '@/service/common'
-import { cn } from '@/utils/classnames'
-import {
-  ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
-  PreferredProviderTypeEnum,
-} from '../declarations'
-import {
-  useUpdateModelList,
-  useUpdateModelProviders,
-} from '../hooks'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
-import PrioritySelector from './priority-selector'
-import PriorityUseTip from './priority-use-tip'
+import ModelAuthDropdown from './model-auth-dropdown'
+import SystemQuotaCard from './system-quota-card'
+import { useChangeProviderPriority } from './use-change-provider-priority'
+import { isDestructiveVariant, useCredentialPanelState } from './use-credential-panel-state'
 
 type CredentialPanelProps = {
   provider: ModelProvider
 }
 
+const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
+  'credits-active',
+  'credits-fallback',
+  'credits-exhausted',
+  'no-usage',
+  'api-required-add',
+  'api-required-configure',
+])
+
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
+  const state = useCredentialPanelState(provider)
+  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
+
+  const { variant, credentialName } = state
+  const isDestructive = isDestructiveVariant(variant)
+  const isTextLabel = TEXT_LABEL_VARIANTS.has(variant)
+  const needsGap = !isTextLabel || variant === 'credits-fallback'
+
+  return (
+    <SystemQuotaCard variant={isDestructive ? 'destructive' : 'default'}>
+      <SystemQuotaCard.Label className={needsGap ? 'gap-1' : undefined}>
+        {isTextLabel
+          ? <TextLabel variant={variant} />
+          : <StatusLabel variant={variant} credentialName={credentialName} />}
+      </SystemQuotaCard.Label>
+      <SystemQuotaCard.Actions>
+        <ModelAuthDropdown
+          provider={provider}
+          state={state}
+          isChangingPriority={isChangingPriority}
+          onChangePriority={handleChangePriority}
+        />
+      </SystemQuotaCard.Actions>
+    </SystemQuotaCard>
+  )
+}
+
+const TEXT_LABEL_KEYS = {
+  'credits-active': 'modelProvider.card.aiCreditsInUse',
+  'credits-fallback': 'modelProvider.card.aiCreditsInUse',
+  'credits-exhausted': 'modelProvider.card.quotaExhausted',
+  'no-usage': 'modelProvider.card.noAvailableUsage',
+  'api-required-add': 'modelProvider.card.apiKeyRequired',
+  'api-required-configure': 'modelProvider.card.apiKeyRequired',
+} as const satisfies Partial<Record<CardVariant, string>>
+
+function TextLabel({ variant }: { variant: CardVariant }) {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
-  const { eventEmitter } = useEventEmitterContextContext()
-  const updateModelList = useUpdateModelList()
-  const updateModelProviders = useUpdateModelProviders()
-  const customConfig = provider.custom_configuration
-  const systemConfig = provider.system_configuration
-  const priorityUseType = provider.preferred_provider_type
-  const isCustomConfigured = customConfig.status === CustomConfigurationStatusEnum.active
-  const configurateMethods = provider.configurate_methods
-  const {
-    hasCredential,
-    authorized,
-    authRemoved,
-    current_credential_name,
-    notAllowedToUse,
-  } = useCredentialStatus(provider)
-
-  const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
-
-  const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
-    const res = await changeModelProviderPriority({
-      url: `/workspaces/current/model-providers/${provider.provider}/preferred-provider-type`,
-      body: {
-        preferred_provider_type: key,
-      },
-    })
-    if (res.result === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-      updateModelProviders()
-
-      configurateMethods.forEach((method) => {
-        if (method === ConfigurationMethodEnum.predefinedModel)
-          provider.supported_model_types.forEach(modelType => updateModelList(modelType))
-      })
-
-      eventEmitter?.emit({
-        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider.provider,
-      } as any)
-    }
-  }
-  const credentialLabel = useMemo(() => {
-    if (!hasCredential)
-      return t('modelProvider.auth.unAuthorized', { ns: 'common' })
-    if (authorized)
-      return current_credential_name
-    if (authRemoved)
-      return t('modelProvider.auth.authRemoved', { ns: 'common' })
-
-    return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential])
-
-  const color = useMemo(() => {
-    if (authRemoved || !hasCredential)
-      return 'red'
-    if (notAllowedToUse)
-      return 'gray'
-    return 'green'
-  }, [authRemoved, notAllowedToUse, hasCredential])
+  const isDestructive = isDestructiveVariant(variant)
+  const labelKey = TEXT_LABEL_KEYS[variant as keyof typeof TEXT_LABEL_KEYS]
 
   return (
     <>
-      {
-        provider.provider_credential_schema && (
-          <div className={cn(
-            'relative ml-1 w-[120px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1',
-            authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
-          )}
-          >
-            <div className="system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary">
-              <div
-                className={cn(
-                  'grow truncate',
-                  authRemoved && 'text-text-destructive',
-                )}
-                title={credentialLabel}
-              >
-                {credentialLabel}
-              </div>
-              <Indicator className="shrink-0" color={color} />
-            </div>
-            <div className="flex items-center gap-0.5">
-              <ConfigProvider
-                provider={provider}
-              />
-              {
-                showPrioritySelector && (
-                  <PrioritySelector
-                    value={priorityUseType}
-                    onSelect={handleChangePriority}
-                  />
-                )
-              }
-            </div>
-            {
-              priorityUseType === PreferredProviderTypeEnum.custom && systemConfig.enabled && (
-                <PriorityUseTip />
-              )
-            }
-          </div>
-        )
-      }
-      {
-        showPrioritySelector && !provider.provider_credential_schema && (
-          <div className="ml-1">
-            <PrioritySelector
-              value={priorityUseType}
-              onSelect={handleChangePriority}
-            />
-          </div>
-        )
-      }
+      <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
+        {t(labelKey, { ns: 'common' })}
+      </span>
+      {variant === 'credits-fallback' && (
+        <Warning className="h-3 w-3 shrink-0 text-text-warning" />
+      )}
     </>
   )
 }
 
-export default CredentialPanel
+function StatusLabel({ variant, credentialName }: {
+  variant: CardVariant
+  credentialName: string | undefined
+}) {
+  const isDestructive = isDestructiveVariant(variant)
+  const dotColor = isDestructive ? 'red' : 'green'
+  const showWarning = variant === 'api-fallback'
+
+  return (
+    <>
+      <Indicator className="shrink-0" color={dotColor} />
+      <span
+        className={`truncate ${isDestructive ? 'text-text-destructive' : 'text-text-secondary'}`}
+        title={credentialName}
+      >
+        {credentialName}
+      </span>
+      {showWarning && (
+        <Warning className="ml-auto h-3 w-3 shrink-0 text-text-warning" />
+      )}
+    </>
+  )
+}
+
+export default memo(CredentialPanel)

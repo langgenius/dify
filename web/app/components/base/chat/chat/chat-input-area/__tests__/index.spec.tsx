@@ -208,7 +208,7 @@ vi.mock('../../check-input-forms-hooks', () => ({
 // ---------------------------------------------------------------------------
 // Next.js navigation
 // ---------------------------------------------------------------------------
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',

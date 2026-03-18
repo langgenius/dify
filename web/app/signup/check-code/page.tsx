@@ -1,7 +1,6 @@
 'use client'
 import type { MailSendResponse, MailValidityResponse } from '@/service/use-common'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -9,6 +8,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
 export default function CheckCode() {

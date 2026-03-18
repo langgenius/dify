@@ -3,7 +3,6 @@ import type {
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import dynamic from 'next/dynamic'
 import {
   memo,
   useCallback,
@@ -21,6 +20,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import dynamic from '@/next/dynamic'
 import PluginDependency from '../../workflow/plugin-dependency'
 import { useAvailableNodesMetaData } from '../hooks'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'

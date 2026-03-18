@@ -16,7 +16,7 @@ import {
 
 const mockPush = vi.fn()
 const mockRouter = { push: mockPush }
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
 }))
 

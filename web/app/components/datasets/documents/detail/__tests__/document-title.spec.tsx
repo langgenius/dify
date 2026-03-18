@@ -5,7 +5,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { DocumentTitle } from '../document-title'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),

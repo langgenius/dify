@@ -5,7 +5,7 @@ import { Command } from 'cmdk'
 import * as React from 'react'
 import CommandSelector from '../command-selector'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app',
 }))
 
