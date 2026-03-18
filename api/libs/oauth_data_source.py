@@ -20,7 +20,7 @@ else:
 class NotionPageSummary(TypedDict):
     page_id: str
     page_name: str
-    page_icon: dict[str, str] | None
+    page_icon: dict[str, object] | None
     parent_id: str
     type: Literal["page", "database"]
 

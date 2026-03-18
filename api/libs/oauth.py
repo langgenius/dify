@@ -30,8 +30,8 @@ class GitHubEmailRecord(TypedDict, total=False):
 class GitHubRawUserInfo(TypedDict):
     id: int | str
     login: str
-    name: NotRequired[str]
-    email: NotRequired[str]
+    name: NotRequired[str | None]
+    email: NotRequired[str | None]
 
 
 class GoogleRawUserInfo(TypedDict):
@@ -138,7 +138,7 @@ class GitHubOAuth(OAuth):
         email = payload.get("email")
         if not email:
             email = f"{payload['id']}+{payload['login']}@users.noreply.github.com"
-        return OAuthUserInfo(id=str(payload["id"]), name=str(payload.get("name", "")), email=email)
+        return OAuthUserInfo(id=str(payload["id"]), name=payload.get("name") or "", email=email)
 
 
 class GoogleOAuth(OAuth):
