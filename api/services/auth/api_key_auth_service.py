@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping
-from typing import Annotated, NotRequired, TypeVar
+from typing import Annotated, TypeVar
 
 from pydantic import StringConstraints, TypeAdapter
 from sqlalchemy import select
@@ -17,20 +17,10 @@ NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 ValidatedPayload = TypeVar("ValidatedPayload")
 
 
-class ApiKeyAuthCreateConfig(TypedDict):
-    api_key: NonEmptyString
-    base_url: NotRequired[str]
-
-
-class ApiKeyAuthCreateCredentials(TypedDict):
-    auth_type: NonEmptyString
-    config: ApiKeyAuthCreateConfig
-
-
 class ApiKeyAuthCreateArgs(TypedDict):
     category: NonEmptyString
     provider: NonEmptyString
-    credentials: ApiKeyAuthCreateCredentials
+    credentials: ApiKeyAuthCredentials
 
 
 AUTH_CREDENTIALS_ADAPTER = TypeAdapter(ApiKeyAuthCredentials)
@@ -50,16 +40,9 @@ class ApiKeyAuthService:
     @classmethod
     def create_provider_auth(cls, tenant_id: str, args: Mapping[str, object] | ApiKeyAuthCreateArgs) -> None:
         validated_args = cls.validate_api_key_auth_args(args)
-        validated_config: ApiKeyAuthConfig = {
-            "api_key": validated_args["credentials"]["config"]["api_key"],
-        }
-        if "base_url" in validated_args["credentials"]["config"]:
-            validated_config["base_url"] = validated_args["credentials"]["config"]["base_url"]
-        validated_credentials: ApiKeyAuthCredentials = {
-            "auth_type": validated_args["credentials"]["auth_type"],
-            "config": validated_config,
-        }
-        auth_result = ApiKeyAuthFactory(validated_args["provider"], validated_credentials).validate_credentials()
+        auth_result = ApiKeyAuthFactory(
+            validated_args["provider"], validated_args["credentials"]
+        ).validate_credentials()
         if auth_result:
             stored_config: ApiKeyAuthConfig = {}
             if "api_key" in validated_args["credentials"]["config"]:
@@ -71,7 +54,9 @@ class ApiKeyAuthService:
                 "config": stored_config,
             }
             # Encrypt the api key
-            api_key_value = validated_args["credentials"]["config"]["api_key"]
+            api_key_value = stored_credentials["config"].get("api_key")
+            if api_key_value is None:
+                raise ValueError("credentials config api_key is required")
             api_key = encrypter.encrypt_token(tenant_id, api_key_value)
             stored_credentials["config"]["api_key"] = api_key
 
