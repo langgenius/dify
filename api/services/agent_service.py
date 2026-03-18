@@ -1,3 +1,4 @@
+import logging
 import threading
 from typing import Any
 
@@ -12,6 +13,8 @@ from extensions.ext_database import db
 from libs.login import current_user
 from models import Account
 from models.model import App, Conversation, EndUser, Message
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -109,19 +112,28 @@ class AgentService:
                 tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get("tool_config", {})
                 if tool_config.get("tool_provider_type", "") != "dataset-retrieval":
-                    tool_icon = ToolManager.get_tool_icon(
-                        tenant_id=app_model.tenant_id,
-                        provider_type=tool_config.get("tool_provider_type", ""),
-                        provider_id=tool_config.get("tool_provider", ""),
-                    )
+                    try:
+                        tool_icon = ToolManager.get_tool_icon(
+                            tenant_id=app_model.tenant_id,
+                            provider_type=tool_config.get("tool_provider_type", ""),
+                            provider_id=tool_config.get("tool_provider", ""),
+                        )
+                    except Exception:
+                        logger.warning("failed to fetch icon for %s", tool_config.get("tool_provider", ""))
+                        tool_icon = ""
+
                     if not tool_icon:
                         tool_entity = find_agent_tool(tool_name)
                         if tool_entity:
-                            tool_icon = ToolManager.get_tool_icon(
-                                tenant_id=app_model.tenant_id,
-                                provider_type=tool_entity.provider_type,
-                                provider_id=tool_entity.provider_id,
-                            )
+                            try:
+                                tool_icon = ToolManager.get_tool_icon(
+                                    tenant_id=app_model.tenant_id,
+                                    provider_type=tool_entity.provider_type,
+                                    provider_id=tool_entity.provider_id,
+                                )
+                            except Exception:
+                                logger.warning("failed to fetch icon for %s", tool_entity.provider_id)
+                                tool_icon = ""
                 else:
                     tool_icon = ""
 

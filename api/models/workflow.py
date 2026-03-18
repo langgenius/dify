@@ -928,11 +928,15 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         if execution_metadata:
             if self.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
                 tool_info: dict[str, Any] = execution_metadata["tool_info"]
-                extras["icon"] = ToolManager.get_tool_icon(
-                    tenant_id=self.tenant_id,
-                    provider_type=tool_info["provider_type"],
-                    provider_id=tool_info["provider_id"],
-                )
+                try:
+                    extras["icon"] = ToolManager.get_tool_icon(
+                        tenant_id=self.tenant_id,
+                        provider_type=tool_info["provider_type"],
+                        provider_id=tool_info["provider_id"],
+                    )
+                except Exception:
+                    logger.warning("failed to fetch icon for %s", tool_info.get("provider_id"))
+                    extras["icon"] = ""
             elif self.node_type == BuiltinNodeTypes.DATASOURCE and "datasource_info" in execution_metadata:
                 datasource_info = execution_metadata["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
