@@ -613,16 +613,24 @@ class DockerDaemonEnvironment(VirtualEnvironment):
 
     def _get_container_architecture(self, container: Container) -> Arch:
         """
-        Get the architecture of the Docker container.
+        Detect the container's CPU architecture from its image metadata.
+        Falls back to ``uname -m`` inside the container when image attrs are unavailable.
         """
-        return Arch.ARM64
+        try:
+            image = container.image
+            arch_str = str(image.attrs.get("Architecture", "")).lower() if image else ""
+        except Exception:
+            arch_str = ""
 
-        # container.reload()
-        # arch_str = str(container.attrs["Architecture"])
-        # match arch_str.lower():
-        #     case "x86_64" | "amd64":
-        #         return Arch.AMD64
-        #     case "aarch64" | "arm64":
-        #         return Arch.ARM64
-        #     case _:
-        #         raise ArchNotSupportedError(f"Architecture {arch_str} is not supported in DockerDaemonEnvironment.")
+        if not arch_str:
+            result = container.exec_run("uname -m")
+            arch_str = result.output.decode("utf-8", errors="replace").strip().lower() if result.exit_code == 0 else ""
+
+        match arch_str:
+            case "x86_64" | "amd64":
+                return Arch.AMD64
+            case "aarch64" | "arm64":
+                return Arch.ARM64
+            case _:
+                logging.warning("Unknown container architecture '%s', defaulting to AMD64", arch_str)
+                return Arch.AMD64
