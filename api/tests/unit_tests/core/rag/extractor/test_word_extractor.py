@@ -210,35 +210,6 @@ def test_extract_images_from_docx_uses_internal_files_url():
         dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
-def test_extract_images_from_docx_skips_persistence_without_upload_context(monkeypatch):
-    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
-
-    class DummySession:
-        def __init__(self):
-            self.added = []
-            self.committed = False
-
-        def add(self, obj):
-            self.added.append(obj)
-
-        def commit(self):
-            self.committed = True
-
-    db_stub = SimpleNamespace(session=DummySession())
-    monkeypatch.setattr(we, "db", db_stub)
-
-    rel_ext = SimpleNamespace(is_external=True, target_ref="https://example.com/image.png")
-    doc = SimpleNamespace(part=SimpleNamespace(rels={"rId1": rel_ext}))
-
-    extractor = object.__new__(WordExtractor)
-    extractor.tenant_id = None
-    extractor.user_id = None
-
-    assert extractor._extract_images_from_docx(doc) == {}
-    assert db_stub.session.added == []
-    assert db_stub.session.committed is False
-
-
 def test_extract_hyperlinks(monkeypatch):
     # Mock db and storage to avoid issues during image extraction (even if no images are present)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))

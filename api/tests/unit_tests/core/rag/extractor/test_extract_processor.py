@@ -200,26 +200,6 @@ class TestExtractProcessorFileRouting:
         with pytest.raises(AssertionError, match="upload_file is required"):
             ExtractProcessor.extract(setting)
 
-    @pytest.mark.parametrize(
-        ("extension", "expected_extractor"),
-        [
-            (".pdf", "PdfExtractor"),
-            (".docx", "WordExtractor"),
-        ],
-    )
-    def test_extract_routes_url_based_files_without_upload_context(self, monkeypatch, extension, expected_extractor):
-        factory = _patch_all_extractors(monkeypatch)
-        monkeypatch.setattr(processor_module.dify_config, "ETL_TYPE", "SelfHosted")
-
-        setting = SimpleNamespace(datasource_type=DatasourceType.FILE, upload_file=None)
-
-        docs = ExtractProcessor.extract(setting, file_path=f"/tmp/from-url{extension}")
-
-        assert len(docs) == 1
-        assert docs[0].page_content == f"extracted-by-{expected_extractor}"
-        assert factory.calls[-1][0] == expected_extractor
-        assert factory.calls[-1][1] == (f"/tmp/from-url{extension}", None, None)
-
 
 class TestExtractProcessorDatasourceRouting:
     def test_extract_routes_notion_datasource(self, monkeypatch):

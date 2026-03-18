@@ -105,7 +105,8 @@ class ExtractProcessor:
             upload_file = extract_setting.upload_file
             with tempfile.TemporaryDirectory() as temp_dir:
                 if not file_path:
-                    assert upload_file is not None, "upload_file is required"
+                    assert extract_setting.upload_file is not None, "upload_file is required"
+                    upload_file = extract_setting.upload_file
                     suffix = Path(upload_file.key).suffix
                     file_path = cls._build_temp_file_path(temp_dir, suffix)
                     storage.download(upload_file.key, file_path)
@@ -120,11 +121,8 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = PdfExtractor(
-                            file_path,
-                            upload_file.tenant_id if upload_file else None,
-                            upload_file.created_by if upload_file else None,
-                        )
+                        assert upload_file is not None, "upload_file is required"
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -134,11 +132,8 @@ class ExtractProcessor:
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        extractor = WordExtractor(
-                            file_path,
-                            upload_file.tenant_id if upload_file else None,
-                            upload_file.created_by if upload_file else None,
-                        )
+                        assert upload_file is not None, "upload_file is required"
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
@@ -164,21 +159,15 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = PdfExtractor(
-                            file_path,
-                            upload_file.tenant_id if upload_file else None,
-                            upload_file.created_by if upload_file else None,
-                        )
+                        assert upload_file is not None, "upload_file is required"
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        extractor = WordExtractor(
-                            file_path,
-                            upload_file.tenant_id if upload_file else None,
-                            upload_file.created_by if upload_file else None,
-                        )
+                        assert upload_file is not None, "upload_file is required"
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":

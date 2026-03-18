@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 import services.vector_service as vector_service_module
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from services.vector_service import VectorService
 
 
@@ -702,3 +704,66 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: 
 
     logger_mock.exception.assert_called_once()
     db_mock.session.rollback.assert_called_once()
+
+
+@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
+@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
+def test_vector_create_normalizes_child_documents(mock_get_embeddings: Mock, mock_init_vector: Mock) -> None:
+    dataset = _make_dataset()
+    documents = [ChildDocument(page_content="Child content", metadata={"doc_id": "child-1", "dataset_id": "dataset-1"})]
+
+    mock_embeddings = Mock()
+    mock_embeddings.embed_documents.return_value = [[0.1] * 1536]
+    mock_get_embeddings.return_value = mock_embeddings
+
+    mock_vector_processor = Mock()
+    mock_init_vector.return_value = mock_vector_processor
+
+    vector = Vector(dataset=dataset)
+
+    vector.create(texts=documents)
+
+    normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
+    assert isinstance(normalized_document, Document)
+    assert normalized_document.page_content == "Child content"
+    assert normalized_document.metadata["doc_id"] == "child-1"
+
+
+@patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
+@patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
+@patch("core.rag.datasource.vdb.vector_factory.storage")
+@patch("core.rag.datasource.vdb.vector_factory.db.session")
+def test_vector_create_multimodal_normalizes_attachment_documents(
+    mock_session: Mock,
+    mock_storage: Mock,
+    mock_get_embeddings: Mock,
+    mock_init_vector: Mock,
+) -> None:
+    dataset = _make_dataset()
+    file_document = AttachmentDocument(
+        page_content="Attachment content",
+        provider="custom-provider",
+        metadata={"doc_id": "file-1", "doc_type": "image/png"},
+    )
+    upload_file = Mock(id="file-1", key="upload-key")
+
+    mock_scalars = Mock()
+    mock_scalars.all.return_value = [upload_file]
+    mock_session.scalars.return_value = mock_scalars
+    mock_storage.load_once.return_value = b"binary-content"
+
+    mock_embeddings = Mock()
+    mock_embeddings.embed_multimodal_documents.return_value = [[0.2] * 1536]
+    mock_get_embeddings.return_value = mock_embeddings
+
+    mock_vector_processor = Mock()
+    mock_init_vector.return_value = mock_vector_processor
+
+    vector = Vector(dataset=dataset)
+
+    vector.create_multimodal(file_documents=[file_document])
+
+    normalized_document = mock_vector_processor.create.call_args.kwargs["texts"][0]
+    assert isinstance(normalized_document, Document)
+    assert normalized_document.provider == "custom-provider"
+    assert normalized_document.metadata["doc_id"] == "file-1"

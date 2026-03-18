@@ -9,7 +9,7 @@ from typing_extensions import TypedDict
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
-from services.auth.api_key_auth_base import ApiKeyAuthConfig, ApiKeyAuthCredentials
+from services.auth.api_key_auth_base import ApiKeyAuthCredentials
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 from services.auth.auth_type import AuthProvider
 
@@ -44,28 +44,18 @@ class ApiKeyAuthService:
             validated_args["provider"], validated_args["credentials"]
         ).validate_credentials()
         if auth_result:
-            stored_config: ApiKeyAuthConfig = {}
-            if "api_key" in validated_args["credentials"]["config"]:
-                stored_config["api_key"] = validated_args["credentials"]["config"]["api_key"]
-            if "base_url" in validated_args["credentials"]["config"]:
-                stored_config["base_url"] = validated_args["credentials"]["config"]["base_url"]
-            stored_credentials: ApiKeyAuthCredentials = {
-                "auth_type": validated_args["credentials"]["auth_type"],
-                "config": stored_config,
-            }
-            # Encrypt the api key
-            api_key_value = stored_credentials["config"].get("api_key")
+            api_key_value = validated_args["credentials"]["config"].get("api_key")
             if api_key_value is None:
                 raise ValueError("credentials config api_key is required")
-            api_key = encrypter.encrypt_token(tenant_id, api_key_value)
-            stored_credentials["config"]["api_key"] = api_key
+            encrypted_api_key = encrypter.encrypt_token(tenant_id, api_key_value)
+            validated_args["credentials"]["config"]["api_key"] = encrypted_api_key
 
             data_source_api_key_binding = DataSourceApiKeyAuthBinding(
                 tenant_id=tenant_id,
                 category=validated_args["category"],
                 provider=validated_args["provider"],
             )
-            data_source_api_key_binding.credentials = json.dumps(stored_credentials, ensure_ascii=False)
+            data_source_api_key_binding.credentials = json.dumps(validated_args["credentials"], ensure_ascii=False)
             db.session.add(data_source_api_key_binding)
             db.session.commit()
 

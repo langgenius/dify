@@ -122,23 +122,6 @@ def test_extract_images_get_objects_scenarios(mock_dependencies, get_objects_sid
     assert result == ""
 
 
-def test_extract_images_skips_persistence_without_upload_context(mock_dependencies):
-    mock_page = MagicMock()
-    mock_image_obj = MagicMock()
-    mock_page.get_objects.return_value = [mock_image_obj]
-
-    extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=None, user_id=None)
-
-    with patch("pypdfium2.raw", autospec=True) as mock_raw:
-        mock_raw.FPDF_PAGEOBJ_IMAGE = 1
-        result = extractor._extract_images(mock_page)
-
-    assert result == ""
-    assert mock_dependencies.saves == []
-    assert mock_dependencies.db.session.added == []
-    assert mock_dependencies.db.session.committed is False
-
-
 def test_extract_calls_extract_images(mock_dependencies, monkeypatch):
     # Mock pypdfium2
     mock_pdf_doc = MagicMock()
