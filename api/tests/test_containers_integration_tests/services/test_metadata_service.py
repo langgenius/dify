@@ -1,6 +1,7 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
+from werkzeug.exceptions import NotFound
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -469,11 +470,9 @@ class TestMetadataService:
 
         fake_metadata_id = str(uuid.uuid4())  # Use valid UUID format
 
-        # Act: Execute the method under test
-        result = MetadataService.delete_metadata(dataset.id, fake_metadata_id)
-
-        # Assert: Verify the method returns None when metadata is not found
-        assert result is None
+        # Act / Assert: deleting a missing metadata now surfaces a 404-compatible error
+        with pytest.raises(NotFound, match="Metadata not found"):
+            MetadataService.delete_metadata(dataset.id, fake_metadata_id)
 
     def test_delete_metadata_with_document_bindings(
         self, db_session_with_containers: Session, mock_external_service_dependencies

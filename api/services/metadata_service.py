@@ -227,6 +227,8 @@ class MetadataService:
             return metadata
         except MetadataInUseError:
             raise
+        except NotFound:
+            raise
         except Exception:
             logger.exception("Delete metadata failed")
             raise
