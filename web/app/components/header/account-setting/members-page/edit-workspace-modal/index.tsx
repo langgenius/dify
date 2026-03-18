@@ -1,20 +1,19 @@
 'use client'
-import { noop } from 'es-toolkit/function'
-import { useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast/context'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import { cn } from '@/utils/classnames'
-import s from './index.module.css'
 
 type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
+
 const EditWorkspaceModal = ({
   onCancel,
 }: IEditWorkspaceModalProps) => {
@@ -22,13 +21,33 @@ const EditWorkspaceModal = ({
   const { notify } = useContext(ToastContext)
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const inputId = useId()
+  const errorId = useId()
+  const normalizedName = name.trim()
+  const hasChanges = normalizedName !== currentWorkspace.name
+  const hasError = normalizedName.length === 0
+  const isSaveDisabled = !isCurrentWorkspaceOwner || !hasChanges || hasError || isSubmitting
+  const nameErrorMessage = useMemo(() => {
+    if (!hasError)
+      return ''
 
-  const changeWorkspaceInfo = async (name: string) => {
+    return t('errorMsg.fieldRequired', {
+      ns: 'common',
+      field: t('account.workspaceName', { ns: 'common' }),
+    })
+  }, [hasError, t])
+
+  const changeWorkspaceInfo = async () => {
+    if (isSaveDisabled)
+      return
+
+    setIsSubmitting(true)
     try {
       await updateWorkspaceInfo({
         url: '/workspaces/info',
         body: {
-          name,
+          name: normalizedName,
         },
       })
       notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
@@ -37,33 +56,74 @@ const EditWorkspaceModal = ({
     catch {
       notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
+    finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
-        <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
-          <div className="i-ri-close-line h-4 w-4 cursor-pointer text-text-tertiary" data-testid="edit-workspace-close" onClick={onCancel} />
-        </div>
-        <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t('account.workspaceName', { ns: 'common' })}</div>
-          <Input
-            className="mb-2"
-            value={name}
-            placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
-            onChange={(e) => {
-              setName(e.target.value)
-            }}
-            onClear={() => {
-              setName(currentWorkspace.name)
-            }}
-            showClearIcon
-          />
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
+      }}
+    >
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="overflow-visible"
+      >
+        <DialogCloseButton data-testid="edit-workspace-close" />
+
+        <form
+          className="flex flex-col"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void changeWorkspaceInfo()
+          }}
+        >
+          <div className="mb-4 pr-8">
+            <DialogTitle className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">
+              {t('account.editWorkspaceInfo', { ns: 'common' })}
+            </DialogTitle>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
+              {t('account.workspaceName', { ns: 'common' })}
+            </label>
+            <Input
+              id={inputId}
+              autoFocus
+              value={name}
+              placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
+              onChange={(e) => {
+                setName(e.target.value)
+              }}
+              aria-invalid={hasError}
+              aria-describedby={hasError ? errorId : undefined}
+              className={cn(
+                hasError && 'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
+              )}
+            />
+            <div className="min-h-6">
+              {hasError && (
+                <p
+                  id={errorId}
+                  data-testid="edit-workspace-error"
+                  className="text-text-destructive system-xs-regular"
+                  role="alert"
+                >
+                  {nameErrorMessage}
+                </p>
+              )}
+            </div>
+          </div>
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
             <Button
               size="large"
+              type="button"
               data-testid="edit-workspace-cancel"
               onClick={onCancel}
             >
@@ -71,21 +131,22 @@ const EditWorkspaceModal = ({
             </Button>
             <Button
               size="large"
+              type="submit"
               variant="primary"
-              data-testid="edit-workspace-confirm"
-              onClick={() => {
-                changeWorkspaceInfo(name)
-                onCancel()
-              }}
-              disabled={!isCurrentWorkspaceOwner}
+              data-testid="edit-workspace-save"
+              disabled={isSaveDisabled}
+              loading={isSubmitting}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t(
+                isSubmitting ? 'operation.saving' : 'operation.save',
+                { ns: 'common' },
+              )}
             </Button>
           </div>
-
-        </div>
-      </Modal>
-    </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
+
 export default EditWorkspaceModal
