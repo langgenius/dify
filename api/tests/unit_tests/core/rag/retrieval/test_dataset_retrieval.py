@@ -32,10 +32,10 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.workflow.nodes.knowledge_retrieval import exc
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from dify_graph.model_runtime.entities.llm_entities import LLMUsage
 from dify_graph.model_runtime.entities.model_entities import ModelFeature
-from dify_graph.nodes.knowledge_retrieval import exc
-from dify_graph.repositories.rag_retrieval_protocol import KnowledgeRetrievalRequest
 from models.dataset import Dataset
 
 # ==================== Helper Functions ====================

@@ -177,13 +177,11 @@ class Account(UserMixin, TypeBase):
 
     @classmethod
     def get_by_openid(cls, provider: str, open_id: str):
-        account_integrate = (
-            db.session.query(AccountIntegrate)
-            .where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
-            .one_or_none()
-        )
+        account_integrate = db.session.execute(
+            select(AccountIntegrate).where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
+        ).scalar_one_or_none()
         if account_integrate:
-            return db.session.query(Account).where(Account.id == account_integrate.account_id).one_or_none()
+            return db.session.scalar(select(Account).where(Account.id == account_integrate.account_id))
         return None
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
@@ -323,6 +321,11 @@ class AccountIntegrate(TypeBase):
     )
 
 
+class InvitationCodeStatus(enum.StrEnum):
+    UNUSED = "unused"
+    USED = "used"
+
+
 class InvitationCode(TypeBase):
     __tablename__ = "invitation_codes"
     __table_args__ = (
@@ -334,7 +337,11 @@ class InvitationCode(TypeBase):
     id: Mapped[int] = mapped_column(sa.Integer, init=False)
     batch: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'unused'"), default="unused")
+    status: Mapped[InvitationCodeStatus] = mapped_column(
+        EnumText(InvitationCodeStatus, length=16),
+        server_default=sa.text("'unused'"),
+        default=InvitationCodeStatus.UNUSED,
+    )
     used_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     used_by_tenant_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     used_by_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
@@ -366,10 +373,13 @@ class TenantPluginPermission(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     install_permission: Mapped[InstallPermission] = mapped_column(
-        String(16), nullable=False, server_default="everyone", default=InstallPermission.EVERYONE
+        EnumText(InstallPermission, length=16),
+        nullable=False,
+        server_default="everyone",
+        default=InstallPermission.EVERYONE,
     )
     debug_permission: Mapped[DebugPermission] = mapped_column(
-        String(16), nullable=False, server_default="noone", default=DebugPermission.NOBODY
+        EnumText(DebugPermission, length=16), nullable=False, server_default="noone", default=DebugPermission.NOBODY
     )
 
 
@@ -395,10 +405,13 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     strategy_setting: Mapped[StrategySetting] = mapped_column(
-        String(16), nullable=False, server_default="fix_only", default=StrategySetting.FIX_ONLY
+        EnumText(StrategySetting, length=16),
+        nullable=False,
+        server_default="fix_only",
+        default=StrategySetting.FIX_ONLY,
     )
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(
-        String(16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
+        EnumText(UpgradeMode, length=16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
     )
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     include_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
