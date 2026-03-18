@@ -543,8 +543,8 @@ class TestWorkflowConverter:
         multiple_config = node["data"]["multiple_retrieval_config"]
         assert multiple_config["top_k"] == 10
         assert multiple_config["score_threshold"] == 0.8
-        assert multiple_config["reranking_model"]["provider"] == "cohere"
-        assert multiple_config["reranking_model"]["model"] == "rerank-v2"
+        assert multiple_config["reranking_model"]["reranking_provider_name"] == "cohere"
+        assert multiple_config["reranking_model"]["reranking_model_name"] == "rerank-v2"
 
         # Verify single retrieval config is None for multiple strategy
         assert node["data"]["single_retrieval_config"] is None
