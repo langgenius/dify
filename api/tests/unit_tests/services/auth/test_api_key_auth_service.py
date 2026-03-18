@@ -318,6 +318,15 @@ class TestApiKeyAuthService:
             ApiKeyAuthService.validate_api_key_auth_args(args)
         self._assert_validation_error(exc_info, ("credentials", "auth_type"), "string_too_short")
 
+    def test_validate_api_key_auth_args_missing_api_key(self):
+        """Test API key auth args validation - missing config.api_key"""
+        args = self.mock_args.copy()
+        args["credentials"] = {"auth_type": "api_key", "config": {}}
+
+        with pytest.raises(ValidationError) as exc_info:
+            ApiKeyAuthService.validate_api_key_auth_args(args)
+        self._assert_validation_error(exc_info, ("credentials", "config", "api_key"), "missing")
+
     @pytest.mark.parametrize(
         "malicious_input",
         [
