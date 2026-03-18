@@ -199,7 +199,10 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, m
         "WorkflowService",
         lambda: SimpleNamespace(
             restore_published_workflow_to_draft=lambda **_kwargs: (_ for _ in ()).throw(
-                workflow_module.IsDraftWorkflowError("source workflow must be published")
+                workflow_module.IsDraftWorkflowError(
+                    "Cannot use draft workflow version. Workflow ID: draft-workflow. "
+                    "Please use a published workflow version or leave workflow_id empty."
+                )
             )
         ),
     )
@@ -219,7 +222,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, m
             )
 
     assert exc.value.code == 400
-    assert exc.value.description == "source workflow must be published"
+    assert exc.value.description == workflow_module.RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE
 
 
 def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(

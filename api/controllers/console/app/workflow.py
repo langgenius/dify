@@ -53,6 +53,7 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -1020,7 +1021,7 @@ class DraftWorkflowRestoreApi(Resource):
                 account=current_user,
             )
         except IsDraftWorkflowError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
