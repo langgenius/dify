@@ -32,7 +32,7 @@ class WaterCrawlProvider:
     def __init__(self, api_key, base_url: str | None = None):
         self.client = WaterCrawlAPIClient(api_key, base_url)
 
-    def crawl_url(self, url: str, options: dict | None = None) -> CrawlJobResponse:
+    def crawl_url(self, url: str, options: dict[str, Any] | None = None) -> CrawlJobResponse:
         options = options or {}
         spider_options: SpiderOptions = {
             "max_depth": 1,

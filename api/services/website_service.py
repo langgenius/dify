@@ -291,7 +291,7 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def _get_watercrawl_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
+    def _get_watercrawl_status(cls, job_id: str, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
         return dict(WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_status(job_id))
 
     @classmethod
@@ -365,7 +365,9 @@ class WebsiteService:
         return None
 
     @classmethod
-    def _get_watercrawl_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
+    def _get_watercrawl_url_data(
+        cls, job_id: str, url: str, api_key: str, config: dict[str, Any]
+    ) -> dict[str, Any] | None:
         result = WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_url_data(job_id, url)
         return dict(result) if result is not None else None
 
@@ -422,5 +424,5 @@ class WebsiteService:
         return dict(firecrawl_app.scrape_url(url=request.url, params=params))
 
     @classmethod
-    def _scrape_with_watercrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
+    def _scrape_with_watercrawl(cls, request: ScrapeRequest, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
         return dict(WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).scrape_url(request.url))
