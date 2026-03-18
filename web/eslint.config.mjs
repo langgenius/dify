@@ -263,8 +263,9 @@ export default antfu(
     },
   },
   {
-    name: 'dify/no-next-image-or-font',
+    name: 'dify/no-direct-next-imports',
     files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
@@ -276,6 +277,7 @@ export default antfu(
     name: 'dify/overlay-migration',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
+      'next/**',
       ...GLOB_TESTS,
       ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
