@@ -80,20 +80,27 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
 
-    evaluation_service = EvaluationService()
-    node_run_result_mapping_list: list[dict[str, NodeRunResult]] = evaluation_service.execute_targets(
-        tenant_id=run_data.tenant_id,
-        target_type=run_data.target_type,
-        target_id=run_data.target_id,
-        input_list=run_data.input_list,
-    )
-
-    results: list[EvaluationItemResult] = _execute_evaluation_runner(
-        session=session,
-        run_data=run_data,
-        evaluation_instance=evaluation_instance,
-        node_run_result_mapping_list=node_run_result_mapping_list,
-    )
+    if run_data.target_type == "dataset":
+        results: list[EvaluationItemResult] = _execute_retrieval_test(
+            session=session,
+            evaluation_run=evaluation_run,
+            run_data=run_data,
+            evaluation_instance=evaluation_instance,
+        )
+    else:
+        evaluation_service = EvaluationService()
+        node_run_result_mapping_list: list[dict[str, NodeRunResult]] = evaluation_service.execute_targets(
+            tenant_id=run_data.tenant_id,
+            target_type=run_data.target_type,
+            target_id=run_data.target_id,
+            input_list=run_data.input_list,
+        )
+        results = _execute_evaluation_runner(
+            session=session,
+            run_data=run_data,
+            evaluation_instance=evaluation_instance,
+            node_run_result_mapping_list=node_run_result_mapping_list,
+        )
 
     # Compute summary metrics
     metrics_summary = _compute_metrics_summary(results, run_data.judgment_config)
@@ -148,6 +155,7 @@ def _execute_evaluation_runner(
                         model_name=run_data.evaluation_model,
                         node_run_result_list=node_run_result_list,
                         judgment_config=run_data.judgment_config,
+                        input_list=run_data.input_list,
                     )
                 )
     if customized_metrics:
@@ -163,6 +171,7 @@ def _execute_evaluation_runner(
                 node_run_result_list=None,
                 node_run_result_mapping_list=node_run_result_mapping_list,
                 judgment_config=run_data.judgment_config,
+                input_list=run_data.input_list,
             )
         )
     return results
@@ -177,7 +186,7 @@ def _create_runner(
     match category:
         case EvaluationCategory.LLM:
             return LLMEvaluationRunner(evaluation_instance, session)
-        case EvaluationCategory.RETRIEVAL:
+        case EvaluationCategory.RETRIEVAL | EvaluationCategory.KNOWLEDGE_BASE:
             return RetrievalEvaluationRunner(evaluation_instance, session)
         case EvaluationCategory.AGENT:
             return AgentEvaluationRunner(evaluation_instance, session)
@@ -187,6 +196,43 @@ def _create_runner(
             return SnippetEvaluationRunner(evaluation_instance, session)
         case _:
             raise ValueError(f"Unknown evaluation category: {category}")
+
+
+def _execute_retrieval_test(
+    session: Any,
+    evaluation_run: EvaluationRun,
+    run_data: EvaluationRunData,
+    evaluation_instance: BaseEvaluationInstance,
+) -> list[EvaluationItemResult]:
+    """Execute knowledge base retrieval for all items, then evaluate metrics.
+
+    Unlike the workflow-based path, there are no workflow nodes to traverse.
+    Hit testing is run directly for each dataset item and the results are fed
+    straight into :class:`RetrievalEvaluationRunner`.
+    """
+    node_run_result_list = EvaluationService.execute_retrieval_test_targets(
+        dataset_id=run_data.target_id,
+        account_id=evaluation_run.created_by,
+        input_list=run_data.input_list,
+    )
+
+    results: list[EvaluationItemResult] = []
+    runner = RetrievalEvaluationRunner(evaluation_instance, session)
+    results.extend(
+        runner.run(
+            evaluation_run_id=run_data.evaluation_run_id,
+            tenant_id=run_data.tenant_id,
+            target_id=run_data.target_id,
+            target_type=run_data.target_type,
+            default_metric=None,
+            model_provider=run_data.evaluation_model_provider,
+            model_name=run_data.evaluation_model,
+            node_run_result_list=node_run_result_list,
+            judgment_config=run_data.judgment_config,
+            input_list=run_data.input_list,
+        )
+    )
+    return results
 
 
 def _mark_run_failed(session: Any, run_id: str, error: str) -> None:
@@ -216,7 +262,9 @@ def _compute_metrics_summary(
     summary: dict[str, Any] = {}
 
     if judgment_config is not None and judgment_config.conditions:
-        evaluated_results: list[EvaluationItemResult] = [result for result in results if result.error is None and result.metrics]
+        evaluated_results: list[EvaluationItemResult] = [
+            result for result in results if result.error is None and result.metrics
+        ]
         passed_items = sum(1 for result in evaluated_results if result.judgment.passed)
         evaluated_items = len(evaluated_results)
         summary["_judgment"] = {

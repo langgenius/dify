@@ -22,7 +22,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -34,7 +34,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -46,7 +46,7 @@ class BaseEvaluationInstance(ABC):
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,

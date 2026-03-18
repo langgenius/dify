@@ -35,8 +35,6 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
         """Compute retrieval evaluation metrics."""
         if not node_run_result_list:
             return []
-        if not default_metric:
-            raise ValueError("Default metric is required for retrieval evaluation")
 
         merged_items = []
         for i, node_result in enumerate(node_run_result_list):
@@ -58,7 +56,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
             )
 
         return self.evaluation_instance.evaluate_retrieval(
-            merged_items, default_metric.metric, model_provider, model_name, tenant_id
+            merged_items, [default_metric.metric]if default_metric else [], model_provider, model_name, tenant_id
         )
 
     @staticmethod

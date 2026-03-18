@@ -12,7 +12,7 @@ class EvaluationCategory(StrEnum):
     AGENT = "agent"
     WORKFLOW = "workflow"
     SNIPPET = "snippet"
-    RETRIEVAL_TEST = "retrieval_test"
+    KNOWLEDGE_BASE = "knowledge_base"
 
 
 class EvaluationMetricName(StrEnum):
@@ -21,6 +21,65 @@ class EvaluationMetricName(StrEnum):
     Each framework maps these names to its own internal implementation.
     A framework that does not support a given metric should log a warning
     and skip it rather than raising an error.
+
+    ── LLM / general text-quality metrics ──────────────────────────────────
+    FAITHFULNESS
+        Measures whether every claim in the model's response is grounded in
+        the provided retrieved context. A high score means the answer
+        contains no hallucinated content — each statement can be traced back
+        to a passage in the context.
+        Required fields: user_input, response, retrieved_contexts.
+
+    ANSWER_RELEVANCY
+        Measures how well the model's response addresses the user's question.
+        A high score means the answer stays on-topic; a low score indicates
+        irrelevant content or a failure to answer the actual question.
+        Required fields: user_input, response.
+
+    ANSWER_CORRECTNESS
+        Measures the factual accuracy and completeness of the model's answer
+        relative to a ground-truth reference. It combines semantic similarity
+        with key-fact coverage, so both meaning and content matter.
+        Required fields: user_input, response, reference (expected_output).
+
+    SEMANTIC_SIMILARITY
+        Measures the cosine similarity between the model's response and the
+        reference answer in an embedding space. It evaluates whether the two
+        texts convey the same meaning, independent of factual correctness.
+        Required fields: response, reference (expected_output).
+
+    ── Retrieval-quality metrics ────────────────────────────────────────────
+    CONTEXT_PRECISION
+        Measures the proportion of retrieved context chunks that are actually
+        relevant to the question (precision). A high score means the retrieval
+        pipeline returns little noise.
+        Required fields: user_input, reference, retrieved_contexts.
+
+    CONTEXT_RECALL
+        Measures the proportion of ground-truth information that is covered by
+        the retrieved context chunks (recall). A high score means the retrieval
+        pipeline does not miss important supporting evidence.
+        Required fields: user_input, reference, retrieved_contexts.
+
+    CONTEXT_RELEVANCE
+        Measures how relevant each individual retrieved chunk is to the query.
+        Similar to CONTEXT_PRECISION but evaluated at the chunk level rather
+        than against a reference answer.
+        Required fields: user_input, retrieved_contexts.
+
+    ── Agent-quality metrics ────────────────────────────────────────────────
+    TOOL_CORRECTNESS
+        Measures the correctness of the tool calls made by the agent during
+        task execution — both the choice of tool and the arguments passed.
+        A high score means the agent's tool-use strategy matches the expected
+        behavior.
+        Required fields: actual tool calls vs. expected tool calls.
+
+    TASK_COMPLETION
+        Measures whether the agent ultimately achieves the user's stated goal.
+        It evaluates the reasoning chain, intermediate steps, and final output
+        holistically; a high score means the task was fully accomplished.
+        Required fields: user_input, actual_output.
     """
 
     # LLM / general text-quality metrics
@@ -41,21 +100,21 @@ class EvaluationMetricName(StrEnum):
 
 # Per-category canonical metric lists used by get_supported_metrics().
 LLM_METRIC_NAMES: list[EvaluationMetricName] = [
-    EvaluationMetricName.FAITHFULNESS,
-    EvaluationMetricName.ANSWER_RELEVANCY,
-    EvaluationMetricName.ANSWER_CORRECTNESS,
-    EvaluationMetricName.SEMANTIC_SIMILARITY,
+    EvaluationMetricName.FAITHFULNESS,        # Every claim is grounded in context; no hallucinations
+    EvaluationMetricName.ANSWER_RELEVANCY,    # Response stays on-topic and addresses the question
+    EvaluationMetricName.ANSWER_CORRECTNESS,  # Factual accuracy and completeness vs. reference
+    EvaluationMetricName.SEMANTIC_SIMILARITY, # Semantic closeness to the reference answer
 ]
 
 RETRIEVAL_METRIC_NAMES: list[EvaluationMetricName] = [
-    EvaluationMetricName.CONTEXT_PRECISION,
-    EvaluationMetricName.CONTEXT_RECALL,
-    EvaluationMetricName.CONTEXT_RELEVANCE,
+    EvaluationMetricName.CONTEXT_PRECISION,  # Fraction of retrieved chunks that are relevant (precision)
+    EvaluationMetricName.CONTEXT_RECALL,     # Fraction of ground-truth info covered by retrieval (recall)
+    EvaluationMetricName.CONTEXT_RELEVANCE,  # Per-chunk relevance to the query
 ]
 
 AGENT_METRIC_NAMES: list[EvaluationMetricName] = [
-    EvaluationMetricName.TOOL_CORRECTNESS,
-    EvaluationMetricName.TASK_COMPLETION,
+    EvaluationMetricName.TOOL_CORRECTNESS,  # Correct tool selection and arguments
+    EvaluationMetricName.TASK_COMPLETION,   # Whether the agent fully achieves the user's goal
 ]
 
 WORKFLOW_METRIC_NAMES: list[EvaluationMetricName] = [

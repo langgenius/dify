@@ -62,47 +62,47 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
     def evaluate_llm(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
+        return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.LLM)
 
     def evaluate_retrieval(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL)
+        return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.RETRIEVAL)
 
     def evaluate_agent(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
+        return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.AGENT)
 
     def evaluate_workflow(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
-        return self._evaluate(items, metric_name, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
+        return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
 
     def _evaluate(
         self,
         items: list[EvaluationItemInput],
-        metric_name: str,
+        metric_names: list[str],
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -110,7 +110,7 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
     ) -> list[EvaluationItemResult]:
         """Core evaluation logic using DeepEval."""
         model_wrapper = DifyModelWrapper(model_provider, model_name, tenant_id)
-        requested_metrics = [metric_name] if metric_name else self.get_supported_metrics(category)
+        requested_metrics = metric_names or self.get_supported_metrics(category)
 
         try:
             return self._evaluate_with_deepeval(items, requested_metrics, category)

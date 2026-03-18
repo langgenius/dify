@@ -21,6 +21,7 @@ from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetrics,
     DefaultMetric,
+    EvaluationDatasetInput,
     EvaluationItemResult,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
@@ -66,6 +67,7 @@ class BaseEvaluationRunner(ABC):
         model_name: str = "",
         node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None = None,
         judgment_config: JudgmentConfig | None = None,
+        input_list: list[EvaluationDatasetInput] | None = None,
     ) -> list[EvaluationItemResult]:
         """Orchestrate target execution + metric evaluation + judgment for all items."""
         evaluation_run = self.session.query(EvaluationRun).filter_by(id=evaluation_run_id).first()
@@ -127,14 +129,15 @@ class BaseEvaluationRunner(ABC):
             )
 
         # Phase 4: Persist individual items
+        dataset_items = input_list or []
         for result in results:
-            item_input = next((item for item in evaluation_run.input_list if item.index == result.index), None)
+            item_input = next((item for item in dataset_items if item.index == result.index), None)
             run_item = EvaluationRunItem(
                 evaluation_run_id=evaluation_run_id,
                 item_index=result.index,
                 inputs=json.dumps(item_input.inputs) if item_input else None,
                 expected_output=item_input.expected_output if item_input else None,
-                context=json.dumps(item_input.context) if item_input and item_input.context else None,
+                context=json.dumps(item_input.context) if item_input and getattr(item_input, "context", None) else None,
                 actual_output=result.actual_output,
                 metrics=json.dumps([m.model_dump() for m in result.metrics]) if result.metrics else None,
                 judgment=json.dumps(result.judgment.model_dump()) if result.judgment else None,
