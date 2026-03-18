@@ -107,8 +107,8 @@ class DataPostProcessor:
         if reranking_model:
             try:
                 model_manager = ModelManager()
-                reranking_provider_name = reranking_model.get("reranking_provider_name")
-                reranking_model_name = reranking_model.get("reranking_model_name")
+                reranking_provider_name = reranking_model["reranking_provider_name"]
+                reranking_model_name = reranking_model["reranking_model_name"]
                 if not reranking_provider_name or not reranking_model_name:
                     return None
                 rerank_model_instance = model_manager.get_model_instance(

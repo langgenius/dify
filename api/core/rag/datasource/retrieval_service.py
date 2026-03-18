@@ -317,8 +317,8 @@ class RetrievalService:
                 if documents:
                     if (
                         reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
+                        and reranking_model["reranking_model_name"]
+                        and reranking_model["reranking_provider_name"]
                         and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
@@ -328,8 +328,8 @@ class RetrievalService:
                             model_manager = ModelManager()
                             is_support_vision = model_manager.check_model_support_vision(
                                 tenant_id=dataset.tenant_id,
-                                provider=reranking_model.get("reranking_provider_name") or "",
-                                model=reranking_model.get("reranking_model_name") or "",
+                                provider=reranking_model["reranking_provider_name"],
+                                model=reranking_model["reranking_model_name"],
                                 model_type=ModelType.RERANK,
                             )
                             if is_support_vision:
@@ -389,8 +389,8 @@ class RetrievalService:
                 if documents:
                     if (
                         reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
+                        and reranking_model["reranking_model_name"]
+                        and reranking_model["reranking_provider_name"]
                         and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH
                     ):
                         data_post_processor = DataPostProcessor(
