@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main error handler that coordinates error strategies.
 """
 

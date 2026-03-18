@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
+﻿import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
 
 export enum Method {
   get = 'get',
