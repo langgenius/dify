@@ -78,7 +78,6 @@ describe('useNodesSyncDraft', () => {
       environmentVariables: [],
       syncWorkflowDraftHash: 'test-hash',
       ragPipelineVariables: [],
-      currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
       setSyncWorkflowDraftHash: vi.fn(),
       setDraftUpdatedAt: vi.fn(),
     })
@@ -150,7 +149,6 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
-        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
       })
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -314,7 +312,6 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
-        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
         setDraftUpdatedAt: mockSetDraftUpdatedAt,
       })
@@ -403,7 +400,6 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [{ key: 'API_KEY', value: 'secret' }],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
-        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })
@@ -427,7 +423,6 @@ describe('useNodesSyncDraft', () => {
         environmentVariables: [],
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [{ variable: 'input', type: 'text-input' }],
-        currentVersion: { id: 'published-workflow-1', version: '2024-01-01T00:00:00' },
         setSyncWorkflowDraftHash: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })
