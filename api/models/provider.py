@@ -6,14 +6,14 @@ from functools import cached_property
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, text
+from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 
 class ProviderType(StrEnum):
@@ -69,8 +69,8 @@ class Provider(TypeBase):
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'"), default="custom"
+    provider_type: Mapped[ProviderType] = mapped_column(
+        EnumText(ProviderType, length=40), nullable=False, server_default=text("'custom'"), default=ProviderType.CUSTOM
     )
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
@@ -96,7 +96,7 @@ class Provider(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.query(ProviderCredential).where(ProviderCredential.id == self.credential_id).first()
+            return db.session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
 
     @property
     def credential_name(self):
@@ -159,10 +159,8 @@ class ProviderModel(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return (
-                db.session.query(ProviderModelCredential)
-                .where(ProviderModelCredential.id == self.credential_id)
-                .first()
+            return db.session.scalar(
+                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
             )
 
     @property

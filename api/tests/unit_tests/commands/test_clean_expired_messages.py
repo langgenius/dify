@@ -46,6 +46,7 @@ def test_absolute_mode_calls_from_time_range():
         end_before=end_before,
         batch_size=200,
         dry_run=True,
+        task_label="custom",
     )
     mock_from_days.assert_not_called()
 
@@ -74,6 +75,7 @@ def test_relative_mode_before_days_only_calls_from_days():
         days=30,
         batch_size=500,
         dry_run=False,
+        task_label="before-30",
     )
     mock_from_time_range.assert_not_called()
 
@@ -105,6 +107,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         end_before=fixed_now - datetime.timedelta(days=30),
         batch_size=1000,
         dry_run=False,
+        task_label="60to30",
     )
     mock_from_days.assert_not_called()
 

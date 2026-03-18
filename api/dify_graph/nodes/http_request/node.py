@@ -3,7 +3,8 @@ import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.entities.graph_config import NodeConfigDict
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.file import File, FileTransferMethod
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base import variable_template_parser
@@ -32,12 +33,12 @@ if TYPE_CHECKING:
 
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
-    node_type = NodeType.HTTP_REQUEST
+    node_type = BuiltinNodeTypes.HTTP_REQUEST
 
     def __init__(
         self,
         id: str,
-        config: Mapping[str, Any],
+        config: NodeConfigDict,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
@@ -163,18 +164,15 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = HttpRequestNodeData.model_validate(node_data)
-
         selectors: list[VariableSelector] = []
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.url)
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.headers)
-        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.params)
-        if typed_node_data.body:
-            body_type = typed_node_data.body.type
-            data = typed_node_data.body.data
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
+        if node_data.body:
+            body_type = node_data.body.type
+            data = node_data.body.data
             match body_type:
                 case "none":
                     pass

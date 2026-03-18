@@ -218,7 +218,7 @@ describe('ParamConfigContent', () => {
     })
 
     render(<ParamConfigContent />)
-    const input = screen.getByRole('spinbutton') as HTMLInputElement
+    const input = screen.getByRole('textbox') as HTMLInputElement
     fireEvent.change(input, { target: { value: '4' } })
 
     const updatedFile = getLatestFileConfig()

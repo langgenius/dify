@@ -3,7 +3,7 @@ Simple test to verify MockNodeFactory works with iteration nodes.
 """
 
 from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_mock_factory import MockNodeFactory
 
@@ -42,20 +42,20 @@ def test_mock_factory_registers_iteration_node():
     )
 
     # Check that iteration node is registered
-    assert NodeType.ITERATION in factory._mock_node_types
+    assert BuiltinNodeTypes.ITERATION in factory._mock_node_types
     print("✓ Iteration node is registered in MockNodeFactory")
 
     # Check that loop node is registered
-    assert NodeType.LOOP in factory._mock_node_types
+    assert BuiltinNodeTypes.LOOP in factory._mock_node_types
     print("✓ Loop node is registered in MockNodeFactory")
 
     # Check the class types
     from tests.unit_tests.core.workflow.graph_engine.test_mock_nodes import MockIterationNode, MockLoopNode
 
-    assert factory._mock_node_types[NodeType.ITERATION] == MockIterationNode
+    assert factory._mock_node_types[BuiltinNodeTypes.ITERATION] == MockIterationNode
     print("✓ Iteration node maps to MockIterationNode class")
 
-    assert factory._mock_node_types[NodeType.LOOP] == MockLoopNode
+    assert factory._mock_node_types[BuiltinNodeTypes.LOOP] == MockLoopNode
     print("✓ Loop node maps to MockLoopNode class")
 
 
