@@ -589,6 +589,12 @@ class Workflow(Base):  # bug
             ensure_ascii=False,
         )
 
+    def copy_serialized_variable_storage_from(self, source_workflow: "Workflow") -> None:
+        """Copy stored variable JSON directly for same-tenant restore flows."""
+        self._environment_variables = source_workflow._environment_variables
+        self._conversation_variables = source_workflow._conversation_variables
+        self._rag_pipeline_variables = source_workflow._rag_pipeline_variables
+
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
         return str(d)
