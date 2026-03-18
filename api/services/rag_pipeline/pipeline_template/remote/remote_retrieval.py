@@ -48,7 +48,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(
-                f"fetch pipeline template detail failed, status_code: {response.status_code}, response: {response.text}"
+                f"fetch pipeline template detail failed, status_code: {response.status_code}, response: {response.text[:1000]}"
             )
         data: dict = response.json()
         return data
