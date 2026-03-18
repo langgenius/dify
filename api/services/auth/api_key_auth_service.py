@@ -2,6 +2,7 @@ import json
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from typing import cast
 from typing_extensions import TypedDict
 
 from core.helper import encrypter
@@ -106,11 +107,11 @@ class ApiKeyAuthService:
         credentials = args["credentials"]
         if not isinstance(credentials, dict):
             raise ValueError("credentials must be a dictionary")
-        return credentials
+        return cast(dict[str, object], credentials)
 
     @staticmethod
     def _get_config_dict(credentials: dict[str, object]) -> dict[str, object]:
         config = credentials["config"]
         if not isinstance(config, dict):
-            raise TypeError("string indices must be integers")
-        return config
+            raise TypeError(f"credentials['config'] must be a dictionary, got {type(config).__name__}")
+        return cast(dict[str, object], config)
