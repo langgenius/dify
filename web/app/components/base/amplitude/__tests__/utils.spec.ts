@@ -1,4 +1,4 @@
-import { resetUser, setUserId, setUserProperties, trackEvent } from './utils'
+import { resetUser, setUserId, setUserProperties, trackEvent } from '../utils'
 
 const mockState = vi.hoisted(() => ({
   enabled: true,
@@ -20,7 +20,7 @@ const MockIdentify = vi.hoisted(() =>
   },
 )
 
-vi.mock('./AmplitudeProvider', () => ({
+vi.mock('../AmplitudeProvider', () => ({
   isAmplitudeEnabled: () => mockState.enabled,
 }))
 

@@ -1,6 +1,6 @@
-import type { WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema } from '../types'
+import type { WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema } from '../../types'
 import { VarType } from '@/app/components/workflow/types'
-import { buildWorkflowOutputParameters } from './utils'
+import { buildWorkflowOutputParameters } from '../utils'
 
 describe('buildWorkflowOutputParameters', () => {
   it('returns provided output parameters when array input exists', () => {

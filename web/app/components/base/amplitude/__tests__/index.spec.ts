@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import AmplitudeProvider, { isAmplitudeEnabled } from './AmplitudeProvider'
+import AmplitudeProvider, { isAmplitudeEnabled } from '../AmplitudeProvider'
 import indexDefault, {
   isAmplitudeEnabled as indexIsAmplitudeEnabled,
   resetUser,
   setUserId,
   setUserProperties,
   trackEvent,
-} from './index'
+} from '../index'
 import {
   resetUser as utilsResetUser,
   setUserId as utilsSetUserId,
   setUserProperties as utilsSetUserProperties,
   trackEvent as utilsTrackEvent,
-} from './utils'
+} from '../utils'
 
 describe('Amplitude index exports', () => {
   it('exports AmplitudeProvider as default', () => {

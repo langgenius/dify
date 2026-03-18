@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import DynamicPdfPreview from './dynamic-pdf-preview'
+import DynamicPdfPreview from '../dynamic-pdf-preview'
 
 type DynamicPdfPreviewProps = {
   url: string
@@ -44,7 +44,7 @@ vi.mock('next/dynamic', () => ({
   default: mockDynamic,
 }))
 
-vi.mock('./pdf-preview', () => ({
+vi.mock('../pdf-preview', () => ({
   default: mockPdfPreview,
 }))
 
@@ -78,7 +78,7 @@ describe('dynamic-pdf-preview', () => {
     expect(loaded).toBeInstanceOf(Promise)
 
     const loadedModule = (await loaded) as { default: unknown }
-    const pdfPreviewModule = await import('./pdf-preview')
+    const pdfPreviewModule = await import('../pdf-preview')
     expect(loadedModule.default).toBe(pdfPreviewModule.default)
   })
 

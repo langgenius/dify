@@ -1,4 +1,4 @@
-import { validateDirectiveProps } from './markdown-with-directive-schema'
+import { validateDirectiveProps } from '../markdown-with-directive-schema'
 
 describe('markdown-with-directive-schema', () => {
   beforeEach(() => {

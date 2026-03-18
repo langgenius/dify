@@ -1,7 +1,7 @@
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useLlmModelPluginInstalled } from './use-llm-model-plugin-installed'
+import { useLlmModelPluginInstalled } from '../use-llm-model-plugin-installed'
 
 let mockModelProviders: Array<{ provider: string }> = []
 

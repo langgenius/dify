@@ -1,9 +1,9 @@
-import type { PluginDetail } from './types'
+import type { PluginDetail } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/client'
-import { usePluginsWithLatestVersion } from './hooks'
-import { PluginSource } from './types'
+import { usePluginsWithLatestVersion } from '../hooks'
+import { PluginSource } from '../types'
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),

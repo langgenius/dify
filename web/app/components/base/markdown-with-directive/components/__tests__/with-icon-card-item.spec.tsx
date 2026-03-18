@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import WithIconCardItem from './with-icon-card-item'
+import WithIconCardItem from '../with-icon-card-item'
 
 describe('WithIconCardItem', () => {
   beforeEach(() => {

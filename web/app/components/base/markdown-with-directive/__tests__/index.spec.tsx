@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import DOMPurify from 'dompurify'
-import { validateDirectiveProps } from './components/markdown-with-directive-schema'
-import WithIconCardItem from './components/with-icon-card-item'
-import WithIconCardList from './components/with-icon-card-list'
-import { MarkdownWithDirective } from './index'
+import { validateDirectiveProps } from '../components/markdown-with-directive-schema'
+import WithIconCardItem from '../components/with-icon-card-item'
+import WithIconCardList from '../components/with-icon-card-list'
+import { MarkdownWithDirective } from '../index'
 
 const FOUR_COLON_RE = /:{4}/
 
