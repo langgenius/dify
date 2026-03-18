@@ -53,7 +53,7 @@ class MLflowDataTrace(BaseTraceInstance):
         """Lazy initialization to prevent blocking workflow when tracing service is unavailable."""
         if self._initialized:
             return
-        
+
         try:
             if isinstance(self._config, DatabricksConfig):
                 self._setup_databricks(self._config)
@@ -111,7 +111,7 @@ class MLflowDataTrace(BaseTraceInstance):
         """Simple dispatch to trace methods"""
         # Initialize on first use
         self._ensure_initialized()
-        
+
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
