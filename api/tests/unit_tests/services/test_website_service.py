@@ -443,7 +443,7 @@ def test_get_firecrawl_status_adds_time_consuming_when_completed_and_cached(monk
 
 def test_get_firecrawl_status_completed_without_cache_does_not_add_time(monkeypatch: pytest.MonkeyPatch) -> None:
     firecrawl_instance = MagicMock()
-    firecrawl_instance.check_crawl_status.return_value = {"status": "completed"}
+    firecrawl_instance.check_crawl_status.return_value = {"status": "completed", "total": 1, "current": 1, "data": []}
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
 
     redis_mock = MagicMock()
