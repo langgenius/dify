@@ -1,4 +1,5 @@
 export {
+  redirect,
   useParams,
   usePathname,
   useRouter,
