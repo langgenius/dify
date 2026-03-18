@@ -2918,14 +2918,6 @@
       "count": 1
     }
   },
-  "app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
   "app/components/billing/pricing/plans/cloud-plan-item/list/item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -2938,17 +2930,6 @@
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
   },
@@ -3780,14 +3761,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/completed/segment-card/chunk-content.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -3853,14 +3826,6 @@
   },
   "app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/new-segment.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -5380,9 +5345,6 @@
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7094,11 +7056,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/utils.ts": {
     "ts/no-explicit-any": {
       "count": 32
@@ -7110,11 +7067,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
