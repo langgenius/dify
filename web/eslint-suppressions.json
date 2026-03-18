@@ -175,19 +175,6 @@
       "count": 18
     }
   },
-  "app/(shareLayout)/components/authenticated-layout.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/(shareLayout)/components/splash.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
     "no-restricted-imports": {
       "count": 1
