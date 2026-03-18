@@ -72,8 +72,9 @@ def migrate_annotation_vector_database():
                         continue
                     # get dataset_collection_binding info
                     dataset_collection_binding = session.scalar(
-                        select(DatasetCollectionBinding)
-                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                        select(DatasetCollectionBinding).where(
+                            DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id
+                        )
                     )
                     if not dataset_collection_binding:
                         click.echo(f"App annotation collection binding not found: {app.id}")
@@ -204,8 +205,9 @@ def migrate_knowledge_vector_database():
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = db.session.execute(
-                            select(DatasetCollectionBinding)
-                            .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                            select(DatasetCollectionBinding).where(
+                                DatasetCollectionBinding.id == dataset.collection_binding_id
+                            )
                         ).scalar_one_or_none()
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name

@@ -1,9 +1,8 @@
 import json
+from typing import cast
 
 import click
 import sqlalchemy as sa
-from typing import cast
-
 from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
 

@@ -90,9 +90,7 @@ def load_user_from_request(request_from_flask_login):
         server_code = request.view_args.get("server_code") if request.view_args else None
         if not server_code:
             raise Unauthorized("Invalid Authorization token.")
-        app_mcp_server = db.session.scalar(
-            select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1)
-        )
+        app_mcp_server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1))
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = db.session.scalar(
