@@ -34,12 +34,6 @@ class VectorIndexStructDict(TypedDict):
     vector_store: VectorStoreIndexConfig
 
 
-class MultimodalEmbeddingPayload(TypedDict):
-    content: str
-    content_type: str
-    file_id: str
-
-
 VectorDocumentInput = Document | ChildDocument | AttachmentDocument
 
 
