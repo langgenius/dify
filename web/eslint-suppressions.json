@@ -175,19 +175,6 @@
       "count": 18
     }
   },
-  "app/(shareLayout)/components/authenticated-layout.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/(shareLayout)/components/splash.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2854,7 +2841,7 @@
   },
   "app/components/base/voice-input/utils.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/with-input-validation/index.stories.tsx": {
@@ -4976,11 +4963,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/install-plugin/install-from-local-package/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/install-from-local-package/steps/uploading.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4995,11 +4977,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/plugins/install-plugin/install-from-marketplace/steps/install.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/marketplace/description/index.tsx": {
@@ -5479,9 +5456,6 @@
   "app/components/plugins/plugin-item/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
