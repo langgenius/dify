@@ -266,8 +266,8 @@ export const ModalContextProvider = ({
           accountSettingTab && (
             <AccountSetting
               activeTab={accountSettingTab}
-              onCancel={handleCancelAccountSettingModal}
-              onTabChange={handleAccountSettingTabChange}
+              onCancelAction={handleCancelAccountSettingModal}
+              onTabChangeAction={handleAccountSettingTabChange}
             />
           )
         }

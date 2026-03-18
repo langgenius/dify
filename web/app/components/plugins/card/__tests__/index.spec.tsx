@@ -2,6 +2,7 @@ import type { Plugin } from '../../types'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
 import { PluginCategoryEnum } from '../../types'
 import Card from '../index'
 
@@ -38,6 +39,12 @@ vi.mock('../../hooks', () => ({
 
 vi.mock('@/utils/format', () => ({
   formatNumber: (num: number) => num.toLocaleString(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (value: { currentWorkspace: { id: string } }) => string) => selector({
+    currentWorkspace: { id: 'workspace-123' },
+  }),
 }))
 
 vi.mock('@/utils/mcp', () => ({
@@ -187,6 +194,36 @@ describe('Card', () => {
       // Check for background image style on icon element
       const iconElement = container.querySelector('[style*="background-image"]')
       expect(iconElement).toBeInTheDocument()
+    })
+
+    it('should normalize package icon filenames to workspace icon urls', () => {
+      const plugin = createMockPlugin({
+        from: 'package',
+        icon: 'custom-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({
+        backgroundImage: `url(${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=custom-icon.png)`,
+      })
+    })
+
+    it('should normalize marketplace icon filenames to marketplace icon urls', () => {
+      const plugin = createMockPlugin({
+        from: 'marketplace',
+        icon: 'custom-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({
+        backgroundImage: `url(${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon)`,
+      })
     })
 
     it('should use icon_dark when theme is dark and icon_dark is provided', () => {

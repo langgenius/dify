@@ -232,7 +232,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         isShow={show}
         onClose={noop}
       >
-        <div className="title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary">
+        <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
           {t('importFromDSL', { ns: 'app' })}
           <div
             className="flex h-8 w-8 cursor-pointer items-center"
@@ -241,7 +241,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <RiCloseLine className="h-5 w-5 text-text-tertiary" />
           </div>
         </div>
-        <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
+        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
           {
             tabs.map(tab => (
               <div
@@ -275,7 +275,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
+                <div className="mb-1 text-text-secondary system-md-semibold">DSL URL</div>
                 <Input
                   placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
@@ -309,8 +309,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="flex grow flex-col text-text-secondary system-md-regular">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
             <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />

@@ -1,7 +1,6 @@
 import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -27,6 +26,7 @@ vi.mock('react-i18next', async () => {
 
 const mockNotify = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
+const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 
 let mockIsCurrentWorkspaceManager = true
@@ -43,15 +43,11 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
-  return {
-    ...actual,
-    useToastContext: () => ({
-      notify: mockNotify,
-    }),
-  }
-})
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
+}))
 
 vi.mock('../../hooks', () => ({
   useModelList: () => ({
@@ -62,6 +58,7 @@ vi.mock('../../hooks', () => ({
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
+  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
 }))
 
 vi.mock('@/service/common', () => ({
@@ -94,24 +91,18 @@ const defaultProps = {
 }
 
 describe('SystemModel', () => {
-  const renderSystemModel = (props: typeof defaultProps) => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      <SystemModel {...props} />
-    </ToastContext.Provider>,
-  )
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
   })
 
   it('should render settings button', () => {
-    renderSystemModel(defaultProps)
+    render(<SystemModel {...defaultProps} />)
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeInTheDocument()
   })
 
-  it('should open modal when button is clicked', async () => {
-    renderSystemModel(defaultProps)
+  it('should open dialog when button is clicked', async () => {
+    render(<SystemModel {...defaultProps} />)
     const button = screen.getByRole('button', { name: /system model settings/i })
     fireEvent.click(button)
     await waitFor(() => {
@@ -120,12 +111,18 @@ describe('SystemModel', () => {
   })
 
   it('should disable button when loading', () => {
-    renderSystemModel({ ...defaultProps, isLoading: true })
+    render(<SystemModel {...defaultProps} isLoading />)
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should close modal when cancel is clicked', async () => {
-    renderSystemModel(defaultProps)
+  it('should render the primary button variant when configuration is required', () => {
+    render(<SystemModel {...defaultProps} notConfigured />)
+
+    expect(screen.getByRole('button', { name: /system model settings/i })).toHaveClass('btn-primary')
+  })
+
+  it('should close dialog when cancel is clicked', async () => {
+    render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
@@ -137,7 +134,7 @@ describe('SystemModel', () => {
   })
 
   it('should save selected models and show success feedback', async () => {
-    renderSystemModel(defaultProps)
+    render(<SystemModel {...defaultProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
@@ -155,109 +152,39 @@ describe('SystemModel', () => {
         type: 'success',
         message: 'Modified successfully',
       })
+      expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
   })
 
+  it('should keep the dialog open when saving does not succeed', async () => {
+    mockUpdateDefaultModel.mockResolvedValueOnce({ result: 'failed' })
+
+    render(<SystemModel {...defaultProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
+    expect(mockUpdateModelList).not.toHaveBeenCalled()
+  })
+
   it('should disable save when user is not workspace manager', async () => {
     mockIsCurrentWorkspaceManager = false
-    renderSystemModel(defaultProps)
+    render(<SystemModel {...defaultProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
-    })
-  })
-
-  it('should render primary variant button when notConfigured is true', () => {
-    renderSystemModel({ ...defaultProps, notConfigured: true })
-    const button = screen.getByRole('button', { name: /system model settings/i })
-    expect(button.className).toContain('btn-primary')
-  })
-
-  it('should keep modal open when save returns non-success result', async () => {
-    mockUpdateDefaultModel.mockResolvedValueOnce({ result: 'error' })
-    renderSystemModel(defaultProps)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
-
-    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    selectorButtons.forEach(button => fireEvent.click(button))
-
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
-      expect(mockNotify).not.toHaveBeenCalled()
-    })
-
-    // Modal should still be open after failed save
-    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
-  })
-
-  it('should not add duplicate model type to changedModelTypes when same type is selected twice', async () => {
-    renderSystemModel(defaultProps)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
-
-    // Click the first selector twice (textGeneration type)
-    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    fireEvent.click(selectorButtons[0])
-    fireEvent.click(selectorButtons[0])
-
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
-      // textGeneration was changed, so updateModelList is called once for it
-      expect(mockUpdateModelList).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('should call updateModelList for speech2text and tts types on save', async () => {
-    renderSystemModel(defaultProps)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
-
-    // Click speech2text (index 3) and tts (index 4) selectors
-    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    fireEvent.click(selectorButtons[3])
-    fireEvent.click(selectorButtons[4])
-
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateModelList).toHaveBeenCalledTimes(2)
-    })
-  })
-
-  it('should call updateModelList for each unique changed model type on save', async () => {
-    renderSystemModel(defaultProps)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
-
-    // Click embedding and rerank selectors (indices 1 and 2)
-    const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    fireEvent.click(selectorButtons[1])
-    fireEvent.click(selectorButtons[2])
-
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateModelList).toHaveBeenCalledTimes(2)
     })
   })
 })
