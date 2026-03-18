@@ -94,7 +94,7 @@ const CSVUploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('system-sm-regular flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg', dragging && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+          <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg system-sm-regular', dragging && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-tertiary">

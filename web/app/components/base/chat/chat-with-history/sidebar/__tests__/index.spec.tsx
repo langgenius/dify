@@ -87,7 +87,7 @@ vi.mock('@/context/global-public-context', () => ({
 }))
 
 // Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))

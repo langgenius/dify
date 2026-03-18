@@ -15,7 +15,8 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from dify official
     """
 
-    def get_pipeline_template_detail(self, template_id: str):
+    def get_pipeline_template_detail(self, template_id: str) -> dict | None:
+        result: dict | None
         try:
             result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
@@ -35,17 +36,23 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.REMOTE
 
     @classmethod
-    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict:
         """
         Fetch pipeline template detail from dify official.
-        :param template_id: Pipeline ID
-        :return:
+
+        :param template_id: Pipeline template ID
+        :return: Template detail dict
+        :raises ValueError: When upstream returns a non-200 status code
         """
         domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/pipeline-templates/{template_id}"
         response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
-            return None
+            raise ValueError(
+                "fetch pipeline template detail failed,"
+                + f" status_code: {response.status_code},"
+                + f" response: {response.text[:1000]}"
+            )
         data: dict = response.json()
         return data
 

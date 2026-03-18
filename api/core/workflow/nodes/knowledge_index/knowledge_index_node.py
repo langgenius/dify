@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -127,7 +128,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         is_preview: bool,
         batch: Any,
         chunks: Mapping[str, Any],
-        summary_index_setting: dict | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")
