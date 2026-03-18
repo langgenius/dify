@@ -77,23 +77,6 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('react-easy-crop', () => ({
-  default: ({ onCropComplete }: { onCropComplete: (_area: Area, croppedAreaPixels: Area) => void }) => (
-    <div data-testid="mock-cropper">
-      <button
-        type="button"
-        data-testid="trigger-crop"
-        onClick={() => onCropComplete(
-          { x: 0, y: 0, width: 100, height: 100 },
-          { x: 0, y: 0, width: 100, height: 100 },
-        )}
-      >
-        Trigger Crop
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
   default: function MockEmojiPickerInner({ onSelect, className }: { onSelect: (emoji: string, background: string) => void, className?: string }) {
     return (
