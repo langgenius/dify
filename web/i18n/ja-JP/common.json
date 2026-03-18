@@ -612,6 +612,8 @@
   "theme.dark": "暗い",
   "theme.light": "明るい",
   "theme.theme": "テーマ",
+  "toast.close": "通知を閉じる",
+  "toast.notifications": "通知",
   "unit.char": "文字",
   "userProfile.about": "Dify について",
   "userProfile.community": "コミュニティ",

@@ -679,14 +679,14 @@ class WorkflowRun(Base):
     def message(self):
         from .model import Message
 
-        return (
-            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
+        return db.session.scalar(
+            select(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id)
         )
 
     @property
     @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def workflow(self):
-        return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
+        return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
     def to_dict(self):
         return {

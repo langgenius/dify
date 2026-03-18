@@ -64,7 +64,7 @@ from models.dataset import (  # type: ignore
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import IndexingStatus, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
     Workflow,
@@ -906,7 +906,7 @@ class RagPipelineService:
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
                         if document:
-                            document.indexing_status = "error"
+                            document.indexing_status = IndexingStatus.ERROR
                             document.error = error
                             db.session.add(document)
                             db.session.commit()

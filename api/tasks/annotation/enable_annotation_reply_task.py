@@ -11,6 +11,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
+from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -47,7 +48,7 @@ def enable_annotation_reply_task(
         try:
             documents = []
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, "annotation"
+                embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
             )
             annotation_setting = (
                 session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
@@ -56,7 +57,7 @@ def enable_annotation_reply_task(
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                     old_dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            annotation_setting.collection_binding_id, "annotation"
+                            annotation_setting.collection_binding_id, CollectionBindingType.ANNOTATION
                         )
                     )
                     if old_dataset_collection_binding and annotations:
