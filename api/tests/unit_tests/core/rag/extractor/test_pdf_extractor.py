@@ -184,3 +184,21 @@ def test_extract_images_failures(mock_dependencies):
     assert len(saves) == 1
     assert saves[0][1] == jpeg_bytes
     assert db_stub.session.committed is True
+
+
+def test_extract_images_skips_persistence_without_upload_context(mock_dependencies):
+    mock_page = MagicMock()
+    mock_image_obj = MagicMock()
+    mock_image_obj.extract.side_effect = lambda buf, fb_format=None: buf.write(b"\xff\xd8\xff image")
+    mock_page.get_objects.return_value = [mock_image_obj]
+
+    extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id=None, user_id=None)
+
+    with patch("pypdfium2.raw", autospec=True) as mock_raw:
+        mock_raw.FPDF_PAGEOBJ_IMAGE = 1
+        result = extractor._extract_images(mock_page)
+
+    assert result == ""
+    assert mock_dependencies.saves == []
+    assert mock_dependencies.db.session.added == []
+    assert mock_dependencies.db.session.committed is False

@@ -179,6 +179,27 @@ def test_extract_images_from_docx(monkeypatch):
     assert db_stub.session.committed is True
 
 
+def test_extract_images_from_docx_skips_persistence_without_upload_context(monkeypatch):
+    saves: list[tuple[str, bytes]] = []
+
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: saves.append((key, data))))
+
+    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=lambda: None))
+    monkeypatch.setattr(we, "db", db_stub)
+
+    rel_ext = SimpleNamespace(is_external=True, target_ref="https://example.com/image.png")
+    doc = SimpleNamespace(part=SimpleNamespace(rels={"rId1": rel_ext}))
+
+    extractor = object.__new__(WordExtractor)
+    extractor.tenant_id = None
+    extractor.user_id = None
+
+    image_map = extractor._extract_images_from_docx(doc)
+
+    assert image_map == {}
+    assert saves == []
+
+
 def test_extract_images_from_docx_uses_internal_files_url():
     """Test that INTERNAL_FILES_URL takes precedence over FILES_URL for plugin access."""
     # Test the URL generation logic directly

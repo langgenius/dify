@@ -35,7 +35,7 @@ class WordExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str):
+    def __init__(self, file_path: str, tenant_id: str | None, user_id: str | None):
         """Initialize with file path."""
         self.file_path = file_path
         self.tenant_id = tenant_id
@@ -88,6 +88,9 @@ class WordExtractor(BaseExtractor):
         image_count = 0
         image_map = {}
         base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+
+        if self.tenant_id is None or self.user_id is None:
+            return image_map
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:

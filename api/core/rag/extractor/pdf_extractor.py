@@ -28,8 +28,8 @@ class PdfExtractor(BaseExtractor):
 
     Args:
         file_path: Path to the PDF file.
-        tenant_id: Workspace ID.
-        user_id: ID of the user performing the extraction.
+        tenant_id: Workspace ID used for extracted image persistence when available.
+        user_id: ID of the user performing the extraction when available.
         file_cache_key: Optional cache key for the extracted text.
     """
 
@@ -47,7 +47,13 @@ class PdfExtractor(BaseExtractor):
     ]
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str, file_cache_key: str | None = None):
+    def __init__(
+        self,
+        file_path: str,
+        tenant_id: str | None,
+        user_id: str | None,
+        file_cache_key: str | None = None,
+    ):
         """Initialize PdfExtractor."""
         self._file_path = file_path
         self._tenant_id = tenant_id
@@ -115,6 +121,9 @@ class PdfExtractor(BaseExtractor):
         image_content = []
         upload_files = []
         base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+
+        if self._tenant_id is None or self._user_id is None:
+            return ""
 
         try:
             image_objects = page.get_objects(filter=(pdfium_c.FPDF_PAGEOBJ_IMAGE,))
