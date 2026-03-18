@@ -666,8 +666,10 @@ class DatasetRetrieval:
                             document_ids_filter = document_ids
                         else:
                             return []
-                    retrieval_model_config = cast(
-                        DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model
+                    retrieval_model_config: DefaultRetrievalModelDict = (
+                        cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                        if dataset.retrieval_model
+                        else default_retrieval_model
                     )
 
                     # get top k
@@ -1060,7 +1062,11 @@ class DatasetRetrieval:
                     all_documents.append(document)
             else:
                 # get retrieval model , if the model is not setting , using default
-                retrieval_model = cast(DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model)
+                retrieval_model: DefaultRetrievalModelDict = (
+                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                    if dataset.retrieval_model
+                    else default_retrieval_model
+                )
 
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
@@ -1143,8 +1149,10 @@ class DatasetRetrieval:
             }
 
             for dataset in available_datasets:
-                retrieval_model_config = cast(
-                    DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model
+                retrieval_model_config: DefaultRetrievalModelDict = (
+                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                    if dataset.retrieval_model
+                    else default_retrieval_model
                 )
 
                 # get top k
