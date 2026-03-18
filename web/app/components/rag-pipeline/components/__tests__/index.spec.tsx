@@ -1,5 +1,6 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -345,6 +346,47 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
         )
       : null
   ),
+}))
+
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="modal" role="dialog">{children}</div>
+  ),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: vi.fn(),
+  },
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: function MockAppIconPicker({
+    onSelect,
+    onClose,
+  }: {
+    onSelect: (selection: { type: 'emoji' | 'image', icon?: string, background?: string, url?: string }) => void
+    onClose: () => void
+  }) {
+    const [pendingSelection, setPendingSelection] = React.useState<{ type: 'emoji' | 'image', icon?: string, background?: string, url?: string } | null>(null)
+
+    return (
+      <div data-testid="app-icon-picker">
+        <button onClick={() => setPendingSelection({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })}>
+          iconPicker.emojiOption
+        </button>
+        <button onClick={() => setPendingSelection({ type: 'image', url: '/icon.png' })}>
+          iconPicker.image
+        </button>
+        <button onClick={() => pendingSelection && onSelect(pendingSelection)}>
+          iconPicker.ok
+        </button>
+        <button onClick={onClose}>
+          iconPicker.cancel
+        </button>
+      </div>
+    )
+  },
 }))
 
 // Silence expected console.error from Dialog/Modal rendering
@@ -708,10 +750,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      // Click the first emoji in the grid (search full document since Dialog uses portal)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      expect(gridEmojis.length).toBeGreaterThan(0)
-      fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.emojiOption/ }))
 
       // Click OK to confirm selection
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -728,9 +767,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      // Switch to image tab
-      const imageTab = screen.getByRole('button', { name: /iconPicker\.image/ })
-      fireEvent.click(imageTab)
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.image/ }))
 
       // Picker should still be open
       expect(screen.getByRole('button', { name: /iconPicker\.ok/ })).toBeInTheDocument()
@@ -1031,11 +1068,8 @@ describe('Integration Tests', () => {
       // Open picker and select an emoji
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
-      const gridEmojis = document.querySelectorAll('.grid em-emoji')
-      if (gridEmojis.length > 0) {
-        fireEvent.click(gridEmojis[0].parentElement!.parentElement!)
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-      }
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.emojiOption/ }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))
 

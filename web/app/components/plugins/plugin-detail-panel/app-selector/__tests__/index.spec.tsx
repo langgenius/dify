@@ -1541,7 +1541,7 @@ describe('AppSelector', () => {
 
     it('should manage isLoadingMore state during load more', () => {
       mockHasNextPage = true
-      mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockFetchNextPage.mockResolvedValue(undefined)
 
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
@@ -1769,7 +1769,10 @@ describe('AppSelector', () => {
     it('should not call fetchNextPage when isLoadingMore is true', async () => {
       mockHasNextPage = true
       mockIsFetchingNextPage = false
-      mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+      let resolveFetchNextPage: (() => void) | undefined
+      mockFetchNextPage.mockImplementation(() => new Promise<void>((resolve) => {
+        resolveFetchNextPage = resolve
+      }))
 
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
@@ -1780,8 +1783,13 @@ describe('AppSelector', () => {
 
       // Trigger intersection - this starts loading
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
+      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
 
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveFetchNextPage?.()
+      })
     })
 
     it('should skip handleLoadMore when isFetchingNextPage is true', async () => {
@@ -1825,8 +1833,10 @@ describe('AppSelector', () => {
     it('should return early from handleLoadMore when isLoadingMore is true', async () => {
       mockHasNextPage = true
       mockIsFetchingNextPage = false
-      // Make fetchNextPage slow to keep isLoadingMore true
-      mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 5000)))
+      let resolveFetchNextPage: (() => void) | undefined
+      mockFetchNextPage.mockImplementation(() => new Promise<void>((resolve) => {
+        resolveFetchNextPage = resolve
+      }))
 
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
@@ -1843,6 +1853,10 @@ describe('AppSelector', () => {
 
       // Still only 1 call because isLoadingMore blocks it
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveFetchNextPage?.()
+      })
     })
 
     it('should reset isLoadingMore via setTimeout after fetchNextPage resolves', async () => {

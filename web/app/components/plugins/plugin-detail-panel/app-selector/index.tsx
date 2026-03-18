@@ -6,7 +6,7 @@ import type {
 import type { FC } from 'react'
 import type { App } from '@/types/app'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -50,6 +50,7 @@ const AppSelector: FC<Props> = ({
   const [isShow, onShowChange] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const loadingMoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const {
     data,
@@ -106,11 +107,23 @@ const AppSelector: FC<Props> = ({
     }
     finally {
       // Add a small delay to ensure state updates are complete
-      setTimeout(() => {
+      if (loadingMoreTimeoutRef.current)
+        clearTimeout(loadingMoreTimeoutRef.current)
+      loadingMoreTimeoutRef.current = setTimeout(() => {
         setIsLoadingMore(false)
+        loadingMoreTimeoutRef.current = null
       }, 300)
     }
   }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
+
+  useEffect(() => {
+    return () => {
+      if (loadingMoreTimeoutRef.current) {
+        clearTimeout(loadingMoreTimeoutRef.current)
+        loadingMoreTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const handleTriggerClick = () => {
     if (disabled)

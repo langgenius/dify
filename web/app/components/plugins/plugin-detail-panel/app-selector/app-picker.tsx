@@ -54,6 +54,7 @@ const AppPicker: FC<Props> = ({
   const observerTarget = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef(false)
+  const loadingResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
@@ -63,8 +64,11 @@ const AppPicker: FC<Props> = ({
     loadingRef.current = true
     onLoadMore()
     // Reset loading state
-    setTimeout(() => {
+    if (loadingResetTimeoutRef.current)
+      clearTimeout(loadingResetTimeoutRef.current)
+    loadingResetTimeoutRef.current = setTimeout(() => {
       loadingRef.current = false
+      loadingResetTimeoutRef.current = null
     }, 500)
   }, [hasMore, isLoading, onLoadMore])
 
@@ -115,6 +119,10 @@ const AppPicker: FC<Props> = ({
       if (observerRef.current) {
         observerRef.current.disconnect()
         observerRef.current = null
+      }
+      if (loadingResetTimeoutRef.current) {
+        clearTimeout(loadingResetTimeoutRef.current)
+        loadingResetTimeoutRef.current = null
       }
       mutationObserver?.disconnect()
     }
