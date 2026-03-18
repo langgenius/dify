@@ -934,7 +934,9 @@ class ExporleBanner(TypeBase):
     link: Mapped[str] = mapped_column(String(255), nullable=False)
     sort: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     status: Mapped[BannerStatus] = mapped_column(
-        EnumText(BannerStatus, length=255), nullable=False, server_default=sa.text("'enabled'::character varying"),
+        EnumText(BannerStatus, length=255),
+        nullable=False,
+        server_default=sa.text("'enabled'::character varying"),
         default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
