@@ -4,9 +4,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import Link from '@/next/link'
 import { LicenseStatus } from '@/types/feature'
 import { cn } from '@/utils/classnames'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -168,7 +166,7 @@ const NormalForm = () => {
               </div>
             </>
           )}
-          {!systemFeatures.branding.enabled && (
+          {/* {!systemFeatures.branding.enabled && (
             <>
               <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
                 {t('tosDesc', { ns: 'login' })}
@@ -204,7 +202,7 @@ const NormalForm = () => {
                 </div>
               )}
             </>
-          )}
+          )} */}
 
         </div>
       </div>

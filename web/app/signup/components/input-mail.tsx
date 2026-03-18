@@ -7,7 +7,6 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useSendMail } from '@/service/use-common'
@@ -21,7 +20,6 @@ export default function Form({
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
-  const { systemFeatures } = useGlobalPublicStore()
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 
@@ -90,7 +88,7 @@ export default function Form({
         </Link>
       </div>
 
-      {!systemFeatures.branding.enabled && (
+      {/* {!systemFeatures.branding.enabled && (
         <>
           <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
             {t('tosDesc', { ns: 'login' })}
@@ -114,7 +112,7 @@ export default function Form({
             </Link>
           </div>
         </>
-      )}
+      )} */}
 
     </form>
   )

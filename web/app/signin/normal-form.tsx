@@ -3,7 +3,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -237,7 +236,7 @@ const NormalForm = () => {
               </div>
             </>
           )}
-          {!systemFeatures.branding.enabled && (
+          {/* {!systemFeatures.branding.enabled && (
             <>
               <div className="mt-2 block w-full text-text-tertiary system-xs-regular">
                 {t('tosDesc', { ns: 'login' })}
@@ -273,7 +272,7 @@ const NormalForm = () => {
                 </div>
               )}
             </>
-          )}
+          )} */}
         </div>
       </div>
     </>

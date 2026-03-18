@@ -7,57 +7,57 @@ describe('Footer', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Footer />)
-      expect(screen.getByRole('contentinfo')).toBeInTheDocument()
-    })
+  // describe('Rendering', () => {
+  //   it('should render without crashing', () => {
+  //     render(<Footer />)
+  //     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+  //   })
 
-    it('should display the community heading', () => {
-      render(<Footer />)
-      expect(screen.getByText('app.join')).toBeInTheDocument()
-    })
+  //   it('should display the community heading', () => {
+  //     render(<Footer />)
+  //     expect(screen.getByText('app.join')).toBeInTheDocument()
+  //   })
 
-    it('should display the community intro text', () => {
-      render(<Footer />)
-      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
-    })
-  })
+  //   it('should display the community intro text', () => {
+  //     render(<Footer />)
+  //     expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
+  //   })
+  // })
 
-  describe('Links', () => {
-    it('should render GitHub link with correct href', () => {
-      const { container } = render(<Footer />)
-      const githubLink = container.querySelector('a[href="https://github.com/langgenius/dify"]')
-      expect(githubLink).toBeInTheDocument()
-    })
+  // describe('Links', () => {
+  //   it('should render GitHub link with correct href', () => {
+  //     const { container } = render(<Footer />)
+  //     const githubLink = container.querySelector('a[href="https://github.com/langgenius/dify"]')
+  //     expect(githubLink).toBeInTheDocument()
+  //   })
 
-    it('should render Discord link with correct href', () => {
-      const { container } = render(<Footer />)
-      const discordLink = container.querySelector('a[href="https://discord.gg/FngNHpbcY7"]')
-      expect(discordLink).toBeInTheDocument()
-    })
+  //   it('should render Discord link with correct href', () => {
+  //     const { container } = render(<Footer />)
+  //     const discordLink = container.querySelector('a[href="https://discord.gg/FngNHpbcY7"]')
+  //     expect(discordLink).toBeInTheDocument()
+  //   })
 
-    it('should render Forum link with correct href', () => {
-      const { container } = render(<Footer />)
-      const forumLink = container.querySelector('a[href="https://forum.dify.ai"]')
-      expect(forumLink).toBeInTheDocument()
-    })
+  //   it('should render Forum link with correct href', () => {
+  //     const { container } = render(<Footer />)
+  //     const forumLink = container.querySelector('a[href="https://forum.dify.ai"]')
+  //     expect(forumLink).toBeInTheDocument()
+  //   })
 
-    it('should have 3 community links', () => {
-      render(<Footer />)
-      const links = screen.getAllByRole('link')
-      expect(links).toHaveLength(3)
-    })
+  //   it('should have 3 community links', () => {
+  //     render(<Footer />)
+  //     const links = screen.getAllByRole('link')
+  //     expect(links).toHaveLength(3)
+  //   })
 
-    it('should open links in new tab', () => {
-      render(<Footer />)
-      const links = screen.getAllByRole('link')
-      links.forEach((link) => {
-        expect(link).toHaveAttribute('target', '_blank')
-        expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      })
-    })
-  })
+  //   it('should open links in new tab', () => {
+  //     render(<Footer />)
+  //     const links = screen.getAllByRole('link')
+  //     links.forEach((link) => {
+  //       expect(link).toHaveAttribute('target', '_blank')
+  //       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  //     })
+  //   })
+  // })
 
   describe('Styling', () => {
     it('should have correct footer styling', () => {

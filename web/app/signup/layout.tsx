@@ -24,7 +24,7 @@ export default function RegisterLayout({ children }: any) {
               {' '}
               {new Date().getFullYear()}
               {' '}
-              LangGenius, Inc. All rights reserved.
+              赫山百事通, Inc. All rights reserved.
             </div>
           )}
         </div>
