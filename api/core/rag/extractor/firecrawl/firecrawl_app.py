@@ -87,9 +87,7 @@ class FirecrawlApp:
             return cast(MapResponse, response.json())
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "start map job")
-            return cast(MapResponse, {})
-        else:
-            raise Exception(f"Failed to start map job. Status code: {response.status_code}")
+        raise Exception(f"Failed to start map job. Status code: {response.status_code}")
 
     def check_crawl_status(self, job_id) -> CrawlStatusResponse:
         headers = self._prepare_headers()
@@ -120,7 +118,7 @@ class FirecrawlApp:
                     crawl_status_response.get("status"), crawl_status_response, []
                 )
         self._handle_error(response, "check crawl status")
-        return cast(CrawlStatusResponse, {})
+        raise RuntimeError("unreachable: _handle_error always raises")
 
     def _format_crawl_status_response(
         self,
@@ -202,6 +200,4 @@ class FirecrawlApp:
             return response_data
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "perform search")
-            return cast(SearchResponse, {})  # Avoid additional exception after handling error
-        else:
-            raise Exception(f"Failed to perform search. Status code: {response.status_code}")
+        raise Exception(f"Failed to perform search. Status code: {response.status_code}")
