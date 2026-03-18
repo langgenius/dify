@@ -139,7 +139,7 @@ const Apps = ({
       setIsShowCreateModal(false)
       toast.add({
         type: 'success',
-        title: t('newApp.appCreated', { ns: 'app' }),
+        title: t('newApp.appCreated', { ns: 'app', appName: name }),
       })
       if (onSuccess)
         onSuccess()

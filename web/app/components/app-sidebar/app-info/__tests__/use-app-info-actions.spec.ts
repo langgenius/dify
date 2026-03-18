@@ -234,7 +234,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated:{"appName":"Copy"}' })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -456,7 +456,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
+      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted:{"appName":"Test App"}' })
       expect(mockInvalidateAppList).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()

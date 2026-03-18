@@ -98,7 +98,7 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
         mode: appDetail.mode,
       })
       closeModal()
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app', appName: newApp.name }) })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
@@ -154,7 +154,7 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       return
     try {
       await deleteApp(appDetail.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      notify({ type: 'success', message: t('appDeleted', { ns: 'app', appName: appDetail.name }) })
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()

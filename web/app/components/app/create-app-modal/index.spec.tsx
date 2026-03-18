@@ -119,7 +119,7 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    const mockApp: Partial<App> = { id: 'app-1', name: 'My App', mode: AppModeEnum.ADVANCED_CHAT }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -140,7 +140,7 @@ describe('CreateAppModal', () => {
       app_mode: AppModeEnum.ADVANCED_CHAT,
       description: '',
     })
-    expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+    expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated:{"appName":"My App"}' })
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))

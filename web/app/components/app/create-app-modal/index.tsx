@@ -88,7 +88,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         description,
       })
 
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app', appName: app.name }) })
       onSuccess()
       onClose()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')

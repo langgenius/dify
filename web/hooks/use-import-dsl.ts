@@ -45,6 +45,7 @@ export const useImportDSL = () => {
   const { push } = useRouter()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
+  const appNameRef = useRef<string>('')
 
   const handleImportDSL = useCallback(async (
     payload: DSLPayload,
@@ -79,7 +80,7 @@ export const useImportDSL = () => {
 
         notify({
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
+          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app', appName: payload.name ?? '' }),
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
         })
         onSuccess?.()
@@ -93,6 +94,7 @@ export const useImportDSL = () => {
           systemVersion: current_dsl_version ?? '',
         })
         importIdRef.current = id
+        appNameRef.current = payload.name || ''
         onPending?.(response)
       }
       else {
@@ -134,7 +136,7 @@ export const useImportDSL = () => {
         onSuccess?.()
         notify({
           type: 'success',
-          message: t('newApp.appCreated', { ns: 'app' }),
+          message: t('newApp.appCreated', { ns: 'app', appName: appNameRef.current }),
         })
         await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')

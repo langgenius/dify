@@ -89,7 +89,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const onConfirmDelete = useCallback(async () => {
     try {
       await mutateDeleteApp(app.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      notify({ type: 'success', message: t('appDeleted', { ns: 'app', appName: app.name }) })
       onPlanInfoChanged()
     }
     catch (e: any) {
@@ -159,7 +159,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowDuplicateModal(false)
       notify({
         type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
+        message: t('newApp.appCreated', { ns: 'app', appName: newApp.name }),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)

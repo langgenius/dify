@@ -256,7 +256,7 @@ describe('SwitchAppModal', () => {
         })
         expect(onSuccess).toHaveBeenCalledTimes(1)
         expect(onClose).toHaveBeenCalledTimes(1)
-        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated:{"appName":"Demo App(copy)"}' })
         expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()

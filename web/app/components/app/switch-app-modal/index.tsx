@@ -68,7 +68,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onSuccess()
       if (onClose)
         onClose()
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app', appName: name }) })
       if (inAppDetail)
         setAppDetail()
       if (removeOriginal)
