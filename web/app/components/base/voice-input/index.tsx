@@ -82,7 +82,7 @@ const VoiceInput = ({
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    const mp3Blob = await convertToMp3(recorder.current as unknown as Parameters<typeof convertToMp3>[0])
+    const mp3Blob = convertToMp3(recorder.current)
     const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
     formData.append('file', mp3File)

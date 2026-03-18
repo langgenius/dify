@@ -81,10 +81,26 @@ export default defineConfig(({ mode }) => {
           },
           environments: {
             rsc: {
-              optimizeDeps: { include: ['semver'] },
+              optimizeDeps: {
+                include: [
+                  'semver',
+                  'lamejs',
+                  'lamejs/src/js/BitStream',
+                  'lamejs/src/js/Lame',
+                  'lamejs/src/js/MPEGMode',
+                ],
+              },
             },
             ssr: {
-              optimizeDeps: { include: ['semver'] },
+              optimizeDeps: {
+                include: [
+                  'semver',
+                  'lamejs',
+                  'lamejs/src/js/BitStream',
+                  'lamejs/src/js/Lame',
+                  'lamejs/src/js/MPEGMode',
+                ],
+              },
             },
           },
         }

@@ -1,55 +1,24 @@
-type RecorderLike = {
-  getWAV: () => ArrayBufferLike
-  getChannelData: () => {
-    left: ArrayBufferView
-    right?: ArrayBufferView | null
-  }
+import lamejs from 'lamejs'
+import BitStream from 'lamejs/src/js/BitStream'
+import Lame from 'lamejs/src/js/Lame'
+import MPEGMode from 'lamejs/src/js/MPEGMode'
+
+/* v8 ignore next - @preserve */
+if (globalThis) {
+  (globalThis as any).MPEGMode = MPEGMode
+  ; (globalThis as any).Lame = Lame
+  ; (globalThis as any).BitStream = BitStream
 }
 
-const toInt16Array = (view: ArrayBufferView) => {
-  return new Int16Array(view.buffer, view.byteOffset, view.byteLength / 2)
-}
-
-const loadLame = async () => {
-  const [
-    lamejsModule,
-    bitStreamModule,
-    lameModule,
-    mpegModeModule,
-  ] = await Promise.all([
-    import('lamejs'),
-    import('lamejs/src/js/BitStream'),
-    import('lamejs/src/js/Lame'),
-    import('lamejs/src/js/MPEGMode'),
-  ])
-
-  const lamejs = lamejsModule.default
-  const BitStream = bitStreamModule.default
-  const Lame = lameModule.default
-  const MPEGMode = mpegModeModule.default
-
-  /* v8 ignore next - @preserve */
-  if (globalThis) {
-    ; (globalThis as any).MPEGMode = MPEGMode
-    ; (globalThis as any).Lame = Lame
-    ; (globalThis as any).BitStream = BitStream
-  }
-
-  return lamejs
-}
-
-export const convertToMp3 = async (recorder: RecorderLike) => {
-  const lamejs = await loadLame()
-  const wavBuffer = recorder.getWAV()
-  const wavView = wavBuffer instanceof DataView ? wavBuffer : new DataView(wavBuffer)
-  const wav = lamejs.WavHeader.readHeader(wavView)
+export const convertToMp3 = (recorder: any) => {
+  const wav = lamejs.WavHeader.readHeader(recorder.getWAV())
   const { channels, sampleRate } = wav
   const mp3enc = new lamejs.Mp3Encoder(channels, sampleRate, 128)
   const result = recorder.getChannelData()
   const buffer: BlobPart[] = []
 
-  const leftData = toInt16Array(result.left)
-  const rightData = result.right ? toInt16Array(result.right) : null
+  const leftData = result.left && new Int16Array(result.left.buffer, 0, result.left.byteLength / 2)
+  const rightData = result.right && new Int16Array(result.right.buffer, 0, result.right.byteLength / 2)
   const remaining = leftData.length + (rightData ? rightData.length : 0)
 
   const maxSamples = 1152
@@ -65,7 +34,7 @@ export const convertToMp3 = async (recorder: RecorderLike) => {
     let mp3buf = null
 
     if (channels === 2) {
-      right = rightData?.subarray(i, i + maxSamples) || null
+      right = rightData.subarray(i, i + maxSamples)
       mp3buf = mp3enc.encodeBuffer(left, right)
     }
     else {
