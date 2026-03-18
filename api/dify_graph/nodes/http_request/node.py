@@ -101,8 +101,8 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 http_request_config=self._http_request_config,
-                # Must be 0: retries are handled at the node level by the graph engine,
-                # so the executor must not retry on its own.
+                # Must be 0 to disable executor-level retries, as the graph engine handles them.
+                # This is critical to prevent nested retries.
                 max_retries=0,
                 ssl_verify=self.node_data.ssl_verify,
                 http_client=self._http_client,
