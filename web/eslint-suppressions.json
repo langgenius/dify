@@ -1839,7 +1839,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
