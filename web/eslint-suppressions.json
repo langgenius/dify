@@ -335,9 +335,6 @@
     }
   },
   "app/account/oauth/authorize/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1127,9 +1124,6 @@
     }
   },
   "app/components/app/create-app-dialog/app-list/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     }
@@ -3930,11 +3924,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/external-knowledge-base/connector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -4855,11 +4844,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/use-change-provider-priority.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/system-model-selector/index.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -8882,9 +8866,6 @@
     }
   },
   "app/components/workflow/panel/version-history-panel/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
@@ -9455,9 +9436,6 @@
     }
   },
   "app/signin/components/mail-and-password-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9757,9 +9735,6 @@
     }
   },
   "service/fetch.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "regexp/no-unused-capturing-group": {
       "count": 1
     },
