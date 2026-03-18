@@ -1,12 +1,12 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
 import { useQueryClient } from '@tanstack/react-query'
-import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast/context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
+import { usePathname } from '@/next/navigation'
 import {
   useChunkListAllKey,
   useChunkListDisabledKey,

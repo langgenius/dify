@@ -1,7 +1,7 @@
-import { headers } from 'next/headers'
-import Script from 'next/script'
 import { memo } from 'react'
 import { IS_CE_EDITION, IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
+import { headers } from '@/next/headers'
+import Script from '@/next/script'
 
 const Zendesk = async () => {
   if (IS_CE_EDITION || !ZENDESK_WIDGET_KEY)

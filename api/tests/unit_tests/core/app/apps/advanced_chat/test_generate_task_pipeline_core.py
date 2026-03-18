@@ -42,7 +42,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from dify_graph.enums import NodeType
+from dify_graph.enums import BuiltinNodeTypes
 from dify_graph.runtime import GraphRuntimeState, VariablePool
 from dify_graph.system_variable import SystemVariable
 from models.enums import MessageStatus
@@ -226,7 +226,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._save_output_for_event = lambda event, node_execution_id: None
 
         event = SimpleNamespace(
-            node_type=NodeType.ANSWER,
+            node_type=BuiltinNodeTypes.ANSWER,
             outputs={"k": "v"},
             node_execution_id="exec",
             node_id="node",
@@ -254,7 +254,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         iter_start = QueueIterationStartEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -263,14 +263,14 @@ class TestAdvancedChatGenerateTaskPipeline:
             index=1,
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             node_run_index=1,
         )
         iter_done = QueueIterationCompletedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -278,7 +278,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         loop_start = QueueLoopStartEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -287,14 +287,14 @@ class TestAdvancedChatGenerateTaskPipeline:
             index=1,
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             node_run_index=1,
         )
         loop_done = QueueLoopCompletedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="LLM",
             start_at=datetime.utcnow(),
             node_run_index=1,
@@ -358,7 +358,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         failed_event = QueueNodeFailedEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},
@@ -368,7 +368,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         exc_event = QueueNodeExceptionEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},
@@ -462,7 +462,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         filled_event = QueueHumanInputFormFilledEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="title",
             rendered_content="content",
             action_id="action",
@@ -470,7 +470,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
         timeout_event = QueueHumanInputFormTimeoutEvent(
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             node_title="title",
             expiration_time=datetime.utcnow(),
         )
@@ -589,7 +589,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         event = QueueNodeExceptionEvent(
             node_execution_id="exec",
             node_id="node",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             start_at=datetime.utcnow(),
             inputs={},
             outputs={},

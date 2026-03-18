@@ -6,7 +6,7 @@ import { IndexingType } from '../../../create/step-two'
 
 import NewSegmentModal from '../new-segment'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     datasetId: 'test-dataset-id',
     documentId: 'test-document-id',

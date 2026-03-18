@@ -3,17 +3,18 @@ from unittest.mock import patch
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.nodes.trigger_webhook.entities import (
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
     WebhookData,
     WebhookParameter,
 )
-from dify_graph.nodes.trigger_webhook.node import TriggerWebhookNode
+from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.file import File, FileTransferMethod, FileType
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -82,7 +83,7 @@ def test_webhook_node_basic_initialization():
 
     node = create_webhook_node(data, variable_pool)
 
-    assert node.node_type.value == "trigger-webhook"
+    assert node.node_type == TRIGGER_WEBHOOK_NODE_TYPE
     assert node.version() == "1"
     assert node._get_title() == "Test Webhook"
     assert node._node_data.method == Method.POST

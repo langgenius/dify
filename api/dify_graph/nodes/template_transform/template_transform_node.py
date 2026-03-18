@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
+from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from dify_graph.node_events import NodeRunResult
 from dify_graph.nodes.base.node import Node
 from dify_graph.nodes.template_transform.entities import TemplateTransformNodeData
@@ -19,7 +19,7 @@ DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH = 400_000
 
 
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
-    node_type = NodeType.TEMPLATE_TRANSFORM
+    node_type = BuiltinNodeTypes.TEMPLATE_TRANSFORM
     _template_renderer: Jinja2TemplateRenderer
     _max_output_length: int
 

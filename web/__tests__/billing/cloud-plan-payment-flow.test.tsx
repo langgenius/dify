@@ -54,7 +54,7 @@ vi.mock('@/app/components/base/toast', () => ({
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),

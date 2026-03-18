@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import logging
 import operator
-import pkgutil
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
@@ -161,7 +159,7 @@ class Node(Generic[NodeDataT]):
 
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
-                node_type = NodeType.CODE
+                node_type = BuiltinNodeTypes.CODE
                 # No need to implement _get_title, _get_error_strategy, etc.
         """
         super().__init_subclass__(**kwargs)
@@ -179,7 +177,8 @@ class Node(Generic[NodeDataT]):
         # Skip base class itself
         if cls is Node:
             return
-        # Only register production node implementations defined under dify_graph.nodes.*
+        # Only register production node implementations defined under the
+        # canonical workflow namespaces.
         # This prevents test helper subclasses from polluting the global registry and
         # accidentally overriding real node types (e.g., a test Answer node).
         module_name = getattr(cls, "__module__", "")
@@ -187,7 +186,7 @@ class Node(Generic[NodeDataT]):
         node_type = cls.node_type
         version = cls.version()
         bucket = Node._registry.setdefault(node_type, {})
-        if module_name.startswith("dify_graph.nodes."):
+        if module_name.startswith(("dify_graph.nodes.", "core.workflow.nodes.")):
             # Production node definitions take precedence and may override
             bucket[version] = cls  # type: ignore[index]
         else:
@@ -203,6 +202,7 @@ class Node(Generic[NodeDataT]):
         else:
             latest_key = max(version_keys) if version_keys else version
         bucket["latest"] = bucket[latest_key]
+        Node._registry_version += 1
 
     @classmethod
     def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:
@@ -237,6 +237,11 @@ class Node(Generic[NodeDataT]):
 
     # Global registry populated via __init_subclass__
     _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
+    _registry_version: ClassVar[int] = 0
+
+    @classmethod
+    def get_registry_version(cls) -> int:
+        return cls._registry_version
 
     def __init__(
         self,
@@ -268,6 +273,10 @@ class Node(Generic[NodeDataT]):
     def validate_node_data(cls, node_data: BaseNodeData) -> NodeDataT:
         """Validate shared graph node payloads against the subclass-declared NodeData model."""
         return cast(NodeDataT, cls._node_data_type.model_validate(node_data, from_attributes=True))
+
+    def init_node_data(self, data: BaseNodeData | Mapping[str, Any]) -> None:
+        """Hydrate `_node_data` for legacy callers that bypass `__init__`."""
+        self._node_data = self.validate_node_data(cast(BaseNodeData, data))
 
     def post_init(self) -> None:
         """Optional hook for subclasses requiring extra initialization."""
@@ -489,29 +498,19 @@ class Node(Generic[NodeDataT]):
     def version(cls) -> str:
         """`node_version` returns the version of current node type."""
         # NOTE(QuantumGhost): Node versions must remain unique per `NodeType` so
-        # `Node.get_node_type_classes_mapping()` can resolve numeric versions and `latest`.
+        # registry lookups can resolve numeric versions and `latest`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @classmethod
     def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
-        """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
+        """Return a read-only view of the currently registered node classes.
 
-        Import all modules under dify_graph.nodes so subclasses register themselves on import.
-        Callers that rely on workflow-local nodes defined outside `dify_graph.nodes` must import
-        those modules before invoking this method so they can register through `__init_subclass__`.
-        We then return a readonly view of the registry to avoid accidental mutation.
+        This accessor intentionally performs no imports. The embedding layer that
+        owns bootstrap (for example `core.workflow.node_factory`) must import any
+        extension node packages before calling it so their subclasses register via
+        `__init_subclass__`.
         """
-        # Import all node modules to ensure they are loaded (thus registered)
-        import dify_graph.nodes as _nodes_pkg
-
-        for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
-            # Avoid importing modules that depend on the registry to prevent circular imports.
-            if _modname == "dify_graph.nodes.node_mapping":
-                continue
-            importlib.import_module(_modname)
-
-        # Return a readonly view so callers can't mutate the registry by accident
-        return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
+        return {node_type: MappingProxyType(version_map) for node_type, version_map in cls._registry.items()}
 
     @property
     def retry(self) -> bool:
@@ -786,11 +785,16 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
+        from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+
+        retriever_resources = [
+            RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+        ]
         return NodeRunRetrieverResourceEvent(
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            retriever_resources=event.retriever_resources,
+            retriever_resources=retriever_resources,
             context=event.context,
             node_version=self.version(),
         )
