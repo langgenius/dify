@@ -15,28 +15,39 @@ type Props = {
   className?: string
   value?: number
   onChange: (date: number | null) => void
+  readonly?: boolean
 }
 const WrappedDatePicker = ({
   className,
   value,
   onChange,
+  readonly,
 }: Props) => {
   const { t } = useTranslation()
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
+    if (readonly)
+      return
     if (date)
       onChange(date.unix())
     else
       onChange(null)
-  }, [onChange])
+  }, [onChange, readonly])
 
   const renderTrigger = useCallback(({
     handleClickTrigger,
   }: TriggerProps) => {
     return (
-      <div onClick={handleClickTrigger} className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>
+      <div
+        onClick={readonly ? undefined : handleClickTrigger}
+        className={cn(
+          'group flex items-center rounded-md bg-components-input-bg-normal',
+          readonly && 'cursor-not-allowed opacity-50',
+          className,
+        )}
+      >
         <div
           className={cn(
             'grow',
@@ -49,6 +60,7 @@ const WrappedDatePicker = ({
           className={cn(
             'hidden h-4 w-4 cursor-pointer hover:text-components-input-text-filled group-hover:block',
             value && 'text-text-quaternary',
+            readonly && 'pointer-events-none',
           )}
           onClick={() => handleDateChange()}
         />
@@ -60,7 +72,7 @@ const WrappedDatePicker = ({
         />
       </div>
     )
-  }, [className, value, formatTimestamp, t, handleDateChange])
+  }, [className, value, formatTimestamp, t, handleDateChange, readonly])
 
   return (
     <DatePicker

@@ -35,6 +35,7 @@ const ConstantValueInput: FC<ConstantValueInputProps> = ({
         className="h-full w-full"
         value={timeValue}
         onChange={v => onChange(v)}
+        readonly={readonly}
       />
     )
   }
