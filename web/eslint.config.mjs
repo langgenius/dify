@@ -14,6 +14,13 @@ process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
+  {
+    name: 'next',
+    message: 'Import Next APIs from @/next instead of next.',
+  },
+]
+
 const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/image'],
@@ -22,6 +29,22 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/font', 'next/font/*'],
     message: 'Do not import next/font. Use the project font styles instead.',
+  },
+  {
+    group: ['next/dynamic'],
+    message: 'Import Next APIs from @/next/dynamic instead of next/dynamic.',
+  },
+  {
+    group: ['next/headers'],
+    message: 'Import Next APIs from @/next/headers instead of next/headers.',
+  },
+  {
+    group: ['next/script'],
+    message: 'Import Next APIs from @/next/script instead of next/script.',
+  },
+  {
+    group: ['next/server'],
+    message: 'Import Next APIs from @/next/server instead of next/server.',
   },
 ]
 
@@ -84,6 +107,15 @@ const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/dialog/index',
     ],
     message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
+  },
+  {
+    group: [
+      '**/base/toast',
+      '**/base/toast/index',
+      '**/base/toast/context',
+      '**/base/toast/context/index',
+    ],
+    message: 'Deprecated: use @/app/components/base/ui/toast instead. See issue #32811.',
   },
 ]
 
@@ -231,10 +263,12 @@ export default antfu(
     },
   },
   {
-    name: 'dify/no-next-image-or-font',
+    name: 'dify/no-direct-next-imports',
     files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
       }],
     },
@@ -243,11 +277,13 @@ export default antfu(
     name: 'dify/overlay-migration',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
+      'next/**',
       ...GLOB_TESTS,
       ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: [
           ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
           ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,

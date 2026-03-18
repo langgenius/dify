@@ -32,6 +32,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _stream_with_request_context(response: object) -> Any:
+    """Bridge Flask's loosely-typed streaming helper without leaking casts into callers."""
+    return cast(Any, stream_with_context)(response)
+
+
 def escape_like_pattern(pattern: str) -> str:
     """
     Escape special characters in a string for safe use in SQL LIKE patterns.
@@ -286,22 +291,32 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
-    if isinstance(response, dict):
+def compact_generate_response(
+    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+) -> Response:
+    if isinstance(response, Mapping):
         return Response(
             response=json.dumps(jsonable_encoder(response)),
             status=200,
             content_type="application/json; charset=utf-8",
         )
     else:
+        stream_response = response
 
-        def generate() -> Generator:
-            yield from response
+        def generate() -> Generator[str, None, None]:
+            yield from stream_response
 
-        return Response(stream_with_context(generate()), status=200, mimetype="text/event-stream")
+        return Response(
+            _stream_with_request_context(generate()),
+            status=200,
+            mimetype="text/event-stream",
+        )
 
 
-def length_prefixed_response(magic_number: int, response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
+def length_prefixed_response(
+    magic_number: int,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+) -> Response:
     """
     This function is used to return a response with a length prefix.
     Magic number is a one byte number that indicates the type of the response.
@@ -332,7 +347,7 @@ def length_prefixed_response(magic_number: int, response: Union[Mapping, Generat
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, dict):
+    if isinstance(response, Mapping):
         return Response(
             response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
             status=200,
@@ -345,14 +360,20 @@ def length_prefixed_response(magic_number: int, response: Union[Mapping, Generat
             mimetype="application/json",
         )
 
-    def generate() -> Generator:
-        for chunk in response:
+    stream_response = response
+
+    def generate() -> Generator[bytes, None, None]:
+        for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
             else:
                 yield pack_response_with_length_prefix(chunk)
 
-    return Response(stream_with_context(generate()), status=200, mimetype="text/event-stream")
+    return Response(
+        _stream_with_request_context(generate()),
+        status=200,
+        mimetype="text/event-stream",
+    )
 
 
 class TokenManager:

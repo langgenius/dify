@@ -46,7 +46,7 @@ const WorkplaceSelector = () => {
                 <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
               </div>
               <div className="flex min-w-0 items-center">
-                <div className="system-sm-medium min-w-0  max-w-[149px] truncate text-text-secondary max-[800px]:hidden">{currentWorkspace?.name}</div>
+                <div className="min-w-0 max-w-[149px] truncate text-text-secondary system-sm-medium max-[800px]:hidden">{currentWorkspace?.name}</div>
                 <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
               </div>
             </MenuButton>
@@ -68,9 +68,9 @@ const WorkplaceSelector = () => {
                   `,
                 )}
               >
-                <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border p-1 pb-2 shadow-lg ">
+                <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border p-1 pb-2 shadow-lg">
                   <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-                    <span className="system-xs-medium-uppercase flex-1 text-text-tertiary">{t('userProfile.workspace', { ns: 'common' })}</span>
+                    <span className="flex-1 text-text-tertiary system-xs-medium-uppercase">{t('userProfile.workspace', { ns: 'common' })}</span>
                   </div>
                   {
                     workspaces.map(workspace => (
@@ -78,7 +78,7 @@ const WorkplaceSelector = () => {
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">
                           <span className="h-6 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle font-semibold uppercase leading-6 text-shadow-shadow-1 opacity-90">{workspace?.name[0]?.toLocaleUpperCase()}</span>
                         </div>
-                        <div className="system-md-regular line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary">{workspace.name}</div>
+                        <div className="line-clamp-1 grow cursor-pointer overflow-hidden text-ellipsis text-text-secondary system-md-regular">{workspace.name}</div>
                         <PlanBadge plan={workspace.plan as Plan} />
                       </div>
                     ))

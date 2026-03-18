@@ -1,6 +1,5 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import {
   useRouter,
   useSearchParams,
@@ -13,6 +12,7 @@ import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-moda
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
+import dynamic from '@/next/dynamic'
 import { cn } from '@/utils/classnames'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {

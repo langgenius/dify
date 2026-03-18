@@ -21,10 +21,10 @@ import {
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import {
   fetchDefaultModal,
   fetchModelList,
@@ -32,12 +32,12 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
+import { useExpandModelProviderList } from './atoms'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -57,15 +57,21 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
     return currentDefaultModel
   }, [defaultModel, modelList])
+  const currentDefaultModelKey = currentDefaultModel
+    ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
+    : ''
   const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(currentDefaultModel)
-  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
-    setDefaultModelState(model)
-  }, [])
-  useEffect(() => {
-    setDefaultModelState(currentDefaultModel)
-  }, [currentDefaultModel])
+  const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
+  const selectedDefaultModel = defaultModelSourceKey === currentDefaultModelKey
+    ? defaultModelState
+    : currentDefaultModel
 
-  return [defaultModelState, handleDefaultModelChange]
+  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
+    setDefaultModelSourceKey(currentDefaultModelKey)
+    setDefaultModelState(model)
+  }, [currentDefaultModelKey])
+
+  return [selectedDefaultModel, handleDefaultModelChange]
 }
 
 export const useLanguage = () => {
@@ -116,7 +122,7 @@ export const useProviderCredentialsAndLoadBalancing = (
     predefinedFormSchemasValue?.credentials,
   ])
 
-  const mutate = useMemo(() => () => {
+  const mutate = useCallback(() => {
     if (predefinedEnabled)
       queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
     if (customEnabled)
@@ -222,6 +228,14 @@ export const useUpdateModelList = () => {
   return updateModelList
 }
 
+export const useInvalidateDefaultModel = () => {
+  const queryClient = useQueryClient()
+
+  return useCallback((type: ModelTypeEnum) => {
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+  }, [queryClient])
+}
+
 export const useAnthropicBuyQuota = () => {
   const [loading, setLoading] = useState(false)
 
@@ -314,7 +328,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
 }
 
 export const useRefreshModel = () => {
-  const { eventEmitter } = useEventEmitterContextContext()
+  const expandModelProviderList = useExpandModelProviderList()
+  const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
   const handleRefreshModel = useCallback((
@@ -322,6 +337,19 @@ export const useRefreshModel = () => {
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     refreshModelList?: boolean,
   ) => {
+    const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      input: {
+        params: {
+          provider: provider.provider,
+        },
+      },
+    })
+    queryClient.invalidateQueries({
+      queryKey: modelProviderModelListQueryKey,
+      exact: true,
+      refetchType: 'none',
+    })
+
     updateModelProviders()
 
     provider.supported_model_types.forEach((type) => {
@@ -329,15 +357,17 @@ export const useRefreshModel = () => {
     })
 
     if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-      eventEmitter?.emit({
-        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider.provider,
-      } as any)
+      expandModelProviderList(provider.provider)
+      queryClient.invalidateQueries({
+        queryKey: modelProviderModelListQueryKey,
+        exact: true,
+        refetchType: 'active',
+      })
 
       if (CustomConfigurationModelFixedFields?.__model_type)
         updateModelList(CustomConfigurationModelFixedFields.__model_type)
     }
-  }, [eventEmitter, updateModelList, updateModelProviders])
+  }, [expandModelProviderList, queryClient, updateModelList, updateModelProviders])
 
   return {
     handleRefreshModel,

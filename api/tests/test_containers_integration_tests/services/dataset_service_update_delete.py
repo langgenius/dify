@@ -15,6 +15,7 @@ from werkzeug.exceptions import NotFound
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
+from models.enums import DataSourceType
 from models.model import App
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
@@ -72,7 +73,7 @@ class DatasetUpdateDeleteTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description="Test description",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=created_by,
             permission=permission,

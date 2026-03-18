@@ -14,6 +14,7 @@ from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -175,7 +176,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         dataset: Dataset,
         top_k: int,
         score_threshold: float,
-        reranking_model: dict,
+        reranking_model: RerankingModelDict,
     ) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(
