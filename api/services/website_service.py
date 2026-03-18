@@ -9,7 +9,7 @@ import httpx
 from flask_login import current_user
 
 from core.helper import encrypter
-from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
+from core.rag.extractor.firecrawl.firecrawl_app import CrawlStatusResponse, FirecrawlApp, FirecrawlDocumentData
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -270,13 +270,13 @@ class WebsiteService:
     @classmethod
     def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
-        result = firecrawl_app.check_crawl_status(job_id)
-        crawl_status_data = {
-            "status": result.get("status", "active"),
+        result: CrawlStatusResponse = firecrawl_app.check_crawl_status(job_id)
+        crawl_status_data: dict[str, Any] = {
+            "status": result["status"],
             "job_id": job_id,
-            "total": result.get("total", 0),
-            "current": result.get("current", 0),
-            "data": result.get("data", []),
+            "total": result["total"] or 0,
+            "current": result["current"] or 0,
+            "data": result["data"],
         }
         if crawl_status_data["status"] == "completed":
             website_crawl_time_cache_key = f"website_crawl_{job_id}"
@@ -343,7 +343,7 @@ class WebsiteService:
 
     @classmethod
     def _get_firecrawl_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
-        crawl_data: list[dict[str, Any]] | None = None
+        crawl_data: list[FirecrawlDocumentData] | None = None
         file_key = "website_files/" + job_id + ".txt"
         if storage.exists(file_key):
             stored_data = storage.load_once(file_key)
@@ -352,13 +352,13 @@ class WebsiteService:
         else:
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
             result = firecrawl_app.check_crawl_status(job_id)
-            if result.get("status") != "completed":
+            if result["status"] != "completed":
                 raise ValueError("Crawl job is not completed")
-            crawl_data = result.get("data")
+            crawl_data = result["data"]
 
         if crawl_data:
             for item in crawl_data:
-                if item.get("source_url") == url:
+                if item["source_url"] == url:
                     return dict(item)
         return None
 
@@ -416,7 +416,7 @@ class WebsiteService:
     def _scrape_with_firecrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
         params = {"onlyMainContent": request.only_main_content}
-        return firecrawl_app.scrape_url(url=request.url, params=params)
+        return dict(firecrawl_app.scrape_url(url=request.url, params=params))
 
     @classmethod
     def _scrape_with_watercrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
