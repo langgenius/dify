@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
+vi.mock('../authorize/add-api-key-button', () => ({ default: () => null }))
+vi.mock('../authorize/add-oauth-button', () => ({ default: () => null }))
+vi.mock('../authorize/api-key-modal', () => ({ default: () => null }))
+vi.mock('../authorized', () => ({ default: () => null }))
+vi.mock('../authorized-in-data-source-node', () => ({ default: () => null }))
+vi.mock('../authorized-in-node', () => ({ default: () => null }))
+vi.mock('../plugin-auth', () => ({ default: () => null }))
+vi.mock('../plugin-auth-in-agent', () => ({ default: () => null }))
+vi.mock('../plugin-auth-in-datasource-node', () => ({ default: () => null }))
+vi.mock('../hooks/use-plugin-auth', () => ({ usePluginAuth: () => ({}) }))
+vi.mock('../hooks/use-plugin-auth-action', () => ({}))
+
 describe('plugin-auth index exports', () => {
   it('should export all required components and hooks', async () => {
     const exports = await import('../index')

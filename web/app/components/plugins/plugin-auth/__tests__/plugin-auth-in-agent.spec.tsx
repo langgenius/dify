@@ -56,6 +56,48 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
+vi.mock('../authorize', () => ({
+  default: () => (
+    <button type="button">
+      plugin.auth.useApiAuth
+    </button>
+  ),
+}))
+
+vi.mock('../authorized', () => ({
+  default: ({
+    credentials = [],
+    extraAuthorizationItems = [],
+    isOpen,
+    onItemClick,
+    onOpenChange,
+    renderTrigger,
+  }: {
+    credentials?: Credential[]
+    extraAuthorizationItems?: Credential[]
+    isOpen?: boolean
+    onItemClick?: (id: string) => void
+    onOpenChange?: (open: boolean) => void
+    renderTrigger?: (isOpen?: boolean) => ReactNode
+  }) => (
+    <div>
+      <div data-testid="authorized-trigger" onClick={() => onOpenChange?.(!isOpen)}>
+        {renderTrigger?.(isOpen)}
+      </div>
+      {isOpen && (
+        <div>
+          {extraAuthorizationItems.map(item => (
+            <button key={item.id} type="button" onClick={() => onItemClick?.(item.isWorkspaceDefault ? '' : item.id)}>{item.name}</button>
+          ))}
+          {credentials.map(item => (
+            <button key={item.id} type="button" onClick={() => onItemClick?.(item.id)}>{item.name}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  ),
+}))
+
 // ==================== Test Utilities ====================
 
 const createTestQueryClient = () =>
@@ -120,7 +162,7 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
   })
 
   it('should render Authorized with workspace default when authorized', async () => {
@@ -130,7 +172,7 @@ describe('PluginAuthInAgent Component', () => {
       <PluginAuthInAgent pluginPayload={pluginPayload} />,
       { wrapper: createWrapper() },
     )
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /plugin\.auth\.workspaceDefault/i })).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.workspaceDefault')).toBeInTheDocument()
   })
 

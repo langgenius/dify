@@ -2,6 +2,7 @@ import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import { TransferMethod } from '@/types/app'
 import AppIconPicker from '../index'
 import 'vitest-canvas-mock'
@@ -93,6 +94,71 @@ vi.mock('react-easy-crop', () => ({
   ),
 }))
 
+vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
+  default: function MockEmojiPickerInner({ onSelect, className }: { onSelect: (emoji: string, background: string) => void, className?: string }) {
+    return (
+      <div className={className}>
+        <input placeholder="search" />
+        <button
+          type="button"
+          data-testid="emoji-container-grinning"
+          onClick={() => onSelect('😀', '#FFEAD5')}
+        >
+          grinning
+        </button>
+      </div>
+    )
+  },
+}))
+
+vi.mock('../ImageInput', () => ({
+  default: function MockImageInput({ onImageInput, className }: {
+    onImageInput: (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => void
+    className?: string
+  }) {
+    const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+    const [animatedUrl, setAnimatedUrl] = React.useState<string | null>(null)
+    const [showCropper, setShowCropper] = React.useState(false)
+
+    return (
+      <div className={className}>
+        <div>drop image here</div>
+        <input
+          data-testid="image-input"
+          type="file"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (!file)
+              return
+            setSelectedFile(file)
+            if (file.type === 'image/gif') {
+              const nextUrl = URL.createObjectURL(file)
+              setAnimatedUrl(nextUrl)
+              setShowCropper(false)
+              onImageInput(false, file)
+              return
+            }
+            setAnimatedUrl(null)
+            setShowCropper(true)
+          }}
+        />
+        {showCropper && selectedFile && (
+          <div data-testid="mock-cropper">
+            <button
+              type="button"
+              data-testid="trigger-crop"
+              onClick={() => onImageInput(true, 'blob:crop-temp-url', { x: 0, y: 0, width: 100, height: 100 }, selectedFile.name)}
+            >
+              Trigger Crop
+            </button>
+          </div>
+        )}
+        {animatedUrl && <img data-testid="animated-image" src={animatedUrl} alt="animated preview" />}
+      </div>
+    )
+  },
+}))
+
 vi.mock('../../image-uploader/hooks', () => ({
   useLocalFileUploader: (options: LocalFileUploaderOptions) => {
     mocks.onUpload = options.onUpload
@@ -102,6 +168,14 @@ vi.mock('../../image-uploader/hooks', () => ({
 
 vi.mock('@/utils/emoji', () => ({
   searchEmoji: vi.fn().mockResolvedValue(['grinning', 'sunglasses']),
+}))
+
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children, className }: { children: React.ReactNode, className?: string }) => (
+    <div data-testid="mock-modal" className={className}>
+      {children}
+    </div>
+  ),
 }))
 
 describe('AppIconPicker', () => {
@@ -183,10 +257,10 @@ describe('AppIconPicker', () => {
     it('should switch between emoji and image tabs', async () => {
       renderPicker()
 
-      await userEvent.click(screen.getByText(/image/i))
+      fireEvent.click(screen.getByText(/image/i))
       expect(screen.getByText(/drop.*here/i)).toBeInTheDocument()
 
-      await userEvent.click(screen.getByText(/emoji/i))
+      fireEvent.click(screen.getByText(/emoji/i))
       expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument()
     })
 

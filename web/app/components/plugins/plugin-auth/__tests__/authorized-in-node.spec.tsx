@@ -56,6 +56,51 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
+vi.mock('../index', () => ({
+  Authorized: ({
+    credentials = [],
+    extraAuthorizationItems = [],
+    isOpen,
+    onItemClick,
+    onOpenChange,
+    renderTrigger,
+  }: {
+    credentials?: Credential[]
+    extraAuthorizationItems?: Credential[]
+    isOpen?: boolean
+    onItemClick?: (id: string) => void
+    onOpenChange?: (open: boolean) => void
+    renderTrigger?: (isOpen?: boolean) => ReactNode
+  }) => (
+    <div>
+      <div data-testid="authorized-trigger" onClick={() => onOpenChange?.(!isOpen)}>
+        {renderTrigger?.(isOpen)}
+      </div>
+      {isOpen && (
+        <div>
+          {extraAuthorizationItems.map(item => (
+            <button key={item.id} type="button" onClick={() => onItemClick?.(item.id)}>{item.name}</button>
+          ))}
+          {credentials.map(item => (
+            <button key={item.id} type="button" onClick={() => onItemClick?.(item.id)}>{item.name}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  ),
+  usePluginAuth: () => {
+    const credentialInfo = mockGetPluginCredentialInfo() ?? { credentials: [] }
+    return {
+      canApiKey: true,
+      canOAuth: false,
+      credentials: credentialInfo.credentials ?? [],
+      disabled: false,
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    }
+  },
+}))
+
 // ==================== Test Utilities ====================
 
 const createTestQueryClient = () =>
