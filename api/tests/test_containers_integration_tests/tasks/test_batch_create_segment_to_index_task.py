@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
@@ -139,7 +139,7 @@ class TestBatchCreateSegmentToIndexTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
@@ -170,12 +170,12 @@ class TestBatchCreateSegmentToIndexTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             doc_form="text_model",
@@ -301,7 +301,7 @@ class TestBatchCreateSegmentToIndexTask:
             assert segment.dataset_id == dataset.id
             assert segment.document_id == document.id
             assert segment.position == i + 1
-            assert segment.status == "completed"
+            assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None
             assert segment.answer is None  # text_model doesn't have answers
@@ -442,12 +442,12 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="disabled_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Document is disabled
                 archived=False,
                 doc_form="text_model",
@@ -458,12 +458,12 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=2,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="archived_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=True,  # Document is archived
                 doc_form="text_model",
@@ -474,12 +474,12 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=3,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="incomplete_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="indexing",  # Not completed
+                indexing_status=IndexingStatus.INDEXING,  # Not completed
                 enabled=True,
                 archived=False,
                 doc_form="text_model",
@@ -643,7 +643,7 @@ class TestBatchCreateSegmentToIndexTask:
                 word_count=len(f"Existing segment {i + 1}"),
                 tokens=10,
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 index_node_id=str(uuid.uuid4()),
                 index_node_hash=f"hash_{i}",
             )
@@ -694,7 +694,7 @@ class TestBatchCreateSegmentToIndexTask:
         for i, segment in enumerate(new_segments):
             expected_position = 4 + i  # Should start at position 4
             assert segment.position == expected_position
-            assert segment.status == "completed"
+            assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None
 
