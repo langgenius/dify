@@ -237,6 +237,8 @@ class TestInit:
         mock_mlflow.set_experiment.assert_called_with(experiment_id="0")
         assert trace.get_project_url() == "http://localhost:5000/#/experiments/0/traces"
         assert os.environ["MLFLOW_ENABLE_ASYNC_TRACE_LOGGING"] == "true"
+        # Verify timeout is set to prevent indefinite hangs
+        assert os.environ["MLFLOW_HTTP_REQUEST_TIMEOUT"] == "30"
 
     def test_mlflow_config_with_auth(self, mock_mlflow):
         config = MLflowConfig(
@@ -319,10 +321,12 @@ class TestTraceDispatcher:
             trace_instance.trace(_make_generate_name_trace_info())
             mock_gn.assert_called_once()
 
-    def test_reraises_exception(self, trace_instance, mock_tracing, mock_db):
+    def test_handles_exception_gracefully(self, trace_instance, mock_tracing, mock_db):
+        """Test that trace failures are handled gracefully and don't break workflow execution."""
         with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("boom")):
-            with pytest.raises(RuntimeError, match="boom"):
-                trace_instance.trace(_make_workflow_trace_info())
+            # Should not raise exception - just log and continue
+            trace_instance.trace(_make_workflow_trace_info())
+            # The method should complete without raising
 
 
 # ── workflow_trace ───────────────────────────────────────────────────────────

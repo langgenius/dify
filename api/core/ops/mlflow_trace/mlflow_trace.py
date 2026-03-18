@@ -39,8 +39,16 @@ def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
 
 
 class MLflowDataTrace(BaseTraceInstance):
+    # Default timeout for MLflow HTTP requests (in seconds)
+    DEFAULT_TIMEOUT = 30
+
     def __init__(self, config: MLflowConfig | DatabricksConfig):
         super().__init__(config)
+        # Set HTTP request timeout to prevent indefinite hangs when MLflow is unavailable
+        # This must be set before any mlflow operations
+        if "MLFLOW_HTTP_REQUEST_TIMEOUT" not in os.environ:
+            os.environ["MLFLOW_HTTP_REQUEST_TIMEOUT"] = str(self.DEFAULT_TIMEOUT)
+
         if isinstance(config, DatabricksConfig):
             self._setup_databricks(config)
         else:
@@ -86,7 +94,10 @@ class MLflowDataTrace(BaseTraceInstance):
         self._project_url = f"{config.tracking_uri}/#/experiments/{config.experiment_id}/traces"
 
     def trace(self, trace_info: BaseTraceInfo):
-        """Simple dispatch to trace methods"""
+        """Simple dispatch to trace methods with graceful error handling.
+        
+        Connection errors to MLflow should not break workflow execution.
+        """
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -103,8 +114,8 @@ class MLflowDataTrace(BaseTraceInstance):
             elif isinstance(trace_info, GenerateNameTraceInfo):
                 self.generate_name_trace(trace_info)
         except Exception:
-            logger.exception("[MLflow] Trace error")
-            raise
+            # Log the error but don't raise - tracing failures should not break workflow execution
+            logger.exception("[MLflow] Trace failed (service may be unavailable)")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         """Create workflow span as root, with node spans as children"""
