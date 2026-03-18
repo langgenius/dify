@@ -12,6 +12,7 @@ import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
+import atexit
 
 import weaviate
 import weaviate.classes.config as wc
@@ -35,6 +36,32 @@ logger = logging.getLogger(__name__)
 
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+
+def _shutdown_weaviate_client() -> None:
+    """
+    Best-effort shutdown hook to close the module-level Weaviate client.
+
+    This is registered with atexit so that HTTP/gRPC resources are released
+    when the Python interpreter exits.
+    """
+    global _weaviate_client
+
+    # Ensure thread-safety when accessing the shared client instance
+    with _weaviate_client_lock:
+        client = _weaviate_client
+        _weaviate_client = None
+
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            # Best-effort cleanup; log at debug level and ignore errors.
+            logger.debug("Failed to close Weaviate client during shutdown", exc_info=True)
+
+
+# Register the shutdown hook once per process.
+atexit.register(_shutdown_weaviate_client)
 
 
 class WeaviateConfig(BaseModel):
