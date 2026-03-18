@@ -984,6 +984,18 @@ class ToolManager:
         :param provider_id: the id of the provider
         :return:
         """
+        try:
+            return cls._get_tool_icon_impl(tenant_id, provider_type, provider_id)
+        except Exception:
+            return ""
+
+    @classmethod
+    def _get_tool_icon_impl(
+        cls,
+        tenant_id: str,
+        provider_type: ToolProviderType,
+        provider_id: str,
+    ) -> str | EmojiIconDict | dict[str, str]:
         provider_type = provider_type
         provider_id = provider_id
         if provider_type == ToolProviderType.BUILT_IN:
