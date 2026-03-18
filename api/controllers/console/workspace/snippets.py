@@ -103,7 +103,6 @@ class CustomizedSnippetsApi(Resource):
                 description=payload.description,
                 snippet_type=snippet_type,
                 icon_info=payload.icon_info.model_dump() if payload.icon_info else None,
-                graph=payload.graph,
                 input_fields=[f.model_dump() for f in payload.input_fields] if payload.input_fields else None,
                 account=current_user,
             )
@@ -346,3 +345,35 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
             result = import_service.check_dependencies(snippet=snippet)
 
         return result.model_dump(mode="json"), 200
+
+
+@console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>/use-count/increment")
+class CustomizedSnippetUseCountIncrementApi(Resource):
+    @console_ns.doc("increment_snippet_use_count")
+    @console_ns.doc(description="Increment snippet use count by 1")
+    @console_ns.doc(params={"snippet_id": "Snippet ID"})
+    @console_ns.response(200, "Use count incremented successfully")
+    @console_ns.response(404, "Snippet not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def post(self, snippet_id: str):
+        """Increment snippet use count when it is inserted into a workflow."""
+        _, current_tenant_id = current_account_with_tenant()
+
+        snippet = SnippetService.get_snippet_by_id(
+            snippet_id=str(snippet_id),
+            tenant_id=current_tenant_id,
+        )
+
+        if not snippet:
+            raise NotFound("Snippet not found")
+
+        with Session(db.engine) as session:
+            snippet = session.merge(snippet)
+            SnippetService.increment_use_count(session=session, snippet=snippet)
+            session.commit()
+            session.refresh(snippet)
+
+        return {"result": "success", "use_count": snippet.use_count}, 200

@@ -118,7 +118,6 @@ class SnippetService:
         description: str | None,
         snippet_type: SnippetType,
         icon_info: dict | None,
-        graph: dict | None,
         input_fields: list[dict] | None,
         account: Account,
     ) -> CustomizedSnippet:
@@ -130,7 +129,6 @@ class SnippetService:
         :param description: Snippet description
         :param snippet_type: Type of snippet (node or group)
         :param icon_info: Icon information
-        :param graph: Workflow graph structure
         :param input_fields: Input field definitions
         :param account: Creator account
         :return: Created CustomizedSnippet
@@ -154,7 +152,6 @@ class SnippetService:
             description=description or "",
             type=snippet_type.value,
             icon_info=icon_info,
-            graph=json.dumps(graph) if graph else None,
             input_fields=json.dumps(input_fields) if input_fields else None,
             created_by=account.id,
         )
