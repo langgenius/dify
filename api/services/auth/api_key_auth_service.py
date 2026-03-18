@@ -1,8 +1,8 @@
 import json
+from typing import cast
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from typing import cast
 from typing_extensions import TypedDict
 
 from core.helper import encrypter
