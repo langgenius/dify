@@ -1539,7 +1539,7 @@ describe('AppSelector', () => {
       expect(screen.getByTestId('portal-content')).toBeInTheDocument()
     })
 
-    it('should manage isLoadingMore state during load more', () => {
+    it('should render correctly during load more setup', () => {
       mockHasNextPage = true
       mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
 
@@ -1739,7 +1739,7 @@ describe('AppSelector', () => {
       expect(mockFetchNextPage).toHaveBeenCalled()
     })
 
-    it('should set isLoadingMore and reset after delay in handleLoadMore', async () => {
+    it('should avoid duplicate fetches while the picker debounce is active', async () => {
       mockHasNextPage = true
       mockIsFetchingNextPage = false
       mockFetchNextPage.mockResolvedValue(undefined)
@@ -1756,32 +1756,13 @@ describe('AppSelector', () => {
 
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
 
-      // Try to trigger again immediately - should be blocked by isLoadingMore
+      // Try to trigger again immediately - should be blocked by AppPicker loadingRef
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
 
-      // Still only one call due to isLoadingMore
+      // Still only one call due to the picker-level debounce
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
 
-      // This verifies the debounce logic is working - multiple calls are blocked
       expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
-    })
-
-    it('should not call fetchNextPage when isLoadingMore is true', async () => {
-      mockHasNextPage = true
-      mockIsFetchingNextPage = false
-      mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
-
-      renderWithQueryClient(<AppSelector {...defaultProps} />)
-
-      // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
-      const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
-
-      // Trigger intersection - this starts loading
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
     })
 
     it('should skip handleLoadMore when isFetchingNextPage is true', async () => {
@@ -1820,87 +1801,6 @@ describe('AppSelector', () => {
 
       // fetchNextPage should NOT be called because hasMore is false
       expect(mockFetchNextPage).not.toHaveBeenCalled()
-    })
-
-    it('should return early from handleLoadMore when isLoadingMore is true', async () => {
-      mockHasNextPage = true
-      mockIsFetchingNextPage = false
-      // Make fetchNextPage slow to keep isLoadingMore true
-      mockFetchNextPage.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 5000)))
-
-      renderWithQueryClient(<AppSelector {...defaultProps} />)
-
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
-      const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
-
-      // First call starts loading
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
-
-      // Second call should return early due to isLoadingMore
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-
-      // Still only 1 call because isLoadingMore blocks it
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
-    })
-
-    it('should reset isLoadingMore via setTimeout after fetchNextPage resolves', async () => {
-      mockHasNextPage = true
-      mockIsFetchingNextPage = false
-      mockFetchNextPage.mockResolvedValue(undefined)
-
-      renderWithQueryClient(<AppSelector {...defaultProps} />)
-
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
-      const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
-
-      // Trigger load more
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-
-      // Wait for fetchNextPage to complete and setTimeout to fire
-      await act(async () => {
-        await Promise.resolve()
-        vi.advanceTimersByTime(350) // Past the 300ms setTimeout
-      })
-
-      // Should be able to load more again
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-
-      // This might trigger another fetch if loadingRef also reset
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
-    })
-
-    it('should reset isLoadingMore after fetchNextPage completes with setTimeout', async () => {
-      mockHasNextPage = true
-      mockIsFetchingNextPage = false
-      mockFetchNextPage.mockResolvedValue(undefined)
-
-      renderWithQueryClient(<AppSelector {...defaultProps} />)
-
-      // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
-      const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
-
-      // Trigger first intersection
-      triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
-
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
-
-      // Advance timer past the 300ms setTimeout in finally block
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      // Also advance past the loadingRef timeout in AppPicker (500ms)
-      await act(async () => {
-        vi.advanceTimersByTime(200)
-      })
-
-      // Verify component is still rendered correctly
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
     })
   })
 
@@ -2284,7 +2184,7 @@ describe('AppSelector Integration', () => {
       expect(screen.getByTestId('portal-content')).toBeInTheDocument()
     })
 
-    it('should set isLoadingMore to false after fetchNextPage completes', async () => {
+    it('should stay stable after fetchNextPage completes', async () => {
       mockHasNextPage = true
       mockIsFetchingNextPage = false
       mockFetchNextPage.mockResolvedValue(undefined)
@@ -2293,16 +2193,10 @@ describe('AppSelector Integration', () => {
 
       fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
 
-      // Advance timers past the 300ms delay
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
       expect(screen.getByTestId('portal-content')).toBeInTheDocument()
     })
 
     it('should not call fetchNextPage when conditions prevent it', () => {
-      // isLoadingMore would be true internally
       mockHasNextPage = false
       mockIsFetchingNextPage = true
 
