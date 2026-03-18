@@ -104,7 +104,8 @@ class AppMCPServerController(Resource):
 
         description = payload.description
         if description is None:
-            pass
+            # Sync with current app description when user doesn't explicitly provide one
+            server.description = app_model.description or ""
         elif not description:
             server.description = app_model.description or ""
         else:
