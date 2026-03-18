@@ -1970,41 +1970,65 @@ class DocumentService:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
             documents.append(document)
             batch = document.batch
-            # Apply custom_metadata and create bindings for the re-indexed document
-            if custom_metadata or metadata_bindings_to_create:
-                if custom_metadata:
-                    from sqlalchemy.orm import attributes
+            # Reconcile pipeline-managed metadata on re-index so removed fields do not linger.
+            if knowledge_config.doc_metadata is not None:
+                from sqlalchemy.orm import attributes
 
-                    doc_metadata_field = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
-                    doc_metadata_field.update(custom_metadata)
-                    document.doc_metadata = doc_metadata_field
-                    attributes.flag_modified(document, "doc_metadata")
-                    db.session.add(document)
-                if metadata_bindings_to_create:
-                    metadata_ids_deduped = list(dict.fromkeys(metadata_bindings_to_create))
-                    existing_binding_pairs = {
-                        (doc_id, meta_id)
-                        for doc_id, meta_id in db.session.query(
-                            DatasetMetadataBinding.document_id,
-                            DatasetMetadataBinding.metadata_id,
+                metadata_ids_deduped = list(dict.fromkeys(metadata_bindings_to_create))
+                existing_bindings = (
+                    db.session.query(DatasetMetadataBinding)
+                    .filter_by(dataset_id=dataset.id, document_id=document.id)
+                    .all()
+                )
+                existing_binding_ids = {binding.metadata_id for binding in existing_bindings}
+
+                metadata_ids_to_load = list(existing_binding_ids | set(metadata_ids_deduped))
+                metadata_name_map: dict[str, str] = {}
+                if metadata_ids_to_load:
+                    metadata_defs = (
+                        db.session.query(DatasetMetadata)
+                        .filter(
+                            DatasetMetadata.dataset_id == dataset.id,
+                            DatasetMetadata.id.in_(metadata_ids_to_load),
                         )
+                        .all()
+                    )
+                    metadata_name_map = {metadata_def.id: metadata_def.name for metadata_def in metadata_defs}
+
+                doc_metadata_field = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
+                for metadata_id in existing_binding_ids:
+                    metadata_name = metadata_name_map.get(metadata_id)
+                    if metadata_name:
+                        doc_metadata_field.pop(metadata_name, None)
+                doc_metadata_field.update(custom_metadata)
+                document.doc_metadata = doc_metadata_field
+                attributes.flag_modified(document, "doc_metadata")
+                db.session.add(document)
+
+                obsolete_metadata_ids = existing_binding_ids - set(metadata_ids_deduped)
+                if obsolete_metadata_ids:
+                    (
+                        db.session.query(DatasetMetadataBinding)
                         .filter(
                             DatasetMetadataBinding.dataset_id == dataset.id,
                             DatasetMetadataBinding.document_id == document.id,
-                            DatasetMetadataBinding.metadata_id.in_(metadata_ids_deduped),
+                            DatasetMetadataBinding.metadata_id.in_(obsolete_metadata_ids),
                         )
-                        .all()
-                    }
-                    for metadata_id in metadata_ids_deduped:
-                        if (document.id, metadata_id) not in existing_binding_pairs:
-                            binding = DatasetMetadataBinding(
-                                tenant_id=dataset.tenant_id,
-                                dataset_id=dataset.id,
-                                document_id=document.id,
-                                metadata_id=metadata_id,
-                                created_by=account.id,
-                            )
-                            db.session.add(binding)
+                        .delete(synchronize_session=False)
+                    )
+
+                existing_current_binding_ids = existing_binding_ids & set(metadata_ids_deduped)
+                for metadata_id in metadata_ids_deduped:
+                    if metadata_id in existing_current_binding_ids:
+                        continue
+                    binding = DatasetMetadataBinding(
+                        tenant_id=dataset.tenant_id,
+                        dataset_id=dataset.id,
+                        document_id=document.id,
+                        metadata_id=metadata_id,
+                        created_by=account.id,
+                    )
+                    db.session.add(binding)
                 db.session.commit()
         else:
             # When creating new documents, data_source must be provided

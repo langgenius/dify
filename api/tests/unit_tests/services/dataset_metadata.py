@@ -87,12 +87,12 @@ This test suite follows a comprehensive testing strategy that covers:
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
-    MetadataValue,
 )
 from services.metadata_service import MetadataService
 
@@ -308,7 +308,7 @@ class MetadataTestDataFactory:
         value: str = "test",
     ) -> Mock:
         """
-        Create a mock MetadataValue entity.
+        Create a mock metadata value entity.
 
         Args:
             metadata_id: ID of the metadata field
@@ -316,9 +316,9 @@ class MetadataTestDataFactory:
             value: Value of the metadata
 
         Returns:
-            Mock object configured as a MetadataValue instance
+            Mock object configured with metadata value fields
         """
-        metadata_value = Mock(spec=MetadataValue)
+        metadata_value = Mock()
         metadata_value.id = metadata_id
         metadata_value.name = name
         metadata_value.value = value
@@ -775,7 +775,7 @@ class TestMetadataServiceDeleteMetadata:
         """
         Test error handling when metadata is not found.
 
-        Verifies that when the metadata ID doesn't exist, a ValueError
+        Verifies that when the metadata ID doesn't exist, a NotFound
         is raised and the lock is properly released.
 
         This test ensures:
@@ -794,7 +794,7 @@ class TestMetadataServiceDeleteMetadata:
         mock_db_session.query.return_value = mock_query
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Metadata not found"):
+        with pytest.raises(NotFound, match="Metadata not found"):
             MetadataService.delete_metadata(dataset_id, metadata_id)
 
         # Verify lock was released

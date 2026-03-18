@@ -114,8 +114,8 @@ class IndexProcessor:
             else:
                 document.need_summary = False
 
-            # Save doc_metadata and bindings if provided
-            if doc_metadata or metadata_binding_ids:
+            # Reconcile doc_metadata and bindings when the caller explicitly provides pipeline metadata.
+            if doc_metadata is not None or metadata_binding_ids is not None:
                 self._save_doc_metadata_and_bindings(
                     session=session,
                     dataset_id=dataset_id,
@@ -191,23 +191,42 @@ class IndexProcessor:
                 continue
             named_metadata[metadata_name] = value
 
+        existing_binding_rows = session.scalars(
+            select(DatasetMetadataBinding).where(
+                DatasetMetadataBinding.dataset_id == dataset_id,
+                DatasetMetadataBinding.document_id == document.id,
+            )
+        ).all()
+        existing_binding_ids = {binding.metadata_id for binding in existing_binding_rows}
         unique_metadata_ids = list(dict.fromkeys(metadata_binding_ids))
-        existing_binding_ids: set[str] = set()
-        if unique_metadata_ids:
-            existing_bindings = session.scalars(
-                select(DatasetMetadataBinding.metadata_id).where(
-                    DatasetMetadataBinding.dataset_id == dataset_id,
-                    DatasetMetadataBinding.document_id == document.id,
-                    DatasetMetadataBinding.metadata_id.in_(unique_metadata_ids),
+
+        metadata_ids_to_load = list(existing_binding_ids | set(unique_metadata_ids))
+        if metadata_ids_to_load:
+            existing_metadata_defs = session.scalars(
+                select(DatasetMetadata).where(
+                    DatasetMetadata.dataset_id == dataset_id,
+                    DatasetMetadata.id.in_(metadata_ids_to_load),
                 )
             ).all()
-            existing_binding_ids = set(existing_bindings)
+            for metadata in existing_metadata_defs:
+                metadata_name_map[metadata.id] = metadata.name
 
-        if named_metadata:
-            document_doc_metadata = document.doc_metadata or {}
-            document_doc_metadata.update(named_metadata)
-            document.doc_metadata = document_doc_metadata
-            attributes.flag_modified(document, "doc_metadata")
+        document_doc_metadata = dict(document.doc_metadata or {})
+        for metadata_id in existing_binding_ids:
+            metadata_name = metadata_name_map.get(metadata_id)
+            if metadata_name:
+                document_doc_metadata.pop(metadata_name, None)
+        document_doc_metadata.update(named_metadata)
+        document.doc_metadata = document_doc_metadata
+        attributes.flag_modified(document, "doc_metadata")
+
+        obsolete_metadata_ids = existing_binding_ids - set(unique_metadata_ids)
+        if obsolete_metadata_ids:
+            session.query(DatasetMetadataBinding).where(
+                DatasetMetadataBinding.dataset_id == dataset_id,
+                DatasetMetadataBinding.document_id == document.id,
+                DatasetMetadataBinding.metadata_id.in_(obsolete_metadata_ids),
+            ).delete(synchronize_session=False)
 
         for metadata_id in unique_metadata_ids:
             if metadata_id not in metadata_name_map:

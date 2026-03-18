@@ -218,3 +218,93 @@ class TestDocumentServiceMetadata:
                 binding.document_id == existing_document.id and binding.metadata_id == metadata_id
                 for binding in binding_instances
             )
+
+    def test_reindex_document_replaces_removed_metadata_and_bindings(self, mock_dependencies):
+        dataset_id = str(uuid4())
+        tenant_id = str(uuid4())
+        account = Mock(spec=Account)
+        account.id = "account-1"
+        account.current_tenant_id = tenant_id
+
+        dataset = Mock(spec=Dataset)
+        dataset.id = dataset_id
+        dataset.tenant_id = tenant_id
+        dataset.built_in_field_enabled = False
+        dataset.doc_form = "text_model"
+        dataset.indexing_technique = "high_quality"
+
+        old_metadata_id = str(uuid4())
+        new_metadata_id = str(uuid4())
+        existing_document = Mock(spec=Document)
+        existing_document.id = "doc-1"
+        existing_document.batch = "batch-1"
+        existing_document.doc_metadata = {
+            "old_field": "stale",
+            "unchanged_field": "keep",
+        }
+
+        knowledge_config = KnowledgeConfig(
+            original_document_id=existing_document.id,
+            doc_form="text_model",
+            doc_language="en",
+            indexing_technique="high_quality",
+            doc_metadata=[DocumentMetadataInput(metadata_id=new_metadata_id, value="new_value")],
+        )
+
+        old_binding = Mock(spec=DatasetMetadataBinding)
+        old_binding.metadata_id = old_metadata_id
+
+        old_metadata_def = Mock(spec=DatasetMetadata)
+        old_metadata_def.id = old_metadata_id
+        old_metadata_def.name = "old_field"
+
+        new_metadata_def = Mock(spec=DatasetMetadata)
+        new_metadata_def.id = new_metadata_id
+        new_metadata_def.name = "new_field"
+
+        with (
+            patch("services.dataset_service.DatasetService.check_doc_form"),
+            patch("services.dataset_service.FeatureService.get_features") as mock_get_features,
+            patch(
+                "services.dataset_service.DocumentService.update_document_with_dataset_id",
+                return_value=existing_document,
+            ),
+            patch("services.dataset_service.db.session.query") as mock_query,
+            patch("sqlalchemy.orm.attributes.flag_modified"),
+        ):
+            mock_get_features.return_value = Mock(billing=Mock(enabled=False))
+
+            def query_side_effect(*models):
+                m = Mock()
+                if len(models) == 1 and models[0] == DatasetMetadata:
+                    m.filter.return_value.all.return_value = [old_metadata_def, new_metadata_def]
+                    return m
+                if len(models) == 1 and models[0] == DatasetMetadataBinding:
+                    m.filter_by.return_value.all.return_value = [old_binding]
+                    m.filter.return_value.delete.return_value = 1
+                    return m
+                return m
+
+            mock_query.side_effect = query_side_effect
+
+            documents, batch = DocumentService.save_document_with_dataset_id(
+                dataset=dataset,
+                knowledge_config=knowledge_config,
+                account=account,
+            )
+
+        assert documents == [existing_document]
+        assert batch == "batch-1"
+        assert existing_document.doc_metadata == {
+            "unchanged_field": "keep",
+            "new_field": "new_value",
+        }
+
+        binding_instances = [
+            call.args[0]
+            for call in mock_dependencies["db"].add.call_args_list
+            if isinstance(call.args[0], DatasetMetadataBinding)
+        ]
+        assert len(binding_instances) == 1
+        assert binding_instances[0].document_id == existing_document.id
+        assert binding_instances[0].metadata_id == new_metadata_id

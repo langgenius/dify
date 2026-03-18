@@ -3,6 +3,8 @@ import json
 import logging
 from collections.abc import Mapping
 
+from werkzeug.exceptions import NotFound
+
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -197,7 +199,7 @@ class MetadataService:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                return None
+                raise NotFound("Metadata not found.")
             _, current_tenant_id = current_account_with_tenant()
             referenced_metadata_ids = MetadataService._get_referenced_metadata_ids(
                 current_tenant_id, {metadata_id}, bypass_cache=True

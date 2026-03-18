@@ -296,6 +296,34 @@ class TestDatasetMetadataApi:
             with pytest.raises(BadRequest, match="referenced by a pipeline"):
                 method(api, dataset_id, metadata_id)
 
+    def test_delete_metadata_not_found(self, app, current_user, dataset, dataset_id, metadata_id):
+        api = DatasetMetadataApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.metadata.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch.object(
+                DatasetService,
+                "get_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+            ),
+            patch.object(
+                MetadataService,
+                "delete_metadata",
+                side_effect=NotFound("Metadata not found."),
+            ),
+        ):
+            with pytest.raises(NotFound, match="Metadata not found"):
+                method(api, dataset_id, metadata_id)
+
 
 class TestDatasetMetadataBuiltInFieldApi:
     def test_get_built_in_fields(self, app):
