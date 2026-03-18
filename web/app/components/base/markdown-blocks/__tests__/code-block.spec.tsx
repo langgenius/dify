@@ -59,6 +59,11 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
+vi.mock('@/app/components/base/mermaid', () => ({
+  __esModule: true,
+  default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
+}))
+
 const findEchartsHost = async () => {
   await waitFor(() => {
     expect(document.querySelector('.echarts-for-react')).toBeInTheDocument()
@@ -159,6 +164,12 @@ describe('CodeBlock', () => {
     //   expect(await screen.findByTestId('classic')).toBeInTheDocument()
     //   expect(screen.getByText('Mermaid')).toBeInTheDocument()
     // })
+    it('should render mermaid block when language is mermaid', async () => {
+      render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
+
+      expect(screen.getByText('Mermaid')).toBeInTheDocument()
+      expect(await screen.findByTestId('mock-mermaid')).toHaveTextContent('graph TD; A-->B;')
+    })
 
     it('should render abc section header when language is abc', () => {
       render(<CodeBlock className="language-abc">X:1\nT:test</CodeBlock>)
@@ -348,6 +359,16 @@ describe('CodeBlock', () => {
     it('should cleanup echarts resize listener without pending timer on unmount', async () => {
       const { unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
       await findEchartsHost()
+
+      unmount()
+    })
+
+    it('should cleanup echarts resize listener when no debounce timer is pending', async () => {
+      const { rerender, unmount } = render(<CodeBlock className="language-echarts">{'{"a":1}'}</CodeBlock>)
+      await findEchartsHost()
+
+      rerender(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
+      rerender(<CodeBlock className="language-echarts">{'{"a":2}'}</CodeBlock>)
 
       unmount()
     })

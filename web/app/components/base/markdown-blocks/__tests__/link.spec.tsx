@@ -43,6 +43,23 @@ describe('Link component', () => {
     expect(mockOnSend).toHaveBeenCalledWith('hello world')
   })
 
+  it('renders abbr with empty fallback title/value when child value is missing', () => {
+    const node = {
+      properties: {
+        href: 'abbr:hi',
+      },
+      children: [{}],
+    }
+
+    const { container } = render(<Link node={node} />)
+
+    const abbr = container.querySelector('abbr')
+    expect(abbr).toBeTruthy()
+    expect(abbr?.tagName).toBe('ABBR')
+    fireEvent.click(abbr as HTMLElement)
+    expect(mockOnSend).toHaveBeenCalledWith('hi')
+  })
+
   // --------------------------
   // HASH SCROLL LINK
   // --------------------------
@@ -77,6 +94,40 @@ describe('Link component', () => {
     fireEvent.click(link)
 
     expect(scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('does not throw when hash link is clicked outside chat-answer-container', () => {
+    const node = {
+      properties: {
+        href: '#section2',
+      },
+    }
+
+    render(<Link node={node}>Outside</Link>)
+
+    expect(() => {
+      fireEvent.click(screen.getByText('Outside'))
+    }).not.toThrow()
+  })
+
+  it('does not scroll when hash target element is missing', () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    const node = {
+      properties: {
+        href: '#missing-target',
+      },
+    }
+
+    render(
+      <div className="chat-answer-container">
+        <Link node={node}>Missing</Link>
+      </div>,
+    )
+
+    fireEvent.click(screen.getByText('Missing'))
+    expect(scrollIntoView).not.toHaveBeenCalled()
   })
 
   // --------------------------

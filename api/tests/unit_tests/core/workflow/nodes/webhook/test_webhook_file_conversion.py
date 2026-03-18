@@ -9,15 +9,15 @@ when passing files to downstream LLM nodes.
 from unittest.mock import Mock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from dify_graph.nodes.trigger_webhook.entities import (
+from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
     WebhookData,
 )
-from dify_graph.nodes.trigger_webhook.node import TriggerWebhookNode
+from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
 from dify_graph.runtime.variable_pool import VariablePool
 from dify_graph.system_variable import SystemVariable
@@ -130,8 +130,8 @@ def test_webhook_node_file_conversion_to_file_variable():
     # Mock the file factory and variable factory
     with (
         patch("factories.file_factory.build_from_mapping") as mock_file_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks
         mock_file_obj = Mock()
@@ -322,8 +322,8 @@ def test_webhook_node_file_conversion_mixed_parameters():
 
     with (
         patch("factories.file_factory.build_from_mapping") as mock_file_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for file
         mock_file_obj = Mock()
@@ -390,8 +390,8 @@ def test_webhook_node_different_file_types():
 
     with (
         patch("factories.file_factory.build_from_mapping") as mock_file_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for all files
         mock_file_objs = [Mock() for _ in range(3)]

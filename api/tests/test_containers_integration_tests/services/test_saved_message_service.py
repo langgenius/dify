@@ -163,7 +163,7 @@ class TestSavedMessageService:
             answer_unit_price=0.002,
             total_price=0.003,
             currency="USD",
-            status="success",
+            status="normal",
         )
 
         db_session_with_containers.add(message)

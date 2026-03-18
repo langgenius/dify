@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any, NewType, cast
 from typing_extensions import TypeIs
 
 from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID
+from dify_graph.entities.graph_config import NodeConfigDictAdapter
 from dify_graph.enums import (
+    BuiltinNodeTypes,
     NodeExecutionType,
-    NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -61,7 +62,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
     Iteration Node.
     """
 
-    node_type = NodeType.ITERATION
+    node_type = BuiltinNodeTypes.ITERATION
     execution_type = NodeExecutionType.CONTAINER
 
     @classmethod
@@ -462,21 +463,18 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Mapping[str, Any],
+        node_data: IterationNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # Create typed NodeData from dict
-        typed_node_data = IterationNodeData.model_validate(node_data)
-
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": typed_node_data.iterator_selector,
+            f"{node_id}.input_selector": node_data.iterator_selector,
         }
         iteration_node_ids = set()
 
         # Find all nodes that belong to this loop
         nodes = graph_config.get("nodes", [])
         for node in nodes:
-            node_data = node.get("data", {})
-            if node_data.get("iteration_id") == node_id:
+            node_config_data = node.get("data", {})
+            if node_config_data.get("iteration_id") == node_id:
                 in_iteration_node_id = node.get("id")
                 if in_iteration_node_id:
                     iteration_node_ids.add(in_iteration_node_id)
@@ -489,17 +487,16 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
             # variable selector to variable mapping
             try:
-                # Get node class
-                from dify_graph.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-
-                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
-                if node_type not in NODE_TYPE_CLASSES_MAPPING:
+                typed_sub_node_config = NodeConfigDictAdapter.validate_python(sub_node_config)
+                node_type = typed_sub_node_config["data"].type
+                node_mapping = Node.get_node_type_classes_mapping()
+                if node_type not in node_mapping:
                     continue
-                node_version = sub_node_config.get("data", {}).get("version", "1")
-                node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+                node_version = str(typed_sub_node_config["data"].version)
+                node_cls = node_mapping[node_type][node_version]
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=graph_config, config=sub_node_config
+                    graph_config=graph_config, config=typed_sub_node_config
                 )
                 sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
@@ -565,7 +562,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             raise IterationIndexNotFoundError(f"iteration {self._node_id} current index not found")
         current_index = index_variable.value
         for event in rst:
-            if isinstance(event, GraphNodeEventBase) and event.node_type == NodeType.ITERATION_START:
+            if isinstance(event, GraphNodeEventBase) and event.node_type == BuiltinNodeTypes.ITERATION_START:
                 continue
 
             if isinstance(event, GraphNodeEventBase):

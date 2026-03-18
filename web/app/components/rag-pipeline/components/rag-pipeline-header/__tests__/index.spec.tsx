@@ -77,12 +77,12 @@ vi.mock('@/app/components/workflow/header', () => ({
 }))
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: PropsWithChildren<{ href: string }>) => (
     <a href={href} {...props}>{children}</a>
   ),

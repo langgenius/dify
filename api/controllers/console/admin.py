@@ -1,3 +1,5 @@
+import csv
+import io
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
@@ -6,7 +8,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -16,6 +18,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
+from services.billing_service import BillingService
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -277,3 +280,168 @@ class DeleteExploreBannerApi(Resource):
         db.session.commit()
 
         return {"result": "success"}, 204
+
+
+class LangContentPayload(BaseModel):
+    lang: str = Field(..., description="Language tag: 'zh' | 'en' | 'jp'")
+    title: str = Field(...)
+    subtitle: str | None = Field(default=None)
+    body: str = Field(...)
+    title_pic_url: str | None = Field(default=None)
+
+
+class UpsertNotificationPayload(BaseModel):
+    notification_id: str | None = Field(default=None, description="Omit to create; supply UUID to update")
+    contents: list[LangContentPayload] = Field(..., min_length=1)
+    start_time: str | None = Field(default=None, description="RFC3339, e.g. 2026-03-01T00:00:00Z")
+    end_time: str | None = Field(default=None, description="RFC3339, e.g. 2026-03-20T23:59:59Z")
+    frequency: str = Field(default="once", description="'once' | 'every_page_load'")
+    status: str = Field(default="active", description="'active' | 'inactive'")
+
+
+class BatchAddNotificationAccountsPayload(BaseModel):
+    notification_id: str = Field(...)
+    user_email: list[str] = Field(..., description="List of account email addresses")
+
+
+console_ns.schema_model(
+    UpsertNotificationPayload.__name__,
+    UpsertNotificationPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    BatchAddNotificationAccountsPayload.__name__,
+    BatchAddNotificationAccountsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+
+@console_ns.route("/admin/upsert_notification")
+class UpsertNotificationApi(Resource):
+    @console_ns.doc("upsert_notification")
+    @console_ns.doc(
+        description=(
+            "Create or update an in-product notification. "
+            "Supply notification_id to update an existing one; omit it to create a new one. "
+            "Pass at least one language variant in contents (zh / en / jp)."
+        )
+    )
+    @console_ns.expect(console_ns.models[UpsertNotificationPayload.__name__])
+    @console_ns.response(200, "Notification upserted successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        payload = UpsertNotificationPayload.model_validate(console_ns.payload)
+        result = BillingService.upsert_notification(
+            contents=[c.model_dump() for c in payload.contents],
+            frequency=payload.frequency,
+            status=payload.status,
+            notification_id=payload.notification_id,
+            start_time=payload.start_time,
+            end_time=payload.end_time,
+        )
+        return {"result": "success", "notification_id": result.get("notificationId")}, 200
+
+
+@console_ns.route("/admin/batch_add_notification_accounts")
+class BatchAddNotificationAccountsApi(Resource):
+    @console_ns.doc("batch_add_notification_accounts")
+    @console_ns.doc(
+        description=(
+            "Register target accounts for a notification by email address. "
+            'JSON body: {"notification_id": "...", "user_email": ["a@example.com", ...]}. '
+            "File upload: multipart/form-data with a 'file' field (CSV or TXT, one email per line) "
+            "plus a 'notification_id' field. "
+            "Emails that do not match any account are silently skipped."
+        )
+    )
+    @console_ns.response(200, "Accounts added successfully")
+    @only_edition_cloud
+    @admin_required
+    def post(self):
+        from models.account import Account
+
+        if "file" in request.files:
+            notification_id = request.form.get("notification_id", "").strip()
+            if not notification_id:
+                raise BadRequest("notification_id is required.")
+            emails = self._parse_emails_from_file()
+        else:
+            payload = BatchAddNotificationAccountsPayload.model_validate(console_ns.payload)
+            notification_id = payload.notification_id
+            emails = payload.user_email
+
+        if not emails:
+            raise BadRequest("No valid email addresses provided.")
+
+        # Resolve emails → account IDs in chunks to avoid large IN-clause
+        account_ids: list[str] = []
+        chunk_size = 500
+        for i in range(0, len(emails), chunk_size):
+            chunk = emails[i : i + chunk_size]
+            rows = db.session.execute(select(Account.id, Account.email).where(Account.email.in_(chunk))).all()
+            account_ids.extend(str(row.id) for row in rows)
+
+        if not account_ids:
+            raise BadRequest("None of the provided emails matched an existing account.")
+
+        # Send to dify-saas in batches of 1000
+        total_count = 0
+        batch_size = 1000
+        for i in range(0, len(account_ids), batch_size):
+            batch = account_ids[i : i + batch_size]
+            result = BillingService.batch_add_notification_accounts(
+                notification_id=notification_id,
+                account_ids=batch,
+            )
+            total_count += result.get("count", 0)
+
+        return {
+            "result": "success",
+            "emails_provided": len(emails),
+            "accounts_matched": len(account_ids),
+            "count": total_count,
+        }, 200
+
+    @staticmethod
+    def _parse_emails_from_file() -> list[str]:
+        """Parse email addresses from an uploaded CSV or TXT file."""
+        file = request.files["file"]
+        if not file.filename:
+            raise BadRequest("Uploaded file has no filename.")
+
+        filename_lower = file.filename.lower()
+        if not filename_lower.endswith((".csv", ".txt")):
+            raise BadRequest("Invalid file type. Only CSV (.csv) and TXT (.txt) files are allowed.")
+
+        try:
+            content = file.read().decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                file.seek(0)
+                content = file.read().decode("gbk")
+            except UnicodeDecodeError:
+                raise BadRequest("Unable to decode the file. Please use UTF-8 or GBK encoding.")
+
+        emails: list[str] = []
+        if filename_lower.endswith(".csv"):
+            reader = csv.reader(io.StringIO(content))
+            for row in reader:
+                for cell in row:
+                    cell = cell.strip()
+                    if cell:
+                        emails.append(cell)
+        else:
+            for line in content.splitlines():
+                line = line.strip()
+                if line:
+                    emails.append(line)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_emails: list[str] = []
+        for email in emails:
+            if email.lower() not in seen:
+                seen.add(email.lower())
+                unique_emails.append(email)
+
+        return unique_emails

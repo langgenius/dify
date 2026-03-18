@@ -7,7 +7,7 @@ import RetrievalSettings from '../RetrievalSettings'
 
 const mockReplace = vi.fn()
 const mockRefresh = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
     push: vi.fn(),
@@ -905,8 +905,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
         />,
       )
 
-      // The TopKItem should render an input
-      const inputs = screen.getAllByRole('spinbutton')
+      // The TopKItem renders the visible number-field input as a textbox.
+      const inputs = screen.getAllByRole('textbox')
       const topKInput = inputs[0]
       fireEvent.change(topKInput, { target: { value: '8' } })
 
@@ -924,8 +924,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
         />,
       )
 
-      // The ScoreThresholdItem should render an input
-      const inputs = screen.getAllByRole('spinbutton')
+      // The ScoreThresholdItem renders the visible number-field input as a textbox.
+      const inputs = screen.getAllByRole('textbox')
       const scoreThresholdInput = inputs[1]
       fireEvent.change(scoreThresholdInput, { target: { value: '0.8' } })
 

@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -116,3 +116,13 @@ class RedisConfig(BaseSettings):
         description="Maximum connections in the Redis connection pool (unset for library default)",
         default=None,
     )
+
+    @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
+    @classmethod
+    def _empty_string_to_none_for_max_conns(cls, v):
+        """Allow empty string in env/.env to mean 'unset' (None)."""
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v

@@ -21,7 +21,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
-      <div className="mb-2 py-[7px]">
+      <div className={cn('py-[7px]', className)}>
         {theme === Theme.dark && <AnthropicLight className="h-2.5 w-[90px]" />}
         {theme === Theme.light && <AnthropicDark className="h-2.5 w-[90px]" />}
       </div>
@@ -30,7 +30,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
 
   if (provider.provider === 'langgenius/openai/openai') {
     return (
-      <div className="mb-2">
+      <div className={className}>
         <Openai className="h-6 w-auto text-text-inverted-dimmed" />
       </div>
     )
@@ -48,7 +48,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
         )}
         className="h-6 w-6"
       />
-      <div className="system-md-semibold text-text-primary">
+      <div className="text-text-primary system-md-semibold">
         {renderI18nObject(provider.label, language)}
       </div>
     </div>

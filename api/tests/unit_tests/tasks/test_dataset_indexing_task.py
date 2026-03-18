@@ -19,6 +19,7 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
+from models.enums import IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from tasks.document_indexing_task import (
     _document_indexing,
@@ -424,7 +425,7 @@ class TestBatchProcessing:
 
             # Assert - All documents should be set to 'parsing' status
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
                 assert doc.processing_started_at is not None
 
             # IndexingRunner should be called with all documents
@@ -573,7 +574,7 @@ class TestProgressTracking:
 
             # Assert - Status should be 'parsing'
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
                 assert doc.processing_started_at is not None
 
             # Verify commit was called to persist status
@@ -1158,7 +1159,7 @@ class TestAdvancedScenarios:
         # Assert
         # All documents should be set to parsing (no limit errors)
         for doc in mock_documents:
-            assert doc.indexing_status == "parsing"
+            assert doc.indexing_status == IndexingStatus.PARSING
 
         # IndexingRunner should be called with all documents
         mock_indexing_runner.run.assert_called_once()
@@ -1377,7 +1378,7 @@ class TestPerformanceScenarios:
 
             # Assert
             for doc in mock_documents:
-                assert doc.indexing_status == "parsing"
+                assert doc.indexing_status == IndexingStatus.PARSING
 
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
