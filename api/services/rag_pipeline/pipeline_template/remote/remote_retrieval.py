@@ -35,17 +35,21 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.REMOTE
 
     @classmethod
-    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict:
         """
         Fetch pipeline template detail from dify official.
-        :param template_id: Pipeline ID
-        :return:
+
+        :param template_id: Pipeline template ID
+        :return: Template detail dict
+        :raises ValueError: When upstream returns a non-200 status code
         """
         domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/pipeline-templates/{template_id}"
         response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
-            return None
+            raise ValueError(
+                f"fetch pipeline template detail failed, status_code: {response.status_code}, response: {response.text}"
+            )
         data: dict = response.json()
         return data
 
