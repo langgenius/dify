@@ -235,7 +235,7 @@ class GraphRuntimeState:
         self._response_coordinator = response_coordinator
         # Application code injects this when worker threads must restore request
         # or framework-local state. It is intentionally excluded from snapshots.
-        self._execution_context = execution_context if execution_context is not None else nullcontext()
+        self._execution_context = execution_context if execution_context is not None else nullcontext(None)
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
@@ -340,7 +340,7 @@ class GraphRuntimeState:
 
     @execution_context.setter
     def execution_context(self, value: AbstractContextManager[object] | None) -> None:
-        self._execution_context = value if value is not None else nullcontext()
+        self._execution_context = value if value is not None else nullcontext(None)
 
     # ------------------------------------------------------------------
     # Scalar state
