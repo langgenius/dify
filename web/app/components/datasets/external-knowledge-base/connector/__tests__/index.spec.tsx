@@ -7,7 +7,7 @@ import ExternalKnowledgeBaseConnector from '../index'
 
 const mockRouterBack = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     back: mockRouterBack,
     replace: mockReplace,

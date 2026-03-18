@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
+from models.enums import DataSourceType
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
 
@@ -100,7 +101,7 @@ class TestTagService:
             description=fake.text(max_nb_chars=100),
             provider="vendor",
             permission="only_me",
-            data_source_type="upload",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             tenant_id=tenant_id,
             created_by=mock_external_service_dependencies["current_user"].id,

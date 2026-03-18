@@ -27,7 +27,7 @@ vi.mock('../../..', () => ({
   useFieldContext: () => mockField,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
 }))
 

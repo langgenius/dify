@@ -9,7 +9,6 @@ import {
   RiInformation2Fill,
 } from '@remixicon/react'
 import { produce } from 'immer'
-import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +20,7 @@ import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-inp
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
 import { cn } from '@/utils/classnames'
 

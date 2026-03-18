@@ -10,14 +10,12 @@ import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstalledLatestVersionResponse,
   InstalledPluginListWithTotalResponse,
   InstallPackageResponse,
   InstallStatusResponse,
   PackageDependency,
   Plugin,
   PluginDeclaration,
-  PluginDetail,
   PluginInfoFromMarketPlace,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
@@ -42,11 +40,12 @@ import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
 import { get, getMarketplace, post, postMarketplace } from './base'
+import { consoleQuery } from './client'
 import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
-
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
+
 export const useCheckInstalled = ({
   pluginIds,
   enabled,
@@ -54,16 +53,20 @@ export const useCheckInstalled = ({
   pluginIds: string[]
   enabled: boolean
 }) => {
-  return useQuery<{ plugins: PluginDetail[] }>({
-    queryKey: [NAME_SPACE, 'checkInstalled', pluginIds],
-    queryFn: () => post<{ plugins: PluginDetail[] }>('/workspaces/current/plugin/list/installations/ids', {
-      body: {
-        plugin_ids: pluginIds,
-      },
-    }),
+  return useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
+    input: { body: { plugin_ids: pluginIds } },
     enabled,
-    staleTime: 0, // always fresh
-  })
+    staleTime: 0,
+  }))
+}
+
+export const useInvalidateCheckInstalled = () => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.plugins.checkInstalled.key(),
+    })
+  }
 }
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
@@ -178,19 +181,6 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
     error,
     isSuccess,
   }
-}
-
-export const useInstalledLatestVersion = (pluginIds: string[]) => {
-  return useQuery<InstalledLatestVersionResponse>({
-    queryKey: [NAME_SPACE, 'installedLatestVersion', pluginIds],
-    queryFn: () => post<InstalledLatestVersionResponse>('/workspaces/current/plugin/list/latest-versions', {
-      body: {
-        plugin_ids: pluginIds,
-      },
-    }),
-    enabled: !!pluginIds.length,
-    initialData: pluginIds.length ? undefined : { versions: {} },
-  })
 }
 
 export const useInvalidateInstalledPluginList = () => {
@@ -685,7 +675,7 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
         return false
       try {
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
-        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
+        return !!modelId && modelsData.data.some(item => item.model === modelId)
       }
       catch {
         return false

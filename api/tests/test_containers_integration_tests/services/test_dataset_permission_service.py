@@ -16,6 +16,7 @@ from models.dataset import (
     DatasetPermission,
     DatasetPermissionEnum,
 )
+from models.enums import DataSourceType
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
 
@@ -67,7 +68,7 @@ class DatasetPermissionTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description="desc",
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique="high_quality",
             created_by=created_by,
             permission=permission,

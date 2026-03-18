@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { useParams } from 'next/navigation'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -10,6 +9,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast/context'
 import { ChunkingMode } from '@/models/datasets'
+import { useParams } from '@/next/navigation'
 import { useAddChildSegment } from '@/service/knowledge/use-segment'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -58,7 +58,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       <Divider type="vertical" className="mx-1 h-3 bg-divider-regular" />
       <button
         type="button"
-        className="system-xs-semibold text-text-accent"
+        className="text-text-accent system-xs-semibold"
         onClick={() => {
           clearTimeout(refreshTimer.current)
           viewNewlyAddedChildChunk?.()
@@ -120,11 +120,11 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
+          <div className="text-text-primary system-xl-semibold">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag label={t('segment.newChildChunk', { ns: 'datasetDocuments' }) as string} />
             <Dot />
-            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
+            <span className="text-text-tertiary system-xs-medium">{wordCountText}</span>
           </div>
         </div>
         <div className="flex items-center">

@@ -12,6 +12,7 @@ from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
-        if document.indexing_status == "parsing":
+        if document.indexing_status == IndexingStatus.PARSING:
             logger.info(click.style(f"Document {document_id} is already being processed, skipping", fg="yellow"))
             return
 
@@ -88,7 +89,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         with session_factory.create_session() as session, session.begin():
             document = session.query(Document).filter_by(id=document_id).first()
             if document:
-                document.indexing_status = "error"
+                document.indexing_status = IndexingStatus.ERROR
                 document.error = "Datasource credential not found. Please reconnect your Notion workspace."
                 document.stopped_at = naive_utc_now()
         return
@@ -128,7 +129,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         data_source_info["last_edited_time"] = last_edited_time
         document.data_source_info = json.dumps(data_source_info)
 
-        document.indexing_status = "parsing"
+        document.indexing_status = IndexingStatus.PARSING
         document.processing_started_at = naive_utc_now()
 
         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
@@ -151,6 +152,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         with session_factory.create_session() as session, session.begin():
             document = session.query(Document).filter_by(id=document_id).first()
             if document:
-                document.indexing_status = "error"
+                document.indexing_status = IndexingStatus.ERROR
                 document.error = str(e)
                 document.stopped_at = naive_utc_now()
