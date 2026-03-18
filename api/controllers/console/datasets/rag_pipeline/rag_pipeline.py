@@ -46,7 +46,7 @@ class PipelineTemplateDetailApi(Resource):
         type = request.args.get("type", default="built-in", type=str)
         rag_pipeline_service = RagPipelineService()
         pipeline_template = rag_pipeline_service.get_pipeline_template_detail(template_id, type)
-        if not pipeline_template:
+        if pipeline_template is None:
             return {"error": "Pipeline template not found from upstream service."}, 404
         return pipeline_template, 200
 
