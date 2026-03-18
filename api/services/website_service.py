@@ -216,8 +216,10 @@ class WebsiteService:
             "max_depth": request.options.max_depth,
             "use_sitemap": request.options.use_sitemap,
         }
-        return WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).crawl_url(
-            url=request.url, options=options
+        return dict(
+            WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).crawl_url(
+                url=request.url, options=options
+            )
         )
 
     @classmethod
@@ -290,7 +292,7 @@ class WebsiteService:
 
     @classmethod
     def _get_watercrawl_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
-        return WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_status(job_id)
+        return dict(WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_status(job_id))
 
     @classmethod
     def _get_jinareader_status(cls, job_id: str, api_key: str) -> dict[str, Any]:
@@ -364,7 +366,8 @@ class WebsiteService:
 
     @classmethod
     def _get_watercrawl_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
-        return WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_url_data(job_id, url)
+        result = WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_url_data(job_id, url)
+        return dict(result) if result is not None else None
 
     @classmethod
     def _get_jinareader_url_data(cls, job_id: str, url: str, api_key: str) -> dict[str, Any] | None:
@@ -420,4 +423,4 @@ class WebsiteService:
 
     @classmethod
     def _scrape_with_watercrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
-        return WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).scrape_url(request.url)
+        return dict(WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).scrape_url(request.url))
