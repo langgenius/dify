@@ -1,11 +1,11 @@
 'use client'
 import { RiArrowRightUpLine, RiRobot2Line } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useRouter } from '@/next/navigation'
 import Avatar from './avatar'
 
 const Header = () => {

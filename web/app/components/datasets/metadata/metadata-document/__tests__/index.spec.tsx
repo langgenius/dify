@@ -45,7 +45,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
   }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),

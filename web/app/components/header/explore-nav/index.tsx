@@ -4,9 +4,9 @@ import {
   RiPlanetFill,
   RiPlanetLine,
 } from '@remixicon/react'
-import Link from 'next/link'
-import { useSelectedLayoutSegment } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
 type ExploreNavProps = {

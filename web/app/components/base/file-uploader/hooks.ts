@@ -4,7 +4,6 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { useParams } from 'next/navigation'
 import {
   useCallback,
   useState,
@@ -20,6 +19,7 @@ import {
 } from '@/app/components/base/file-uploader/constants'
 import { useToastContext } from '@/app/components/base/toast/context'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useParams } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'

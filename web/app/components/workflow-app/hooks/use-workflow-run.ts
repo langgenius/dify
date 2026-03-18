@@ -4,7 +4,6 @@ import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { usePathname } from 'next/navigation'
 import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
@@ -21,6 +20,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { usePathname } from '@/next/navigation'
 import { handleStream, post, sseGet, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'

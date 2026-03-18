@@ -241,10 +241,7 @@ export const useTextGenerationBatch = ({
         result[variable.name] = String(task.params.inputs[variable.key] ?? '')
       })
 
-      let completionValue = batchCompletionMap[String(task.id)]
-      if (typeof completionValue === 'object')
-        completionValue = JSON.stringify(completionValue)
-
+      const completionValue = batchCompletionMap[String(task.id)] ?? ''
       result[t('generation.completionResult', { ns: 'share' })] = completionValue
       return result
     })

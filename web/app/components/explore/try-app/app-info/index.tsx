@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
-import Image from 'next/image'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -38,14 +37,13 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
   }
 
   return (
-    <Image
+    <img
       className="size-5 rounded-md object-cover shadow-xs"
       src={iconUrl}
       alt=""
       aria-hidden="true"
       width={requirementIconSize}
       height={requirementIconSize}
-      unoptimized
       onError={() => setFailedSource(iconUrl)}
     />
   )

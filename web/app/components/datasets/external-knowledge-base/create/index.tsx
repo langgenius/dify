@@ -2,12 +2,12 @@
 
 import type { CreateKnowledgeBaseReq } from './declarations'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
+import { useRouter } from '@/next/navigation'
 import ExternalApiSelection from './ExternalApiSelection'
 import InfoPanel from './InfoPanel'
 import KnowledgeBaseInfo from './KnowledgeBaseInfo'
