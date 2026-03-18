@@ -47,7 +47,7 @@ class PdfExtractor(BaseExtractor):
     ]
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str, file_cache_key: str | None = None):
+    def __init__(self, file_path: str, tenant_id: str | None, user_id: str | None, file_cache_key: str | None = None):
         """Initialize PdfExtractor."""
         self._file_path = file_path
         self._tenant_id = tenant_id
@@ -114,6 +114,9 @@ class PdfExtractor(BaseExtractor):
         """
         image_content = []
         upload_files = []
+        if not self._tenant_id or not self._user_id:
+            return ""
+
         base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
 
         try:

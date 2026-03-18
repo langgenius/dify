@@ -3,12 +3,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from services.auth.api_key_auth_base import ApiKeyAuthBase
+from services.auth.api_key_auth_base import ApiKeyAuthBase, ApiKeyAuthCredentials
 
 
 class WatercrawlAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: dict):
-        super().__init__(credentials)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+    def __init__(self, credentials: ApiKeyAuthCredentials):
+        super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "x-api-key":
             raise ValueError("Invalid auth type, WaterCrawl auth type must be x-api-key")

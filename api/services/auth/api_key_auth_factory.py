@@ -14,7 +14,7 @@ class ApiKeyAuthFactory:
 
     @staticmethod
     def get_apikey_auth_factory(provider: AuthProvider) -> type[ApiKeyAuthBase]:
-        match provider:
+        match ApiKeyAuthFactory._normalize_provider(provider):
             case AuthType.FIRECRAWL:
                 from services.auth.firecrawl.firecrawl import FirecrawlAuth
 
@@ -29,3 +29,13 @@ class ApiKeyAuthFactory:
                 return JinaAuth
             case _:
                 raise ValueError("Invalid provider")
+
+    @staticmethod
+    def _normalize_provider(provider: AuthProvider) -> AuthType | str:
+        if isinstance(provider, AuthType):
+            return provider
+
+        try:
+            return AuthType(provider)
+        except ValueError:
+            return provider

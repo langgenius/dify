@@ -225,7 +225,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
-            total_batches = len(texts) + batch_size - 1
+            total_batches = (len(texts) + batch_size - 1) // batch_size
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
@@ -244,7 +244,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
             batch_size = 1000
-            total_batches = len(file_documents) + batch_size - 1
+            total_batches = (len(file_documents) + batch_size - 1) // batch_size
             for i in range(0, len(file_documents), batch_size):
                 batch = file_documents[i : i + batch_size]
                 batch_start = time.time()

@@ -13,8 +13,11 @@ class TestApiKeyAuthFactory:
         ("provider", "auth_class_path"),
         [
             (AuthType.FIRECRAWL, "services.auth.firecrawl.firecrawl.FirecrawlAuth"),
+            (AuthType.FIRECRAWL.value, "services.auth.firecrawl.firecrawl.FirecrawlAuth"),
             (AuthType.WATERCRAWL, "services.auth.watercrawl.watercrawl.WatercrawlAuth"),
+            (AuthType.WATERCRAWL.value, "services.auth.watercrawl.watercrawl.WatercrawlAuth"),
             (AuthType.JINA, "services.auth.jina.jina.JinaAuth"),
+            (AuthType.JINA.value, "services.auth.jina.jina.JinaAuth"),
         ],
     )
     def test_get_apikey_auth_factory_valid_providers(self, provider, auth_class_path):
