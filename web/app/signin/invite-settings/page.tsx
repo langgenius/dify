@@ -6,7 +6,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import { LICENSE_LINK } from '@/constants/link'
@@ -65,9 +64,7 @@ export default function InviteSettingsPage() {
     }
   }, [language, name, recheck, timezone, token, router, t])
 
-  if (!checkRes)
-    return <Loading />
-  if (!checkRes.is_valid) {
+  if (checkRes?.is_valid === false) {
     return (
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
@@ -147,8 +144,9 @@ export default function InviteSettingsPage() {
             variant="primary"
             className="w-full"
             onClick={handleActivate}
+            disabled={!checkRes?.is_valid}
           >
-            {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name ?? ''}`}
           </Button>
         </div>
       </form>

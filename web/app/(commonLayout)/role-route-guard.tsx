@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { usePathname, useRouter } from '@/next/navigation'
 
@@ -21,10 +20,6 @@ export default function RoleRouteGuard({ children }: { children: ReactNode }) {
     if (shouldRedirect)
       router.replace('/datasets')
   }, [shouldRedirect, router])
-
-  // Block rendering only for guarded routes to avoid permission flicker.
-  if (shouldGuardRoute && isLoadingCurrentWorkspace)
-    return <Loading type="app" />
 
   if (shouldRedirect)
     return null

@@ -6,11 +6,9 @@ import type { AppData, AppMeta } from '@/models/share'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
-import Loading from '@/app/components/base/loading'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { useIsSystemFeaturesPending } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -65,7 +63,6 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const isGlobalPending = useIsSystemFeaturesPending()
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
@@ -104,24 +101,13 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [searchParamsString, updateEmbeddedUserId, updateEmbeddedConversationId])
 
-  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+  const { data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
 
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isGlobalPending || isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loading />
-      </div>
-    )
-  }
-  return (
-    <>
-      {children}
-    </>
-  )
+  return <>{children}</>
 }
 export default WebAppStoreProvider

@@ -106,10 +106,10 @@ export const ModalContextProvider = ({
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    const educationVerifying = globalThis.localStorage?.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
     if (educationVerifying === 'yes')
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      globalThis.localStorage?.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
     accountSettingCallbacksRef.current?.onCancelCallback?.()
     accountSettingCallbacksRef.current = null

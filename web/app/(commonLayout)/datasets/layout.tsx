@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
@@ -18,9 +17,6 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
     if (shouldRedirect)
       router.replace('/apps')
   }, [shouldRedirect, router])
-
-  if (isLoadingCurrentWorkspace || !currentWorkspace.id)
-    return <Loading type="app" />
 
   if (shouldRedirect) {
     return null

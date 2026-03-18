@@ -12,7 +12,6 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
-import Loading from '@/app/components/base/loading'
 import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
@@ -70,6 +69,7 @@ export default function OAuthAuthorize() {
   const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
   const isLoading = isOAuthLoading || isIsLoginLoading
+  const isActionDisabled = !client_id || !redirect_uri || isError || isLoading || authorizing
   const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)
@@ -109,14 +109,6 @@ export default function OAuthAuthorize() {
       })
     }
   }, [client_id, redirect_uri, isError])
-
-  if (isLoading) {
-    return (
-      <div className="bg-background-default-subtle">
-        <Loading type="app" />
-      </div>
-    )
-  }
 
   return (
     <div className="bg-background-default-subtle">
@@ -169,7 +161,7 @@ export default function OAuthAuthorize() {
             )
           : (
               <>
-                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
+                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={isActionDisabled} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
                 <Button size="large" className="w-full" onClick={() => router.push('/apps')}>{t('operation.cancel', { ns: 'common' })}</Button>
               </>
             )}

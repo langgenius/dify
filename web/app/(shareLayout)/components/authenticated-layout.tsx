@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
@@ -18,9 +17,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isFetching: isFetchingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
-  const { isFetching: isFetchingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
-  const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
+  const { data: appParams, error: appParamsError } = useGetWebAppParams()
+  const { data: appInfo, error: appInfoError } = useGetWebAppInfo()
+  const { data: appMeta, error: appMetaError } = useGetWebAppMeta()
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
@@ -81,14 +80,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
         <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
-        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
-      </div>
-    )
-  }
-  if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading />
+        <span className="cursor-pointer text-text-tertiary system-sm-regular" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
       </div>
     )
   }

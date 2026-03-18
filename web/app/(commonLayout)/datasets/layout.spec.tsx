@@ -55,7 +55,7 @@ describe('DatasetsLayout', () => {
     setAppContext()
   })
 
-  it('should render loading when workspace is still loading', () => {
+  it('should keep rendering children when workspace is still loading', () => {
     setAppContext({
       isLoadingCurrentWorkspace: true,
       currentWorkspace: { id: '' },
@@ -67,8 +67,7 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>
     ))
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByTestId('datasets-content')).not.toBeInTheDocument()
+    expect(screen.getByTestId('datasets-content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 

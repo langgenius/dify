@@ -10,6 +10,8 @@ type HeaderWrapperProps = {
   children: React.ReactNode
 }
 
+const getWorkflowCanvasMaximize = () => globalThis.localStorage?.getItem('workflow-canvas-maximize') === 'true'
+
 const HeaderWrapper = ({
   children,
 }: HeaderWrapperProps) => {
@@ -18,8 +20,7 @@ const HeaderWrapper = ({
   // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const [hideHeader, setHideHeader] = useState(getWorkflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((v: any) => {

@@ -1,6 +1,4 @@
 'use client'
-import Loading from '@/app/components/base/loading'
-
 import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -11,16 +9,8 @@ import { cn } from '@/utils/classnames'
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()
   useDocumentTitle('')
-  const { isLoading, data: loginData } = useIsLogin()
+  const { data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full justify-center bg-background-default-burn">
-        <Loading />
-      </div>
-    )
-  }
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

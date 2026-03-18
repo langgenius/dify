@@ -1,9 +1,8 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
@@ -12,7 +11,6 @@ import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogou
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const shareCode = useWebAppStore(s => s.shareCode)
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -32,13 +30,9 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router, shareCode])
-
-  const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    if (message) {
-      setIsLoading(false)
+    if (message)
       return
-    }
 
     if (tokenFromUrl)
       setWebAppAccessToken(tokenFromUrl)
@@ -46,12 +40,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     const redirectOrFinish = () => {
       if (redirectUrl)
         router.replace(decodeURIComponent(redirectUrl))
-      else
-        setIsLoading(false)
-    }
-
-    const proceedToAuth = () => {
-      setIsLoading(false)
     }
 
     (async () => {
@@ -59,9 +47,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
-      }
-      else if (!userLoggedIn && !appLoggedIn) {
-        proceedToAuth()
       }
       else if (!userLoggedIn && appLoggedIn) {
         redirectOrFinish()
@@ -77,7 +62,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
         }
         catch {
           await webAppLogout(shareCode!)
-          proceedToAuth()
         }
       }
     })()
@@ -86,7 +70,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     redirectUrl,
     router,
     message,
-    webAppAccessMode,
     tokenFromUrl,
     embeddedUserId,
   ])
@@ -95,18 +78,11 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-4">
         <AppUnavailable className="h-auto w-auto" code={code || t('common.appUnavailable', { ns: 'share' })} unknownReason={message} />
-        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{code === '403' ? t('userProfile.logout', { ns: 'common' }) : t('login.backToHome', { ns: 'share' })}</span>
+        <span className="cursor-pointer text-text-tertiary system-sm-regular" onClick={backToHome}>{code === '403' ? t('userProfile.logout', { ns: 'common' }) : t('login.backToHome', { ns: 'share' })}</span>
       </div>
     )
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading />
-      </div>
-    )
-  }
   return <>{children}</>
 }
 

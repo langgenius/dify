@@ -47,7 +47,7 @@ const EducationApplyAge = () => {
     setShowModal(undefined)
     onPlanInfoChanged()
     updateEducationStatus()
-    localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    globalThis.localStorage?.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
     router.replace('/')
   }
 

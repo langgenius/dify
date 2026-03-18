@@ -3,16 +3,19 @@ import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { NOTICE_I18N } from '@/i18n-config/language'
 
+const getShowNotice = () => globalThis.localStorage?.getItem('hide-maintenance-notice') !== '1'
+
 const MaintenanceNotice = () => {
   const locale = useLanguage()
 
-  const [showNotice, setShowNotice] = useState(() => localStorage.getItem('hide-maintenance-notice') !== '1')
+  const [showNotice, setShowNotice] = useState(getShowNotice)
+
   const handleJumpNotice = () => {
     window.open(NOTICE_I18N.href, '_blank')
   }
 
   const handleCloseNotice = () => {
-    localStorage.setItem('hide-maintenance-notice', '1')
+    globalThis.localStorage?.setItem('hide-maintenance-notice', '1')
     setShowNotice(false)
   }
 
