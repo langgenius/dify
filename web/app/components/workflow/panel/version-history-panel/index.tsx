@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
@@ -118,9 +118,9 @@ export const VersionHistoryPanel = ({
         break
       case VersionHistoryContextMenuOptions.copyId:
         copy(item.id)
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
+          title: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
         })
         break
       case VersionHistoryContextMenuOptions.exportDSL:
@@ -152,17 +152,17 @@ export const VersionHistoryPanel = ({
     workflowStore.setState({ backupDraft: undefined })
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
+          title: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
         })
         deleteAllInspectVars()
         invalidAllLastRun()
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
+          title: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
@@ -177,18 +177,18 @@ export const VersionHistoryPanel = ({
     await deleteWorkflow(deleteVersionUrl?.(id) || '', {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
+          title: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
         })
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
         invalidAllLastRun()
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
+          title: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
@@ -207,16 +207,16 @@ export const VersionHistoryPanel = ({
     }, {
       onSuccess: () => {
         setEditModalOpen(false)
-        Toast.notify({
+        toast.add({
           type: 'success',
-          message: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
+          title: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
         })
         resetWorkflowVersionHistory()
       },
       onError: () => {
-        Toast.notify({
+        toast.add({
           type: 'error',
-          message: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
+          title: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
