@@ -1013,7 +1013,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.db", SimpleNamespace(engine=object()))
 
-        refreshed = _refresh_model(session=SimpleNamespace(), model=source_model)
+        refreshed = _refresh_model(session=None, model=source_model)
 
         assert refreshed is detached_model
 
