@@ -88,7 +88,7 @@ class WordExtractor(BaseExtractor):
 
     def _extract_images_from_docx(self, doc):
         image_count = 0
-        image_map = {}
+        image_map: dict[object, str] = {}
         base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
 
         if self.tenant_id is None or self.user_id is None:
