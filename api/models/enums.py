@@ -13,7 +13,7 @@ class CreatorUserRole(StrEnum):
 
     @classmethod
     def _missing_(cls, value):
-        if value == 'end-user':
+        if value == "end-user":
             return cls.END_USER
         else:
             return super()._missing_(value)
