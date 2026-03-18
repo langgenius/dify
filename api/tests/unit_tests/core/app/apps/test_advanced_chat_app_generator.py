@@ -11,7 +11,9 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode, Conversation, Message
+from services.errors.conversation import ConversationNotExistsError
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -105,6 +107,75 @@ def test_init_generate_records_marks_existing_conversation():
     assert entity.conversation_id == "existing-conversation-id"
     assert conversation is existing_conversation
     assert entity.is_new_conversation is False
+
+
+def test_generate_falls_back_to_new_conversation_when_conversation_missing(monkeypatch):
+    app_config = _make_app_config()
+    workflow = SimpleNamespace(
+        features_dict={},
+        tenant_id="tenant-id",
+        app_id="app-id",
+        id="workflow-id",
+    )
+    app_model = SimpleNamespace(id="app-id", tenant_id="tenant-id")
+    user = SimpleNamespace(id="user-id", session_id="session-id")
+
+    def raise_conversation_not_exists(**_kwargs):
+        raise ConversationNotExistsError()
+
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+        raise_conversation_not_exists,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
+        lambda **_kwargs: app_config,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.db",
+        SimpleNamespace(engine=object()),
+    )
+    trace_manager = object.__new__(TraceQueueManager)
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
+        lambda **_kwargs: trace_manager,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_generate(self, **kwargs):
+        captured.update(kwargs)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
+
+    result = AdvancedChatAppGenerator().generate(
+        app_model=app_model,
+        workflow=workflow,
+        user=user,
+        args={"inputs": {}, "query": "hello", "conversation_id": "missing-conversation-id"},
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id="workflow-run-id",
+        streaming=False,
+    )
+
+    assert result == {"status": "ok"}
+    assert captured["conversation"] is None
+    application_generate_entity = captured["application_generate_entity"]
+    assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+    assert application_generate_entity.conversation_id is None
 
 
 def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch):
